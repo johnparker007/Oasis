@@ -254,6 +254,20 @@ public sealed class FabricManagedBehaviorTests
     }
 
     [Fact]
+    public void AmberConfiguration_FormatsBoundedFabricV2StartupDiagnostics()
+    {
+        var configuration = FabricAmberConfiguration.FromSystem6(new System6NativeRomSettings
+        {
+            Coins = [new System6CoinSettings { Num = 0, Enabled = true, CoinEnable = 1, CoinValue = 0 }]
+        });
+
+        Assert.Equal([
+            "[Coin Config Fabric v2] size=408 version=2 channelMask=0x00000001 routeMask=0x00000001 style=0 invert=0 cycles=800000 edc=0",
+            "[Coin Config Fabric v2] slot=0 index=0 enabled=1 value=0 lockoutInvert=0 reserved=0"
+        ], FabricEmulationBackend.BuildCoinConfigurationDiagnostics(configuration));
+    }
+
+    [Fact]
     public async Task Backend_UsesExactLaunchValuesAndSerializesResetWithPump()
     {
         var clock = new FakeClock();

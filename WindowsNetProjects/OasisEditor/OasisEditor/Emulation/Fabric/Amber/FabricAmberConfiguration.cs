@@ -103,10 +103,13 @@ public sealed record FabricAmberConfiguration(
         }
         pointer = native.Coins.Channels;
         {
-            for (var index = 0; index < CoinChannels.Count; index++)
+            foreach (var channel in CoinChannels)
             {
-                var channel = CoinChannels[index];
-                ((AmberCoinChannelNative*)pointer)[index] = new AmberCoinChannelNative
+                if (channel.Index >= 6)
+                    throw new ArgumentOutOfRangeException(nameof(CoinChannels), channel.Index, "Amber coin channel index must be from 0 to 5.");
+                if (channel.Value > 12)
+                    throw new ArgumentOutOfRangeException(nameof(CoinChannels), channel.Value, "Amber coin denomination must be from 0 to 12.");
+                ((AmberCoinChannelNative*)pointer)[channel.Index] = new AmberCoinChannelNative
                 {
                     Index = channel.Index,
                     Enabled = channel.Enabled ? 1u : 0,
@@ -117,10 +120,11 @@ public sealed record FabricAmberConfiguration(
         }
         pointer = native.Coins.Routes;
         {
-            for (var index = 0; index < CoinRoutes.Count; index++)
+            foreach (var route in CoinRoutes)
             {
-                var route = CoinRoutes[index];
-                ((AmberCoinRouteNative*)pointer)[index] = new AmberCoinRouteNative
+                if (route.Index >= 8)
+                    throw new ArgumentOutOfRangeException(nameof(CoinRoutes), route.Index, "Amber coin route index must be from 0 to 7.");
+                ((AmberCoinRouteNative*)pointer)[route.Index] = new AmberCoinRouteNative
                 {
                     Index = route.Index,
                     Enabled = route.Enabled ? 1u : 0,

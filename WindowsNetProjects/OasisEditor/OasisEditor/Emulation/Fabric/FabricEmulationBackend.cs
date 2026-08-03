@@ -91,9 +91,11 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             var resources = BuildRomResources(settings);
             cancellationToken.ThrowIfCancellationRequested();
             _runtime = _runtimeFactory(_runtimePath);
+            var configuration = FabricAmberConfiguration.FromSystem6(settings);
+            WriteCoinConfigurationDiagnostics(configuration);
             _session = _runtime.CreateSession(new FabricLaunchRequest(
                 AmberBackendKind, JpmSystem6MachineIdentifier, _amberPath, resources,
-                FabricAmberConfiguration.FromSystem6(settings)));
+                configuration));
 
             await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
@@ -254,6 +256,23 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         AddRomRole(resources, settings.ProgramRomPaths, FabricRomRole.Program);
         AddRomRole(resources, settings.SoundRomPaths, FabricRomRole.Sound);
         return resources;
+    }
+
+    internal static IReadOnlyList<string> BuildCoinConfigurationDiagnostics(FabricAmberConfiguration configuration)
+    {
+        var lines = new List<string>(configuration.CoinChannels.Count + 1)
+        {
+            $"[Coin Config Fabric v2] size={Marshal.SizeOf<AmberCoinsNative>()} version=2 channelMask=0x{configuration.CoinChannelApplyMask:X8} routeMask=0x{configuration.CoinRouteApplyMask:X8} style={(uint)configuration.CommunicationStyle} invert={(configuration.CommunicationInvert ? 1 : 0)} cycles={configuration.PulseCycles} edc={(configuration.EdcEnabled ? 1 : 0)}"
+        };
+        lines.AddRange(configuration.CoinChannels.Select(channel =>
+            $"[Coin Config Fabric v2] slot={channel.Index} index={channel.Index} enabled={(channel.Enabled ? 1 : 0)} value={channel.Value} lockoutInvert={(channel.LockoutInvert ? 1 : 0)} reserved=0"));
+        return lines;
+    }
+
+    private static void WriteCoinConfigurationDiagnostics(FabricAmberConfiguration configuration)
+    {
+        foreach (var line in BuildCoinConfigurationDiagnostics(configuration))
+            Debug.WriteLine(line);
     }
 
     private static void AddRomRole(List<FabricRomResource> resources, IReadOnlyList<string> paths, FabricRomRole role)

@@ -30,8 +30,20 @@ public sealed class FabricAbiLayoutTests
         Assert.Equal(208, Marshal.SizeOf<AmberReelsNative>());
         Assert.Equal(20, Marshal.SizeOf<AmberCoinChannelNative>());
         Assert.Equal(32, Marshal.SizeOf<AmberCoinRouteNative>());
+        Assert.Equal(0, Marshal.OffsetOf<AmberCoinsNative>(nameof(AmberCoinsNative.Size)).ToInt32());
+        Assert.Equal(4, Marshal.OffsetOf<AmberCoinsNative>(nameof(AmberCoinsNative.Version)).ToInt32());
+        Assert.Equal(8, Marshal.OffsetOf<AmberCoinsNative>(nameof(AmberCoinsNative.ChannelMask)).ToInt32());
+        Assert.Equal(12, Marshal.OffsetOf<AmberCoinsNative>(nameof(AmberCoinsNative.RouteMask)).ToInt32());
+        Assert.Equal(16, Marshal.OffsetOf<AmberCoinsNative>(nameof(AmberCoinsNative.CommunicationStyle)).ToInt32());
+        Assert.Equal(20, Marshal.OffsetOf<AmberCoinsNative>(nameof(AmberCoinsNative.CommunicationInvert)).ToInt32());
+        Assert.Equal(24, Marshal.OffsetOf<AmberCoinsNative>(nameof(AmberCoinsNative.PulseCycles)).ToInt32());
+        Assert.Equal(28, Marshal.OffsetOf<AmberCoinsNative>(nameof(AmberCoinsNative.EdcEnabled)).ToInt32());
+        Assert.Equal(32, Marshal.OffsetOf<AmberCoinsNative>("Channels").ToInt32());
+        Assert.Equal(152, Marshal.OffsetOf<AmberCoinsNative>("Routes").ToInt32());
         Assert.Equal(408, Marshal.SizeOf<AmberCoinsNative>());
         Assert.Equal(648, Marshal.SizeOf<FabricAmberConfigurationNative>());
+        Assert.Equal(224, Marshal.OffsetOf<FabricAmberConfigurationNative>(nameof(FabricAmberConfigurationNative.Coins)).ToInt32());
+        Assert.Equal(632, Marshal.OffsetOf<FabricAmberConfigurationNative>(nameof(FabricAmberConfigurationNative.Percentage)).ToInt32());
         Assert.Equal(1160, Marshal.OffsetOf<FabricLaunchRequestNative>("RomPaths").ToInt32());
         Assert.Equal(16, Marshal.OffsetOf<FabricRomResourceNative>("Path").ToInt32());
         Assert.Equal(1UL << 6, (ulong)FabricCapability.CoinInput);
@@ -54,15 +66,39 @@ public sealed class FabricAbiLayoutTests
             CoinCommunicationStyle = AmberCoinCommunicationStyle.Parallel,
             CoinCommunicationInvert = false,
             CoinPulseCycles = 800_000,
-            CoinEdcEnabled = false
+            CoinEdcEnabled = false,
+            Coins = [new System6CoinSettings { Num = 0, Enabled = true, CoinEnable = 1, CoinValue = 0 }]
         }).ToNativeBytes();
 
         Assert.Equal(648, bytes.Length);
         Assert.Equal(2u, BitConverter.ToUInt32(bytes, 8));
         Assert.Equal(2u, BitConverter.ToUInt32(bytes, 228));
-        Assert.Equal(0u, BitConverter.ToUInt32(bytes, 616));
-        Assert.Equal(0u, BitConverter.ToUInt32(bytes, 620));
-        Assert.Equal(800_000u, BitConverter.ToUInt32(bytes, 624));
-        Assert.Equal(0u, BitConverter.ToUInt32(bytes, 628));
+        Assert.Equal(0u, BitConverter.ToUInt32(bytes, 240));
+        Assert.Equal(0u, BitConverter.ToUInt32(bytes, 244));
+        Assert.Equal(800_000u, BitConverter.ToUInt32(bytes, 248));
+        Assert.Equal(0u, BitConverter.ToUInt32(bytes, 252));
+
+        const int channel0 = 256;
+        Assert.Equal(0u, BitConverter.ToUInt32(bytes, channel0));
+        Assert.Equal(1u, BitConverter.ToUInt32(bytes, channel0 + 4));
+        Assert.Equal(0u, BitConverter.ToUInt32(bytes, channel0 + 8));
+        Assert.Equal(0u, BitConverter.ToUInt32(bytes, channel0 + 12));
+        Assert.Equal(0u, BitConverter.ToUInt32(bytes, channel0 + 16));
+    }
+
+    [Fact]
+    public void AmberV2SerializesNonContiguousChannelsAndRoutesIntoIndexedSlots()
+    {
+        var bytes = FabricAmberConfiguration.FromSystem6(new System6NativeRomSettings
+        {
+            Coins = [new System6CoinSettings { Num = 2, Enabled = true, CoinEnable = 1, CoinValue = 3 }]
+        }).ToNativeBytes();
+
+        Assert.Equal(1u << 2, BitConverter.ToUInt32(bytes, 232));
+        Assert.Equal(1u << 2, BitConverter.ToUInt32(bytes, 236));
+        Assert.All(bytes[256..296], value => Assert.Equal(0, value));
+        Assert.Equal(2u, BitConverter.ToUInt32(bytes, 296));
+        Assert.All(bytes[376..440], value => Assert.Equal(0, value));
+        Assert.Equal(2u, BitConverter.ToUInt32(bytes, 440));
     }
 }

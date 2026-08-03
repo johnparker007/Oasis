@@ -21,5 +21,12 @@ public enum FabricInputKind : uint { Digital = 0, Coin = 1 }
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct AmberReelsNative { internal uint Size,Version,Count,ApplyMask; internal fixed byte Reels[8*24]; }
 [StructLayout(LayoutKind.Sequential)] internal struct AmberCoinChannelNative { internal uint Index,Enabled,Value,LockoutInvert,Reserved; }
 [StructLayout(LayoutKind.Sequential)] internal struct AmberCoinRouteNative { internal uint Index,Enabled,CounterIn,CounterOut,PortIndex,CoinCode,Level,FullLevel; }
-[StructLayout(LayoutKind.Sequential)] internal unsafe struct AmberCoinsNative { internal uint Size,Version,ChannelMask,RouteMask; internal fixed byte Channels[6*20]; internal fixed byte Routes[8*32]; internal uint CommunicationStyle,CommunicationInvert,PulseCycles,EdcEnabled; }
+[StructLayout(LayoutKind.Sequential)]
+internal unsafe struct AmberCoinsNative
+{
+    internal uint Size, Version, ChannelMask, RouteMask;
+    internal uint CommunicationStyle, CommunicationInvert, PulseCycles, EdcEnabled;
+    internal fixed byte Channels[6 * 20];
+    internal fixed byte Routes[8 * 32];
+}
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricAmberConfigurationNative { internal uint Magic,Size,Version,Flags; internal AmberReelsNative Reels; internal AmberCoinsNative Coins; internal uint Percentage; internal fixed uint Reserved[3]; }
