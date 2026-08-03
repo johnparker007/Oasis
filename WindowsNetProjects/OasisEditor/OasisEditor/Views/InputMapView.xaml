@@ -16,7 +16,7 @@
                   Grid.Row="0"
                   ItemsSource="{Binding InputDefinitions}"
                   AutoGenerateColumns="False"
-                  IsReadOnly="True"
+                  IsReadOnly="False"
                   CanUserAddRows="False"
                   CanUserDeleteRows="False"
                   HeadersVisibility="Column"
@@ -38,6 +38,8 @@
                 <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="0.7*" />
                 <DataGridTextColumn Header="Button No" Binding="{Binding ButtonNumber}" Width="0.8*" />
                 <DataGridCheckBoxColumn Header="Coin" Binding="{Binding CoinInput}" Width="0.6*" />
+                <DataGridTextColumn Header="Coin Channel (0-5)" Binding="{Binding CoinChannel, UpdateSourceTrigger=LostFocus}" Width="1.0*" />
+                <DataGridTextColumn Header="Coin Value / Denomination (0-12)" Binding="{Binding CoinValue, UpdateSourceTrigger=LostFocus}" Width="1.4*" />
                 <DataGridTextColumn Header="Key" Binding="{Binding KeyboardShortcut}" Width="0.8*" />
                 <DataGridTextColumn Header="Raw MFME Key" Binding="{Binding RawMfmeShortcut}" Width="0.9*" />
                 <DataGridTextColumn Header="Linked Visual" Binding="{Binding LinkedVisualElementId}" Width="1.3*" />

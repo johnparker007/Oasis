@@ -26,8 +26,8 @@ public sealed class FabricProviderIntegrationTests
 
         for (var iteration = 0; iteration < 1_000; iteration++)
         {
-            session.SubmitInput(new FabricInput("oasis.switch.0", 0, true));
-            session.SubmitInput(new FabricInput("oasis.switch.0", 0, false));
+            session.SubmitInput(new FabricInput("oasis.switch.0", 0, FabricInputKind.Digital, true));
+            session.SubmitInput(new FabricInput("oasis.switch.0", 0, FabricInputKind.Digital, false));
             session.Advance((ulong)(1_000_000 + iteration % 17));
         }
 

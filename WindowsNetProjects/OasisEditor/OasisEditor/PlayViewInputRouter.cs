@@ -78,7 +78,19 @@ public sealed class PlayViewInputRouter
     {
         try
         {
-            await _backend.SetInputStateAsync(inputDefinition, isPressed, cancellationToken).ConfigureAwait(false);
+            if (inputDefinition.CoinInput)
+            {
+                if (inputDefinition.CoinChannel is not (>= 0 and <= 5) || inputDefinition.CoinValue is not (>= 0 and <= 12))
+                    return false;
+                if (isPressed)
+                    await _backend.InsertCoinAsync(inputDefinition, cancellationToken).ConfigureAwait(false);
+                else
+                    await _backend.ReleaseCoinAsync(inputDefinition, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await _backend.SetInputStateAsync(inputDefinition, isPressed, cancellationToken).ConfigureAwait(false);
+            }
             return true;
         }
         catch

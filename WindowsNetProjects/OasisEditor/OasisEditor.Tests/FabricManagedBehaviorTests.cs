@@ -236,7 +236,7 @@ public sealed class FabricManagedBehaviorTests
             ReelOptos = [new() { ReelIndex = 2, Enabled = false, Steps = 96, OptoStart = 5, OptoEnd = 7, OptoInvert = true }],
             Coins =
             [
-                new() { Num = 1, Enabled = true, CoinEnable = 1, CoinValue = 20, LockoutInvert = 1, CounterIn = 2, CounterOut = 3, PortIndex = 4, Coin = 5, Level = 6, FullLevel = 7 },
+                new() { Num = 1, Enabled = true, CoinEnable = 1, CoinValue = 3, LockoutInvert = 1, CounterIn = 2, CounterOut = 3, PortIndex = 4, Coin = 5, Level = 6, FullLevel = 7 },
                 new() { Num = 2, Enabled = false }
             ],
             PercentSwitchValue = 12
@@ -248,7 +248,7 @@ public sealed class FabricManagedBehaviorTests
         Assert.Equal(new FabricAmberReel(2, false, 96, 5, 7, true), Assert.Single(configuration.Reels));
         Assert.Equal(1u << 1, configuration.CoinChannelApplyMask);
         Assert.Equal(1u << 1, configuration.CoinRouteApplyMask);
-        Assert.Equal(new FabricAmberCoinChannel(1, true, 20, true), Assert.Single(configuration.CoinChannels));
+        Assert.Equal(new FabricAmberCoinChannel(1, true, 3, true), Assert.Single(configuration.CoinChannels));
         Assert.Equal(new FabricAmberCoinRoute(1, true, 2, 3, 4, 5, 6, 7), Assert.Single(configuration.CoinRoutes));
         Assert.Equal(12u, configuration.PercentageSwitch);
     }
@@ -507,7 +507,7 @@ public sealed class FabricManagedBehaviorTests
         public void Initialise() => Invoke(() => { });
         public void Reset() => Invoke(() => ResetCount++);
         public void Advance(ulong elapsedNanoseconds) => Invoke(() => { Advances.Add(elapsedNanoseconds); FirstAdvance.TrySetResult(); if (AdvanceFailure is not null) throw AdvanceFailure; });
-        public void SubmitInput(FabricInput input) => Invoke(() => { });
+        public FabricResult SubmitInput(FabricInput input) => Invoke(() => FabricResult.Ok);
         public FabricMachineSnapshot GetSnapshot() => Invoke(() => SnapshotFailure is null
             ? new FabricMachineSnapshot(1, [], [], [], [])
             : throw SnapshotFailure);

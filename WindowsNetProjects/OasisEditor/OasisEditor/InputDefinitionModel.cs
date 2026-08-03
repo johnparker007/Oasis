@@ -7,6 +7,8 @@ public sealed class InputDefinitionModel
     public InputDefinitionKind Kind { get; set; } = InputDefinitionKind.Unknown;
     public string ButtonNumber { get; set; } = string.Empty;
     public bool CoinInput { get; set; }
+    public int? CoinChannel { get; set; }
+    public int? CoinValue { get; set; }
     public bool Inverted { get; set; }
     public string RawMfmeShortcut { get; set; } = string.Empty;
     public string KeyboardShortcut { get; set; } = string.Empty;

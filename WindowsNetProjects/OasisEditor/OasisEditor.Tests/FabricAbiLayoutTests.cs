@@ -8,12 +8,17 @@ public sealed class FabricAbiLayoutTests
     [Fact]
     public void X64NativeLayoutsMatchPublishedAbi()
     {
-        Assert.Equal(0x00020000u, FabricAbi.Version);
+        Assert.Equal(0x00030000u, FabricAbi.Version);
         if (IntPtr.Size != 8) return;
         Assert.Equal(1208, Marshal.SizeOf<FabricLaunchRequestNative>()); // fixed strings end at 1160; aligned pointers/counts end at 1208.
         Assert.Equal(40, Marshal.SizeOf<FabricRomResourceNative>());
         Assert.Equal(48, Marshal.SizeOf<FabricCapabilitiesNative>());
-        Assert.Equal(84, Marshal.SizeOf<FabricInputNative>());
+        Assert.Equal(88, Marshal.SizeOf<FabricInputNative>());
+        Assert.Equal(72, Marshal.OffsetOf<FabricInputNative>(nameof(FabricInputNative.NumericalIndex)).ToInt32());
+        Assert.Equal(76, Marshal.OffsetOf<FabricInputNative>(nameof(FabricInputNative.Kind)).ToInt32());
+        Assert.Equal(80, Marshal.OffsetOf<FabricInputNative>(nameof(FabricInputNative.Active)).ToInt32());
+        Assert.Equal(81, Marshal.OffsetOf<FabricInputNative>(nameof(FabricInputNative.CoinChannel)).ToInt32());
+        Assert.Equal(82, Marshal.OffsetOf<FabricInputNative>(nameof(FabricInputNative.CoinValue)).ToInt32());
         Assert.Equal(84, Marshal.SizeOf<FabricLampNative>());
         Assert.Equal(80, Marshal.SizeOf<FabricReelNative>());
         Assert.Equal(164, Marshal.SizeOf<FabricCharacterDisplayNative>());
@@ -29,6 +34,8 @@ public sealed class FabricAbiLayoutTests
         Assert.Equal(648, Marshal.SizeOf<FabricAmberConfigurationNative>());
         Assert.Equal(1160, Marshal.OffsetOf<FabricLaunchRequestNative>("RomPaths").ToInt32());
         Assert.Equal(16, Marshal.OffsetOf<FabricRomResourceNative>("Path").ToInt32());
+        Assert.Equal(1UL << 6, (ulong)FabricCapability.CoinInput);
+        Assert.Equal(9, (int)FabricResult.InputRejected);
     }
 
     [Fact]
@@ -37,5 +44,25 @@ public sealed class FabricAbiLayoutTests
         foreach (var type in typeof(FabricNativeExports).GetNestedTypes(BindingFlags.NonPublic))
             if (typeof(Delegate).IsAssignableFrom(type))
                 Assert.Equal(CallingConvention.Cdecl, type.GetCustomAttribute<UnmanagedFunctionPointerAttribute>()!.CallingConvention);
+    }
+
+    [Fact]
+    public void AmberV2SerializesGlobalCoinMechanismWithoutTruncatingPulseCycles()
+    {
+        var bytes = FabricAmberConfiguration.FromSystem6(new System6NativeRomSettings
+        {
+            CoinCommunicationStyle = AmberCoinCommunicationStyle.Parallel,
+            CoinCommunicationInvert = false,
+            CoinPulseCycles = 800_000,
+            CoinEdcEnabled = false
+        }).ToNativeBytes();
+
+        Assert.Equal(648, bytes.Length);
+        Assert.Equal(2u, BitConverter.ToUInt32(bytes, 8));
+        Assert.Equal(2u, BitConverter.ToUInt32(bytes, 228));
+        Assert.Equal(0u, BitConverter.ToUInt32(bytes, 616));
+        Assert.Equal(0u, BitConverter.ToUInt32(bytes, 620));
+        Assert.Equal(800_000u, BitConverter.ToUInt32(bytes, 624));
+        Assert.Equal(0u, BitConverter.ToUInt32(bytes, 628));
     }
 }

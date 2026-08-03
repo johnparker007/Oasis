@@ -204,6 +204,40 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         return Task.CompletedTask;
     }
 
+    public Task<CoinInputResult> InsertCoinAsync(InputDefinitionModel inputDefinition, CancellationToken cancellationToken) =>
+        SetCoinStateAsync(inputDefinition, true, cancellationToken);
+
+    public async Task ReleaseCoinAsync(InputDefinitionModel inputDefinition, CancellationToken cancellationToken) =>
+        _ = await SetCoinStateAsync(inputDefinition, false, cancellationToken).ConfigureAwait(false);
+
+    private async Task<CoinInputResult> SetCoinStateAsync(InputDefinitionModel inputDefinition, bool active, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(inputDefinition);
+        ThrowIfDisposed();
+        EnsureAcceptingOperations();
+        var session = RequireSession();
+        if (!session.Capabilities.Has(FabricCapability.CoinInput))
+            throw new NotSupportedException("Fabric session does not support coin input.");
+        if (inputDefinition.CoinChannel is not (>= 0 and <= 5) || inputDefinition.CoinValue is not (>= 0 and <= 12))
+            throw new InvalidOperationException($"Coin input '{inputDefinition.Id}' requires a channel from 0 to 5 and denomination from 0 to 12.");
+
+        await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var channel = checked((byte)inputDefinition.CoinChannel.Value);
+            var value = checked((byte)inputDefinition.CoinValue.Value);
+            var result = session.SubmitInput(new(inputDefinition.Name, 0, FabricInputKind.Coin, active, channel, value));
+            Debug.WriteLine(active
+                ? $"[Fabric Coin Input] channel={channel} value={value} result={(result == FabricResult.InputRejected ? "rejected" : "accepted")}"
+                : $"[Fabric Coin Input] channel={channel} value={value} state=released");
+            return result == FabricResult.InputRejected ? CoinInputResult.Rejected : CoinInputResult.Accepted;
+        }
+        finally
+        {
+            _sessionGate.Release();
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
@@ -346,7 +380,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     {
         while (_inputCommands.TryDequeue(out var input))
         {
-            session.SubmitInput(new($"oasis.switch.{input.Index}", input.Index, input.Active));
+            session.SubmitInput(new($"oasis.switch.{input.Index}", input.Index, FabricInputKind.Digital, input.Active));
             if (input.Active)
                 _assertedInputs.Add(input.Index);
             else
@@ -495,7 +529,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         var session = _session;
         if (session is not null)
             foreach (var index in _assertedInputs)
-                session.SubmitInput(new($"oasis.switch.{index}", index, false));
+                session.SubmitInput(new($"oasis.switch.{index}", index, FabricInputKind.Digital, false));
         _assertedInputs.Clear();
     }
 

@@ -17,6 +17,10 @@ public sealed record FabricAmberConfiguration(
     uint CoinRouteApplyMask,
     IReadOnlyList<FabricAmberCoinChannel> CoinChannels,
     IReadOnlyList<FabricAmberCoinRoute> CoinRoutes,
+    AmberCoinCommunicationStyle CommunicationStyle,
+    bool CommunicationInvert,
+    uint PulseCycles,
+    bool EdcEnabled,
     uint? PercentageSwitch) : IFabricBackendConfiguration
 {
     public static FabricAmberConfiguration FromSystem6(System6NativeRomSettings settings)
@@ -38,6 +42,10 @@ public sealed record FabricAmberConfiguration(
             coins.Select(coin => new FabricAmberCoinRoute(
                 checked((uint)coin.Num), coin.Enabled, checked((uint)coin.CounterIn), checked((uint)coin.CounterOut),
                 checked((uint)coin.PortIndex), checked((uint)coin.Coin), checked((uint)coin.Level), checked((uint)coin.FullLevel))).ToArray(),
+            settings.CoinCommunicationStyle,
+            settings.CoinCommunicationInvert,
+            settings.CoinPulseCycles,
+            settings.CoinEdcEnabled,
             ValidatePercentageSwitch(settings.PercentSwitchValue));
     }
 
@@ -58,7 +66,7 @@ public sealed record FabricAmberConfiguration(
         {
             Magic = 0x32424146,
             Size = (uint)sizeof(FabricAmberConfigurationNative),
-            Version = 1,
+            Version = 2,
             Flags = (Reels.Count > 0 ? 1u : 0)
                 | (CoinChannels.Count > 0 || CoinRoutes.Count > 0 ? 2u : 0)
                 | (PercentageSwitch.HasValue ? 4u : 0),
@@ -69,9 +77,13 @@ public sealed record FabricAmberConfiguration(
         native.Reels.Count = (uint)Reels.Count;
         native.Reels.ApplyMask = ReelApplyMask;
         native.Coins.Size = (uint)sizeof(AmberCoinsNative);
-        native.Coins.Version = 1;
+        native.Coins.Version = 2;
         native.Coins.ChannelMask = CoinChannelApplyMask;
         native.Coins.RouteMask = CoinRouteApplyMask;
+        native.Coins.CommunicationStyle = (uint)CommunicationStyle;
+        native.Coins.CommunicationInvert = CommunicationInvert ? 1u : 0u;
+        native.Coins.PulseCycles = PulseCycles != 0 ? PulseCycles : throw new ArgumentOutOfRangeException(nameof(PulseCycles));
+        native.Coins.EdcEnabled = EdcEnabled ? 1u : 0u;
 
         byte* pointer = native.Reels.Reels;
         {

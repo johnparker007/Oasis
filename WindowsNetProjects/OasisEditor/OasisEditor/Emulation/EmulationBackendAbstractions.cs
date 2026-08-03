@@ -25,7 +25,11 @@ public interface IEmulationBackend : IAsyncDisposable
     Task ResetAsync(EmulationResetKind resetKind, CancellationToken cancellationToken);
 
     Task SetInputStateAsync(InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken);
+    Task<CoinInputResult> InsertCoinAsync(InputDefinitionModel inputDefinition, CancellationToken cancellationToken);
+    Task ReleaseCoinAsync(InputDefinitionModel inputDefinition, CancellationToken cancellationToken);
 }
+
+public enum CoinInputResult { Accepted, Rejected }
 
 public enum EmulationBackendKind
 {

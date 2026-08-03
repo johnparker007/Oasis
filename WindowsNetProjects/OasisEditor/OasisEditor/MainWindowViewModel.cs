@@ -57,6 +57,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _system6SoundRom4Path = string.Empty;
     private bool _system6FlashSwitch;
     private int _system6PercentSwitchValue = System6NativeRomSettings.DefaultPercentSwitchValue;
+    private AmberCoinCommunicationStyle _system6CoinCommunicationStyle = AmberCoinCommunicationStyle.Parallel;
+    private bool _system6CoinCommunicationInvert;
+    private uint _system6CoinPulseCycles = 800_000;
+    private bool _system6CoinEdcEnabled;
     private string _system6NativeRomStatus = "Program ROM 1 and 2 are required for Fabric Amber launch.";
     private ObservableCollection<System6ReelOptoSettingsViewModel> _system6ReelOptos = [];
     private ObservableCollection<System6CoinSettingsViewModel> _system6Coins = [];
@@ -522,6 +526,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
         }
     }
+    public AmberCoinCommunicationStyle System6CoinCommunicationStyle { get => _system6CoinCommunicationStyle; set { if (SetProperty(ref _system6CoinCommunicationStyle, value)) SaveSystem6NativeRomSettings(); } }
+    public bool System6CoinCommunicationInvert { get => _system6CoinCommunicationInvert; set { if (SetProperty(ref _system6CoinCommunicationInvert, value)) SaveSystem6NativeRomSettings(); } }
+    public uint System6CoinPulseCycles { get => _system6CoinPulseCycles; set { if (SetProperty(ref _system6CoinPulseCycles, value)) SaveSystem6NativeRomSettings(); } }
+    public bool System6CoinEdcEnabled { get => _system6CoinEdcEnabled; set { if (SetProperty(ref _system6CoinEdcEnabled, value)) SaveSystem6NativeRomSettings(); } }
     public string System6NativeRomStatus { get => _system6NativeRomStatus; private set => SetProperty(ref _system6NativeRomStatus, value); }
     public ObservableCollection<System6ReelOptoSettingsViewModel> System6ReelOptos { get => _system6ReelOptos; private set => SetProperty(ref _system6ReelOptos, value); }
     public ObservableCollection<System6CoinSettingsViewModel> System6Coins { get => _system6Coins; private set => SetProperty(ref _system6Coins, value); }
@@ -2123,6 +2131,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SoundRom4Path = System6SoundRom4Path,
             FlashSwitch = System6FlashSwitch,
             PercentSwitchValue = System6PercentSwitchValue,
+            CoinCommunicationStyle = System6CoinCommunicationStyle,
+            CoinCommunicationInvert = System6CoinCommunicationInvert,
+            CoinPulseCycles = System6CoinPulseCycles,
+            CoinEdcEnabled = System6CoinEdcEnabled,
             ReelOptos = System6ReelOptos.Select(reel => reel.ToModel()).ToList(),
             Coins = System6Coins.Select(coin => coin.ToModel()).ToList()
         };
@@ -2141,6 +2153,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _system6SoundRom4Path = settings.SoundRom4Path;
         _system6FlashSwitch = settings.FlashSwitch;
         _system6PercentSwitchValue = Math.Clamp(settings.PercentSwitchValue, 0, 15);
+        _system6CoinCommunicationStyle = settings.CoinCommunicationStyle;
+        _system6CoinCommunicationInvert = settings.CoinCommunicationInvert;
+        _system6CoinPulseCycles = settings.CoinPulseCycles;
+        _system6CoinEdcEnabled = settings.CoinEdcEnabled;
         System6ReelOptos = new ObservableCollection<System6ReelOptoSettingsViewModel>((settings.ReelOptos is { Count: > 0 } ? settings.ReelOptos : System6NativeRomSettings.CreateDefaultReelOptos()).Select(reel => new System6ReelOptoSettingsViewModel(reel, SaveSystem6NativeRomSettings)));
         System6Coins = new ObservableCollection<System6CoinSettingsViewModel>(NormalizeSystem6CoinSettings(settings.Coins).Select(coin => new System6CoinSettingsViewModel(coin, SaveSystem6NativeRomSettings)));
         OnPropertyChanged(nameof(System6ProgramRom1Path)); OnPropertyChanged(nameof(System6ProgramRom2Path));
@@ -2149,6 +2165,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(System6SoundRom3Path)); OnPropertyChanged(nameof(System6SoundRom4Path));
         OnPropertyChanged(nameof(System6FlashSwitch));
         OnPropertyChanged(nameof(System6PercentSwitchValue));
+        OnPropertyChanged(nameof(System6CoinCommunicationStyle));
+        OnPropertyChanged(nameof(System6CoinCommunicationInvert));
+        OnPropertyChanged(nameof(System6CoinPulseCycles));
+        OnPropertyChanged(nameof(System6CoinEdcEnabled));
     }
 
     private void RefreshSystem6NativeRomStatus()
@@ -2213,11 +2233,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SoundRom4Path = ResolveProjectRelativePath(settings.SoundRom4Path, LoadedProject.ProjectDirectory),
             FlashSwitch = settings.FlashSwitch,
             PercentSwitchValue = Math.Clamp(settings.PercentSwitchValue, 0, 15),
+            CoinCommunicationStyle = settings.CoinCommunicationStyle,
+            CoinCommunicationInvert = settings.CoinCommunicationInvert,
+            CoinPulseCycles = settings.CoinPulseCycles,
+            CoinEdcEnabled = settings.CoinEdcEnabled,
             ReelOptos = (settings.ReelOptos is { Count: > 0 } ? settings.ReelOptos : System6NativeRomSettings.CreateDefaultReelOptos())
                 .Select(reel => new System6ReelOptoSettings { ReelIndex = reel.ReelIndex, Enabled = reel.Enabled, Steps = reel.Steps, OptoStart = reel.OptoStart, OptoEnd = reel.OptoEnd, OptoInvert = reel.OptoInvert })
                 .ToList(),
             Coins = NormalizeSystem6CoinSettings(settings.Coins)
-                .Select(coin => new System6CoinSettings { Name = coin.Name, Enabled = coin.Enabled, Num = coin.Num, Coin = coin.Coin, CoinValue = coin.CoinValue, CoinEnable = coin.CoinEnable, LockoutValue = coin.LockoutValue, LockoutInvert = coin.LockoutInvert, CounterIn = coin.CounterIn, CounterOut = coin.CounterOut, PortIndex = coin.PortIndex, Level = coin.Level, FullLevel = coin.FullLevel })
+                .Select(coin => new System6CoinSettings { Name = coin.Name, Enabled = coin.Enabled, Num = coin.Num, Coin = coin.Coin, CoinValue = coin.CoinValue, CoinEnable = coin.CoinEnable, LockoutInvert = coin.LockoutInvert, CounterIn = coin.CounterIn, CounterOut = coin.CounterOut, PortIndex = coin.PortIndex, Level = coin.Level, FullLevel = coin.FullLevel })
                 .ToList()
         };
     }
@@ -2720,6 +2744,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         writer.WriteString("SoundRom4Path", settings.SoundRom4Path);
         writer.WriteBoolean("FlashSwitch", settings.FlashSwitch);
         writer.WriteNumber("PercentSwitchValue", Math.Clamp(settings.PercentSwitchValue, 0, 15));
+        writer.WriteNumber("CoinCommunicationStyle", (uint)settings.CoinCommunicationStyle);
+        writer.WriteBoolean("CoinCommunicationInvert", settings.CoinCommunicationInvert);
+        writer.WriteNumber("CoinPulseCycles", settings.CoinPulseCycles);
+        writer.WriteBoolean("CoinEdcEnabled", settings.CoinEdcEnabled);
         writer.WritePropertyName("ReelOptos");
         writer.WriteStartArray();
         foreach (var reel in settings.ReelOptos)
@@ -2745,7 +2773,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             writer.WriteNumber("Coin", coin.Coin);
             writer.WriteNumber("CoinValue", coin.CoinValue);
             writer.WriteNumber("CoinEnable", coin.CoinEnable);
-            writer.WriteNumber("LockoutValue", coin.LockoutValue);
             writer.WriteNumber("LockoutInvert", coin.LockoutInvert);
             writer.WriteNumber("CounterIn", coin.CounterIn);
             writer.WriteNumber("CounterOut", coin.CounterOut);
@@ -2778,6 +2805,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SoundRom4Path = GetOptionalString(romsElement, "SoundRom4Path"),
             FlashSwitch = romsElement.TryGetProperty("FlashSwitch", out var flashElement) && flashElement.ValueKind == JsonValueKind.True,
             PercentSwitchValue = Math.Clamp(GetOptionalInt(romsElement, "PercentSwitchValue", System6NativeRomSettings.DefaultPercentSwitchValue), 0, 15),
+            CoinCommunicationStyle = (AmberCoinCommunicationStyle)GetOptionalInt(romsElement, "CoinCommunicationStyle", 0),
+            CoinCommunicationInvert = romsElement.TryGetProperty("CoinCommunicationInvert", out var communicationInvert) && communicationInvert.ValueKind == JsonValueKind.True,
+            CoinPulseCycles = checked((uint)GetOptionalInt(romsElement, "CoinPulseCycles", 800_000)),
+            CoinEdcEnabled = romsElement.TryGetProperty("CoinEdcEnabled", out var edcEnabled) && edcEnabled.ValueKind == JsonValueKind.True,
             ReelOptos = ResolveSystem6ReelOptoSettings(romsElement),
             Coins = ResolveSystem6CoinSettings(romsElement)
         };
@@ -2827,7 +2858,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 Coin = GetOptionalInt(coinElement, "Coin", System6CoinSettings.DefaultCoin),
                 CoinValue = GetOptionalInt(coinElement, "CoinValue", System6CoinSettings.DefaultCoinValue),
                 CoinEnable = GetOptionalInt(coinElement, "CoinEnable", System6CoinSettings.DefaultCoinEnable),
-                LockoutValue = GetOptionalInt(coinElement, "LockoutValue", System6CoinSettings.DefaultLockoutValue),
                 LockoutInvert = GetOptionalInt(coinElement, "LockoutInvert", System6CoinSettings.DefaultLockoutInvert),
                 CounterIn = GetOptionalInt(coinElement, "CounterIn"),
                 CounterOut = GetOptionalInt(coinElement, "CounterOut"),
@@ -2885,6 +2915,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             writer.WriteString("Kind", input.Kind.ToString());
             writer.WriteString("ButtonNumber", input.ButtonNumber);
             writer.WriteBoolean("CoinInput", input.CoinInput);
+            if (input.CoinChannel.HasValue) writer.WriteNumber("CoinChannel", input.CoinChannel.Value);
+            if (input.CoinValue.HasValue) writer.WriteNumber("CoinValue", input.CoinValue.Value);
             writer.WriteBoolean("Inverted", input.Inverted);
             writer.WriteString("RawMfmeShortcut", input.RawMfmeShortcut);
             writer.WriteString("KeyboardShortcut", input.KeyboardShortcut);
@@ -2939,6 +2971,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 Kind = kind,
                 ButtonNumber = inputElement.TryGetProperty("ButtonNumber", out var buttonNumberElement) ? buttonNumberElement.GetString() ?? string.Empty : string.Empty,
                 CoinInput = inputElement.TryGetProperty("CoinInput", out var coinInputElement) && coinInputElement.ValueKind == JsonValueKind.True,
+                CoinChannel = inputElement.TryGetProperty("CoinChannel", out var coinChannelElement) && coinChannelElement.TryGetInt32(out var coinChannel) ? coinChannel : null,
+                CoinValue = inputElement.TryGetProperty("CoinValue", out var inputCoinValueElement) && inputCoinValueElement.TryGetInt32(out var inputCoinValue) ? inputCoinValue : null,
                 Inverted = inputElement.TryGetProperty("Inverted", out var invertedElement) && invertedElement.ValueKind == JsonValueKind.True,
                 RawMfmeShortcut = inputElement.TryGetProperty("RawMfmeShortcut", out var rawShortcutElement) ? rawShortcutElement.GetString() ?? string.Empty : string.Empty,
                 KeyboardShortcut = inputElement.TryGetProperty("KeyboardShortcut", out var keyboardShortcutElement) ? keyboardShortcutElement.GetString() ?? string.Empty : string.Empty,
@@ -3318,7 +3352,6 @@ public sealed class System6CoinSettingsViewModel : INotifyPropertyChanged
     private int _coin;
     private int _coinValue;
     private int _coinEnable;
-    private int _lockoutValue;
     private int _lockoutInvert;
     private int _counterIn;
     private int _counterOut;
@@ -3334,7 +3367,6 @@ public sealed class System6CoinSettingsViewModel : INotifyPropertyChanged
         _coin = model.Coin;
         _coinValue = model.CoinValue;
         _coinEnable = model.CoinEnable;
-        _lockoutValue = model.LockoutValue;
         _lockoutInvert = model.LockoutInvert;
         _counterIn = model.CounterIn;
         _counterOut = model.CounterOut;
@@ -3352,7 +3384,6 @@ public sealed class System6CoinSettingsViewModel : INotifyPropertyChanged
     public int Coin { get => _coin; set => SetAndSave(ref _coin, Math.Clamp(value, 0, byte.MaxValue), nameof(Coin)); }
     public int CoinValue { get => _coinValue; set => SetAndSave(ref _coinValue, Math.Clamp(value, 0, byte.MaxValue), nameof(CoinValue)); }
     public int CoinEnable { get => _coinEnable; set => SetAndSave(ref _coinEnable, Math.Clamp(value, 0, byte.MaxValue), nameof(CoinEnable)); }
-    public int LockoutValue { get => _lockoutValue; set => SetAndSave(ref _lockoutValue, Math.Clamp(value, 0, byte.MaxValue), nameof(LockoutValue)); }
     public int LockoutInvert { get => _lockoutInvert; set => SetAndSave(ref _lockoutInvert, Math.Clamp(value, 0, byte.MaxValue), nameof(LockoutInvert)); }
     public int CounterIn { get => _counterIn; set => SetAndSave(ref _counterIn, Math.Clamp(value, 0, byte.MaxValue), nameof(CounterIn)); }
     public int CounterOut { get => _counterOut; set => SetAndSave(ref _counterOut, Math.Clamp(value, 0, byte.MaxValue), nameof(CounterOut)); }
@@ -3368,7 +3399,6 @@ public sealed class System6CoinSettingsViewModel : INotifyPropertyChanged
         Coin = Coin,
         CoinValue = CoinValue,
         CoinEnable = CoinEnable,
-        LockoutValue = LockoutValue,
         LockoutInvert = LockoutInvert,
         CounterIn = CounterIn,
         CounterOut = CounterOut,

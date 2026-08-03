@@ -304,13 +304,19 @@ internal sealed class FmlToOasisMapper
             Id = Guid.NewGuid().ToString("N"),
             Name = name,
             Kind = isCoinInput ? InputDefinitionKind.Coin : InputDefinitionKind.Button,
-            ButtonNumber = buttonNumber?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            // Decoded FML identifies a coin component but contains no independent Amber
+            // channel and denomination fields.  Never reinterpret its legacy switch value.
+            ButtonNumber = isCoinInput ? string.Empty : buttonNumber?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             CoinInput = isCoinInput,
+            CoinChannel = null,
+            CoinValue = null,
             Inverted = Bool(c, "Inverted") ?? false,
             RawMfmeShortcut = rawShortcut,
             KeyboardShortcut = keyboardShortcut,
             LinkedVisualElementId = Guid.TryParse(linkedObjectId, out var id) ? id : null,
-            Notes = shortcut is null && hasEnabledShortcut ? FormatUnknownShortcutNotes(c) : string.Empty
+            Notes = isCoinInput
+                ? "Coin input imported without a resolved Amber coin channel or denomination."
+                : shortcut is null && hasEnabledShortcut ? FormatUnknownShortcutNotes(c) : string.Empty
         };
     }
 

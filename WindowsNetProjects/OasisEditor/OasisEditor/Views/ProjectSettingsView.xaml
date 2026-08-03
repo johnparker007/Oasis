@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:OasisEditor"
              mc:Ignorable="d"
              d:DesignHeight="640"
              d:DesignWidth="620">
@@ -184,6 +185,15 @@
                         </Style>
                     </ScrollViewer.Style>
                     <StackPanel>
+                        <TextBlock Margin="0,0,0,4" Text="Coin Mechanism" FontWeight="SemiBold" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock VerticalAlignment="Center" Text="Communication Style:" />
+                            <ComboBox Margin="8,0,16,0" Width="120" SelectedValue="{Binding System6CoinCommunicationStyle}" SelectedValuePath="Tag"><ComboBoxItem Content="Parallel" Tag="{x:Static local:AmberCoinCommunicationStyle.Parallel}" /></ComboBox>
+                            <CheckBox Margin="0,0,16,0" VerticalAlignment="Center" Content="Communication Invert" IsChecked="{Binding System6CoinCommunicationInvert}" />
+                            <TextBlock VerticalAlignment="Center" Text="Pulse Cycles:" />
+                            <TextBox Margin="8,0,16,0" Width="100" Text="{Binding System6CoinPulseCycles, UpdateSourceTrigger=LostFocus}" />
+                            <CheckBox VerticalAlignment="Center" Content="EDC Enabled" IsChecked="{Binding System6CoinEdcEnabled}" />
+                        </StackPanel>
                         <TextBlock Margin="0,0,0,4" Text="System6 Coin Setup" Foreground="{DynamicResource TextSecondaryBrush}" />
                         <DataGrid ItemsSource="{Binding System6Coins}"
                                   AutoGenerateColumns="False"
@@ -198,7 +208,6 @@
                                 <DataGridTextColumn Header="Coin" Binding="{Binding Coin, UpdateSourceTrigger=LostFocus}" Width="70" />
                                 <DataGridTextColumn Header="Coin Value" Binding="{Binding CoinValue, UpdateSourceTrigger=LostFocus}" Width="90" />
                                 <DataGridTextColumn Header="Coin Enable" Binding="{Binding CoinEnable, UpdateSourceTrigger=LostFocus}" Width="100" />
-                                <DataGridTextColumn Header="Lockout Value" Binding="{Binding LockoutValue, UpdateSourceTrigger=LostFocus}" Width="110" />
                                 <DataGridTextColumn Header="Lockout Invert" Binding="{Binding LockoutInvert, UpdateSourceTrigger=LostFocus}" Width="110" />
                                 <DataGridTextColumn Header="Counter In" Binding="{Binding CounterIn, UpdateSourceTrigger=LostFocus}" Width="90" />
                                 <DataGridTextColumn Header="Counter Out" Binding="{Binding CounterOut, UpdateSourceTrigger=LostFocus}" Width="95" />
