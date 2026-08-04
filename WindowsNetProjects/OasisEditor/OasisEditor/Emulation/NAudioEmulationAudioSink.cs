@@ -66,11 +66,13 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         var push = Interlocked.Increment(ref _pushCount);
         ObserveMinimum(before);
 
-        if (_playbackStarted && before < format.BytesPerMillisecond())
+        if (ShouldRebufferAfterRuntimeStarvation(_playbackStarted, before, format.BytesPerMillisecond()))
         {
             var starvation = Interlocked.Increment(ref _runtimeStarvationEvents);
             if (starvation == 1 || IsPowerOfTwo(starvation))
-                WriteDepthDiagnostic("runtime starvation risk", pcmBytes.Length, before, before, capacity);
+                WriteDepthDiagnostic("runtime starvation rebuffer", pcmBytes.Length, before, before, capacity);
+            RestartPrebufferAfterRuntimeStarvation();
+            before = _buffer.BufferedBytes;
         }
 
         if (ShouldDropIncomingBlock(before, capacity, pcmBytes.Length))
@@ -123,6 +125,17 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
 
     internal static bool ShouldDropIncomingBlock(int bufferedBytes, int bufferCapacityBytes, int incomingBytes)
         => incomingBytes > bufferCapacityBytes - bufferedBytes;
+
+    internal static bool ShouldRebufferAfterRuntimeStarvation(bool playbackStarted, int bufferedBytes, int bytesPerMillisecond) =>
+        playbackStarted && bufferedBytes < Math.Max(1, bytesPerMillisecond);
+
+    private void RestartPrebufferAfterRuntimeStarvation()
+    {
+        _output?.Stop();
+        _buffer?.ClearBuffer();
+        _prebuffer?.Reset();
+        _playbackStarted = false;
+    }
 
     private void ResetDiagnostics()
     {

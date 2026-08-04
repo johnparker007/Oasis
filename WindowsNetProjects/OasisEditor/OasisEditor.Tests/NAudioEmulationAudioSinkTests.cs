@@ -35,6 +35,20 @@ public sealed class NAudioEmulationAudioSinkTests
     {
         Assert.Equal(expected, new EmulationAudioFormat(rate, channels, 16).BytesPerMillisecond());
     }
+
+
+    [Theory]
+    [InlineData(true, 0, 192, true)]
+    [InlineData(true, 191, 192, true)]
+    [InlineData(true, 192, 192, false)]
+    [InlineData(false, 0, 192, false)]
+    public void RuntimeStarvation_RebuffersOnlyWhenPlaybackHasStartedAndDepthFallsBelowOneMillisecond(
+        bool playbackStarted, int bufferedBytes, int bytesPerMillisecond, bool expected)
+    {
+        Assert.Equal(expected,
+            NAudioEmulationAudioSink.ShouldRebufferAfterRuntimeStarvation(playbackStarted, bufferedBytes, bytesPerMillisecond));
+    }
+
     [Theory]
     [InlineData(800, 1000, 192, false)]
     [InlineData(900, 1000, 192, true)]
