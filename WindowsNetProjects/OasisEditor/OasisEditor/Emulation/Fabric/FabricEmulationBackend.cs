@@ -10,6 +10,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private const string JpmSystem6MachineIdentifier = "jpm-system6";
     private const int EmulationPumpHz = 1000;
     private const ulong NanosecondsPerPump = 1_000_000;
+    private const int MaxCatchUpSlices = 64;
+    private const int ExceptionalDelayCapMilliseconds = 500;
     private static readonly TimeSpan PumpInterval = TimeSpan.FromMilliseconds(1);
     private static readonly EmulationBackendCapabilities BackendCapabilities =
         new(true, true, true, true, false, false, false);
@@ -318,25 +320,42 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                     scheduleGeneration = currentGeneration;
                 }
 
+                var slices = 0;
+                var now = _clock.GetTimestamp();
+                var exceptionalCapTicks = pumpTicks * ExceptionalDelayCapMilliseconds;
+                if (now - nextDeadline > exceptionalCapTicks)
+                    nextDeadline = now - exceptionalCapTicks;
+
+                do
+                {
+                    await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    try
+                    {
+                        var session = RequireSession();
+                        session.Advance(NanosecondsPerPump);
+                        ProcessInputs(session);
+                        ReadAudio(session);
+                    }
+                    finally
+                    {
+                        _sessionGate.Release();
+                    }
+
+                    nextDeadline += pumpTicks;
+                    slices++;
+                    now = _clock.GetTimestamp();
+                }
+                while (now >= nextDeadline && slices < MaxCatchUpSlices);
+
                 await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    var session = RequireSession();
-                    session.Advance(NanosecondsPerPump);
-                    ProcessInputs(session);
-                    PublishSnapshot(session.GetSnapshot());
-                    ReadAudio(session);
+                    PublishSnapshot(RequireSession().GetSnapshot());
                 }
                 finally
                 {
                     _sessionGate.Release();
                 }
-
-                nextDeadline += pumpTicks;
-                var now = _clock.GetTimestamp();
-                // Execute the current slice, then abandon catch-up once over three ticks late.
-                if (now - nextDeadline > pumpTicks * 3)
-                    nextDeadline = now + pumpTicks;
 
                 var remainingTicks = nextDeadline - _clock.GetTimestamp();
                 if (remainingTicks > 0)
@@ -358,14 +377,6 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             LastFailure = exception;
             LogException("Fabric emulation pump failed.", exception);
             _pumpCancellation?.Cancel();
-            try
-            {
-                await CleanupResourcesAsync().ConfigureAwait(false);
-            }
-            catch (Exception cleanupException)
-            {
-                LogException("Fabric cleanup after pump failure also failed.", cleanupException);
-            }
             SetState(EmulationBackendState.Failed);
         }
     }

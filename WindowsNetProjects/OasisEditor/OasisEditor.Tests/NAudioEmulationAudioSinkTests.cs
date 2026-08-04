@@ -5,11 +5,11 @@ namespace OasisEditor.Tests;
 public sealed class NAudioEmulationAudioSinkTests
 {
     [Theory]
-    [InlineData(50, 10)]
-    [InlineData(100, 10)]
-    [InlineData(10, 5)]
+    [InlineData(50, 38)]
+    [InlineData(100, 75)]
+    [InlineData(10, 8)]
     [InlineData(1, 1)]
-    public void PrebufferThreshold_IsBoundedByTenMillisecondsAndHalfTheBuffer(int buffer, int expected)
+    public void PrebufferThreshold_IsSeventyFivePercentOfBuffer(int buffer, int expected)
     {
         Assert.Equal(expected, AudioPrebufferPolicy.CalculateThresholdMilliseconds(buffer));
     }
@@ -19,9 +19,9 @@ public sealed class NAudioEmulationAudioSinkTests
     {
         var policy = new AudioPrebufferPolicy(new(48000, 2, 16), 50);
 
-        Assert.Equal(1920, policy.ThresholdBytes);
-        Assert.False(policy.ObserveQueuedBytes(1919));
-        Assert.True(policy.ObserveQueuedBytes(1920));
+        Assert.Equal(7296, policy.ThresholdBytes);
+        Assert.False(policy.ObserveQueuedBytes(7292));
+        Assert.True(policy.ObserveQueuedBytes(7296));
         policy.Reset();
         Assert.False(policy.PlaybackStarted);
         Assert.False(policy.ObserveQueuedBytes(192));
