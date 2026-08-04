@@ -94,8 +94,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private PlayViewInputRouter? _playViewInputRouter;
     private PlayViewInputDispatcher? _playViewInputDispatcher;
     private CancellationTokenSource? _emulationRuntimeUpdateCancellation;
-    private Task? _emulationRuntimeUpdateTask;
-    private int _emulationRuntimeUpdateInProgress;
+    private Thread? _emulationRuntimeUpdateThread;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -2307,52 +2306,59 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         _emulationRuntimeUpdateCancellation = new CancellationTokenSource();
         var cancellationToken = _emulationRuntimeUpdateCancellation.Token;
-        _emulationRuntimeUpdateTask = Task.Run(() => RunEmulationRuntimeUpdatesAsync(updateDrivenBackend, cancellationToken), CancellationToken.None);
+        _emulationRuntimeUpdateThread = new Thread(() => RunEmulationRuntimeUpdates(updateDrivenBackend, cancellationToken))
+        {
+            IsBackground = true,
+            Name = "Oasis Emulation Runtime Update",
+            Priority = ThreadPriority.AboveNormal
+        };
+        _emulationRuntimeUpdateThread.Start();
     }
 
-    private async Task StopEmulationRuntimeUpdatesAsync()
+    private Task StopEmulationRuntimeUpdatesAsync()
     {
         var cancellation = _emulationRuntimeUpdateCancellation;
-        var updateTask = _emulationRuntimeUpdateTask;
+        var updateThread = _emulationRuntimeUpdateThread;
         _emulationRuntimeUpdateCancellation = null;
-        _emulationRuntimeUpdateTask = null;
+        _emulationRuntimeUpdateThread = null;
         if (cancellation is null)
-            return;
+            return Task.CompletedTask;
 
-        await cancellation.CancelAsync().ConfigureAwait(false);
-        if (updateTask is not null)
-        {
-            try
-            {
-                await updateTask.ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-            }
-        }
+        cancellation.Cancel();
+        if (updateThread is not null && updateThread != Thread.CurrentThread)
+            updateThread.Join();
         cancellation.Dispose();
+        return Task.CompletedTask;
     }
 
-    private async Task RunEmulationRuntimeUpdatesAsync(IEditorUpdateDrivenEmulationBackend updateDrivenBackend, CancellationToken cancellationToken)
+    private void RunEmulationRuntimeUpdates(IEditorUpdateDrivenEmulationBackend updateDrivenBackend, CancellationToken cancellationToken)
     {
         // This is only the Editor-owned wake-up cadence. FabricEmulationBackend measures
         // actual monotonic elapsed time and clamps the emulated advance; the loop does not
-        // reintroduce the old fixed 1 ms session.Advance model.
-        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(1));
+        // reintroduce the old fixed 1 ms session.Advance model. A dedicated thread avoids
+        // ThreadPool/Dispatcher delays observed during focus changes that can starve audio.
+        var frequency = Stopwatch.Frequency;
+        var intervalTicks = Math.Max(1, frequency / 1000);
+        var nextTick = Stopwatch.GetTimestamp();
         try
         {
-            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
+            while (!cancellationToken.IsCancellationRequested)
             {
-                if (Interlocked.Exchange(ref _emulationRuntimeUpdateInProgress, 1) != 0)
+                updateDrivenBackend.UpdateAsync(cancellationToken).GetAwaiter().GetResult();
+                nextTick += intervalTicks;
+                var remainingTicks = nextTick - Stopwatch.GetTimestamp();
+                if (remainingTicks <= 0)
+                {
+                    nextTick = Stopwatch.GetTimestamp();
+                    Thread.Yield();
                     continue;
-                try
-                {
-                    await updateDrivenBackend.UpdateAsync(cancellationToken).ConfigureAwait(false);
                 }
-                finally
-                {
-                    Interlocked.Exchange(ref _emulationRuntimeUpdateInProgress, 0);
-                }
+
+                var remainingMilliseconds = (int)((remainingTicks * 1000) / frequency);
+                if (remainingMilliseconds > 1)
+                    Thread.Sleep(Math.Min(remainingMilliseconds - 1, 4));
+                else
+                    Thread.Yield();
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
