@@ -70,3 +70,22 @@ The FIFO is frame-accounted and stores interleaved signed PCM16 without resampli
 The default output backend remains `WasapiOut`; Preferences > Fabric Emulation can select `WaveOutEvent` for A/B testing while reusing the same FIFO and feeder path.
 
 Fabric scheduling remains deterministic 1 ms advances, but temporary lateness is recovered with bounded catch-up batches of up to eight 1 ms slices per pump loop. Retained scheduling debt is capped at 125 ms; excessive debt is discarded with a warning instead of creating an unbounded spiral. Audio is drained after each emulation slice in the catch-up batch, while only the latest snapshot is published.
+
+## Scheduler overproduction correction
+
+The overproduction run showed the first catch-up implementation mixed two time models: an absolute `nextDeadline` and a separate retained-debt accumulator. Each loop always ran one slice, then added lateness against a deadline that was reset to `now + 1 ms` rather than advanced by every catch-up slice. That made ordinary scheduling gaps eligible more than once and allowed emulated time to exceed wall-clock running time.
+
+The scheduler now uses a single accumulator invariant:
+
+```text
+elapsed = now - lastTimestamp
+lastTimestamp = now
+accumulated += elapsed
+accumulated = min(accumulated, maximumDebt)
+slices = min(floor(accumulated / 1 ms), maxSlicesPerBatch)
+accumulated -= slices * 1 ms
+```
+
+There is no unconditional normal slice. A slice runs only when at least one accumulated millisecond is available, and every executed slice subtracts exactly one millisecond. The shutdown summary reports wall-clock running milliseconds, emulated milliseconds, difference, ratio, total slices, catch-up slices, maximum batch, maximum debt, and discarded excessive debt.
+
+The feeder now treats an underrun as an edge-triggered starvation episode after playback has started and combined reserve reaches zero. Empty polls while waiting for producer input or NAudio capacity are no longer counted as underruns. FIFO-full producer pushes perform a short bounded wait before recording an unavoidable drop, and drop CSV rows include wall-clock timestamp, source frame position, accepted-output frame position, sequence, frame count, byte count, and reason.

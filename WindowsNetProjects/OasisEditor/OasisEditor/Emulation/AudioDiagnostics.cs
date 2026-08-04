@@ -53,7 +53,7 @@ internal sealed class EmulationAudioDiagnostics : IDisposable
         var probe = Path.Combine(directory, "diagnostic-write-probe.tmp");
         File.WriteAllText(probe, "probe");
         File.Delete(probe);
-        File.WriteAllText(_dropPath, "sequence,startFrame,frames,bytes,reason\n");
+        File.WriteAllText(_dropPath, "wallClockTimestamp,sequence,sourceStartFrame,acceptedOutputStartFrame,frames,bytes,reason\n");
         File.WriteAllText(_timelinePath, "elapsedMilliseconds,incomingFrames,bufferedBytesBefore,bufferedBytesAfter,bufferCapacityBytes,playbackStarted,droppedBlock,accumulatedDroppedBytes,advanceLatenessTicks,zeroFrameRead,appFifoFrames,appFifoMilliseconds,nAudioFrames,nAudioMilliseconds,combinedReserveFrames,combinedReserveMilliseconds,lowWaterEvents,zeroDepthEvents,feederWakeups,feederUnderruns,playbackStartReserveFrames,minimumReserveMilliseconds,catchUpSlicesExecuted,maxCatchUpBatch,currentDebtMilliseconds,maxDebtMilliseconds,discardedDebtMilliseconds\n");
         _writer = Task.Run(WriteLoopAsync);
         WriteSummaryFile(false);
@@ -114,7 +114,7 @@ internal sealed class EmulationAudioDiagnostics : IDisposable
     internal void RecordSinkDrop(EmulationAudioPushContext context, int droppedBytes, string reason)
     {
         lock (_timelineGate)
-            File.AppendAllText(_dropPath, $"{context.Sequence},{context.StartFrame},{context.Frames},{droppedBytes},{reason.Replace(",", ";")}\n");
+            File.AppendAllText(_dropPath, $"{DateTimeOffset.Now:O},{context.Sequence},{context.SourceStartFrame},{context.AcceptedOutputStartFrame},{context.Frames},{droppedBytes},{reason.Replace(",", ";")}\n");
     }
 
     internal void RecordTimeline(AudioSinkTimelineEntry entry, int appFifoFrames = 0, int appFifoMilliseconds = 0, int nAudioFrames = 0, int nAudioMilliseconds = 0, int combinedReserveFrames = 0, int combinedReserveMilliseconds = 0, long lowWaterEvents = 0, long zeroDepthEvents = 0, long feederWakeups = 0, long feederUnderruns = 0, long playbackStartReserveFrames = 0, int minimumReserveMilliseconds = 0, long catchUpSlicesExecuted = 0, long maxCatchUpBatch = 0, int currentDebtMilliseconds = 0, int maxDebtMilliseconds = 0, int discardedDebtMilliseconds = 0)

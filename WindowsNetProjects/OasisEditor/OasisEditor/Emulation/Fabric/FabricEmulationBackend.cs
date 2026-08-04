@@ -53,6 +53,9 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private long _maximumCatchUpBatch;
     private long _discardedSchedulingDebtTicks;
     private long _maximumSchedulingDebtTicks;
+    private long _wallClockRunningTicks;
+    private long _emulatedTicks;
+    private long _totalExecutedSlices;
     private EmulationAudioDiagnostics? _audioDiagnostics;
 
     public FabricEmulationBackend(string runtimePath, string amberPath)
@@ -323,16 +326,16 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         {
             var pumpTicks = Math.Max(1L, _clock.Frequency / EmulationPumpHz);
             var maxDebtTicks = Math.Max(pumpTicks, (_clock.Frequency * MaximumRetainedSchedulingDebtMilliseconds) / 1000);
-            var nextDeadline = _clock.GetTimestamp();
+            var scheduler = new FabricPumpScheduler(pumpTicks, MaximumCatchUpSlicesPerLoop, maxDebtTicks);
+            scheduler.Reset(_clock.GetTimestamp());
             var scheduleGeneration = Interlocked.Read(ref _scheduleGeneration);
-            long retainedDebtTicks = 0;
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 if (State != EmulationBackendState.Running)
                 {
                     await Task.Delay(PumpInterval, cancellationToken).ConfigureAwait(false);
-                    nextDeadline = _clock.GetTimestamp();
-                    retainedDebtTicks = 0;
+                    scheduler.Reset(_clock.GetTimestamp());
                     scheduleGeneration = Interlocked.Read(ref _scheduleGeneration);
                     continue;
                 }
@@ -340,39 +343,39 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 var currentGeneration = Interlocked.Read(ref _scheduleGeneration);
                 if (currentGeneration != scheduleGeneration)
                 {
-                    nextDeadline = _clock.GetTimestamp();
-                    retainedDebtTicks = 0;
+                    scheduler.Reset(_clock.GetTimestamp());
                     scheduleGeneration = currentGeneration;
                 }
 
-                var now = _clock.GetTimestamp();
-                if (now > nextDeadline)
-                    retainedDebtTicks += now - nextDeadline;
-                if (retainedDebtTicks > maxDebtTicks)
+                var step = scheduler.AdvanceTo(_clock.GetTimestamp());
+                if (step.DiscardedExcessiveDebt)
                 {
-                    var discarded = retainedDebtTicks - maxDebtTicks;
-                    retainedDebtTicks = maxDebtTicks;
-                    Interlocked.Add(ref _discardedSchedulingDebtTicks, discarded);
-                    LogDiagnosticWarning($"Fabric audio catch-up discarded excessive scheduling debt: {TicksToMilliseconds(discarded):F1} ms.");
+                    Interlocked.Add(ref _discardedSchedulingDebtTicks, step.DiscardedTicks);
+                    LogDiagnosticWarning($"Fabric audio catch-up discarded excessive scheduling debt: {TicksToMilliseconds(step.DiscardedTicks):F1} ms.");
                 }
-                ObserveMaximum(ref _maximumSchedulingDebtTicks, retainedDebtTicks);
+                ObserveMaximum(ref _maximumSchedulingDebtTicks, step.AccumulatedTicks);
 
-                var requestedSlices = 1 + (int)Math.Min(MaximumCatchUpSlicesPerLoop - 1, retainedDebtTicks / pumpTicks);
-                var batch = 0;
+                if (step.SlicesToRun == 0)
+                {
+                    var delay = scheduler.TimeUntilNextSlice(_clock.Frequency);
+                    if (delay > TimeSpan.Zero)
+                        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+                    else
+                        await Task.Yield();
+                    continue;
+                }
+
                 FabricMachineSnapshot? latestSnapshot = null;
                 await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
                     var session = RequireSession();
                     ProcessInputs(session);
-                    for (var slice = 0; slice < requestedSlices; slice++)
+                    for (var slice = 0; slice < step.SlicesToRun; slice++)
                     {
                         session.Advance(NanosecondsPerPump);
                         ReadAudio(session);
                         latestSnapshot = session.GetSnapshot();
-                        if (retainedDebtTicks >= pumpTicks)
-                            retainedDebtTicks -= pumpTicks;
-                        batch++;
                     }
                 }
                 finally
@@ -382,21 +385,12 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
                 if (latestSnapshot is not null)
                     PublishSnapshot(latestSnapshot);
-                Interlocked.Add(ref _catchUpSlicesExecuted, Math.Max(0, batch - 1));
-                ObserveMaximum(ref _maximumCatchUpBatch, batch);
-                _audioDiagnostics?.RecordTimeline(default, catchUpSlicesExecuted: Interlocked.Read(ref _catchUpSlicesExecuted), maxCatchUpBatch: Interlocked.Read(ref _maximumCatchUpBatch), currentDebtMilliseconds: (int)Math.Round(TicksToMilliseconds(retainedDebtTicks)), maxDebtMilliseconds: (int)Math.Round(TicksToMilliseconds(Interlocked.Read(ref _maximumSchedulingDebtTicks))), discardedDebtMilliseconds: (int)Math.Round(TicksToMilliseconds(Interlocked.Read(ref _discardedSchedulingDebtTicks))));
-
-                nextDeadline = now + pumpTicks;
-                var remainingTicks = nextDeadline - _clock.GetTimestamp();
-                if (remainingTicks > 0)
-                {
-                    var remaining = TimeSpan.FromSeconds((double)remainingTicks / _clock.Frequency);
-                    await Task.Delay(remaining, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    await Task.Yield();
-                }
+                Interlocked.Add(ref _catchUpSlicesExecuted, Math.Max(0, step.SlicesToRun - 1));
+                ObserveMaximum(ref _maximumCatchUpBatch, step.SlicesToRun);
+                Interlocked.Add(ref _wallClockRunningTicks, step.ElapsedTicks);
+                Interlocked.Add(ref _emulatedTicks, step.SlicesToRun * pumpTicks);
+                Interlocked.Add(ref _totalExecutedSlices, step.SlicesToRun);
+                _audioDiagnostics?.RecordTimeline(default, catchUpSlicesExecuted: Interlocked.Read(ref _catchUpSlicesExecuted), maxCatchUpBatch: Interlocked.Read(ref _maximumCatchUpBatch), currentDebtMilliseconds: (int)Math.Round(TicksToMilliseconds(step.AccumulatedTicks)), maxDebtMilliseconds: (int)Math.Round(TicksToMilliseconds(Interlocked.Read(ref _maximumSchedulingDebtTicks))), discardedDebtMilliseconds: (int)Math.Round(TicksToMilliseconds(Interlocked.Read(ref _discardedSchedulingDebtTicks))));
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -469,6 +463,17 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         }
     }
 
+
+    private void LogSchedulerSummary()
+    {
+        var wallTicks = Interlocked.Read(ref _wallClockRunningTicks);
+        var emulatedTicks = Interlocked.Read(ref _emulatedTicks);
+        var wallMs = TicksToMilliseconds(wallTicks);
+        var emulatedMs = TicksToMilliseconds(emulatedTicks);
+        var ratio = wallMs <= 0 ? 0 : emulatedMs / wallMs;
+        LogDiagnosticInfo($"Fabric scheduler summary: wallClockRunningMs={wallMs:F1}, emulatedMs={emulatedMs:F1}, differenceMs={emulatedMs - wallMs:F1}, emulatedToWallClockRatio={ratio:F5}, totalSlices={Interlocked.Read(ref _totalExecutedSlices)}, catchUpSlices={Interlocked.Read(ref _catchUpSlicesExecuted)}, maxCatchUpBatch={Interlocked.Read(ref _maximumCatchUpBatch)}, maxDebtMs={TicksToMilliseconds(Interlocked.Read(ref _maximumSchedulingDebtTicks)):F1}, discardedDebtMs={TicksToMilliseconds(Interlocked.Read(ref _discardedSchedulingDebtTicks)):F1}.");
+    }
+
     private void LogDiagnosticInfo(string message) =>
         _diagnosticLogger?.Invoke(new(EmulationBackendDiagnosticSeverity.Info, message));
 
@@ -535,7 +540,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             _audioDiagnostics?.Capture(EmulationAudioCaptureBoundary.FabricBackendSubmit,
                 new(checked((int)format.SampleRate), checked((int)format.ChannelCount), checked((int)format.BitsPerSample)),
                 sequence, submitStartFrame, samples, framesWritten);
-            var pushResult = _audioSink.PushPcm(bytes, new(sequence, submitStartFrame, framesWritten, framesWritten == 0, 0));
+            var pushResult = _audioSink.PushPcm(bytes, new(sequence, startFrame, submitStartFrame, framesWritten, framesWritten == 0, 0));
             _audioDiagnostics?.ObserveSinkPush(pushResult, framesWritten, format);
             Interlocked.Add(ref _audioFramesSubmitted, pushResult.AcceptedBytes / checked((int)format.ChannelCount * sizeof(short)));
         }
@@ -635,6 +640,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             if (_audioStarted)
             {
                 TryCleanup(_audioSink.Stop, ref failures);
+                LogSchedulerSummary();
                 _audioDiagnostics?.Complete(true);
                 _audioDiagnostics?.WriteSummary(LogDiagnosticInfo);
                 _audioDiagnostics?.Dispose();

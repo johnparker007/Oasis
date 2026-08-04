@@ -31,6 +31,7 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink, IEmulationAu
     private long _zeroDepthEvents;
     private long _minimumReserveFrames = long.MaxValue;
     private long _playbackStartReserveFrames;
+    private bool _starvationEpisodeActive;
 
     public NAudioEmulationAudioSink(
         int bufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds,
@@ -94,16 +95,28 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink, IEmulationAu
         var offeredFrames = pcmBytes.Length / bytesPerFrame;
         var samples = MemoryMarshal.Cast<byte, short>(pcmBytes);
         var result = fifo.Write(samples);
-        var acceptedBytes = checked(result.AcceptedFrames * bytesPerFrame);
-        var droppedBytes = checked(result.RejectedFrames * bytesPerFrame);
-        if (result.Rejected)
+        var acceptedFrames = result.AcceptedFrames;
+        var rejectedFrames = result.RejectedFrames;
+        if (rejectedFrames > 0 && !Volatile.Read(ref _stopFeeder))
         {
-            Interlocked.Add(ref _fifoRejectedFrames, result.RejectedFrames);
-            _audioDiagnostics?.RecordSinkDrop(context, droppedBytes, "Application audio FIFO full");
+            _feederWake.Set();
+            Thread.Sleep(3);
+            var retrySamples = samples.Slice(checked(acceptedFrames * format.Channels), checked(rejectedFrames * format.Channels));
+            var retry = fifo.Write(retrySamples);
+            acceptedFrames += retry.AcceptedFrames;
+            rejectedFrames = retry.RejectedFrames;
+        }
+
+        var acceptedBytes = checked(acceptedFrames * bytesPerFrame);
+        var droppedBytes = checked(rejectedFrames * bytesPerFrame);
+        if (rejectedFrames > 0)
+        {
+            Interlocked.Add(ref _fifoRejectedFrames, rejectedFrames);
+            _audioDiagnostics?.RecordSinkDrop(context, droppedBytes, "Application audio FIFO full after bounded wait");
         }
         _feederWake.Set();
-        RecordDepthTimeline(context, offeredFrames, false, false);
-        return new(pcmBytes.Length, acceptedBytes, droppedBytes, result.Rejected ? "Application audio FIFO full" : null);
+        RecordDepthTimeline(context, offeredFrames, rejectedFrames > 0, false);
+        return new(pcmBytes.Length, acceptedBytes, droppedBytes, rejectedFrames > 0 ? "Application audio FIFO full after bounded wait" : null);
     }
 
     public void Clear()
@@ -113,6 +126,7 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink, IEmulationAu
             _fifo?.Clear();
             _buffer?.ClearBuffer();
             _playbackStarted = false;
+        _starvationEpisodeActive = false;
             Interlocked.Exchange(ref _acceptedStartFrame, 0);
             Interlocked.Exchange(ref _minimumReserveFrames, long.MaxValue);
         }
@@ -141,6 +155,7 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink, IEmulationAu
             _format = null;
             _feederThread = null;
             _playbackStarted = false;
+        _starvationEpisodeActive = false;
         }
     }
 
@@ -166,14 +181,13 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink, IEmulationAu
             var fedAny = FeedAvailablePcm();
             if (!fedAny)
             {
-                Interlocked.Increment(ref _feederUnderruns);
-                RecordDepthTimeline(default, 0, false, true);
-                _feederWake.WaitOne(5);
+                RecordDepthTimeline(default, 0, false, false);
+                _feederWake.WaitOne(10);
             }
             else
             {
                 Interlocked.Increment(ref _feederWakeups);
-                _feederWake.WaitOne(1);
+                _feederWake.WaitOne(2);
             }
         }
     }
@@ -189,13 +203,17 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink, IEmulationAu
         var fedAny = false;
         while (!Volatile.Read(ref _stopFeeder))
         {
-            var providerFreeBytes = buffer.BufferLength - buffer.BufferedBytes;
             var bytesPerFrame = format.Value.Channels * sizeof(short);
-            var providerFreeFrames = providerFreeBytes / bytesPerFrame;
-            if (providerFreeFrames <= 0)
+            var providerFrames = buffer.BufferedBytes / bytesPerFrame;
+            var deviceHighWaterFrames = Math.Min(_reservePolicy.TargetFrames, EmulationAudioReservePolicy.MillisecondsToFrames(format.Value.SampleRate, 20));
+            if (providerFrames >= deviceHighWaterFrames)
                 break;
-
-            var framesToRead = Math.Min(_reservePolicy.FeedBlockFrames, providerFreeFrames);
+            var providerFreeBytes = buffer.BufferLength - buffer.BufferedBytes;
+            var providerFreeFrames = providerFreeBytes / bytesPerFrame;
+            var wantedFrames = Math.Min(_reservePolicy.FeedBlockFrames, deviceHighWaterFrames - providerFrames);
+            var framesToRead = Math.Min(wantedFrames, providerFreeFrames);
+            if (framesToRead <= 0)
+                break;
             var framesRead = fifo.Read(_feedSamples, framesToRead);
             if (framesRead <= 0)
                 break;
@@ -241,7 +259,19 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink, IEmulationAu
         {
             ObserveMinimumReserve(reserveFrames);
             if (reserveFrames == 0)
-                Interlocked.Increment(ref _zeroDepthEvents);
+            {
+                if (!_starvationEpisodeActive)
+                {
+                    _starvationEpisodeActive = true;
+                    Interlocked.Increment(ref _zeroDepthEvents);
+                    Interlocked.Increment(ref _feederUnderruns);
+                    feederUnderrun = true;
+                }
+            }
+            else
+            {
+                _starvationEpisodeActive = false;
+            }
             if (reserveFrames < _reservePolicy.LowWaterFrames)
                 Interlocked.Increment(ref _lowWaterEvents);
         }
@@ -284,6 +314,7 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink, IEmulationAu
         Interlocked.Exchange(ref _minimumReserveFrames, long.MaxValue);
         _playbackStartReserveFrames = 0;
         _playbackStarted = false;
+        _starvationEpisodeActive = false;
     }
 
     private static int FramesToMilliseconds(long frames, int sampleRate) =>

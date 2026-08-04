@@ -32,21 +32,21 @@ public sealed class NAudioEmulationAudioSinkTests
         Assert.Equal(3, fifo.Write(first).AcceptedFrames);
         short[] read = new short[4];
         Assert.Equal(2, fifo.Read(read, 2));
-        Assert.Equal([1, 10, 2, 20], read);
+        Assert.Equal(new short[] { 1, 10, 2, 20 }, read);
         short[] second = [4, 40, 5, 50, 6, 60];
         var write = fifo.Write(second);
         Assert.Equal(3, write.OfferedFrames);
         Assert.Equal(3, write.AcceptedFrames);
         short[] rest = new short[8];
         Assert.Equal(4, fifo.Read(rest, 4));
-        Assert.Equal([3, 30, 4, 40, 5, 50, 6, 60], rest);
+        Assert.Equal(new short[] { 3, 30, 4, 40, 5, 50, 6, 60 }, rest);
     }
 
     [Fact]
     public void Fifo_RejectsOverflowInCompleteFramesAndClearRemovesStaleAudio()
     {
         var fifo = new EmulationPcmFrameFifo(2, 2);
-        var result = fifo.Write([1, 10, 2, 20, 3, 30]);
+        var result = fifo.Write(new short[] { 1, 10, 2, 20, 3, 30 });
         Assert.Equal(3, result.OfferedFrames);
         Assert.Equal(2, result.AcceptedFrames);
         Assert.Equal(1, result.RejectedFrames);
