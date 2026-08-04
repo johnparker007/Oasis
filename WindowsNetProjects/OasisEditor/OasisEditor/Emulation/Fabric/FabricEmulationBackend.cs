@@ -32,7 +32,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private IFabricRuntimeLibrary? _runtime;
     private IFabricMachineSession? _session;
     private CancellationTokenSource? _pumpCancellation;
-    private Task? _pumpTask;
+    private Thread? _pumpThread;
     private FabricAudioFormat? _audioFormat;
     private short[] _audioBuffer = [];
     private EmulationBackendState _state = EmulationBackendState.Stopped;
@@ -97,7 +97,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 AmberBackendKind, JpmSystem6MachineIdentifier, _amberPath, resources,
                 configuration));
 
-            await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            _sessionGate.Wait(cancellationToken);
             try
             {
                 _session.Initialise();
@@ -112,7 +112,12 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             _shutdown = false;
             LastFailure = null;
             _pumpCancellation = new CancellationTokenSource();
-            _pumpTask = Task.Run(() => PumpAsync(_pumpCancellation.Token), CancellationToken.None);
+            _pumpThread = new Thread(() => Pump(_pumpCancellation.Token))
+            {
+                IsBackground = true,
+                Name = "Oasis Fabric Emulation Runner"
+            };
+            _pumpThread.Start();
             SetState(EmulationBackendState.Running);
         }
         catch
@@ -132,19 +137,21 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
         if (_pumpCancellation is not null)
             await _pumpCancellation.CancelAsync().ConfigureAwait(false);
-        if (_pumpTask is not null && Task.CurrentId != _pumpTask.Id)
+        if (_pumpThread is { } pumpThread && pumpThread != Thread.CurrentThread)
         {
             try
             {
-                await _pumpTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+                while (pumpThread.IsAlive)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (pumpThread.Join(TimeSpan.FromMilliseconds(25)))
+                        break;
+                    Thread.Yield();
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 // The caller may stop waiting, but native cleanup below is never abandoned.
-            }
-            catch
-            {
-                // LastFailure retains the pump exception; cleanup must continue.
             }
         }
         await CleanupResourcesAsync().ConfigureAwait(false);
@@ -176,7 +183,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     {
         ThrowIfDisposed();
         EnsureAcceptingOperations();
-        await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        _sessionGate.Wait(cancellationToken);
         try
         {
             ReleaseAssertedInputs();
@@ -223,7 +230,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         if (inputDefinition.CoinChannel is not (>= 0 and <= 5) || inputDefinition.CoinValue is not (>= 0 and <= 12))
             throw new InvalidOperationException($"Coin input '{inputDefinition.Id}' requires a channel from 0 to 5 and denomination from 0 to 12.");
 
-        await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        _sessionGate.Wait(cancellationToken);
         try
         {
             var channel = checked((byte)inputDefinition.CoinChannel.Value);
@@ -294,7 +301,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         }
     }
 
-    private async Task PumpAsync(CancellationToken cancellationToken)
+    private void Pump(CancellationToken cancellationToken)
     {
         try
         {
@@ -305,7 +312,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             {
                 if (State != EmulationBackendState.Running)
                 {
-                    await Task.Delay(PumpInterval, cancellationToken).ConfigureAwait(false);
+                    cancellationToken.WaitHandle.WaitOne(PumpInterval);
                     nextDeadline = _clock.GetTimestamp();
                     scheduleGeneration = Interlocked.Read(ref _scheduleGeneration);
                     continue;
@@ -318,7 +325,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                     scheduleGeneration = currentGeneration;
                 }
 
-                await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                _sessionGate.Wait(cancellationToken);
                 try
                 {
                     var session = RequireSession();
@@ -342,11 +349,11 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 if (remainingTicks > 0)
                 {
                     var remaining = TimeSpan.FromSeconds((double)remainingTicks / _clock.Frequency);
-                    await Task.Delay(remaining, cancellationToken).ConfigureAwait(false);
+                    cancellationToken.WaitHandle.WaitOne(remaining);
                 }
                 else
                 {
-                    await Task.Yield();
+                    Thread.Yield();
                 }
             }
         }
@@ -360,7 +367,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             _pumpCancellation?.Cancel();
             try
             {
-                await CleanupResourcesAsync().ConfigureAwait(false);
+                CleanupResourcesAsync().GetAwaiter().GetResult();
             }
             catch (Exception cleanupException)
             {
@@ -413,6 +420,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             return;
         var frameCapacity = _audioBuffer.Length / format.ChannelCount;
         var framesWritten = session.ReadAudio(_audioBuffer, frameCapacity);
+        if (framesWritten > frameCapacity)
+            throw new InvalidOperationException($"Fabric returned {framesWritten} audio frames after {frameCapacity} were requested.");
         var sampleCount = checked(framesWritten * format.ChannelCount);
         var bytes = MemoryMarshal.AsBytes(_audioBuffer.AsSpan(0, sampleCount));
         if (!bytes.IsEmpty)
@@ -521,7 +530,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             _audioFormat = null;
             _pumpCancellation?.Dispose();
             _pumpCancellation = null;
-            _pumpTask = null;
+            _pumpThread = null;
             ClearPendingInputs();
         }
         finally

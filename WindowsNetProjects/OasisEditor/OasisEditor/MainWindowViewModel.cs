@@ -2268,22 +2268,31 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OnActiveBackendLampChanged(object? sender, MachineLampChangedEventArgs e)
     {
-        _lampRuntimeAdapter.ApplyLampState(e.LampId, e.Value);
+        RunMachineOutputOnUiThread(() => _lampRuntimeAdapter.ApplyLampState(e.LampId, e.Value));
     }
 
     private void OnActiveBackendReelChanged(object? sender, MachineReelChangedEventArgs e)
     {
-        _reelRuntimeAdapter.ApplyReelState(e.ReelId, e.Position);
+        RunMachineOutputOnUiThread(() => _reelRuntimeAdapter.ApplyReelState(e.ReelId, e.Position));
     }
 
     private void OnActiveBackendSegmentChanged(object? sender, MachineSegmentChangedEventArgs e)
     {
-        _segmentRuntimeAdapter.ApplySegmentState(e.CellId, e.SegmentMask, e.OutputType);
+        RunMachineOutputOnUiThread(() => _segmentRuntimeAdapter.ApplySegmentState(e.CellId, e.SegmentMask, e.OutputType));
     }
 
     private void OnActiveBackendVfdBrightnessChanged(object? sender, MachineVfdBrightnessChangedEventArgs e)
     {
-        _segmentRuntimeAdapter.ApplyVfdBrightness(e.CellId, e.NormalizedBrightness);
+        RunMachineOutputOnUiThread(() => _segmentRuntimeAdapter.ApplyVfdBrightness(e.CellId, e.NormalizedBrightness));
+    }
+
+    private void RunMachineOutputOnUiThread(Action apply)
+    {
+        var dispatcher = _ownerWindow.Dispatcher;
+        if (dispatcher.CheckAccess())
+            apply();
+        else
+            _ = dispatcher.BeginInvoke(apply);
     }
 
     private void OnActiveBackendStateChanged(object? sender, EmulationBackendState state)

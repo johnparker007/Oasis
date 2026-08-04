@@ -1,38 +1,37 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
-using NAudio.Wave;
 
 namespace OasisEditor;
 
 public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
 {
-    private const int DiagnosticPushLimit = 32;
     private readonly int _bufferLengthMilliseconds;
-
-    private BufferedWaveProvider? _buffer;
+    private readonly object _gate = new();
+    private PcmFrameRingBuffer? _ringBuffer;
+    private EmulationPcmWaveProvider? _provider;
     private WasapiOut? _output;
     private EmulationAudioFormat? _format;
     private AudioPrebufferPolicy? _prebuffer;
-    private long _droppedBlocks;
-    private long _droppedBytes;
-    private long _runtimeStarvationEvents;
-    private long _pushCount;
-    private int _minimumBufferedBytes = int.MaxValue;
-    private bool _playbackStarted;
+    private long _framesOffered;
+    private long _framesWritten;
+    private long _framesRejected;
+    private bool _overflowWarned;
 
     internal int BufferLengthMilliseconds => _bufferLengthMilliseconds;
-    internal int PrebufferThresholdMilliseconds => AudioPrebufferPolicy.CalculateThresholdMilliseconds(_bufferLengthMilliseconds);
-    internal int PrebufferThresholdBytes => _prebuffer?.ThresholdBytes ?? 0;
-    internal long DroppedBlocks => Interlocked.Read(ref _droppedBlocks);
-    internal long DroppedBytes => Interlocked.Read(ref _droppedBytes);
-    internal long RuntimeStarvationEvents => Interlocked.Read(ref _runtimeStarvationEvents);
-    internal int MinimumObservedBufferedBytes => _minimumBufferedBytes == int.MaxValue ? 0 : _minimumBufferedBytes;
-    internal bool PlaybackStarted => _playbackStarted;
+    internal int PrebufferThresholdFrames => _prebuffer?.ThresholdFrames ?? 0;
+    internal int CapacityFrames => _ringBuffer?.CapacityFrames ?? 0;
+    internal long FramesOffered => Interlocked.Read(ref _framesOffered);
+    internal long FramesWritten => Interlocked.Read(ref _framesWritten);
+    internal long FramesRejected => Interlocked.Read(ref _framesRejected);
+    internal long FramesDelivered => _provider?.FramesDelivered ?? 0;
+    internal long SilenceFrames => _provider?.SilenceFrames ?? 0;
+    internal long UnderrunEpisodes => _provider?.UnderrunEpisodes ?? 0;
+    internal bool PlaybackStarted => _prebuffer?.PlaybackStarted ?? false;
 
     public NAudioEmulationAudioSink(int bufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds)
     {
-        if (bufferLengthMilliseconds <= 0)
-            throw new ArgumentOutOfRangeException(nameof(bufferLengthMilliseconds), bufferLengthMilliseconds, "Audio buffer length must be greater than zero.");
+        if (bufferLengthMilliseconds <= 0) throw new ArgumentOutOfRangeException(nameof(bufferLengthMilliseconds));
         _bufferLengthMilliseconds = bufferLengthMilliseconds;
     }
 
@@ -40,146 +39,96 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
     {
         ValidateFormat(format);
         Stop();
-
-        var waveFormat = new WaveFormat(format.SampleRate, format.BitsPerSample, format.Channels);
-        _buffer = new BufferedWaveProvider(waveFormat)
+        var capacityFrames = AudioPrebufferPolicy.CalculateCapacityFrames(format.SampleRate, _bufferLengthMilliseconds);
+        var ringBuffer = new PcmFrameRingBuffer(format.Channels, capacityFrames);
+        var provider = new EmulationPcmWaveProvider(ringBuffer, format, capacityFrames);
+        var output = new WasapiOut(AudioClientShareMode.Shared, _bufferLengthMilliseconds);
+        output.Init(provider);
+        lock (_gate)
         {
-            BufferDuration = TimeSpan.FromMilliseconds(_bufferLengthMilliseconds),
-            DiscardOnBufferOverflow = true
-        };
-        _output = new WasapiOut(AudioClientShareMode.Shared, _bufferLengthMilliseconds);
-        _output.Init(_buffer);
-        _format = format;
-        _prebuffer = new AudioPrebufferPolicy(format, _bufferLengthMilliseconds);
-        ResetDiagnostics();
-        // Play is deliberately deferred until enough PCM (including digital silence) is queued.
+            _format = format;
+            _ringBuffer = ringBuffer;
+            _provider = provider;
+            _output = output;
+            _prebuffer = new AudioPrebufferPolicy(format, capacityFrames);
+            _overflowWarned = false;
+            ResetCounters();
+        }
+        Debug.WriteLine($"NAudio emulation ring: format={format.SampleRate}Hz/{format.Channels}ch/{format.BitsPerSample}bit capacityFrames={capacityFrames} thresholdFrames={_prebuffer.ThresholdFrames}.");
     }
 
     public void PushPcm(ReadOnlySpan<byte> pcmBytes)
     {
-        if (pcmBytes.IsEmpty || _buffer is null)
-            return;
-
+        if (pcmBytes.IsEmpty) return;
         var format = _format ?? throw new InvalidOperationException("Audio sink has not been started.");
-        var before = _buffer.BufferedBytes;
-        var capacity = _buffer.BufferLength;
-        var push = Interlocked.Increment(ref _pushCount);
-        ObserveMinimum(before);
-
-        if (_playbackStarted && before < format.BytesPerMillisecond())
+        var bytesPerFrame = checked(format.Channels * sizeof(short));
+        var frameCount = pcmBytes.Length / bytesPerFrame;
+        if (frameCount == 0) return;
+        var samples = MemoryMarshal.Cast<byte, short>(pcmBytes[..checked(frameCount * bytesPerFrame)]);
+        var written = _ringBuffer?.Write(samples, frameCount) ?? 0;
+        Interlocked.Add(ref _framesOffered, frameCount);
+        Interlocked.Add(ref _framesWritten, written);
+        var rejected = frameCount - written;
+        if (rejected > 0)
         {
-            var starvation = Interlocked.Increment(ref _runtimeStarvationEvents);
-            if (starvation == 1 || IsPowerOfTwo(starvation))
-                WriteDepthDiagnostic("runtime starvation risk", pcmBytes.Length, before, before, capacity);
+            Interlocked.Add(ref _framesRejected, rejected);
+            if (!_overflowWarned)
+            {
+                _overflowWarned = true;
+                Debug.WriteLine($"NAudio emulation ring: first overflow; rejectedFrames={rejected} totalRejectedFrames={FramesRejected}.");
+            }
         }
-
-        if (ShouldDropIncomingBlock(before, capacity, pcmBytes.Length))
-        {
-            var droppedBlocks = Interlocked.Increment(ref _droppedBlocks);
-            Interlocked.Add(ref _droppedBytes, pcmBytes.Length);
-            if (droppedBlocks == 1 || IsPowerOfTwo(droppedBlocks))
-                WriteDepthDiagnostic("dropped incoming block", pcmBytes.Length, before, before, capacity);
-            return;
-        }
-
-        var bytes = pcmBytes.ToArray();
-        _buffer.AddSamples(bytes, 0, bytes.Length);
-        var after = _buffer.BufferedBytes;
-        if (push <= DiagnosticPushLimit)
-            WriteDepthDiagnostic("push", bytes.Length, before, after, capacity);
-
-        if (!_playbackStarted && _prebuffer!.ObserveQueuedBytes(after))
-        {
-            _output!.Play();
-            _playbackStarted = true;
-            Debug.WriteLine($"NAudio emulation buffer: startup prebuffer complete; thresholdBytes={_prebuffer.ThresholdBytes}, bufferedBytes={after}.");
-        }
+        var prebuffer = _prebuffer;
+        if (prebuffer is not null && !prebuffer.PlaybackStarted && prebuffer.ObserveQueuedFrames(_ringBuffer!.ReadableFrames))
+            _output?.Play();
     }
 
     public void Clear()
     {
-        if (_output is not null && _playbackStarted)
-            _output.Stop();
-        _buffer?.ClearBuffer();
-        _playbackStarted = false;
+        _output?.Stop();
+        _ringBuffer?.Clear();
         _prebuffer?.Reset();
-        _minimumBufferedBytes = int.MaxValue;
     }
 
     public void Stop()
     {
-        if (_format is not null)
-            Debug.WriteLine($"NAudio emulation buffer: stop summary; pushes={_pushCount}, droppedBlocks={DroppedBlocks}, droppedBytes={DroppedBytes}, starvationRiskEvents={RuntimeStarvationEvents}, minimumBufferedBytes={MinimumObservedBufferedBytes}.");
         _output?.Stop();
         _output?.Dispose();
         _output = null;
-        _buffer = null;
+        _ringBuffer?.Clear();
+        _ringBuffer = null;
+        _provider = null;
         _format = null;
         _prebuffer = null;
-        _playbackStarted = false;
+        Debug.WriteLine($"NAudio emulation ring: stop summary; offered={FramesOffered}, written={FramesWritten}, rejected={FramesRejected}, delivered={FramesDelivered}, silence={SilenceFrames}, underruns={UnderrunEpisodes}.");
     }
 
     public void Dispose() => Stop();
-
-    internal static bool ShouldDropIncomingBlock(int bufferedBytes, int bufferCapacityBytes, int incomingBytes)
-        => incomingBytes > bufferCapacityBytes - bufferedBytes;
-
-    private void ResetDiagnostics()
-    {
-        Interlocked.Exchange(ref _droppedBlocks, 0);
-        Interlocked.Exchange(ref _droppedBytes, 0);
-        Interlocked.Exchange(ref _runtimeStarvationEvents, 0);
-        Interlocked.Exchange(ref _pushCount, 0);
-        _minimumBufferedBytes = int.MaxValue;
-        _playbackStarted = false;
-    }
-
-    private void ObserveMinimum(int bufferedBytes) => _minimumBufferedBytes = Math.Min(_minimumBufferedBytes, bufferedBytes);
-
-    private void WriteDepthDiagnostic(string reason, int incoming, int before, int after, int capacity)
-    {
-        var bytesPerMillisecond = _format!.Value.BytesPerMillisecond();
-        Debug.WriteLine($"NAudio emulation buffer: {reason}; incomingBytes={incoming}, bufferedBefore={before}, bufferedAfter={after}, capacity={capacity}, millisecondsBefore={(double)before / bytesPerMillisecond:F2}, millisecondsAfter={(double)after / bytesPerMillisecond:F2}, droppedBlocks={DroppedBlocks}, droppedBytes={DroppedBytes}, minimumBufferedBytes={MinimumObservedBufferedBytes}.");
-    }
-
-    private static bool IsPowerOfTwo(long value) => (value & (value - 1)) == 0;
-
-    private static void ValidateFormat(EmulationAudioFormat format)
-    {
-        if (format.SampleRate <= 0) throw new ArgumentOutOfRangeException(nameof(format), "Audio sample rate must be greater than zero.");
-        if (format.Channels <= 0) throw new ArgumentOutOfRangeException(nameof(format), "Audio channel count must be greater than zero.");
-        if (format.BitsPerSample != 16) throw new NotSupportedException($"Only 16-bit PCM audio is supported; native core reported {format.BitsPerSample} bits per sample.");
-    }
+    internal static bool ShouldDropIncomingBlock(int bufferedBytes, int bufferCapacityBytes, int incomingBytes) => incomingBytes > bufferCapacityBytes - bufferedBytes;
+    private void ResetCounters() { Interlocked.Exchange(ref _framesOffered, 0); Interlocked.Exchange(ref _framesWritten, 0); Interlocked.Exchange(ref _framesRejected, 0); }
+    private static void ValidateFormat(EmulationAudioFormat format) { if (format.SampleRate <= 0) throw new ArgumentOutOfRangeException(nameof(format)); if (format.Channels <= 0) throw new ArgumentOutOfRangeException(nameof(format)); if (format.BitsPerSample != 16) throw new NotSupportedException("Only 16-bit PCM audio is supported."); }
 }
 
 internal sealed class AudioPrebufferPolicy
 {
-    internal AudioPrebufferPolicy(EmulationAudioFormat format, int bufferLengthMilliseconds)
-    {
-        ThresholdMilliseconds = CalculateThresholdMilliseconds(bufferLengthMilliseconds);
-        var numerator = checked((long)format.SampleRate * format.Channels * (format.BitsPerSample / 8) * ThresholdMilliseconds);
-        ThresholdBytes = checked((int)((numerator + 999) / 1000));
-    }
-
-    internal int ThresholdMilliseconds { get; }
-    internal int ThresholdBytes { get; }
+    internal AudioPrebufferPolicy(EmulationAudioFormat format, int capacityFrames) => ThresholdFrames = CalculateThresholdFrames(format.SampleRate, capacityFrames);
+    internal int ThresholdFrames { get; }
     internal bool PlaybackStarted { get; private set; }
-
-    internal bool ObserveQueuedBytes(int bufferedBytes)
-    {
-        if (!PlaybackStarted && bufferedBytes >= ThresholdBytes)
-            PlaybackStarted = true;
-        return PlaybackStarted;
-    }
-
+    internal bool ObserveQueuedFrames(int queuedFrames) { if (!PlaybackStarted && queuedFrames >= ThresholdFrames) PlaybackStarted = true; return PlaybackStarted; }
     internal void Reset() => PlaybackStarted = false;
-
-    internal static int CalculateThresholdMilliseconds(int bufferLengthMilliseconds) =>
-        Math.Max(1, Math.Min(10, bufferLengthMilliseconds / 2));
+    internal static int CalculateCapacityFrames(int sampleRate, int bufferLengthMilliseconds) => checked((int)(((long)sampleRate * bufferLengthMilliseconds + 999) / 1000));
+    internal static int CalculateThresholdFrames(int sampleRate, int capacityFrames)
+    {
+        if (sampleRate <= 0) throw new ArgumentOutOfRangeException(nameof(sampleRate));
+        if (capacityFrames <= 1) return 1;
+        var seventyFivePercent = checked((capacityFrames * 3 + 3) / 4);
+        var minimumTwentyMs = CalculateCapacityFrames(sampleRate, 20);
+        var threshold = capacityFrames > minimumTwentyMs ? Math.Max(seventyFivePercent, minimumTwentyMs) : seventyFivePercent;
+        return Math.Min(capacityFrames - 1, Math.Max(1, threshold));
+    }
 }
 
 internal static class EmulationAudioFormatExtensions
 {
-    internal static int BytesPerMillisecond(this EmulationAudioFormat format) =>
-        Math.Max(1, checked((format.SampleRate * format.Channels * (format.BitsPerSample / 8)) / 1000));
+    internal static int BytesPerMillisecond(this EmulationAudioFormat format) => Math.Max(1, checked((format.SampleRate * format.Channels * (format.BitsPerSample / 8)) / 1000));
 }

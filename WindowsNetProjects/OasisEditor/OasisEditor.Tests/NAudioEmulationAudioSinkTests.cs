@@ -4,27 +4,32 @@ namespace OasisEditor.Tests;
 
 public sealed class NAudioEmulationAudioSinkTests
 {
-    [Theory]
-    [InlineData(50, 10)]
-    [InlineData(100, 10)]
-    [InlineData(10, 5)]
-    [InlineData(1, 1)]
-    public void PrebufferThreshold_IsBoundedByTenMillisecondsAndHalfTheBuffer(int buffer, int expected)
+    [Fact]
+    public void PrebufferThreshold_UsesSeventyFivePercentAndStaysBelowCapacity()
     {
-        Assert.Equal(expected, AudioPrebufferPolicy.CalculateThresholdMilliseconds(buffer));
+        var capacity = AudioPrebufferPolicy.CalculateCapacityFrames(48000, 50);
+        Assert.Equal(2400, capacity);
+        Assert.Equal(1800, AudioPrebufferPolicy.CalculateThresholdFrames(48000, capacity));
     }
 
     [Fact]
-    public void Prebuffer_StartsAtThresholdAndResetRequiresPrebufferAgain()
+    public void Prebuffer_StartsAtThresholdOnceAndResetRequiresPrebufferAgain()
     {
-        var policy = new AudioPrebufferPolicy(new(48000, 2, 16), 50);
-
-        Assert.Equal(1920, policy.ThresholdBytes);
-        Assert.False(policy.ObserveQueuedBytes(1919));
-        Assert.True(policy.ObserveQueuedBytes(1920));
+        var policy = new AudioPrebufferPolicy(new(48000, 2, 16), 2400);
+        Assert.False(policy.ObserveQueuedFrames(1799));
+        Assert.True(policy.ObserveQueuedFrames(1800));
+        Assert.True(policy.ObserveQueuedFrames(1));
         policy.Reset();
         Assert.False(policy.PlaybackStarted);
-        Assert.False(policy.ObserveQueuedBytes(192));
+        Assert.False(policy.ObserveQueuedFrames(1799));
+    }
+
+    [Fact]
+    public void SmallPrebufferThreshold_RemainsSafeAndBelowCapacity()
+    {
+        var capacity = AudioPrebufferPolicy.CalculateCapacityFrames(48000, 10);
+        var threshold = AudioPrebufferPolicy.CalculateThresholdFrames(48000, capacity);
+        Assert.InRange(threshold, 1, capacity - 1);
     }
 
     [Theory]
