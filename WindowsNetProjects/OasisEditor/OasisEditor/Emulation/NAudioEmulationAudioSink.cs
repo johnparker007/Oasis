@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
+using NAudio.Wave;
 
 namespace OasisEditor;
 
