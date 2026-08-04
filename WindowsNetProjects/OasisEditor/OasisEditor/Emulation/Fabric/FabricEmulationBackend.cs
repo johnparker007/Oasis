@@ -40,6 +40,10 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private bool _audioStarted;
     private bool _disposed;
     private long _scheduleGeneration;
+    private long _audioSequence;
+    private long _audioFramesRead;
+    private long _audioFramesSubmitted;
+    private EmulationAudioDiagnostics? _audioDiagnostics;
 
     public FabricEmulationBackend(string runtimePath, string amberPath)
         : this(runtimePath, amberPath, path => new FabricRuntimeLibrary(path),
@@ -102,6 +106,12 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             {
                 _session.Initialise();
                 ConfigureAudio(_session);
+                _audioDiagnostics = EmulationAudioDiagnostics.CreateFromEnvironment();
+                if (_audioDiagnostics is not null && _audioFormat is { } diagnosticFormat)
+                {
+                    _audioDiagnostics.FabricManagedRead.SetFormat(checked((int)diagnosticFormat.SampleRate), checked((int)diagnosticFormat.ChannelCount));
+                    _audioDiagnostics.FabricBackendSubmit.SetFormat(checked((int)diagnosticFormat.SampleRate), checked((int)diagnosticFormat.ChannelCount));
+                }
                 Interlocked.Increment(ref _scheduleGeneration);
             }
             finally
@@ -412,11 +422,27 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         if (_audioFormat is not { } format)
             return;
         var frameCapacity = _audioBuffer.Length / format.ChannelCount;
+        var sequence = Interlocked.Increment(ref _audioSequence);
         var framesWritten = session.ReadAudio(_audioBuffer, frameCapacity);
+        _audioDiagnostics?.FabricManagedRead.ObserveRead(frameCapacity, framesWritten, sequence);
         var sampleCount = checked(framesWritten * format.ChannelCount);
-        var bytes = MemoryMarshal.AsBytes(_audioBuffer.AsSpan(0, sampleCount));
+        var samples = _audioBuffer.AsSpan(0, sampleCount);
+        var startFrame = Interlocked.Read(ref _audioFramesRead);
+        _audioDiagnostics?.Capture(EmulationAudioCaptureBoundary.FabricManagedRead,
+            new(checked((int)format.SampleRate), checked((int)format.ChannelCount), checked((int)format.BitsPerSample)),
+            sequence, startFrame, samples, framesWritten);
+        Interlocked.Add(ref _audioFramesRead, framesWritten);
+        var bytes = MemoryMarshal.AsBytes(samples);
         if (!bytes.IsEmpty)
+        {
+            var submitStartFrame = Interlocked.Read(ref _audioFramesSubmitted);
+            _audioDiagnostics?.FabricBackendSubmit.ObserveSubmit(framesWritten, sequence);
+            _audioDiagnostics?.Capture(EmulationAudioCaptureBoundary.FabricBackendSubmit,
+                new(checked((int)format.SampleRate), checked((int)format.ChannelCount), checked((int)format.BitsPerSample)),
+                sequence, submitStartFrame, samples, framesWritten);
             _audioSink.PushPcm(bytes);
+            Interlocked.Add(ref _audioFramesSubmitted, framesWritten);
+        }
     }
 
     internal void PublishSnapshot(FabricMachineSnapshot snapshot)
@@ -513,6 +539,9 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             if (_audioStarted)
             {
                 TryCleanup(_audioSink.Stop, ref failures);
+                _audioDiagnostics?.WriteSummary(_errorLogger);
+                _audioDiagnostics?.Dispose();
+                _audioDiagnostics = null;
                 _audioStarted = false;
             }
             if (_runtime is not null)

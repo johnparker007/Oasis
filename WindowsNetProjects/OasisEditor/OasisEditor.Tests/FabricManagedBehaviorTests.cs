@@ -568,3 +568,27 @@ public sealed class FabricManagedBehaviorTests
         public void Dispose() { }
     }
 }
+
+public sealed class AudioPcmComparisonTests
+{
+    [Fact]
+    public void CompareReportsFirstDifferenceAndFrameCountDelta()
+    {
+        short[] expected = [1, 10, 2, 20, 3, 30];
+        short[] actual = [1, 10, 2, 21];
+        var result = AudioPcmComparison.Compare(expected, actual, 2, 2);
+        Assert.Equal(1, result.FirstDifferingFrame);
+        Assert.Equal(1, result.TotalFrameCountDifference);
+        Assert.False(result.ChannelMismatch);
+    }
+
+    [Fact]
+    public void CompareReportsChannelMismatchAndCandidateDiscontinuity()
+    {
+        short[] expected = [0, 100, 200, 300];
+        short[] actual = [0, 20000, -20000, 10];
+        var result = AudioPcmComparison.Compare(expected, actual, 2, 1, 10000);
+        Assert.True(result.ChannelMismatch);
+        Assert.Equal(1, result.FirstCandidateDiscontinuityFrame);
+    }
+}
