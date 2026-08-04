@@ -268,7 +268,7 @@ public sealed class FabricManagedBehaviorTests
     }
 
     [Fact]
-    public async Task Backend_UsesExactLaunchValuesAndSerializesResetWithPump()
+    public async Task Backend_UsesExactLaunchValuesAndSerializesResetWithUpdate()
     {
         var clock = new FakeClock();
         var session = new FakeSession();
@@ -280,7 +280,8 @@ public sealed class FabricManagedBehaviorTests
         var request = new EmulationLaunchRequest(new System6NativeRomSettings { ProgramRom1Path = "p0", SoundRom1Path = "s0" });
 
         await backend.StartAsync(request, CancellationToken.None);
-        await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.UpdateAsync(CancellationToken.None);
+        await backend.UpdateAsync(CancellationToken.None);
         await backend.ResetAsync(EmulationResetKind.Soft, CancellationToken.None);
         await backend.StopAsync(CancellationToken.None);
 
@@ -298,7 +299,7 @@ public sealed class FabricManagedBehaviorTests
     }
 
     [Fact]
-    public async Task Backend_PumpFailureIsRecordedAndCleanedUp()
+    public async Task Backend_UpdateFailureIsRecordedAndCleanedUp()
     {
         var failure = new FabricException(FabricResult.BackendError, "FabricSessionAdvance",
             "production Amber adapter: Run returned an invalid result",
@@ -310,13 +311,14 @@ public sealed class FabricManagedBehaviorTests
         var request = new EmulationLaunchRequest(new System6NativeRomSettings());
 
         await backend.StartAsync(request, CancellationToken.None);
-        await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.UpdateAsync(CancellationToken.None);
+        await backend.UpdateAsync(CancellationToken.None);
         await session.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(2));
         await WaitForStateAsync(backend, EmulationBackendState.Failed);
 
         Assert.Same(failure, backend.LastFailure);
         var error = Assert.Single(errors);
-        Assert.Contains("Fabric emulation pump failed", error);
+        Assert.Contains("Fabric editor elapsed-time update failed", error);
         Assert.Contains("FabricSessionAdvance", error);
         Assert.Contains("7 (BackendError)", error);
         Assert.Contains("production Amber adapter", error);
@@ -332,7 +334,7 @@ public sealed class FabricManagedBehaviorTests
     [Theory]
     [InlineData("snapshot")]
     [InlineData("audio")]
-    public async Task Backend_PumpFailureLogIdentifiesSnapshotAndAudioOperations(string failingOperation)
+    public async Task Backend_UpdateFailureLogIdentifiesSnapshotAndAudioOperations(string failingOperation)
     {
         var operation = failingOperation == "snapshot" ? "FabricSessionGetSnapshot" : "FabricSessionReadAudio";
         var failure = new FabricException(FabricResult.InternalError, operation, "native last error");
@@ -346,6 +348,8 @@ public sealed class FabricManagedBehaviorTests
             new FakeAudioSink(), new FakeClock(), errors.Add);
 
         await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        await backend.UpdateAsync(CancellationToken.None);
+        await backend.UpdateAsync(CancellationToken.None);
         await session.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(2));
         await WaitForStateAsync(backend, EmulationBackendState.Failed);
 
@@ -355,12 +359,12 @@ public sealed class FabricManagedBehaviorTests
     }
 
     [Fact]
-    public async Task Backend_CleanupFailureIsLoggedWithoutReplacingPumpFailure()
+    public async Task Backend_CleanupFailureIsLoggedWithoutReplacingUpdateFailure()
     {
-        var pumpFailure = new InvalidOperationException("original pump failure");
+        var updateFailure = new InvalidOperationException("original update failure");
         var session = new FakeSession
         {
-            AdvanceFailure = pumpFailure,
+            AdvanceFailure = updateFailure,
             ShutdownFailure = new InvalidOperationException("cleanup shutdown failure"),
             DisposeFailure = new InvalidOperationException("cleanup dispose failure")
         };
@@ -370,13 +374,15 @@ public sealed class FabricManagedBehaviorTests
             new FakeAudioSink(), new FakeClock(), errors.Add);
 
         await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        await backend.UpdateAsync(CancellationToken.None);
+        await backend.UpdateAsync(CancellationToken.None);
         await session.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(2));
         await WaitForStateAsync(backend, EmulationBackendState.Failed);
 
-        Assert.Same(pumpFailure, backend.LastFailure);
+        Assert.Same(updateFailure, backend.LastFailure);
         Assert.Equal(2, errors.Count);
-        Assert.Contains("original pump failure", errors[0]);
-        Assert.Contains("cleanup after pump failure", errors[1]);
+        Assert.Contains("original update failure", errors[0]);
+        Assert.Contains("cleanup after update failure", errors[1]);
         Assert.Contains("cleanup shutdown failure", errors[1]);
         Assert.Contains("cleanup dispose failure", errors[1]);
         Assert.Equal(1, runtime.DisposeCount);
@@ -384,7 +390,7 @@ public sealed class FabricManagedBehaviorTests
     }
 
     [Fact]
-    public async Task Backend_NormalStopCancellationDoesNotReportPumpFailure()
+    public async Task Backend_NormalStopCancellationDoesNotReportUpdateFailure()
     {
         var session = new FakeSession();
         var errors = new List<string>();
@@ -392,7 +398,8 @@ public sealed class FabricManagedBehaviorTests
             new FakeAudioSink(), new FakeClock(), errors.Add);
 
         await backend.StartAsync(CreateRequest(), CancellationToken.None);
-        await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.UpdateAsync(CancellationToken.None);
+        await backend.UpdateAsync(CancellationToken.None);
         await backend.StopAsync(CancellationToken.None);
 
         Assert.Null(backend.LastFailure);
@@ -411,37 +418,72 @@ public sealed class FabricManagedBehaviorTests
         var backend = CreateBackend(session, audio);
 
         await backend.StartAsync(CreateRequest(), CancellationToken.None);
-        await session.FirstAudioRead.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.UpdateAsync(CancellationToken.None);
+        await backend.UpdateAsync(CancellationToken.None);
         await backend.StopAsync(CancellationToken.None);
 
         Assert.Equal(new EmulationAudioFormat(checked((int)sampleRate), channels, 16), audio.StartedFormat);
-        Assert.Equal((checked((int)sampleRate) + 999) / 1000, session.LastFrameCapacity);
+        Assert.Equal(FabricEmulationBackend.CalculateAudioFramesPerNativeDisplayFrame(checked((int)sampleRate), 50.0), session.LastFrameCapacity);
         Assert.Equal(0, session.LastSampleCapacity % channels);
     }
 
-    [Theory]
-    [InlineData(48000, 48)]
-    [InlineData(44100, 45)]
-    [InlineData(1, 1)]
-    public void AudioCapacity_HoldsMaximumSingleTickEntitlement(int sampleRate, int expectedFrames)
+    [Fact]
+    public async Task Backend_UsesEditorElapsedAdvanceAndDisplayFrameAudioCapacity()
     {
-        Assert.Equal(expectedFrames, FabricEmulationBackend.CalculateAudioFramesPerTick(sampleRate));
+        var clock = new FakeClock { FrequencyValue = 1000, AutoIncrement = false };
+        var session = new FakeSession { FramesToWrite = 960 };
+        var audio = new FakeAudioSink();
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => new FakeRuntime(session), audio, clock);
+
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        await backend.UpdateAsync(CancellationToken.None);
+        clock.Advance(8);
+        await backend.UpdateAsync(CancellationToken.None);
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Equal([8_000_000UL], session.Advances);
+        Assert.Equal(960, session.LastFrameCapacity);
+        Assert.Equal(960 * 2 * sizeof(short), audio.LastPcmBytes);
     }
 
     [Fact]
-    public async Task Backend_UsesFixedOneMillisecondAdvancesAndSubmitsFramesExactlyOnce()
+    public async Task Backend_ClampsElapsedAdvanceAndDiscardsExcess()
     {
-        var session = new FakeSession { FramesToWrite = 48 };
-        var audio = new FakeAudioSink();
-        var backend = CreateBackend(session, audio);
+        var clock = new FakeClock { FrequencyValue = 1000, AutoIncrement = false };
+        var session = new FakeSession();
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => new FakeRuntime(session), new FakeAudioSink(), clock);
 
         await backend.StartAsync(CreateRequest(), CancellationToken.None);
-        await session.FirstAudioRead.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.UpdateAsync(CancellationToken.None);
+        clock.Advance(35);
+        await backend.UpdateAsync(CancellationToken.None);
+        clock.Advance(8);
+        await backend.UpdateAsync(CancellationToken.None);
         await backend.StopAsync(CancellationToken.None);
 
-        Assert.All(session.Advances, value => Assert.Equal(1_000_000UL, value));
-        Assert.Equal(48, session.LastFrameCapacity);
-        Assert.Equal(48 * 2 * sizeof(short), audio.LastPcmBytes);
+        Assert.Equal([20_000_000UL, 8_000_000UL], session.Advances);
+    }
+
+    [Theory]
+    [InlineData(44100, 883)]
+    [InlineData(48000, 960)]
+    public void AudioCapacity_UsesCeilingForNativeDisplayFrame(int sampleRate, int expectedFrames)
+    {
+        Assert.Equal(expectedFrames, FabricEmulationBackend.CalculateAudioFramesPerNativeDisplayFrame(sampleRate, 50.0));
+    }
+
+
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(-50.0)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public void NativeDisplayFrameCapacity_RejectsInvalidRefreshRates(double refreshHz)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            FabricEmulationBackend.CalculateAudioFramesPerNativeDisplayFrame(48000, refreshHz));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            FabricEmulationBackend.ResolveNativeDisplayFrameNanoseconds(refreshHz));
     }
 
     [Theory]
@@ -485,8 +527,11 @@ public sealed class FabricManagedBehaviorTests
     private sealed class FakeClock : IFabricClock
     {
         private long _timestamp;
-        public long Frequency => 10_000;
-        public long GetTimestamp() => Interlocked.Increment(ref _timestamp);
+        public long FrequencyValue { get; init; } = 1000;
+        public bool AutoIncrement { get; init; } = true;
+        public long Frequency => FrequencyValue;
+        public void Advance(long ticks) => Interlocked.Add(ref _timestamp, ticks);
+        public long GetTimestamp() => AutoIncrement ? Interlocked.Increment(ref _timestamp) : Interlocked.Read(ref _timestamp);
     }
 
     private sealed class FakeRuntime(IFabricMachineSession session) : IFabricRuntimeLibrary
@@ -535,7 +580,8 @@ public sealed class FabricManagedBehaviorTests
                 LastSampleCapacity = sampleCapacity;
                 FirstAudioRead.TrySetResult();
                 if (AudioFailure is not null) throw AudioFailure;
-                return Math.Min(FramesToWrite, frameCapacity);
+                var frames = Math.Min(FramesToWrite, frameCapacity);
+                return frames;
             });
         }
         public void Shutdown() => Invoke(() => { ShutdownCount++; if (ShutdownFailure is not null) throw ShutdownFailure; });

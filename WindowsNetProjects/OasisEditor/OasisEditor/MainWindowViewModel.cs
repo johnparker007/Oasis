@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using System.Collections.Specialized;
 using Microsoft.Win32;
 using OasisEditor.Features.LayoutImport;
@@ -93,6 +94,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private IReadOnlyList<InputMapDiagnostic> _inputMapDiagnostics = [];
     private PlayViewInputRouter? _playViewInputRouter;
     private PlayViewInputDispatcher? _playViewInputDispatcher;
+    private readonly DispatcherTimer _emulationRuntimeUpdateTimer;
+    private int _emulationRuntimeUpdateInProgress;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<EditorToolWindowId>? ToolWindowOpenRequested;
@@ -124,6 +127,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _preferencesStore = preferencesStore;
         _ownerWindow = ownerWindow;
         _progressDialogService = new WpfProgressDialogService(() => _ownerWindow, _ownerWindow.Dispatcher);
+        _emulationRuntimeUpdateTimer = new DispatcherTimer(DispatcherPriority.Background, _ownerWindow.Dispatcher)
+        {
+            Interval = TimeSpan.FromMilliseconds(1)
+        };
+        _emulationRuntimeUpdateTimer.Tick += OnEmulationRuntimeUpdateTimerTick;
 
         if (string.IsNullOrWhiteSpace(startupProjectFilePath))
         {
@@ -2025,6 +2033,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         try
         {
             await backend.StartAsync(BuildEmulationLaunchRequest(), cancellationToken).ConfigureAwait(false);
+            StartEmulationRuntimeUpdatesIfNeeded(backend);
             AddOutputEntry($"Started {backend.GetType().Name} for platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Info);
         }
         catch
@@ -2295,6 +2304,44 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         });
     }
 
+
+    private void StartEmulationRuntimeUpdatesIfNeeded(IEmulationBackend backend)
+    {
+        if (backend is IEditorUpdateDrivenEmulationBackend)
+            _emulationRuntimeUpdateTimer.Start();
+        else
+            _emulationRuntimeUpdateTimer.Stop();
+    }
+
+    private void StopEmulationRuntimeUpdates()
+    {
+        _emulationRuntimeUpdateTimer.Stop();
+    }
+
+    private async void OnEmulationRuntimeUpdateTimerTick(object? sender, EventArgs e)
+    {
+        if (_activeEmulationBackend is not IEditorUpdateDrivenEmulationBackend updateDrivenBackend)
+            return;
+        if (Interlocked.Exchange(ref _emulationRuntimeUpdateInProgress, 1) != 0)
+            return;
+        try
+        {
+            await updateDrivenBackend.UpdateAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (ObjectDisposedException)
+        {
+            StopEmulationRuntimeUpdates();
+        }
+        catch (Exception ex)
+        {
+            AddOutputEntry($"Emulation runtime update failed: {ex.Message}", OutputLogStatus.Error);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _emulationRuntimeUpdateInProgress, 0);
+        }
+    }
+
     private bool CanStopEmulation() => _activeEmulationBackend is not null;
 
     public void StopEmulationForWindowClose()
@@ -2331,6 +2378,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var backend = _activeEmulationBackend;
         if (backend is null) return;
+        StopEmulationRuntimeUpdates();
         backend.StateChanged -= OnActiveBackendStateChanged;
         backend.LampChanged -= OnActiveBackendLampChanged;
         backend.ReelChanged -= OnActiveBackendReelChanged;

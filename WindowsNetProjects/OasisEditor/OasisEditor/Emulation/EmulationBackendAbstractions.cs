@@ -29,6 +29,11 @@ public interface IEmulationBackend : IAsyncDisposable
     Task ReleaseCoinAsync(InputDefinitionModel inputDefinition, CancellationToken cancellationToken);
 }
 
+public interface IEditorUpdateDrivenEmulationBackend
+{
+    Task UpdateAsync(CancellationToken cancellationToken);
+}
+
 public enum CoinInputResult { Accepted, Rejected }
 
 public enum EmulationBackendKind

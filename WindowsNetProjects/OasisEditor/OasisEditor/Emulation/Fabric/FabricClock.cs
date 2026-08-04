@@ -38,13 +38,26 @@ internal sealed class FabricElapsedTime
             throw new InvalidOperationException("The Fabric monotonic clock moved backwards.");
         _baseline = timestamp;
 
-        // Divide before multiplying. This cannot overflow and carries the fractional numerator.
-        var seconds = delta / _frequency;
-        var ticks = delta % _frequency;
+        var nanoseconds = TicksToNanoseconds(delta, _frequency, _remainder, out var remainder);
+        _remainder = remainder;
+        return nanoseconds;
+    }
+
+    internal static ulong TicksToNanoseconds(long ticks, long frequency) =>
+        TicksToNanoseconds(ticks, frequency, 0, out _);
+
+    private static ulong TicksToNanoseconds(long ticks, long frequency, long remainder, out long nextRemainder)
+    {
+        if (ticks < 0)
+            throw new ArgumentOutOfRangeException(nameof(ticks));
+        if (frequency <= 0)
+            throw new ArgumentOutOfRangeException(nameof(frequency));
+        var seconds = ticks / frequency;
+        var fractionalTicks = ticks % frequency;
         var wholeNanoseconds = checked((ulong)seconds * 1_000_000_000UL);
-        var numerator = checked((ulong)ticks * 1_000_000_000UL + (ulong)_remainder);
-        var fractionalNanoseconds = numerator / (ulong)_frequency;
-        _remainder = checked((long)(numerator % (ulong)_frequency));
+        var numerator = checked((ulong)fractionalTicks * 1_000_000_000UL + (ulong)remainder);
+        var fractionalNanoseconds = numerator / (ulong)frequency;
+        nextRemainder = checked((long)(numerator % (ulong)frequency));
         return checked(wholeNanoseconds + fractionalNanoseconds);
     }
 }

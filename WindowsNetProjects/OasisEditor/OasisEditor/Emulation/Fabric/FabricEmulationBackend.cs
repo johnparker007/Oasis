@@ -4,13 +4,13 @@ using System.Runtime.InteropServices;
 
 namespace OasisEditor;
 
-public sealed class FabricEmulationBackend : IEmulationBackend
+public sealed class FabricEmulationBackend : IEmulationBackend, IEditorUpdateDrivenEmulationBackend
 {
     private const string AmberBackendKind = "amber";
     private const string JpmSystem6MachineIdentifier = "jpm-system6";
-    private const int EmulationPumpHz = 1000;
-    private const ulong NanosecondsPerPump = 1_000_000;
-    private static readonly TimeSpan PumpInterval = TimeSpan.FromMilliseconds(1);
+    private const double System6FallbackNativeRefreshHz = 50.0;
+    private const int AudioDrainMaxReadsPerUpdate = 8;
+    private const int AudioDrainMaxDisplayFramesPerUpdate = 2;
     private static readonly EmulationBackendCapabilities BackendCapabilities =
         new(true, true, true, true, false, false, false);
 
@@ -31,15 +31,19 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
     private IFabricRuntimeLibrary? _runtime;
     private IFabricMachineSession? _session;
-    private CancellationTokenSource? _pumpCancellation;
-    private Task? _pumpTask;
+    private long? _elapsedUpdateBaselineTimestamp;
+    private long _nativeDisplayFrameNanoseconds;
     private FabricAudioFormat? _audioFormat;
     private short[] _audioBuffer = [];
     private EmulationBackendState _state = EmulationBackendState.Stopped;
     private bool _shutdown;
     private bool _audioStarted;
     private bool _disposed;
-    private long _scheduleGeneration;
+    private long _elapsedAdvanceCount;
+    private long _elapsedClampedUpdateCount;
+    private long _maxRawElapsedNanoseconds;
+    private long _audioFramesReturned;
+    private long _audioReadCount;
 
     public FabricEmulationBackend(string runtimePath, string amberPath)
         : this(runtimePath, amberPath, path => new FabricRuntimeLibrary(path),
@@ -101,8 +105,11 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             try
             {
                 _session.Initialise();
+                // Fabric currently does not expose Amber/System 6 native display metadata through the managed ABI.
+                // System 6 is a 50 Hz native video platform, so keep this fallback isolated for the
+                // editor elapsed-time scheduling experiment until machine metadata can replace it.
+                _nativeDisplayFrameNanoseconds = ResolveNativeDisplayFrameNanoseconds(System6FallbackNativeRefreshHz);
                 ConfigureAudio(_session);
-                Interlocked.Increment(ref _scheduleGeneration);
             }
             finally
             {
@@ -111,8 +118,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
             _shutdown = false;
             LastFailure = null;
-            _pumpCancellation = new CancellationTokenSource();
-            _pumpTask = Task.Run(() => PumpAsync(_pumpCancellation.Token), CancellationToken.None);
+            ResetElapsedUpdateBaseline();
+            ResetElapsedUpdateDiagnostics();
             SetState(EmulationBackendState.Running);
         }
         catch
@@ -130,23 +137,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         if (State != EmulationBackendState.Failed)
             SetState(EmulationBackendState.Stopping);
 
-        if (_pumpCancellation is not null)
-            await _pumpCancellation.CancelAsync().ConfigureAwait(false);
-        if (_pumpTask is not null && Task.CurrentId != _pumpTask.Id)
-        {
-            try
-            {
-                await _pumpTask.WaitAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                // The caller may stop waiting, but native cleanup below is never abandoned.
-            }
-            catch
-            {
-                // LastFailure retains the pump exception; cleanup must continue.
-            }
-        }
+        ResetElapsedUpdateBaseline();
+        WriteElapsedUpdateStopSummary();
         await CleanupResourcesAsync().ConfigureAwait(false);
         SetState(EmulationBackendState.Stopped);
     }
@@ -166,7 +158,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         ThrowIfDisposed();
         if (State == EmulationBackendState.Paused)
         {
-            Interlocked.Increment(ref _scheduleGeneration);
+            ResetElapsedUpdateBaseline();
             SetState(EmulationBackendState.Running);
         }
         return Task.CompletedTask;
@@ -184,7 +176,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             RequireSession().Reset();
             ClearOutputCaches();
             _audioSink.Clear();
-            Interlocked.Increment(ref _scheduleGeneration);
+            ResetElapsedUpdateBaseline();
         }
         finally
         {
@@ -294,80 +286,107 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         }
     }
 
-    private async Task PumpAsync(CancellationToken cancellationToken)
+    public async Task UpdateAsync(CancellationToken cancellationToken)
     {
+        Exception? failure = null;
+        cancellationToken.ThrowIfCancellationRequested();
+        ThrowIfDisposed();
+        if (State != EmulationBackendState.Running)
+        {
+            ResetElapsedUpdateBaseline();
+            return;
+        }
+
+        await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var pumpTicks = Math.Max(1L, _clock.Frequency / EmulationPumpHz);
-            var nextDeadline = _clock.GetTimestamp();
-            var scheduleGeneration = Interlocked.Read(ref _scheduleGeneration);
-            while (!cancellationToken.IsCancellationRequested)
+            if (State != EmulationBackendState.Running || _session is null)
             {
-                if (State != EmulationBackendState.Running)
-                {
-                    await Task.Delay(PumpInterval, cancellationToken).ConfigureAwait(false);
-                    nextDeadline = _clock.GetTimestamp();
-                    scheduleGeneration = Interlocked.Read(ref _scheduleGeneration);
-                    continue;
-                }
-
-                var currentGeneration = Interlocked.Read(ref _scheduleGeneration);
-                if (currentGeneration != scheduleGeneration)
-                {
-                    nextDeadline = _clock.GetTimestamp();
-                    scheduleGeneration = currentGeneration;
-                }
-
-                await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-                try
-                {
-                    var session = RequireSession();
-                    session.Advance(NanosecondsPerPump);
-                    ProcessInputs(session);
-                    PublishSnapshot(session.GetSnapshot());
-                    ReadAudio(session);
-                }
-                finally
-                {
-                    _sessionGate.Release();
-                }
-
-                nextDeadline += pumpTicks;
-                var now = _clock.GetTimestamp();
-                // Execute the current slice, then abandon catch-up once over three ticks late.
-                if (now - nextDeadline > pumpTicks * 3)
-                    nextDeadline = now + pumpTicks;
-
-                var remainingTicks = nextDeadline - _clock.GetTimestamp();
-                if (remainingTicks > 0)
-                {
-                    var remaining = TimeSpan.FromSeconds((double)remainingTicks / _clock.Frequency);
-                    await Task.Delay(remaining, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    await Task.Yield();
-                }
+                ResetElapsedUpdateBaseline();
+                return;
             }
+
+            var now = _clock.GetTimestamp();
+            if (_elapsedUpdateBaselineTimestamp is not long previous)
+            {
+                _elapsedUpdateBaselineTimestamp = now;
+                return;
+            }
+
+            _elapsedUpdateBaselineTimestamp = now;
+            var elapsedTicks = now - previous;
+            if (elapsedTicks <= 0)
+                return;
+
+            var rawNanoseconds = FabricElapsedTime.TicksToNanoseconds(elapsedTicks, _clock.Frequency);
+            var advanceNanoseconds = Math.Min(rawNanoseconds, checked((ulong)_nativeDisplayFrameNanoseconds));
+            RecordElapsedAdvanceDiagnostics(rawNanoseconds, advanceNanoseconds);
+            if (advanceNanoseconds == 0)
+                return;
+
+            var session = RequireSession();
+            session.Advance(advanceNanoseconds);
+            ProcessInputs(session);
+            PublishSnapshot(session.GetSnapshot());
+            ReadAvailableAudio(session);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            failure = exception;
         }
-        catch (Exception exception)
+        finally
         {
-            LastFailure = exception;
-            LogException("Fabric emulation pump failed.", exception);
-            _pumpCancellation?.Cancel();
-            try
-            {
-                await CleanupResourcesAsync().ConfigureAwait(false);
-            }
-            catch (Exception cleanupException)
-            {
-                LogException("Fabric cleanup after pump failure also failed.", cleanupException);
-            }
-            SetState(EmulationBackendState.Failed);
+            _sessionGate.Release();
         }
+
+        if (failure is null)
+            return;
+
+        LastFailure = failure;
+        LogException("Fabric editor elapsed-time update failed.", failure);
+        try
+        {
+            await CleanupResourcesAsync().ConfigureAwait(false);
+        }
+        catch (Exception cleanupException)
+        {
+            LogException("Fabric cleanup after update failure also failed.", cleanupException);
+        }
+        SetState(EmulationBackendState.Failed);
+    }
+
+    private void ResetElapsedUpdateBaseline() => _elapsedUpdateBaselineTimestamp = null;
+
+    private void RecordElapsedAdvanceDiagnostics(ulong rawNanoseconds, ulong advanceNanoseconds)
+    {
+        Interlocked.Increment(ref _elapsedAdvanceCount);
+        if (advanceNanoseconds < rawNanoseconds)
+            Interlocked.Increment(ref _elapsedClampedUpdateCount);
+        var boundedRaw = rawNanoseconds > long.MaxValue ? long.MaxValue : (long)rawNanoseconds;
+        long observed;
+        do
+        {
+            observed = Interlocked.Read(ref _maxRawElapsedNanoseconds);
+            if (boundedRaw <= observed)
+                return;
+        } while (Interlocked.CompareExchange(ref _maxRawElapsedNanoseconds, boundedRaw, observed) != observed);
+    }
+
+    private void ResetElapsedUpdateDiagnostics()
+    {
+        Interlocked.Exchange(ref _elapsedAdvanceCount, 0);
+        Interlocked.Exchange(ref _elapsedClampedUpdateCount, 0);
+        Interlocked.Exchange(ref _maxRawElapsedNanoseconds, 0);
+        Interlocked.Exchange(ref _audioFramesReturned, 0);
+        Interlocked.Exchange(ref _audioReadCount, 0);
+    }
+
+    private void WriteElapsedUpdateStopSummary()
+    {
+        var advances = Interlocked.Read(ref _elapsedAdvanceCount);
+        if (advances == 0)
+            return;
+        Debug.WriteLine($"Fabric elapsed update summary: advances={advances}, clampedUpdates={Interlocked.Read(ref _elapsedClampedUpdateCount)}, maxRawElapsedMs={_maxRawElapsedNanoseconds / 1_000_000.0:F3}, audioReads={Interlocked.Read(ref _audioReadCount)}, audioFrames={Interlocked.Read(ref _audioFramesReturned)}.");
     }
 
     private void ConfigureAudio(IFabricMachineSession session)
@@ -379,7 +398,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             { BitsPerSample: 16, Interleaved: true, SignedSamples: true, LittleEndian: true })
             throw new NotSupportedException($"Unsupported Fabric audio format: {format}.");
         _audioFormat = format;
-        var frameCapacity = CalculateAudioFramesPerTick(checked((int)format.SampleRate));
+        var frameCapacity = CalculateAudioFramesPerNativeDisplayFrame(checked((int)format.SampleRate), System6FallbackNativeRefreshHz);
         _audioBuffer = new short[checked(frameCapacity * (int)format.ChannelCount)];
         _audioSink.Start(new(
             checked((int)format.SampleRate),
@@ -388,12 +407,24 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _audioStarted = true;
     }
 
-    internal static int CalculateAudioFramesPerTick(int sampleRate)
+    internal static int CalculateAudioFramesPerNativeDisplayFrame(int sampleRate, double refreshHz)
     {
         if (sampleRate <= 0)
             throw new ArgumentOutOfRangeException(nameof(sampleRate));
-        return checked((sampleRate + EmulationPumpHz - 1) / EmulationPumpHz);
+        if (!IsValidRefreshRate(refreshHz))
+            throw new ArgumentOutOfRangeException(nameof(refreshHz), "Native display refresh rate must be finite and greater than zero.");
+        return checked((int)Math.Ceiling(sampleRate / refreshHz));
     }
+
+    internal static long ResolveNativeDisplayFrameNanoseconds(double refreshHz)
+    {
+        if (!IsValidRefreshRate(refreshHz))
+            throw new ArgumentOutOfRangeException(nameof(refreshHz), "Native display refresh rate must be finite and greater than zero.");
+        return checked((long)Math.Ceiling(1_000_000_000.0 / refreshHz));
+    }
+
+    private static bool IsValidRefreshRate(double refreshHz) =>
+        !double.IsNaN(refreshHz) && !double.IsInfinity(refreshHz) && refreshHz > 0;
 
     private void ProcessInputs(IFabricMachineSession session)
     {
@@ -407,16 +438,28 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         }
     }
 
-    private void ReadAudio(IFabricMachineSession session)
+    private void ReadAvailableAudio(IFabricMachineSession session)
     {
         if (_audioFormat is not { } format)
             return;
         var frameCapacity = _audioBuffer.Length / format.ChannelCount;
-        var framesWritten = session.ReadAudio(_audioBuffer, frameCapacity);
-        var sampleCount = checked(framesWritten * format.ChannelCount);
-        var bytes = MemoryMarshal.AsBytes(_audioBuffer.AsSpan(0, sampleCount));
-        if (!bytes.IsEmpty)
-            _audioSink.PushPcm(bytes);
+        var totalFrameLimit = checked(frameCapacity * AudioDrainMaxDisplayFramesPerUpdate);
+        var totalFrames = 0;
+        for (var read = 0; read < AudioDrainMaxReadsPerUpdate && totalFrames < totalFrameLimit; read++)
+        {
+            var framesWritten = session.ReadAudio(_audioBuffer, frameCapacity);
+            if (framesWritten <= 0)
+                break;
+            var sampleCount = checked(framesWritten * format.ChannelCount);
+            var bytes = MemoryMarshal.AsBytes(_audioBuffer.AsSpan(0, sampleCount));
+            if (!bytes.IsEmpty)
+                _audioSink.PushPcm(bytes);
+            Interlocked.Increment(ref _audioReadCount);
+            Interlocked.Add(ref _audioFramesReturned, framesWritten);
+            totalFrames = checked(totalFrames + framesWritten);
+            if (framesWritten < frameCapacity)
+                break;
+        }
     }
 
     internal void PublishSnapshot(FabricMachineSnapshot snapshot)
@@ -519,9 +562,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 TryCleanup(_runtime.Dispose, ref failures);
             _runtime = null;
             _audioFormat = null;
-            _pumpCancellation?.Dispose();
-            _pumpCancellation = null;
-            _pumpTask = null;
+            ResetElapsedUpdateBaseline();
             ClearPendingInputs();
         }
         finally
