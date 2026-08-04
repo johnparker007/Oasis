@@ -443,7 +443,9 @@ public sealed class FabricManagedBehaviorTests
 
         Assert.Equal([8_000_000UL], session.Advances);
         Assert.Equal(960, session.LastFrameCapacity);
-        Assert.Equal(960 * 2 * sizeof(short), audio.LastPcmBytes);
+        Assert.Equal(960 * 2 * sizeof(short), audio.TotalPcmBytes);
+        Assert.Equal(20, audio.PushCount);
+        Assert.Equal(48 * 2 * sizeof(short), audio.MaxPcmBytes);
     }
 
     [Fact]
@@ -470,6 +472,14 @@ public sealed class FabricManagedBehaviorTests
     public void AudioCapacity_UsesCeilingForNativeDisplayFrame(int sampleRate, int expectedFrames)
     {
         Assert.Equal(expectedFrames, FabricEmulationBackend.CalculateAudioFramesPerNativeDisplayFrame(sampleRate, 50.0));
+    }
+
+    [Theory]
+    [InlineData(44100, 45)]
+    [InlineData(48000, 48)]
+    public void AudioPushChunkCapacity_UsesOneMillisecondCeiling(int sampleRate, int expectedFrames)
+    {
+        Assert.Equal(expectedFrames, FabricEmulationBackend.CalculateAudioFramesPerPushChunk(sampleRate));
     }
 
 
@@ -560,6 +570,7 @@ public sealed class FabricManagedBehaviorTests
         public int ResetCount { get; private set; }
         public int ShutdownCount { get; private set; }
         public int DisposeCount { get; private set; }
+        private int? _remainingFramesToWrite;
         public int FramesToWrite { get; init; }
         public List<ulong> Advances { get; } = [];
         public FabricCapabilities Capabilities => new((ulong)(FabricCapability.DigitalInput | FabricCapability.Audio));
@@ -580,7 +591,9 @@ public sealed class FabricManagedBehaviorTests
                 LastSampleCapacity = sampleCapacity;
                 FirstAudioRead.TrySetResult();
                 if (AudioFailure is not null) throw AudioFailure;
-                var frames = Math.Min(FramesToWrite, frameCapacity);
+                _remainingFramesToWrite ??= FramesToWrite;
+                var frames = Math.Min(_remainingFramesToWrite.Value, frameCapacity);
+                _remainingFramesToWrite -= frames;
                 return frames;
             });
         }
@@ -607,8 +620,17 @@ public sealed class FabricManagedBehaviorTests
         public int StopCount { get; private set; }
         public EmulationAudioFormat? StartedFormat { get; private set; }
         public int LastPcmBytes { get; private set; }
+        public int TotalPcmBytes { get; private set; }
+        public int MaxPcmBytes { get; private set; }
+        public int PushCount { get; private set; }
         public void Start(EmulationAudioFormat format) { StartedFormat = format; StartCount++; }
-        public void PushPcm(ReadOnlySpan<byte> pcmBytes) => LastPcmBytes = pcmBytes.Length;
+        public void PushPcm(ReadOnlySpan<byte> pcmBytes)
+        {
+            LastPcmBytes = pcmBytes.Length;
+            TotalPcmBytes += pcmBytes.Length;
+            MaxPcmBytes = Math.Max(MaxPcmBytes, pcmBytes.Length);
+            PushCount++;
+        }
         public void Stop() => StopCount++;
         public void Clear() { }
         public void Dispose() { }

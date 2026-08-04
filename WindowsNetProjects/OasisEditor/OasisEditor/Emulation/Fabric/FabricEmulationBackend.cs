@@ -11,6 +11,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend, IEditorUpdateDri
     private const double System6FallbackNativeRefreshHz = 50.0;
     private const int AudioDrainMaxReadsPerUpdate = 8;
     private const int AudioDrainMaxDisplayFramesPerUpdate = 2;
+    private const int AudioPushChunkMilliseconds = 1;
     private static readonly EmulationBackendCapabilities BackendCapabilities =
         new(true, true, true, true, false, false, false);
 
@@ -423,6 +424,13 @@ public sealed class FabricEmulationBackend : IEmulationBackend, IEditorUpdateDri
         return checked((long)Math.Ceiling(1_000_000_000.0 / refreshHz));
     }
 
+    internal static int CalculateAudioFramesPerPushChunk(int sampleRate)
+    {
+        if (sampleRate <= 0)
+            throw new ArgumentOutOfRangeException(nameof(sampleRate));
+        return checked((sampleRate * AudioPushChunkMilliseconds + 999) / 1000);
+    }
+
     private static bool IsValidRefreshRate(double refreshHz) =>
         !double.IsNaN(refreshHz) && !double.IsInfinity(refreshHz) && refreshHz > 0;
 
@@ -450,15 +458,31 @@ public sealed class FabricEmulationBackend : IEmulationBackend, IEditorUpdateDri
             var framesWritten = session.ReadAudio(_audioBuffer, frameCapacity);
             if (framesWritten <= 0)
                 break;
-            var sampleCount = checked(framesWritten * format.ChannelCount);
-            var bytes = MemoryMarshal.AsBytes(_audioBuffer.AsSpan(0, sampleCount));
-            if (!bytes.IsEmpty)
-                _audioSink.PushPcm(bytes);
+            if (framesWritten > frameCapacity)
+                throw new InvalidOperationException($"Fabric returned {framesWritten} audio frames for a {frameCapacity}-frame read buffer.");
+            PushAudioFramesInSmallChunks(format, framesWritten);
             Interlocked.Increment(ref _audioReadCount);
             Interlocked.Add(ref _audioFramesReturned, framesWritten);
             totalFrames = checked(totalFrames + framesWritten);
             if (framesWritten < frameCapacity)
                 break;
+        }
+    }
+
+    private void PushAudioFramesInSmallChunks(FabricAudioFormat format, int framesWritten)
+    {
+        var channelCount = format.ChannelCount;
+        var frameOffset = 0;
+        var framesPerChunk = CalculateAudioFramesPerPushChunk(checked((int)format.SampleRate));
+        while (frameOffset < framesWritten)
+        {
+            var chunkFrames = Math.Min(framesPerChunk, framesWritten - frameOffset);
+            var sampleOffset = checked(frameOffset * channelCount);
+            var sampleCount = checked(chunkFrames * channelCount);
+            var bytes = MemoryMarshal.AsBytes(_audioBuffer.AsSpan(sampleOffset, sampleCount));
+            if (!bytes.IsEmpty)
+                _audioSink.PushPcm(bytes);
+            frameOffset = checked(frameOffset + chunkFrames);
         }
     }
 
