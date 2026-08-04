@@ -4,45 +4,54 @@ namespace OasisEditor.Tests;
 
 public sealed class NAudioEmulationAudioSinkTests
 {
-    [Theory]
-    [InlineData(50, 10)]
-    [InlineData(100, 10)]
-    [InlineData(10, 5)]
-    [InlineData(1, 1)]
-    public void PrebufferThreshold_IsBoundedByTenMillisecondsAndHalfTheBuffer(int buffer, int expected)
+    [Fact]
+    public void ReservePolicy_ForFiftyMillisecondsTargetsUsefulStartupDepth()
     {
-        Assert.Equal(expected, AudioPrebufferPolicy.CalculateThresholdMilliseconds(buffer));
+        var policy = EmulationAudioReservePolicy.Create(new(48000, 2, 16), 50);
+        Assert.Equal(2400, policy.CapacityFrames);
+        Assert.Equal(1800, policy.TargetFrames);
+        Assert.Equal(900, policy.LowWaterFrames);
+        Assert.Equal(2160, policy.HighWaterFrames);
+        Assert.Equal(240, policy.FeedBlockFrames);
     }
 
     [Fact]
-    public void Prebuffer_StartsAtThresholdAndResetRequiresPrebufferAgain()
+    public void ReservePolicy_TargetNeverExceedsSafeCapacity()
     {
-        var policy = new AudioPrebufferPolicy(new(48000, 2, 16), 50);
-
-        Assert.Equal(1920, policy.ThresholdBytes);
-        Assert.False(policy.ObserveQueuedBytes(1919));
-        Assert.True(policy.ObserveQueuedBytes(1920));
-        policy.Reset();
-        Assert.False(policy.PlaybackStarted);
-        Assert.False(policy.ObserveQueuedBytes(192));
+        var policy = EmulationAudioReservePolicy.Create(new(48000, 2, 16), 25, 100);
+        Assert.True(policy.TargetFrames < policy.CapacityFrames);
+        Assert.True(policy.LowWaterFrames < policy.TargetFrames);
+        Assert.True(policy.HighWaterFrames >= policy.TargetFrames);
     }
 
-    [Theory]
-    [InlineData(48000, 2, 192)]
-    [InlineData(48000, 1, 96)]
-    [InlineData(44100, 2, 176)]
-    public void BufferDepthByteRate_AccountsForChannelsExactlyOnce(int rate, int channels, int expected)
+    [Fact]
+    public void Fifo_PreservesStereoOrderingAcrossWrapAndPartialReads()
     {
-        Assert.Equal(expected, new EmulationAudioFormat(rate, channels, 16).BytesPerMillisecond());
+        var fifo = new EmulationPcmFrameFifo(4, 2);
+        short[] first = [1, 10, 2, 20, 3, 30];
+        Assert.Equal(3, fifo.Write(first).AcceptedFrames);
+        short[] read = new short[4];
+        Assert.Equal(2, fifo.Read(read, 2));
+        Assert.Equal([1, 10, 2, 20], read);
+        short[] second = [4, 40, 5, 50, 6, 60];
+        var write = fifo.Write(second);
+        Assert.Equal(3, write.OfferedFrames);
+        Assert.Equal(3, write.AcceptedFrames);
+        short[] rest = new short[8];
+        Assert.Equal(4, fifo.Read(rest, 4));
+        Assert.Equal([3, 30, 4, 40, 5, 50, 6, 60], rest);
     }
-    [Theory]
-    [InlineData(800, 1000, 192, false)]
-    [InlineData(900, 1000, 192, true)]
-    [InlineData(1000, 1000, 1, true)]
-    public void IncomingBlockIsDroppedRatherThanRequiringBufferedAudioToBeCleared(
-        int bufferedBytes, int capacityBytes, int incomingBytes, bool expectedDrop)
+
+    [Fact]
+    public void Fifo_RejectsOverflowInCompleteFramesAndClearRemovesStaleAudio()
     {
-        Assert.Equal(expectedDrop,
-            NAudioEmulationAudioSink.ShouldDropIncomingBlock(bufferedBytes, capacityBytes, incomingBytes));
+        var fifo = new EmulationPcmFrameFifo(2, 2);
+        var result = fifo.Write([1, 10, 2, 20, 3, 30]);
+        Assert.Equal(3, result.OfferedFrames);
+        Assert.Equal(2, result.AcceptedFrames);
+        Assert.Equal(1, result.RejectedFrames);
+        fifo.Clear();
+        short[] read = new short[4];
+        Assert.Equal(0, fifo.Read(read, 2));
     }
 }

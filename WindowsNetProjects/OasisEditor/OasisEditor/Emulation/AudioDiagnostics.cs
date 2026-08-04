@@ -6,9 +6,9 @@ using System.Text;
 
 namespace OasisEditor;
 
-internal readonly record struct AudioDiagnosticSessionInfo(string BackendKind, string MachineIdentifier, string RuntimePath, string ProviderPath, EmulationAudioFormat Format, int NAudioBufferMilliseconds)
+internal readonly record struct AudioDiagnosticSessionInfo(string BackendKind, string MachineIdentifier, string RuntimePath, string ProviderPath, EmulationAudioFormat Format, int NAudioBufferMilliseconds, EmulationAudioOutputBackend OutputBackend)
 {
-    internal static AudioDiagnosticSessionInfo Unknown { get; } = new(string.Empty, string.Empty, string.Empty, string.Empty, default, 0);
+    internal static AudioDiagnosticSessionInfo Unknown { get; } = new(string.Empty, string.Empty, string.Empty, string.Empty, default, 0, EmulationAudioOutputBackend.WasapiOut);
 }
 
 internal readonly record struct AudioSinkTimelineEntry(int IncomingFrames, int BufferedBytesBefore, int BufferedBytesAfter, int BufferCapacityBytes, bool PlaybackStarted, bool DroppedBlock, long AccumulatedDroppedBytes, long AdvanceLatenessTicks, bool ZeroFrameRead);
@@ -54,7 +54,7 @@ internal sealed class EmulationAudioDiagnostics : IDisposable
         File.WriteAllText(probe, "probe");
         File.Delete(probe);
         File.WriteAllText(_dropPath, "sequence,startFrame,frames,bytes,reason\n");
-        File.WriteAllText(_timelinePath, "elapsedMilliseconds,incomingFrames,bufferedBytesBefore,bufferedBytesAfter,bufferCapacityBytes,playbackStarted,droppedBlock,accumulatedDroppedBytes,advanceLatenessTicks,zeroFrameRead\n");
+        File.WriteAllText(_timelinePath, "elapsedMilliseconds,incomingFrames,bufferedBytesBefore,bufferedBytesAfter,bufferCapacityBytes,playbackStarted,droppedBlock,accumulatedDroppedBytes,advanceLatenessTicks,zeroFrameRead,appFifoFrames,appFifoMilliseconds,nAudioFrames,nAudioMilliseconds,combinedReserveFrames,combinedReserveMilliseconds,lowWaterEvents,zeroDepthEvents,feederWakeups,feederUnderruns,playbackStartReserveFrames,minimumReserveMilliseconds,catchUpSlicesExecuted,maxCatchUpBatch,currentDebtMilliseconds,maxDebtMilliseconds,discardedDebtMilliseconds\n");
         _writer = Task.Run(WriteLoopAsync);
         WriteSummaryFile(false);
     }
@@ -117,7 +117,7 @@ internal sealed class EmulationAudioDiagnostics : IDisposable
             File.AppendAllText(_dropPath, $"{context.Sequence},{context.StartFrame},{context.Frames},{droppedBytes},{reason.Replace(",", ";")}\n");
     }
 
-    internal void RecordTimeline(AudioSinkTimelineEntry entry)
+    internal void RecordTimeline(AudioSinkTimelineEntry entry, int appFifoFrames = 0, int appFifoMilliseconds = 0, int nAudioFrames = 0, int nAudioMilliseconds = 0, int combinedReserveFrames = 0, int combinedReserveMilliseconds = 0, long lowWaterEvents = 0, long zeroDepthEvents = 0, long feederWakeups = 0, long feederUnderruns = 0, long playbackStartReserveFrames = 0, int minimumReserveMilliseconds = 0, long catchUpSlicesExecuted = 0, long maxCatchUpBatch = 0, int currentDebtMilliseconds = 0, int maxDebtMilliseconds = 0, int discardedDebtMilliseconds = 0)
     {
         if (_stopwatch.Elapsed.TotalSeconds > _captureDurationSeconds) return;
         var nowTicks = _stopwatch.ElapsedTicks;
@@ -127,7 +127,7 @@ internal sealed class EmulationAudioDiagnostics : IDisposable
         Interlocked.Exchange(ref _lastTimelineTicks, nowTicks);
         lock (_timelineGate)
         {
-            File.AppendAllText(_timelinePath, string.Format(CultureInfo.InvariantCulture, "{0:F3},{1},{2},{3},{4},{5},{6},{7},{8},{9}\n", _stopwatch.Elapsed.TotalMilliseconds, entry.IncomingFrames, entry.BufferedBytesBefore, entry.BufferedBytesAfter, entry.BufferCapacityBytes, entry.PlaybackStarted, entry.DroppedBlock, entry.AccumulatedDroppedBytes, entry.AdvanceLatenessTicks, entry.ZeroFrameRead));
+            File.AppendAllText(_timelinePath, string.Format(CultureInfo.InvariantCulture, "{0:F3},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22},{23},{24},{25},{26}\n", _stopwatch.Elapsed.TotalMilliseconds, entry.IncomingFrames, entry.BufferedBytesBefore, entry.BufferedBytesAfter, entry.BufferCapacityBytes, entry.PlaybackStarted, entry.DroppedBlock, entry.AccumulatedDroppedBytes, entry.AdvanceLatenessTicks, entry.ZeroFrameRead, appFifoFrames, appFifoMilliseconds, nAudioFrames, nAudioMilliseconds, combinedReserveFrames, combinedReserveMilliseconds, lowWaterEvents, zeroDepthEvents, feederWakeups, feederUnderruns, playbackStartReserveFrames, minimumReserveMilliseconds, catchUpSlicesExecuted, maxCatchUpBatch, currentDebtMilliseconds, maxDebtMilliseconds, discardedDebtMilliseconds));
         }
     }
 
@@ -198,6 +198,7 @@ internal sealed class EmulationAudioDiagnostics : IDisposable
             $"providerDllPath={_sessionInfo.ProviderPath}",
             $"audioFormat={_sessionInfo.Format.SampleRate} Hz, {_sessionInfo.Format.Channels} channels, {_sessionInfo.Format.BitsPerSample} bits",
             $"nAudioBufferMilliseconds={_sessionInfo.NAudioBufferMilliseconds}",
+            $"outputBackend={_sessionInfo.OutputBackend}",
             "capturedBoundaries=FabricManagedRead,FabricBackendSubmit,NAudioAccepted",
             FabricManagedRead.CreateSummary(),
             FabricBackendSubmit.CreateSummary(),

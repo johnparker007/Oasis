@@ -34,6 +34,9 @@ public sealed class NativeEmulationPreferences
     public string AmberFabricAudioDiagnosticCaptureDirectory { get; init; } = string.Empty;
     public int AmberFabricAudioDiagnosticQueueBlockCapacity { get; init; } = DefaultAudioDiagnosticQueueBlockCapacity;
     public int AmberFabricAudioDiagnosticCaptureDurationSeconds { get; init; } = DefaultAudioDiagnosticCaptureDurationSeconds;
+    public EmulationAudioOutputBackend AudioOutputBackend { get; init; } = EmulationAudioOutputBackend.WasapiOut;
+    public int AudioPlaybackTargetPercent { get; init; } = 75;
+    public int FabricMaximumCatchUpDebtMilliseconds { get; init; } = 125;
 }
 
 public sealed class FaceGenerationPreferences

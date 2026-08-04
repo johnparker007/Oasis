@@ -62,13 +62,13 @@ public sealed class EmulationBackendFactoryTests
     {
         using var files = NativeFiles.Create();
         var received = 0;
-        var factory = CreateFactory(files.Runtime, files.Amber, () => 73, value => { received = value; return new NullSink(); });
+        var factory = CreateFactory(files.Runtime, files.Amber, () => 73, (value, _) => { received = value; return new NullSink(); });
         Assert.IsType<FabricEmulationBackend>(factory.CreateBackend(FruitMachinePlatformType.Impact));
         Assert.Equal(73, received);
     }
 
-    private static EmulationBackendFactory CreateFactory(string? runtime, string? amber, Func<int>? buffer = null, Func<int, IEmulationAudioSink>? sink = null) =>
-        new(() => runtime, () => amber, buffer, _ => throw new InvalidOperationException("Created only on start."), sink ?? (_ => new NullSink()), new StopwatchFabricClock(), null, null, null);
+    private static EmulationBackendFactory CreateFactory(string? runtime, string? amber, Func<int>? buffer = null, Func<int, EmulationAudioOutputBackend, IEmulationAudioSink>? sink = null) =>
+        new(() => runtime, () => amber, buffer, null, _ => throw new InvalidOperationException("Created only on start."), sink ?? ((_, _) => new NullSink()), new StopwatchFabricClock(), null, null, null);
 
     private sealed class NullSink : IEmulationAudioSink
     {

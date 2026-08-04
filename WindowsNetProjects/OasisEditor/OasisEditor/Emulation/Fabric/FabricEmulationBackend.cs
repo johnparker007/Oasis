@@ -10,6 +10,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private const string JpmSystem6MachineIdentifier = "jpm-system6";
     private const int EmulationPumpHz = 1000;
     private const ulong NanosecondsPerPump = 1_000_000;
+    private const int MaximumCatchUpSlicesPerLoop = 8;
+    private const int MaximumRetainedSchedulingDebtMilliseconds = 125;
     private static readonly TimeSpan PumpInterval = TimeSpan.FromMilliseconds(1);
     private static readonly EmulationBackendCapabilities BackendCapabilities =
         new(true, true, true, true, false, false, false);
@@ -20,6 +22,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private readonly IEmulationAudioSink _audioSink;
     private readonly IFabricClock _clock;
     private readonly int _audioBufferLengthMilliseconds;
+    private readonly EmulationAudioOutputBackend _audioOutputBackend;
     private readonly AmberFabricAudioDiagnosticSettings _audioDiagnosticSettings;
     private readonly Action<EmulationBackendDiagnosticMessage>? _diagnosticLogger;
     private readonly Action<string> _errorLogger;
@@ -46,11 +49,15 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private long _audioSequence;
     private long _audioFramesRead;
     private long _audioFramesSubmitted;
+    private long _catchUpSlicesExecuted;
+    private long _maximumCatchUpBatch;
+    private long _discardedSchedulingDebtTicks;
+    private long _maximumSchedulingDebtTicks;
     private EmulationAudioDiagnostics? _audioDiagnostics;
 
     public FabricEmulationBackend(string runtimePath, string amberPath)
         : this(runtimePath, amberPath, path => new FabricRuntimeLibrary(path),
-            new NAudioEmulationAudioSink(), new StopwatchFabricClock(), NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds, AmberFabricAudioDiagnosticSettings.Disabled, null, WriteDebugError)
+            new NAudioEmulationAudioSink(), new StopwatchFabricClock(), NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds, EmulationAudioOutputBackend.WasapiOut, AmberFabricAudioDiagnosticSettings.Disabled, null, WriteDebugError)
     {
     }
 
@@ -61,6 +68,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         IEmulationAudioSink audioSink,
         IFabricClock clock,
         int audioBufferLengthMilliseconds,
+        EmulationAudioOutputBackend audioOutputBackend,
         AmberFabricAudioDiagnosticSettings audioDiagnosticSettings,
         Action<EmulationBackendDiagnosticMessage>? diagnosticLogger = null,
         Action<string>? errorLogger = null)
@@ -71,6 +79,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _audioSink = audioSink;
         _clock = clock;
         _audioBufferLengthMilliseconds = audioBufferLengthMilliseconds;
+        _audioOutputBackend = audioOutputBackend;
         _audioDiagnosticSettings = audioDiagnosticSettings;
         _diagnosticLogger = diagnosticLogger;
         _errorLogger = errorLogger ?? WriteDebugError;
@@ -313,14 +322,17 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         try
         {
             var pumpTicks = Math.Max(1L, _clock.Frequency / EmulationPumpHz);
+            var maxDebtTicks = Math.Max(pumpTicks, (_clock.Frequency * MaximumRetainedSchedulingDebtMilliseconds) / 1000);
             var nextDeadline = _clock.GetTimestamp();
             var scheduleGeneration = Interlocked.Read(ref _scheduleGeneration);
+            long retainedDebtTicks = 0;
             while (!cancellationToken.IsCancellationRequested)
             {
                 if (State != EmulationBackendState.Running)
                 {
                     await Task.Delay(PumpInterval, cancellationToken).ConfigureAwait(false);
                     nextDeadline = _clock.GetTimestamp();
+                    retainedDebtTicks = 0;
                     scheduleGeneration = Interlocked.Read(ref _scheduleGeneration);
                     continue;
                 }
@@ -329,29 +341,52 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 if (currentGeneration != scheduleGeneration)
                 {
                     nextDeadline = _clock.GetTimestamp();
+                    retainedDebtTicks = 0;
                     scheduleGeneration = currentGeneration;
                 }
 
+                var now = _clock.GetTimestamp();
+                if (now > nextDeadline)
+                    retainedDebtTicks += now - nextDeadline;
+                if (retainedDebtTicks > maxDebtTicks)
+                {
+                    var discarded = retainedDebtTicks - maxDebtTicks;
+                    retainedDebtTicks = maxDebtTicks;
+                    Interlocked.Add(ref _discardedSchedulingDebtTicks, discarded);
+                    LogDiagnosticWarning($"Fabric audio catch-up discarded excessive scheduling debt: {TicksToMilliseconds(discarded):F1} ms.");
+                }
+                ObserveMaximum(ref _maximumSchedulingDebtTicks, retainedDebtTicks);
+
+                var requestedSlices = 1 + (int)Math.Min(MaximumCatchUpSlicesPerLoop - 1, retainedDebtTicks / pumpTicks);
+                var batch = 0;
+                FabricMachineSnapshot? latestSnapshot = null;
                 await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
                     var session = RequireSession();
-                    session.Advance(NanosecondsPerPump);
                     ProcessInputs(session);
-                    PublishSnapshot(session.GetSnapshot());
-                    ReadAudio(session);
+                    for (var slice = 0; slice < requestedSlices; slice++)
+                    {
+                        session.Advance(NanosecondsPerPump);
+                        ReadAudio(session);
+                        latestSnapshot = session.GetSnapshot();
+                        if (retainedDebtTicks >= pumpTicks)
+                            retainedDebtTicks -= pumpTicks;
+                        batch++;
+                    }
                 }
                 finally
                 {
                     _sessionGate.Release();
                 }
 
-                nextDeadline += pumpTicks;
-                var now = _clock.GetTimestamp();
-                // Execute the current slice, then abandon catch-up once over three ticks late.
-                if (now - nextDeadline > pumpTicks * 3)
-                    nextDeadline = now + pumpTicks;
+                if (latestSnapshot is not null)
+                    PublishSnapshot(latestSnapshot);
+                Interlocked.Add(ref _catchUpSlicesExecuted, Math.Max(0, batch - 1));
+                ObserveMaximum(ref _maximumCatchUpBatch, batch);
+                _audioDiagnostics?.RecordTimeline(default, catchUpSlicesExecuted: Interlocked.Read(ref _catchUpSlicesExecuted), maxCatchUpBatch: Interlocked.Read(ref _maximumCatchUpBatch), currentDebtMilliseconds: (int)Math.Round(TicksToMilliseconds(retainedDebtTicks)), maxDebtMilliseconds: (int)Math.Round(TicksToMilliseconds(Interlocked.Read(ref _maximumSchedulingDebtTicks))), discardedDebtMilliseconds: (int)Math.Round(TicksToMilliseconds(Interlocked.Read(ref _discardedSchedulingDebtTicks))));
 
+                nextDeadline = now + pumpTicks;
                 var remainingTicks = nextDeadline - _clock.GetTimestamp();
                 if (remainingTicks > 0)
                 {
@@ -384,6 +419,18 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         }
     }
 
+    private double TicksToMilliseconds(long ticks) => (double)ticks * 1000 / _clock.Frequency;
+
+    private static void ObserveMaximum(ref long target, long value)
+    {
+        long current;
+        do
+        {
+            current = Interlocked.Read(ref target);
+            if (value <= current) return;
+        } while (Interlocked.CompareExchange(ref target, value, current) != current);
+    }
+
     private EmulationAudioDiagnostics? TryStartAudioDiagnostics()
     {
         if (_audioFormat is not { } format)
@@ -406,13 +453,13 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             var diagnostics = EmulationAudioDiagnostics.Start(settings,
                 new(AmberBackendKind, JpmSystem6MachineIdentifier, _runtimePath, _amberPath,
                     new(checked((int)format.SampleRate), checked((int)format.ChannelCount), checked((int)format.BitsPerSample)),
-                    _audioBufferLengthMilliseconds));
+                    _audioBufferLengthMilliseconds, _audioOutputBackend));
             diagnostics.FabricManagedRead.SetFormat(checked((int)format.SampleRate), checked((int)format.ChannelCount));
             diagnostics.FabricBackendSubmit.SetFormat(checked((int)format.SampleRate), checked((int)format.ChannelCount));
             diagnostics.NAudioAccepted.SetFormat(checked((int)format.SampleRate), checked((int)format.ChannelCount));
             if (_audioSink is IEmulationAudioDiagnosticSink diagnosticSink)
                 diagnosticSink.ConfigureDiagnostics(diagnostics);
-            LogDiagnosticInfo($"Amber audio diagnostics enabled. Capture directory: {diagnostics.SessionDirectory}; sampleRate={format.SampleRate}; channels={format.ChannelCount}; queueBlocks={settings.QueueBlockCapacity}; boundaries=FabricManagedRead,FabricBackendSubmit,NAudioAccepted; maximumCaptureSeconds={settings.CaptureDurationSeconds}.");
+            LogDiagnosticInfo($"Amber audio diagnostics enabled. Capture directory: {diagnostics.SessionDirectory}; sampleRate={format.SampleRate}; channels={format.ChannelCount}; queueBlocks={settings.QueueBlockCapacity}; boundaries=FabricManagedRead,FabricBackendSubmit,NAudioAccepted; maximumCaptureSeconds={settings.CaptureDurationSeconds}; outputBackend={_audioOutputBackend}.");
             return diagnostics;
         }
         catch (Exception exception)

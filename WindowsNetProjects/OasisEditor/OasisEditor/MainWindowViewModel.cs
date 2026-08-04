@@ -35,6 +35,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _fabricRuntimeLibraryPath = string.Empty;
     private string _productionAmberLibraryPath = string.Empty;
     private int _system6AudioBufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds;
+    private EmulationAudioOutputBackend _selectedAudioOutputBackend = EmulationAudioOutputBackend.WasapiOut;
     private bool _enableAmberFabricAudioDiagnostics;
     private string _amberFabricAudioDiagnosticCaptureDirectory = string.Empty;
     private int _amberFabricAudioDiagnosticQueueBlockCapacity = NativeEmulationPreferences.DefaultAudioDiagnosticQueueBlockCapacity;
@@ -219,6 +220,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _fabricRuntimeLibraryPath = preferences.NativeEmulation.FabricRuntimeLibraryPath;
             _productionAmberLibraryPath = preferences.NativeEmulation.ProductionAmberLibraryPath;
             _system6AudioBufferLengthMilliseconds = NormalizeSystem6AudioBufferLengthMilliseconds(preferences.NativeEmulation.AudioBufferLengthMilliseconds);
+            _selectedAudioOutputBackend = preferences.NativeEmulation.AudioOutputBackend;
             _enableAmberFabricAudioDiagnostics = preferences.NativeEmulation.EnableAmberFabricAudioDiagnostics;
             _amberFabricAudioDiagnosticCaptureDirectory = preferences.NativeEmulation.AmberFabricAudioDiagnosticCaptureDirectory;
             _amberFabricAudioDiagnosticQueueBlockCapacity = NormalizeAudioDiagnosticQueueBlockCapacity(preferences.NativeEmulation.AmberFabricAudioDiagnosticQueueBlockCapacity);
@@ -253,6 +255,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _emulationBackendFactory = new EmulationBackendFactory(
             () => FabricRuntimeLibraryPath, () => ProductionAmberLibraryPath,
             () => System6AudioBufferLengthMilliseconds,
+            () => SelectedAudioOutputBackend,
             GetAmberFabricAudioDiagnosticSettings,
             message => AddOutputEntry(message.Message, ToOutputLogStatus(message.Severity)),
             errorLogger: message => AddOutputEntry(message, OutputLogStatus.Error));
@@ -495,6 +498,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public int OasisPlayerPreviewHeight { get => _oasisPlayerPreviewHeight; set { if (SetProperty(ref _oasisPlayerPreviewHeight, value)) SavePreferences(); } }
     public string FabricRuntimeLibraryPath { get => _fabricRuntimeLibraryPath; set { if (SetProperty(ref _fabricRuntimeLibraryPath, value)) SavePreferences(); } }
     public string ProductionAmberLibraryPath { get => _productionAmberLibraryPath; set { if (SetProperty(ref _productionAmberLibraryPath, value)) SavePreferences(); } }
+    public IReadOnlyList<EmulationAudioOutputBackend> AudioOutputBackends { get; } = Enum.GetValues<EmulationAudioOutputBackend>();
+    public EmulationAudioOutputBackend SelectedAudioOutputBackend { get => _selectedAudioOutputBackend; set { if (SetProperty(ref _selectedAudioOutputBackend, value)) SavePreferences(); } }
     public bool EnableAmberFabricAudioDiagnostics { get => _enableAmberFabricAudioDiagnostics; set { if (SetProperty(ref _enableAmberFabricAudioDiagnostics, value)) SavePreferences(); } }
     public string AmberFabricAudioDiagnosticCaptureDirectory { get => _amberFabricAudioDiagnosticCaptureDirectory; set { if (SetProperty(ref _amberFabricAudioDiagnosticCaptureDirectory, value)) SavePreferences(); } }
     public int AmberFabricAudioDiagnosticQueueBlockCapacity
@@ -1909,6 +1914,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 FabricRuntimeLibraryPath = FabricRuntimeLibraryPath,
                 ProductionAmberLibraryPath = ProductionAmberLibraryPath,
                 AudioBufferLengthMilliseconds = System6AudioBufferLengthMilliseconds,
+                AudioOutputBackend = SelectedAudioOutputBackend,
                 EnableAmberFabricAudioDiagnostics = EnableAmberFabricAudioDiagnostics,
                 AmberFabricAudioDiagnosticCaptureDirectory = AmberFabricAudioDiagnosticCaptureDirectory,
                 AmberFabricAudioDiagnosticQueueBlockCapacity = AmberFabricAudioDiagnosticQueueBlockCapacity,

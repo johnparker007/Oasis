@@ -102,6 +102,10 @@
                            TextWrapping="Wrap"
                            Foreground="{DynamicResource TextSecondaryBrush}"
                            Text="Playback buffering for Fabric Amber audio. Lower values reduce latency; higher values can help if audio crackles." />
+                <TextBlock Margin="0,10,0,4" Text="Audio output backend" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <ComboBox Width="180" HorizontalAlignment="Left"
+                          ItemsSource="{Binding AudioOutputBackends}"
+                          SelectedItem="{Binding SelectedAudioOutputBackend, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 <TextBlock Margin="0,8,0,0"
                            TextWrapping="Wrap"
                            Foreground="{DynamicResource TextSecondaryBrush}"

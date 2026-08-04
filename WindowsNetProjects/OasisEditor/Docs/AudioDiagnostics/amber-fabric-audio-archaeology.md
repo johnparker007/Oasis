@@ -52,3 +52,21 @@ Current managed boundary expectations:
 - `NAudioAccepted` records only PCM that the NAudio sink accepted after its overflow policy. Dropped sink blocks are recorded in `sink-drops.csv` with sequence, start frame, frame count, byte count, and reason.
 - `buffer-timeline.csv` is sampled at a bounded cadence and is intended to correlate crackles with underflow risk, overflow/drop, zero-frame reads, or host scheduling stalls.
 - `session-summary.txt` is written at startup and refreshed during shutdown so useful diagnostics remain available even if Debug output is not visible.
+
+## Resilient playback pipeline update
+
+The Editor audio layer now uses this playback pipeline for Fabric Amber audio:
+
+```text
+FabricEmulationBackend
+    -> NAudioEmulationAudioSink application PCM FIFO
+    -> named Oasis Amber audio feeder thread
+    -> BufferedWaveProvider
+    -> selected NAudio output backend
+```
+
+The FIFO is frame-accounted and stores interleaved signed PCM16 without resampling, volume changes, channel changes, or sample rewriting. The feeder moves frame-aligned 5 ms blocks into NAudio independently of the emulation pump. For a 50 ms capacity the reserve policy targets 75% startup depth (1,800 frames / 37.5 ms at 48 kHz), low water is 50% of target, and high water is 90% of capacity.
+
+The default output backend remains `WasapiOut`; Preferences > Fabric Emulation can select `WaveOutEvent` for A/B testing while reusing the same FIFO and feeder path.
+
+Fabric scheduling remains deterministic 1 ms advances, but temporary lateness is recovered with bounded catch-up batches of up to eight 1 ms slices per pump loop. Retained scheduling debt is capped at 125 ms; excessive debt is discarded with a warning instead of creating an unbounded spiral. Audio is drained after each emulation slice in the catch-up batch, while only the latest snapshot is published.
