@@ -8,7 +8,6 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
 using System.Collections.Specialized;
 using Microsoft.Win32;
 using OasisEditor.Features.LayoutImport;
@@ -94,7 +93,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private IReadOnlyList<InputMapDiagnostic> _inputMapDiagnostics = [];
     private PlayViewInputRouter? _playViewInputRouter;
     private PlayViewInputDispatcher? _playViewInputDispatcher;
-    private readonly DispatcherTimer _emulationRuntimeUpdateTimer;
+    private CancellationTokenSource? _emulationRuntimeUpdateCancellation;
+    private Task? _emulationRuntimeUpdateTask;
     private int _emulationRuntimeUpdateInProgress;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -127,11 +127,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _preferencesStore = preferencesStore;
         _ownerWindow = ownerWindow;
         _progressDialogService = new WpfProgressDialogService(() => _ownerWindow, _ownerWindow.Dispatcher);
-        _emulationRuntimeUpdateTimer = new DispatcherTimer(DispatcherPriority.Background, _ownerWindow.Dispatcher)
-        {
-            Interval = TimeSpan.FromMilliseconds(1)
-        };
-        _emulationRuntimeUpdateTimer.Tick += OnEmulationRuntimeUpdateTimerTick;
 
         if (string.IsNullOrWhiteSpace(startupProjectFilePath))
         {
@@ -2307,38 +2302,68 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void StartEmulationRuntimeUpdatesIfNeeded(IEmulationBackend backend)
     {
-        if (backend is IEditorUpdateDrivenEmulationBackend)
-            _emulationRuntimeUpdateTimer.Start();
-        else
-            _emulationRuntimeUpdateTimer.Stop();
+        if (backend is not IEditorUpdateDrivenEmulationBackend updateDrivenBackend)
+            return;
+
+        _emulationRuntimeUpdateCancellation = new CancellationTokenSource();
+        var cancellationToken = _emulationRuntimeUpdateCancellation.Token;
+        _emulationRuntimeUpdateTask = Task.Run(() => RunEmulationRuntimeUpdatesAsync(updateDrivenBackend, cancellationToken), CancellationToken.None);
     }
 
-    private void StopEmulationRuntimeUpdates()
+    private async Task StopEmulationRuntimeUpdatesAsync()
     {
-        _emulationRuntimeUpdateTimer.Stop();
+        var cancellation = _emulationRuntimeUpdateCancellation;
+        var updateTask = _emulationRuntimeUpdateTask;
+        _emulationRuntimeUpdateCancellation = null;
+        _emulationRuntimeUpdateTask = null;
+        if (cancellation is null)
+            return;
+
+        await cancellation.CancelAsync().ConfigureAwait(false);
+        if (updateTask is not null)
+        {
+            try
+            {
+                await updateTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+        cancellation.Dispose();
     }
 
-    private async void OnEmulationRuntimeUpdateTimerTick(object? sender, EventArgs e)
+    private async Task RunEmulationRuntimeUpdatesAsync(IEditorUpdateDrivenEmulationBackend updateDrivenBackend, CancellationToken cancellationToken)
     {
-        if (_activeEmulationBackend is not IEditorUpdateDrivenEmulationBackend updateDrivenBackend)
-            return;
-        if (Interlocked.Exchange(ref _emulationRuntimeUpdateInProgress, 1) != 0)
-            return;
+        // This is only the Editor-owned wake-up cadence. FabricEmulationBackend measures
+        // actual monotonic elapsed time and clamps the emulated advance; the loop does not
+        // reintroduce the old fixed 1 ms session.Advance model.
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(1));
         try
         {
-            await updateDrivenBackend.UpdateAsync(CancellationToken.None).ConfigureAwait(false);
+            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
+            {
+                if (Interlocked.Exchange(ref _emulationRuntimeUpdateInProgress, 1) != 0)
+                    continue;
+                try
+                {
+                    await updateDrivenBackend.UpdateAsync(cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    Interlocked.Exchange(ref _emulationRuntimeUpdateInProgress, 0);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (ObjectDisposedException)
         {
-            StopEmulationRuntimeUpdates();
         }
         catch (Exception ex)
         {
-            AddOutputEntry($"Emulation runtime update failed: {ex.Message}", OutputLogStatus.Error);
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _emulationRuntimeUpdateInProgress, 0);
+            DispatchToUiThread(() => AddOutputEntry($"Emulation runtime update failed: {ex.Message}", OutputLogStatus.Error));
         }
     }
 
@@ -2349,6 +2374,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (_activeEmulationBackend is null) return;
         try
         {
+            StopEmulationRuntimeUpdatesAsync().GetAwaiter().GetResult();
             _activeEmulationBackend.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
             DetachAndDisposeActiveBackendAsync().GetAwaiter().GetResult();
         }
@@ -2365,6 +2391,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (_activeEmulationBackend is null) return;
         try
         {
+            await StopEmulationRuntimeUpdatesAsync().ConfigureAwait(false);
             await _activeEmulationBackend.StopAsync(CancellationToken.None);
             await DetachAndDisposeActiveBackendAsync();
         }
@@ -2378,7 +2405,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var backend = _activeEmulationBackend;
         if (backend is null) return;
-        StopEmulationRuntimeUpdates();
+        await StopEmulationRuntimeUpdatesAsync().ConfigureAwait(false);
         backend.StateChanged -= OnActiveBackendStateChanged;
         backend.LampChanged -= OnActiveBackendLampChanged;
         backend.ReelChanged -= OnActiveBackendReelChanged;
