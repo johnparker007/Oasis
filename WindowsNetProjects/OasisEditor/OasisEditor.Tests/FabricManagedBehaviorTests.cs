@@ -276,7 +276,7 @@ public sealed class FabricManagedBehaviorTests
         string? runtimePath = null;
         var audio = new FakeAudioSink();
         var backend = new FabricEmulationBackend("C:/fabric/FabricRuntime.dll", "D:/amber/amber.dll",
-            path => { runtimePath = path; return runtime; }, audio, clock);
+            path => { runtimePath = path; return runtime; }, audio, clock, 50, AmberFabricAudioDiagnosticSettings.Disabled);
         var request = new EmulationLaunchRequest(new System6NativeRomSettings { ProgramRom1Path = "p0", SoundRom1Path = "s0" });
 
         await backend.StartAsync(request, CancellationToken.None);
@@ -297,6 +297,23 @@ public sealed class FabricManagedBehaviorTests
         Assert.Equal(1, audio.StopCount);
     }
 
+
+    [Fact]
+    public async Task Backend_ReportsAudioDiagnosticsDisabledStatus()
+    {
+        var session = new FakeSession();
+        var messages = new List<EmulationBackendDiagnosticMessage>();
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => new FakeRuntime(session),
+            new FakeAudioSink(), new FakeClock(), 50, AmberFabricAudioDiagnosticSettings.Disabled, messages.Add);
+
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Contains(messages, message => message.Severity == EmulationBackendDiagnosticSeverity.Info
+            && message.Message.Contains("Amber audio diagnostics disabled", StringComparison.OrdinalIgnoreCase));
+    }
+
     [Fact]
     public async Task Backend_PumpFailureIsRecordedAndCleanedUp()
     {
@@ -306,7 +323,7 @@ public sealed class FabricManagedBehaviorTests
         var session = new FakeSession { AdvanceFailure = failure };
         var runtime = new FakeRuntime(session);
         var errors = new List<string>();
-        var backend = new FabricEmulationBackend("runtime", "amber", _ => runtime, new FakeAudioSink(), new FakeClock(), errors.Add);
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => runtime, new FakeAudioSink(), new FakeClock(), 50, AmberFabricAudioDiagnosticSettings.Disabled, null, errors.Add);
         var request = new EmulationLaunchRequest(new System6NativeRomSettings());
 
         await backend.StartAsync(request, CancellationToken.None);
@@ -343,7 +360,7 @@ public sealed class FabricManagedBehaviorTests
         };
         var errors = new List<string>();
         var backend = new FabricEmulationBackend("runtime", "amber", _ => new FakeRuntime(session),
-            new FakeAudioSink(), new FakeClock(), errors.Add);
+            new FakeAudioSink(), new FakeClock(), 50, AmberFabricAudioDiagnosticSettings.Disabled, null, errors.Add);
 
         await backend.StartAsync(CreateRequest(), CancellationToken.None);
         await session.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(2));
@@ -367,7 +384,7 @@ public sealed class FabricManagedBehaviorTests
         var runtime = new FakeRuntime(session);
         var errors = new List<string>();
         var backend = new FabricEmulationBackend("runtime", "amber", _ => runtime,
-            new FakeAudioSink(), new FakeClock(), errors.Add);
+            new FakeAudioSink(), new FakeClock(), 50, AmberFabricAudioDiagnosticSettings.Disabled, null, errors.Add);
 
         await backend.StartAsync(CreateRequest(), CancellationToken.None);
         await session.Disposed.Task.WaitAsync(TimeSpan.FromSeconds(2));
@@ -389,7 +406,7 @@ public sealed class FabricManagedBehaviorTests
         var session = new FakeSession();
         var errors = new List<string>();
         var backend = new FabricEmulationBackend("runtime", "amber", _ => new FakeRuntime(session),
-            new FakeAudioSink(), new FakeClock(), errors.Add);
+            new FakeAudioSink(), new FakeClock(), 50, AmberFabricAudioDiagnosticSettings.Disabled, null, errors.Add);
 
         await backend.StartAsync(CreateRequest(), CancellationToken.None);
         await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
@@ -469,7 +486,7 @@ public sealed class FabricManagedBehaviorTests
     }
 
     private static FabricEmulationBackend CreateBackend(FakeSession session, FakeAudioSink audio) =>
-        new("runtime", "amber", _ => new FakeRuntime(session), audio, new FakeClock());
+        new("runtime", "amber", _ => new FakeRuntime(session), audio, new FakeClock(), 50, AmberFabricAudioDiagnosticSettings.Disabled);
 
     private static EmulationLaunchRequest CreateRequest() =>
         new(new System6NativeRomSettings());
@@ -562,7 +579,7 @@ public sealed class FabricManagedBehaviorTests
         public EmulationAudioFormat? StartedFormat { get; private set; }
         public int LastPcmBytes { get; private set; }
         public void Start(EmulationAudioFormat format) { StartedFormat = format; StartCount++; }
-        public void PushPcm(ReadOnlySpan<byte> pcmBytes) => LastPcmBytes = pcmBytes.Length;
+        public EmulationAudioPushResult PushPcm(ReadOnlySpan<byte> pcmBytes, EmulationAudioPushContext context = default) { LastPcmBytes = pcmBytes.Length; return new(pcmBytes.Length, pcmBytes.Length, 0, null); }
         public void Stop() => StopCount++;
         public void Clear() { }
         public void Dispose() { }

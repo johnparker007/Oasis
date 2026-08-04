@@ -24,10 +24,16 @@ public sealed class OasisPlayerPreferences
 public sealed class NativeEmulationPreferences
 {
     public const int DefaultAudioBufferLengthMilliseconds = 50;
+    public const int DefaultAudioDiagnosticQueueBlockCapacity = 512;
+    public const int DefaultAudioDiagnosticCaptureDurationSeconds = 60;
 
     public string FabricRuntimeLibraryPath { get; init; } = string.Empty;
     public string ProductionAmberLibraryPath { get; init; } = string.Empty;
     public int AudioBufferLengthMilliseconds { get; init; } = DefaultAudioBufferLengthMilliseconds;
+    public bool EnableAmberFabricAudioDiagnostics { get; init; }
+    public string AmberFabricAudioDiagnosticCaptureDirectory { get; init; } = string.Empty;
+    public int AmberFabricAudioDiagnosticQueueBlockCapacity { get; init; } = DefaultAudioDiagnosticQueueBlockCapacity;
+    public int AmberFabricAudioDiagnosticCaptureDurationSeconds { get; init; } = DefaultAudioDiagnosticCaptureDurationSeconds;
 }
 
 public sealed class FaceGenerationPreferences

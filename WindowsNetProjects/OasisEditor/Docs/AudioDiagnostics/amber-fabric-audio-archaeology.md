@@ -41,3 +41,14 @@ Run the known looping music for at least 30 seconds, alt-tab repeatedly during t
 Add the matching native-provider capture in the Fabric Amber provider immediately after Amber/AmberOasisBridge offers PCM to Fabric, using the same format and sequence metadata. Compare the provider file with these managed files sample-for-sample around audible pop timestamps. The offline `AudioPcmComparison.Compare` helper reports first differing frame, candidate duplicate/missing runs, maximum sample delta, discontinuity candidates, total frame-count difference, and channel mismatch; discontinuities are candidates for correlation, not automatic proof of corruption.
 
 At normal shutdown, collect the concise `Audio diagnostics ...` summaries and the NAudio stop summary. Frame accounting should reconcile; any unexplained difference is a transport defect to investigate before changing scheduling or buffer sizes.
+
+## PR #618 usability update
+
+The diagnostic path is now intended to be enabled from Preferences > Fabric Emulation rather than only by process environment variables. Each run creates a unique timestamped session directory under the configured capture root and reports the selected directory in the Editor Output window. The managed captures are WAV files so they can be listened to directly after a normal stop.
+
+Current managed boundary expectations:
+
+- `FabricManagedRead` and `FabricBackendSubmit` are expected to match; they prove whether the managed backend changes the valid Fabric read prefix before offering it to the sink.
+- `NAudioAccepted` records only PCM that the NAudio sink accepted after its overflow policy. Dropped sink blocks are recorded in `sink-drops.csv` with sequence, start frame, frame count, byte count, and reason.
+- `buffer-timeline.csv` is sampled at a bounded cadence and is intended to correlate crackles with underflow risk, overflow/drop, zero-frame reads, or host scheduling stalls.
+- `session-summary.txt` is written at startup and refreshed during shutdown so useful diagnostics remain available even if Debug output is not visible.

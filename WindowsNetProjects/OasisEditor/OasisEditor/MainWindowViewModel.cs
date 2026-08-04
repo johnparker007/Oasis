@@ -35,6 +35,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _fabricRuntimeLibraryPath = string.Empty;
     private string _productionAmberLibraryPath = string.Empty;
     private int _system6AudioBufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds;
+    private bool _enableAmberFabricAudioDiagnostics;
+    private string _amberFabricAudioDiagnosticCaptureDirectory = string.Empty;
+    private int _amberFabricAudioDiagnosticQueueBlockCapacity = NativeEmulationPreferences.DefaultAudioDiagnosticQueueBlockCapacity;
+    private int _amberFabricAudioDiagnosticCaptureDurationSeconds = NativeEmulationPreferences.DefaultAudioDiagnosticCaptureDurationSeconds;
     private string _lastMfmeFmlImportDirectory = string.Empty;
     private FaceGenerationSettingsModel _defaultFaceGenerationSettings = FaceGenerationSettingsModel.Default;
     private bool _showFaceGenerationSettingsBeforeRegenerate = true;
@@ -215,6 +219,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _fabricRuntimeLibraryPath = preferences.NativeEmulation.FabricRuntimeLibraryPath;
             _productionAmberLibraryPath = preferences.NativeEmulation.ProductionAmberLibraryPath;
             _system6AudioBufferLengthMilliseconds = NormalizeSystem6AudioBufferLengthMilliseconds(preferences.NativeEmulation.AudioBufferLengthMilliseconds);
+            _enableAmberFabricAudioDiagnostics = preferences.NativeEmulation.EnableAmberFabricAudioDiagnostics;
+            _amberFabricAudioDiagnosticCaptureDirectory = preferences.NativeEmulation.AmberFabricAudioDiagnosticCaptureDirectory;
+            _amberFabricAudioDiagnosticQueueBlockCapacity = NormalizeAudioDiagnosticQueueBlockCapacity(preferences.NativeEmulation.AmberFabricAudioDiagnosticQueueBlockCapacity);
+            _amberFabricAudioDiagnosticCaptureDurationSeconds = NormalizeAudioDiagnosticCaptureDurationSeconds(preferences.NativeEmulation.AmberFabricAudioDiagnosticCaptureDurationSeconds);
             _oasisPlayerExecutablePath = preferences.Player.ExecutablePath;
             _oasisPlayerFullscreen = preferences.Player.Fullscreen;
             _oasisPlayerPreviewWidth = preferences.Player.PreviewWidth;
@@ -245,6 +253,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _emulationBackendFactory = new EmulationBackendFactory(
             () => FabricRuntimeLibraryPath, () => ProductionAmberLibraryPath,
             () => System6AudioBufferLengthMilliseconds,
+            GetAmberFabricAudioDiagnosticSettings,
+            message => AddOutputEntry(message.Message, ToOutputLogStatus(message.Severity)),
             errorLogger: message => AddOutputEntry(message, OutputLogStatus.Error));
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
@@ -485,6 +495,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public int OasisPlayerPreviewHeight { get => _oasisPlayerPreviewHeight; set { if (SetProperty(ref _oasisPlayerPreviewHeight, value)) SavePreferences(); } }
     public string FabricRuntimeLibraryPath { get => _fabricRuntimeLibraryPath; set { if (SetProperty(ref _fabricRuntimeLibraryPath, value)) SavePreferences(); } }
     public string ProductionAmberLibraryPath { get => _productionAmberLibraryPath; set { if (SetProperty(ref _productionAmberLibraryPath, value)) SavePreferences(); } }
+    public bool EnableAmberFabricAudioDiagnostics { get => _enableAmberFabricAudioDiagnostics; set { if (SetProperty(ref _enableAmberFabricAudioDiagnostics, value)) SavePreferences(); } }
+    public string AmberFabricAudioDiagnosticCaptureDirectory { get => _amberFabricAudioDiagnosticCaptureDirectory; set { if (SetProperty(ref _amberFabricAudioDiagnosticCaptureDirectory, value)) SavePreferences(); } }
+    public int AmberFabricAudioDiagnosticQueueBlockCapacity
+    {
+        get => _amberFabricAudioDiagnosticQueueBlockCapacity;
+        set
+        {
+            var normalized = NormalizeAudioDiagnosticQueueBlockCapacity(value);
+            if (SetProperty(ref _amberFabricAudioDiagnosticQueueBlockCapacity, normalized)) SavePreferences();
+        }
+    }
+    public int AmberFabricAudioDiagnosticCaptureDurationSeconds
+    {
+        get => _amberFabricAudioDiagnosticCaptureDurationSeconds;
+        set
+        {
+            var normalized = NormalizeAudioDiagnosticCaptureDurationSeconds(value);
+            if (SetProperty(ref _amberFabricAudioDiagnosticCaptureDurationSeconds, normalized)) SavePreferences();
+        }
+    }
     public int System6AudioBufferLengthMilliseconds
     {
         get => _system6AudioBufferLengthMilliseconds;
@@ -1848,6 +1878,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private static int NormalizeSystem6AudioBufferLengthMilliseconds(int value)
         => Math.Clamp(value, 10, 1000);
 
+    private static int NormalizeAudioDiagnosticQueueBlockCapacity(int value)
+        => Math.Clamp(value, 16, 8192);
+
+    private static int NormalizeAudioDiagnosticCaptureDurationSeconds(int value)
+        => Math.Clamp(value, 1, 600);
+
+    private AmberFabricAudioDiagnosticSettings GetAmberFabricAudioDiagnosticSettings() => new(
+        EnableAmberFabricAudioDiagnostics,
+        AmberFabricAudioDiagnosticCaptureDirectory,
+        AmberFabricAudioDiagnosticQueueBlockCapacity,
+        AmberFabricAudioDiagnosticCaptureDurationSeconds);
+
+    private static OutputLogStatus ToOutputLogStatus(EmulationBackendDiagnosticSeverity severity) => severity switch
+    {
+        EmulationBackendDiagnosticSeverity.Warning => OutputLogStatus.Warning,
+        EmulationBackendDiagnosticSeverity.Error => OutputLogStatus.Error,
+        _ => OutputLogStatus.Info
+    };
+
     private void SavePreferences()
     {
         var existingPreferences = _preferencesStore.Load();
@@ -1859,7 +1908,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 FabricRuntimeLibraryPath = FabricRuntimeLibraryPath,
                 ProductionAmberLibraryPath = ProductionAmberLibraryPath,
-                AudioBufferLengthMilliseconds = System6AudioBufferLengthMilliseconds
+                AudioBufferLengthMilliseconds = System6AudioBufferLengthMilliseconds,
+                EnableAmberFabricAudioDiagnostics = EnableAmberFabricAudioDiagnostics,
+                AmberFabricAudioDiagnosticCaptureDirectory = AmberFabricAudioDiagnosticCaptureDirectory,
+                AmberFabricAudioDiagnosticQueueBlockCapacity = AmberFabricAudioDiagnosticQueueBlockCapacity,
+                AmberFabricAudioDiagnosticCaptureDurationSeconds = AmberFabricAudioDiagnosticCaptureDurationSeconds
             },
             Player = new OasisPlayerPreferences
             {

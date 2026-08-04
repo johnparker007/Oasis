@@ -68,12 +68,12 @@ public sealed class EmulationBackendFactoryTests
     }
 
     private static EmulationBackendFactory CreateFactory(string? runtime, string? amber, Func<int>? buffer = null, Func<int, IEmulationAudioSink>? sink = null) =>
-        new(() => runtime, () => amber, buffer, _ => throw new InvalidOperationException("Created only on start."), sink ?? (_ => new NullSink()), new StopwatchFabricClock(), null);
+        new(() => runtime, () => amber, buffer, _ => throw new InvalidOperationException("Created only on start."), sink ?? (_ => new NullSink()), new StopwatchFabricClock(), null, null, null);
 
     private sealed class NullSink : IEmulationAudioSink
     {
         public void Start(EmulationAudioFormat format) { }
-        public void PushPcm(ReadOnlySpan<byte> pcmBytes) { }
+        public EmulationAudioPushResult PushPcm(ReadOnlySpan<byte> pcmBytes, EmulationAudioPushContext context = default) => new(pcmBytes.Length, pcmBytes.Length, 0, null);
         public void Stop() { }
         public void Clear() { }
         public void Dispose() { }

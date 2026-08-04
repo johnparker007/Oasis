@@ -19,6 +19,9 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private readonly Func<string, IFabricRuntimeLibrary> _runtimeFactory;
     private readonly IEmulationAudioSink _audioSink;
     private readonly IFabricClock _clock;
+    private readonly int _audioBufferLengthMilliseconds;
+    private readonly AmberFabricAudioDiagnosticSettings _audioDiagnosticSettings;
+    private readonly Action<EmulationBackendDiagnosticMessage>? _diagnosticLogger;
     private readonly Action<string> _errorLogger;
     private readonly SemaphoreSlim _sessionGate = new(1, 1);
     private readonly ConcurrentQueue<InputCommand> _inputCommands = new();
@@ -47,7 +50,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
     public FabricEmulationBackend(string runtimePath, string amberPath)
         : this(runtimePath, amberPath, path => new FabricRuntimeLibrary(path),
-            new NAudioEmulationAudioSink(), new StopwatchFabricClock(), WriteDebugError)
+            new NAudioEmulationAudioSink(), new StopwatchFabricClock(), NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds, AmberFabricAudioDiagnosticSettings.Disabled, null, WriteDebugError)
     {
     }
 
@@ -57,6 +60,9 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         Func<string, IFabricRuntimeLibrary> runtimeFactory,
         IEmulationAudioSink audioSink,
         IFabricClock clock,
+        int audioBufferLengthMilliseconds,
+        AmberFabricAudioDiagnosticSettings audioDiagnosticSettings,
+        Action<EmulationBackendDiagnosticMessage>? diagnosticLogger = null,
         Action<string>? errorLogger = null)
     {
         _runtimePath = runtimePath;
@@ -64,6 +70,9 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _runtimeFactory = runtimeFactory;
         _audioSink = audioSink;
         _clock = clock;
+        _audioBufferLengthMilliseconds = audioBufferLengthMilliseconds;
+        _audioDiagnosticSettings = audioDiagnosticSettings;
+        _diagnosticLogger = diagnosticLogger;
         _errorLogger = errorLogger ?? WriteDebugError;
     }
 
@@ -106,12 +115,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             {
                 _session.Initialise();
                 ConfigureAudio(_session);
-                _audioDiagnostics = EmulationAudioDiagnostics.CreateFromEnvironment();
-                if (_audioDiagnostics is not null && _audioFormat is { } diagnosticFormat)
-                {
-                    _audioDiagnostics.FabricManagedRead.SetFormat(checked((int)diagnosticFormat.SampleRate), checked((int)diagnosticFormat.ChannelCount));
-                    _audioDiagnostics.FabricBackendSubmit.SetFormat(checked((int)diagnosticFormat.SampleRate), checked((int)diagnosticFormat.ChannelCount));
-                }
+                _audioDiagnostics = TryStartAudioDiagnostics();
                 Interlocked.Increment(ref _scheduleGeneration);
             }
             finally
@@ -380,6 +384,50 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         }
     }
 
+    private EmulationAudioDiagnostics? TryStartAudioDiagnostics()
+    {
+        if (_audioFormat is not { } format)
+        {
+            if (_audioSink is IEmulationAudioDiagnosticSink diagnosticSink) diagnosticSink.ConfigureDiagnostics(null);
+            LogDiagnosticInfo("Amber audio diagnostics disabled: Fabric session did not expose audio.");
+            return null;
+        }
+
+        var settings = EmulationAudioDiagnostics.ApplyEnvironmentOverrides(_audioDiagnosticSettings);
+        if (!settings.Enabled)
+        {
+            if (_audioSink is IEmulationAudioDiagnosticSink diagnosticSink) diagnosticSink.ConfigureDiagnostics(null);
+            LogDiagnosticInfo("Amber audio diagnostics disabled.");
+            return null;
+        }
+
+        try
+        {
+            var diagnostics = EmulationAudioDiagnostics.Start(settings,
+                new(AmberBackendKind, JpmSystem6MachineIdentifier, _runtimePath, _amberPath,
+                    new(checked((int)format.SampleRate), checked((int)format.ChannelCount), checked((int)format.BitsPerSample)),
+                    _audioBufferLengthMilliseconds));
+            diagnostics.FabricManagedRead.SetFormat(checked((int)format.SampleRate), checked((int)format.ChannelCount));
+            diagnostics.FabricBackendSubmit.SetFormat(checked((int)format.SampleRate), checked((int)format.ChannelCount));
+            diagnostics.NAudioAccepted.SetFormat(checked((int)format.SampleRate), checked((int)format.ChannelCount));
+            if (_audioSink is IEmulationAudioDiagnosticSink diagnosticSink)
+                diagnosticSink.ConfigureDiagnostics(diagnostics);
+            LogDiagnosticInfo($"Amber audio diagnostics enabled. Capture directory: {diagnostics.SessionDirectory}; sampleRate={format.SampleRate}; channels={format.ChannelCount}; queueBlocks={settings.QueueBlockCapacity}; boundaries=FabricManagedRead,FabricBackendSubmit,NAudioAccepted; maximumCaptureSeconds={settings.CaptureDurationSeconds}.");
+            return diagnostics;
+        }
+        catch (Exception exception)
+        {
+            LogDiagnosticWarning($"Amber audio diagnostics could not start and were disabled: {exception.Message}");
+            return null;
+        }
+    }
+
+    private void LogDiagnosticInfo(string message) =>
+        _diagnosticLogger?.Invoke(new(EmulationBackendDiagnosticSeverity.Info, message));
+
+    private void LogDiagnosticWarning(string message) =>
+        _diagnosticLogger?.Invoke(new(EmulationBackendDiagnosticSeverity.Warning, message));
+
     private void ConfigureAudio(IFabricMachineSession session)
     {
         if (!session.Capabilities.Has(FabricCapability.Audio))
@@ -440,8 +488,9 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             _audioDiagnostics?.Capture(EmulationAudioCaptureBoundary.FabricBackendSubmit,
                 new(checked((int)format.SampleRate), checked((int)format.ChannelCount), checked((int)format.BitsPerSample)),
                 sequence, submitStartFrame, samples, framesWritten);
-            _audioSink.PushPcm(bytes);
-            Interlocked.Add(ref _audioFramesSubmitted, framesWritten);
+            var pushResult = _audioSink.PushPcm(bytes, new(sequence, submitStartFrame, framesWritten, framesWritten == 0, 0));
+            _audioDiagnostics?.ObserveSinkPush(pushResult, framesWritten, format);
+            Interlocked.Add(ref _audioFramesSubmitted, pushResult.AcceptedBytes / checked((int)format.ChannelCount * sizeof(short)));
         }
     }
 
@@ -539,7 +588,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             if (_audioStarted)
             {
                 TryCleanup(_audioSink.Stop, ref failures);
-                _audioDiagnostics?.WriteSummary(_errorLogger);
+                _audioDiagnostics?.Complete(true);
+                _audioDiagnostics?.WriteSummary(LogDiagnosticInfo);
                 _audioDiagnostics?.Dispose();
                 _audioDiagnostics = null;
                 _audioStarted = false;

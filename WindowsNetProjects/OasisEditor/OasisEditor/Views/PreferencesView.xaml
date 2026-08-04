@@ -106,6 +106,27 @@
                            TextWrapping="Wrap"
                            Foreground="{DynamicResource TextSecondaryBrush}"
                            Text="Impact emulation uses FabricRuntime.dll with the configured production Amber API v2 provider DLL." />
+                <TextBlock Margin="0,18,0,4" Text="Experimental Amber/Fabric Audio Diagnostics" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                <CheckBox Foreground="{DynamicResource TextPrimaryBrush}"
+                          Content="Enable Amber/Fabric audio diagnostics"
+                          IsChecked="{Binding EnableAmberFabricAudioDiagnostics, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Margin="0,8,0,4" Text="Capture directory" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBox Text="{Binding AmberFabricAudioDiagnosticCaptureDirectory, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                    <StackPanel>
+                        <TextBlock Margin="0,0,0,4" Text="Queue blocks" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBox Width="120" Text="{Binding AmberFabricAudioDiagnosticQueueBlockCapacity, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                    </StackPanel>
+                    <StackPanel Margin="12,0,0,0">
+                        <TextBlock Margin="0,0,0,4" Text="Capture seconds" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBox Width="120" Text="{Binding AmberFabricAudioDiagnosticCaptureDurationSeconds, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock Margin="0,4,0,0"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           Text="Writes per-run WAV/PCM captures, timeline CSV, and a session summary. Disabled by default; use only while diagnosing Amber/Fabric audio." />
+
             </StackPanel>
         </Grid>
     </Grid>

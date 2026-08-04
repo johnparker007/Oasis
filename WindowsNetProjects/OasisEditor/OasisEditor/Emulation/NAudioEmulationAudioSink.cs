@@ -1,10 +1,11 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
 namespace OasisEditor;
 
-public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
+public sealed class NAudioEmulationAudioSink : IEmulationAudioSink, IEmulationAudioDiagnosticSink
 {
     private const int DiagnosticPushLimit = 32;
     private readonly int _bufferLengthMilliseconds;
@@ -19,6 +20,8 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
     private long _pushCount;
     private int _minimumBufferedBytes = int.MaxValue;
     private bool _playbackStarted;
+    private EmulationAudioDiagnostics? _audioDiagnostics;
+    private long _acceptedStartFrame;
 
     internal int BufferLengthMilliseconds => _bufferLengthMilliseconds;
     internal int PrebufferThresholdMilliseconds => AudioPrebufferPolicy.CalculateThresholdMilliseconds(_bufferLengthMilliseconds);
@@ -55,10 +58,10 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         // Play is deliberately deferred until enough PCM (including digital silence) is queued.
     }
 
-    public void PushPcm(ReadOnlySpan<byte> pcmBytes)
+    public EmulationAudioPushResult PushPcm(ReadOnlySpan<byte> pcmBytes, EmulationAudioPushContext context = default)
     {
         if (pcmBytes.IsEmpty || _buffer is null)
-            return;
+            return new(pcmBytes.Length, 0, 0, null);
 
         var format = _format ?? throw new InvalidOperationException("Audio sink has not been started.");
         var before = _buffer.BufferedBytes;
@@ -79,11 +82,17 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
             Interlocked.Add(ref _droppedBytes, pcmBytes.Length);
             if (droppedBlocks == 1 || IsPowerOfTwo(droppedBlocks))
                 WriteDepthDiagnostic("dropped incoming block", pcmBytes.Length, before, before, capacity);
-            return;
+            var dropReason = "NAudio buffer lacks room for incoming block";
+            _audioDiagnostics?.RecordSinkDrop(context, pcmBytes.Length, dropReason);
+            _audioDiagnostics?.RecordTimeline(new(context.Frames, before, before, capacity, _playbackStarted, true, DroppedBytes, context.AdvanceLatenessTicks, context.ZeroFrameRead));
+            return new(pcmBytes.Length, 0, pcmBytes.Length, dropReason);
         }
 
         var bytes = pcmBytes.ToArray();
+        var startFrame = Interlocked.Read(ref _acceptedStartFrame);
+        _audioDiagnostics?.Capture(EmulationAudioCaptureBoundary.NAudioAccepted, format, context.Sequence, startFrame, MemoryMarshal.Cast<byte, short>(bytes), context.Frames);
         _buffer.AddSamples(bytes, 0, bytes.Length);
+        Interlocked.Add(ref _acceptedStartFrame, context.Frames);
         var after = _buffer.BufferedBytes;
         if (push <= DiagnosticPushLimit)
             WriteDepthDiagnostic("push", bytes.Length, before, after, capacity);
@@ -94,7 +103,11 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
             _playbackStarted = true;
             Debug.WriteLine($"NAudio emulation buffer: startup prebuffer complete; thresholdBytes={_prebuffer.ThresholdBytes}, bufferedBytes={after}.");
         }
+        _audioDiagnostics?.RecordTimeline(new(context.Frames, before, after, capacity, _playbackStarted, false, DroppedBytes, context.AdvanceLatenessTicks, context.ZeroFrameRead));
+        return new(pcmBytes.Length, pcmBytes.Length, 0, null);
     }
+
+    void IEmulationAudioDiagnosticSink.ConfigureDiagnostics(EmulationAudioDiagnostics? diagnostics) => _audioDiagnostics = diagnostics;
 
     public void Clear()
     {
@@ -130,6 +143,7 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         Interlocked.Exchange(ref _droppedBytes, 0);
         Interlocked.Exchange(ref _runtimeStarvationEvents, 0);
         Interlocked.Exchange(ref _pushCount, 0);
+        Interlocked.Exchange(ref _acceptedStartFrame, 0);
         _minimumBufferedBytes = int.MaxValue;
         _playbackStarted = false;
     }
