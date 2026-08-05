@@ -63,6 +63,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private ThreadPriority _runnerThreadPriority = ThreadPriority.Normal;
     private long _singleSliceBatches;
     private long _multiSliceBatches;
+    private long _timedWaitCount;
+    private long _timedWaitLatenessTicksTotal;
     private long _maxWakeLatenessTicks;
     private long _wakeLateOver2Ms;
     private long _wakeLateOver5Ms;
@@ -78,6 +80,28 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private long _maxPublishDurationTicks;
     private long _maxInputDurationTicks;
     private long _maxSessionGateWaitTicks;
+    private long _debtContinuationCount;
+    private long _capacityLimitedContinuationCount;
+    private long _yieldContinuationCount;
+    private string _timingMode = "Unstarted";
+    private bool _highResolutionTimerActive;
+    private bool _mmcssRegistered;
+    private long _advanceCalls;
+    private long _advanceDurationTicksTotal;
+    private long _advanceOver2Ms;
+    private long _advanceOver5Ms;
+    private long _advanceOver10Ms;
+    private long _advanceOver20Ms;
+    private long _advanceOver50Ms;
+    private long _advanceOver100Ms;
+    private long _readAudioCalls;
+    private long _readAudioDurationTicksTotal;
+    private long _snapshotCalls;
+    private long _snapshotDurationTicksTotal;
+    private long _publishCalls;
+    private long _publishDurationTicksTotal;
+    private readonly ConcurrentQueue<StallTraceRecord> _stallTrace = new();
+    private string _lastStallTracePath = string.Empty;
 
     public FabricEmulationBackend(string runtimePath, string amberPath)
         : this(runtimePath, amberPath, path => new FabricRuntimeLibrary(path),
@@ -349,6 +373,11 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         {
             Interlocked.Exchange(ref _runnerThreadId, Environment.CurrentManagedThreadId);
             _runnerThreadPriority = Thread.CurrentThread.Priority;
+            using var timer = new FabricRunnerTimer(_runnerWake);
+            using var mmcss = FabricRunnerMmcssRegistration.Register("Games");
+            _timingMode = timer.TimingMode;
+            _highResolutionTimerActive = timer.HighResolutionTimerActive;
+            _mmcssRegistered = mmcss.Registered;
             var pumpTicks = Math.Max(1L, _clock.Frequency / EmulationPumpHz);
             var nextDeadline = _clock.GetTimestamp();
             var scheduleGeneration = Interlocked.Read(ref _scheduleGeneration);
@@ -357,8 +386,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             {
                 if (State != EmulationBackendState.Running)
                 {
-                    _runnerWake.Wait(PumpInterval, cancellationToken);
-                    _runnerWake.Reset();
+                    timer.Wait(PumpInterval, cancellationToken);
                     nextDeadline = _clock.GetTimestamp();
                     scheduleGeneration = Interlocked.Read(ref _scheduleGeneration);
                     slicesSinceSnapshot = 0;
@@ -373,9 +401,12 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                     slicesSinceSnapshot = 0;
                 }
 
-                WaitUntil(nextDeadline, cancellationToken);
+                var waitedForDeadline = WaitUntil(timer, nextDeadline, cancellationToken);
                 var now = _clock.GetTimestamp();
-                ObserveWakeLateness(now - nextDeadline);
+                if (waitedForDeadline)
+                    ObserveWakeLateness(now - nextDeadline);
+                else if (now >= nextDeadline)
+                    Interlocked.Increment(ref _debtContinuationCount);
                 var exceptionalCapTicks = pumpTicks * ExceptionalDelayCapMilliseconds;
                 if (now - nextDeadline > exceptionalCapTicks)
                 {
@@ -394,15 +425,16 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 if (slices <= 0)
                 {
                     Interlocked.Increment(ref _capacityLimitedCatchUpBatches);
+                    Interlocked.Increment(ref _capacityLimitedContinuationCount);
                     Interlocked.Increment(ref _retainedDebtIterations);
                     UpdateMaxRetainedSlices(availableSlices);
-                    _runnerWake.Wait(PumpInterval, cancellationToken);
-                    _runnerWake.Reset();
+                    timer.Wait(PumpInterval, cancellationToken);
                     continue;
                 }
                 if (slices < schedulerLimitedSlices)
                 {
                     Interlocked.Increment(ref _capacityLimitedCatchUpBatches);
+                    Interlocked.Increment(ref _capacityLimitedContinuationCount);
                     Interlocked.Increment(ref _retainedDebtIterations);
                     UpdateMaxRetainedSlices(availableSlices - slices);
                 }
@@ -415,7 +447,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                         var session = RequireSession();
                         var advanceStart = _clock.GetTimestamp();
                         session.Advance(NanosecondsPerPump);
-                        UpdateMaxDuration(ref _maxAdvanceDurationTicks, _clock.GetTimestamp() - advanceStart);
+                        ObserveOperationDuration("SessionAdvance", _clock.GetTimestamp() - advanceStart, ref _advanceCalls, ref _advanceDurationTicksTotal, ref _maxAdvanceDurationTicks);
 
                         var inputStart = _clock.GetTimestamp();
                         ProcessInputs(session);
@@ -423,7 +455,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
                         var audioStart = _clock.GetTimestamp();
                         ReadAudio(session);
-                        UpdateMaxDuration(ref _maxReadAudioDurationTicks, _clock.GetTimestamp() - audioStart);
+                        ObserveOperationDuration("ReadAudio", _clock.GetTimestamp() - audioStart, ref _readAudioCalls, ref _readAudioDurationTicksTotal, ref _maxReadAudioDurationTicks);
                     }
                     finally
                     {
@@ -453,7 +485,10 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 }
 
                 if (_clock.GetTimestamp() >= nextDeadline)
+                {
+                    Interlocked.Increment(ref _yieldContinuationCount);
                     Thread.Yield();
+                }
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -469,19 +504,19 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         }
     }
 
-    private void WaitUntil(long deadline, CancellationToken cancellationToken)
+    private bool WaitUntil(FabricRunnerTimer timer, long deadline, CancellationToken cancellationToken)
     {
+        var waited = false;
         while (!cancellationToken.IsCancellationRequested)
         {
             var remainingTicks = deadline - _clock.GetTimestamp();
             if (remainingTicks <= 0)
-                return;
+                return waited;
             var remainingMilliseconds = (double)remainingTicks * 1000 / _clock.Frequency;
             if (remainingMilliseconds > 2)
             {
                 var wait = TimeSpan.FromMilliseconds(Math.Max(0, remainingMilliseconds - 1));
-                _runnerWake.Wait(wait, cancellationToken);
-                _runnerWake.Reset();
+                waited |= timer.Wait(wait, cancellationToken);
                 continue;
             }
             var spin = new SpinWait();
@@ -493,16 +528,20 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 else
                     Thread.Yield();
             }
-            return;
+            return waited;
         }
         cancellationToken.ThrowIfCancellationRequested();
+        return waited;
     }
 
     private void WaitSessionGate(CancellationToken cancellationToken)
     {
         var start = _clock.GetTimestamp();
         _sessionGate.Wait(cancellationToken);
-        UpdateMaxDuration(ref _maxSessionGateWaitTicks, _clock.GetTimestamp() - start);
+        var elapsed = _clock.GetTimestamp() - start;
+        UpdateMaxDuration(ref _maxSessionGateWaitTicks, elapsed);
+        if (TicksToMilliseconds(elapsed) > 10)
+            EnqueueStallTrace("SessionGateWait", elapsed);
     }
 
     private void PublishLatestSnapshot(CancellationToken cancellationToken)
@@ -514,7 +553,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             var session = RequireSession();
             var snapshotStart = _clock.GetTimestamp();
             snapshot = session.GetSnapshot();
-            UpdateMaxDuration(ref _maxSnapshotDurationTicks, _clock.GetTimestamp() - snapshotStart);
+            ObserveOperationDuration("GetSnapshot", _clock.GetTimestamp() - snapshotStart, ref _snapshotCalls, ref _snapshotDurationTicksTotal, ref _maxSnapshotDurationTicks);
         }
         finally
         {
@@ -523,11 +562,13 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 
         var publishStart = _clock.GetTimestamp();
         PublishSnapshot(snapshot);
-        UpdateMaxDuration(ref _maxPublishDurationTicks, _clock.GetTimestamp() - publishStart);
+        ObserveOperationDuration("PublishSnapshot", _clock.GetTimestamp() - publishStart, ref _publishCalls, ref _publishDurationTicksTotal, ref _maxPublishDurationTicks);
     }
 
     private void ObserveWakeLateness(long lateTicks)
     {
+        Interlocked.Increment(ref _timedWaitCount);
+        Interlocked.Add(ref _timedWaitLatenessTicksTotal, Math.Max(0, lateTicks));
         if (lateTicks <= 0)
         {
             Interlocked.Exchange(ref _currentConsecutiveLateWakes, 0);
@@ -535,6 +576,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         }
 
         UpdateMax(ref _maxWakeLatenessTicks, lateTicks);
+        if (TicksToMilliseconds(lateTicks) > 10)
+            EnqueueStallTrace("TimedWait", lateTicks);
         var lateMilliseconds = (double)lateTicks * 1000 / _clock.Frequency;
         if (lateMilliseconds > 2) Interlocked.Increment(ref _wakeLateOver2Ms);
         if (lateMilliseconds > 5) Interlocked.Increment(ref _wakeLateOver5Ms);
@@ -702,6 +745,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 audioStatistics = _audioSink.GetStatistics();
                 _audioStarted = false;
             }
+            WriteStallTraceFile();
             EmitStopSummary(audioStatistics);
             if (_runtime is not null)
                 TryCleanup(_runtime.Dispose, ref failures);
@@ -754,6 +798,30 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         Interlocked.Exchange(ref _maxPublishDurationTicks, 0);
         Interlocked.Exchange(ref _maxInputDurationTicks, 0);
         Interlocked.Exchange(ref _maxSessionGateWaitTicks, 0);
+        Interlocked.Exchange(ref _timedWaitCount, 0);
+        Interlocked.Exchange(ref _timedWaitLatenessTicksTotal, 0);
+        Interlocked.Exchange(ref _debtContinuationCount, 0);
+        Interlocked.Exchange(ref _capacityLimitedContinuationCount, 0);
+        Interlocked.Exchange(ref _yieldContinuationCount, 0);
+        _timingMode = "Unstarted";
+        _highResolutionTimerActive = false;
+        _mmcssRegistered = false;
+        Interlocked.Exchange(ref _advanceCalls, 0);
+        Interlocked.Exchange(ref _advanceDurationTicksTotal, 0);
+        Interlocked.Exchange(ref _advanceOver2Ms, 0);
+        Interlocked.Exchange(ref _advanceOver5Ms, 0);
+        Interlocked.Exchange(ref _advanceOver10Ms, 0);
+        Interlocked.Exchange(ref _advanceOver20Ms, 0);
+        Interlocked.Exchange(ref _advanceOver50Ms, 0);
+        Interlocked.Exchange(ref _advanceOver100Ms, 0);
+        Interlocked.Exchange(ref _readAudioCalls, 0);
+        Interlocked.Exchange(ref _readAudioDurationTicksTotal, 0);
+        Interlocked.Exchange(ref _snapshotCalls, 0);
+        Interlocked.Exchange(ref _snapshotDurationTicksTotal, 0);
+        Interlocked.Exchange(ref _publishCalls, 0);
+        Interlocked.Exchange(ref _publishDurationTicksTotal, 0);
+        while (_stallTrace.TryDequeue(out _)) { }
+        _lastStallTracePath = string.Empty;
     }
 
     internal static int CalculateSafeFramesPerSlice(int sampleRate)
@@ -797,6 +865,45 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         }
     }
 
+
+    private void ObserveOperationDuration(string operation, long ticks, ref long calls, ref long totalTicks, ref long maxTicks)
+    {
+        Interlocked.Increment(ref calls);
+        Interlocked.Add(ref totalTicks, ticks);
+        UpdateMaxDuration(ref maxTicks, ticks);
+        if (operation == "SessionAdvance")
+            ObserveAdvanceDurationBuckets(ticks);
+        if (TicksToMilliseconds(ticks) > 10)
+            EnqueueStallTrace(operation, ticks);
+    }
+
+    private void ObserveAdvanceDurationBuckets(long ticks)
+    {
+        var ms = TicksToMilliseconds(ticks);
+        if (ms > 2) Interlocked.Increment(ref _advanceOver2Ms);
+        if (ms > 5) Interlocked.Increment(ref _advanceOver5Ms);
+        if (ms > 10) Interlocked.Increment(ref _advanceOver10Ms);
+        if (ms > 20) Interlocked.Increment(ref _advanceOver20Ms);
+        if (ms > 50) Interlocked.Increment(ref _advanceOver50Ms);
+        if (ms > 100) Interlocked.Increment(ref _advanceOver100Ms);
+    }
+
+    private void EnqueueStallTrace(string operation, long ticks)
+    {
+        if (_stallTrace.Count >= 500)
+            return;
+        _stallTrace.Enqueue(new(
+            _clock.GetTimestamp(),
+            operation,
+            TicksToMilliseconds(ticks),
+            Environment.CurrentManagedThreadId,
+            CalculateAvailableSlices(_clock.GetTimestamp(), _clock.GetTimestamp(), Math.Max(1L, _clock.Frequency / EmulationPumpHz)),
+            _audioSink.GetStatistics().CurrentRingFrames,
+            _audioSink.WritableFrames,
+            Interlocked.Read(ref _singleSliceBatches) + Interlocked.Read(ref _multiSliceBatches),
+            null));
+    }
+
     private void UpdateMaxFramesPerSlice(int frames) => UpdateMax(ref _maxFramesPerSlice, frames);
     private void UpdateMaxDuration(ref long target, long ticks) => UpdateMax(ref target, ticks);
     private void UpdateMaxRetainedSlices(long slices) => UpdateMax(ref _maxRetainedSlices, slices);
@@ -824,6 +931,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     }
 
     private double TicksToMilliseconds(long ticks) => (double)ticks * 1000 / _clock.Frequency;
+    private double AverageTicksToMilliseconds(long totalTicks, long calls) => calls > 0 ? TicksToMilliseconds(totalTicks) / calls : 0;
 
     private static double CalculateAverageBatchSize(long slices, long batches) => batches > 0 ? (double)slices / batches : 0;
 
@@ -873,6 +981,30 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             TicksToMilliseconds(Interlocked.Read(ref _maxPublishDurationTicks)),
             TicksToMilliseconds(Interlocked.Read(ref _maxInputDurationTicks)),
             TicksToMilliseconds(Interlocked.Read(ref _maxSessionGateWaitTicks)),
+            _timingMode,
+            _highResolutionTimerActive,
+            _mmcssRegistered,
+            Interlocked.Read(ref _timedWaitCount),
+            Interlocked.Read(ref _debtContinuationCount),
+            Interlocked.Read(ref _capacityLimitedContinuationCount),
+            Interlocked.Read(ref _yieldContinuationCount),
+            AverageTicksToMilliseconds(Interlocked.Read(ref _timedWaitLatenessTicksTotal), Interlocked.Read(ref _timedWaitCount)),
+            Interlocked.Read(ref _advanceCalls),
+            AverageTicksToMilliseconds(Interlocked.Read(ref _advanceDurationTicksTotal), Interlocked.Read(ref _advanceCalls)),
+            Interlocked.Read(ref _advanceOver2Ms),
+            Interlocked.Read(ref _advanceOver5Ms),
+            Interlocked.Read(ref _advanceOver10Ms),
+            Interlocked.Read(ref _advanceOver20Ms),
+            Interlocked.Read(ref _advanceOver50Ms),
+            Interlocked.Read(ref _advanceOver100Ms),
+            Interlocked.Read(ref _readAudioCalls),
+            AverageTicksToMilliseconds(Interlocked.Read(ref _readAudioDurationTicksTotal), Interlocked.Read(ref _readAudioCalls)),
+            Interlocked.Read(ref _snapshotCalls),
+            AverageTicksToMilliseconds(Interlocked.Read(ref _snapshotDurationTicksTotal), Interlocked.Read(ref _snapshotCalls)),
+            Interlocked.Read(ref _publishCalls),
+            AverageTicksToMilliseconds(Interlocked.Read(ref _publishDurationTicksTotal), Interlocked.Read(ref _publishCalls)),
+            _stallTrace.Count,
+            _lastStallTracePath,
             audioStatistics));
     }
 
@@ -911,8 +1043,50 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         double maxPublishDurationMilliseconds,
         double maxInputDurationMilliseconds,
         double maxSessionGateWaitMilliseconds,
+        string timingMode,
+        bool highResolutionTimerActive,
+        bool mmcssRegistered,
+        long timedWaitCount,
+        long debtContinuationCount,
+        long capacityContinuationCount,
+        long yieldContinuationCount,
+        double averageTimedWakeLatenessMilliseconds,
+        long advanceCalls,
+        double averageAdvanceDurationMilliseconds,
+        long advanceOver2Ms,
+        long advanceOver5Ms,
+        long advanceOver10Ms,
+        long advanceOver20Ms,
+        long advanceOver50Ms,
+        long advanceOver100Ms,
+        long readAudioCalls,
+        double averageReadAudioDurationMilliseconds,
+        long snapshotCalls,
+        double averageSnapshotDurationMilliseconds,
+        long publishCalls,
+        double averagePublishDurationMilliseconds,
+        int stallTraceCount,
+        string stallTracePath,
         EmulationAudioPlaybackStatistics audioStatistics) =>
-        $"Fabric stop summary: wallMs={wallMilliseconds:F1}, emulatedMs={emulatedMilliseconds:F1}, ratio={ratio:F5}, slices={slices}, catchUpSlices={catchUpSlices}, maxCatchUpBatch={maxCatchUpBatch}, discardedMs={discardedMilliseconds:F1}, fabricAudioFrames={fabricAudioFrames}, zeroAudioSlices={zeroAudioSlices}, minFramesPerSlice={minFramesPerSlice}, maxFramesPerSlice={maxFramesPerSlice}, startupRingFrames={audioStatistics.StartupRingFrames}, minimumRingFrames={audioStatistics.MinimumRingFrames}, maximumRingFrames={audioStatistics.MaximumRingFrames}, currentRingFrames={audioStatistics.CurrentRingFrames}, ringCapacityFrames={audioStatistics.CapacityFrames}, writableFramesAtLargestCatchUpBatch={writableFramesAtLargestCatchUpBatch}, capacityLimitedCatchUpBatches={capacityLimitedCatchUpBatches}, retainedDebtIterations={retainedDebtIterations}, maxRetainedSlices={maxRetainedSlices}, runnerThreadId={runnerThreadId}, runnerThreadPriority={runnerThreadPriority}, singleSliceBatches={singleSliceBatches}, multiSliceBatches={multiSliceBatches}, averageBatchSize={averageBatchSize:F2}, catchUpSlicePercent={(slices > 0 ? (double)catchUpSlices * 100 / slices : 0):F2}, maxWakeLatenessMs={maxWakeLatenessMilliseconds:F3}, wakeLateOver2Ms={wakeLateOver2Ms}, wakeLateOver5Ms={wakeLateOver5Ms}, wakeLateOver10Ms={wakeLateOver10Ms}, wakeLateOver20Ms={wakeLateOver20Ms}, wakeLateOver50Ms={wakeLateOver50Ms}, wakeLateOver100Ms={wakeLateOver100Ms}, longestConsecutiveLateWakes={longestConsecutiveLateWakes}, maxAdvanceDurationMs={maxAdvanceDurationMilliseconds:F3}, maxReadAudioDurationMs={maxReadAudioDurationMilliseconds:F3}, maxSnapshotDurationMs={maxSnapshotDurationMilliseconds:F3}, maxPublishDurationMs={maxPublishDurationMilliseconds:F3}, maxInputDurationMs={maxInputDurationMilliseconds:F3}, maxSessionGateWaitMs={maxSessionGateWaitMilliseconds:F3}, maxFramesGeneratedByOneSlice={maxFramesPerSlice}, ringWritten={audioStatistics.RingFramesWritten}, ringRejected={audioStatistics.RingFramesRejected}, devicePcmFrames={audioStatistics.DeviceFramesDelivered}, silenceFrames={audioStatistics.SilenceFrames}, underrunEpisodes={audioStatistics.UnderrunEpisodes}, minimumRequestedFrames={audioStatistics.MinimumRequestedFrames}, maximumRequestedFrames={audioStatistics.MaximumRequestedFrames}, totalRequestedFrames={audioStatistics.TotalRequestedFrames}, playbackStarted={audioStatistics.PlaybackStarted}.";
+        $"Fabric stop summary: wallMs={wallMilliseconds:F1}, emulatedMs={emulatedMilliseconds:F1}, ratio={ratio:F5}, slices={slices}, catchUpSlices={catchUpSlices}, maxCatchUpBatch={maxCatchUpBatch}, discardedMs={discardedMilliseconds:F1}, fabricAudioFrames={fabricAudioFrames}, zeroAudioSlices={zeroAudioSlices}, minFramesPerSlice={minFramesPerSlice}, maxFramesPerSlice={maxFramesPerSlice}, startupRingFrames={audioStatistics.StartupRingFrames}, minimumRingFrames={audioStatistics.MinimumRingFrames}, maximumRingFrames={audioStatistics.MaximumRingFrames}, currentRingFrames={audioStatistics.CurrentRingFrames}, ringCapacityFrames={audioStatistics.CapacityFrames}, writableFramesAtLargestCatchUpBatch={writableFramesAtLargestCatchUpBatch}, capacityLimitedCatchUpBatches={capacityLimitedCatchUpBatches}, retainedDebtIterations={retainedDebtIterations}, maxRetainedSlices={maxRetainedSlices}, runnerThreadId={runnerThreadId}, runnerThreadPriority={runnerThreadPriority}, singleSliceBatches={singleSliceBatches}, multiSliceBatches={multiSliceBatches}, averageBatchSize={averageBatchSize:F2}, catchUpSlicePercent={(slices > 0 ? (double)catchUpSlices * 100 / slices : 0):F2}, timingMode={timingMode}, highResolutionTimerActive={highResolutionTimerActive}, mmcssRegistered={mmcssRegistered}, timedWaitCount={timedWaitCount}, debtContinuationCount={debtContinuationCount}, capacityContinuationCount={capacityContinuationCount}, yieldContinuationCount={yieldContinuationCount}, averageTimedWakeLatenessMs={averageTimedWakeLatenessMilliseconds:F3}, maxTimedWakeLatenessMs={maxWakeLatenessMilliseconds:F3}, wakeLateOver2Ms={wakeLateOver2Ms}, wakeLateOver5Ms={wakeLateOver5Ms}, wakeLateOver10Ms={wakeLateOver10Ms}, wakeLateOver20Ms={wakeLateOver20Ms}, wakeLateOver50Ms={wakeLateOver50Ms}, wakeLateOver100Ms={wakeLateOver100Ms}, longestConsecutiveLateWakes={longestConsecutiveLateWakes}, advanceCalls={advanceCalls}, averageAdvanceDurationMs={averageAdvanceDurationMilliseconds:F3}, maxAdvanceDurationMs={maxAdvanceDurationMilliseconds:F3}, advanceOver2Ms={advanceOver2Ms}, advanceOver5Ms={advanceOver5Ms}, advanceOver10Ms={advanceOver10Ms}, advanceOver20Ms={advanceOver20Ms}, advanceOver50Ms={advanceOver50Ms}, advanceOver100Ms={advanceOver100Ms}, readAudioCalls={readAudioCalls}, averageReadAudioDurationMs={averageReadAudioDurationMilliseconds:F3}, snapshotCalls={snapshotCalls}, averageSnapshotDurationMs={averageSnapshotDurationMilliseconds:F3}, publishCalls={publishCalls}, averagePublishDurationMs={averagePublishDurationMilliseconds:F3}, stallTraceCount={stallTraceCount}, stallTracePath={stallTracePath}, maxReadAudioDurationMs={maxReadAudioDurationMilliseconds:F3}, maxSnapshotDurationMs={maxSnapshotDurationMilliseconds:F3}, maxPublishDurationMs={maxPublishDurationMilliseconds:F3}, maxInputDurationMs={maxInputDurationMilliseconds:F3}, maxSessionGateWaitMs={maxSessionGateWaitMilliseconds:F3}, maxFramesGeneratedByOneSlice={maxFramesPerSlice}, ringWritten={audioStatistics.RingFramesWritten}, ringRejected={audioStatistics.RingFramesRejected}, devicePcmFrames={audioStatistics.DeviceFramesDelivered}, silenceFrames={audioStatistics.SilenceFrames}, underrunEpisodes={audioStatistics.UnderrunEpisodes}, minimumRequestedFrames={audioStatistics.MinimumRequestedFrames}, maximumRequestedFrames={audioStatistics.MaximumRequestedFrames}, totalRequestedFrames={audioStatistics.TotalRequestedFrames}, playbackStarted={audioStatistics.PlaybackStarted}.";
+
+    private void WriteStallTraceFile()
+    {
+        if (_stallTrace.IsEmpty)
+            return;
+        var path = Path.Combine(Path.GetTempPath(), $"oasis-fabric-runner-stalls-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}.csv");
+        var lines = new List<string>(_stallTrace.Count + 1)
+        {
+            "timestamp,operation,durationMs,runnerThreadId,currentDebtSlices,ringReadableFrames,ringWritableFrames,batchIndex,applicationActive"
+        };
+        lines.AddRange(_stallTrace.Select(record =>
+            FormattableString.Invariant($"{record.Timestamp},{record.Operation},{record.DurationMilliseconds:F3},{record.RunnerThreadId},{record.CurrentDebtSlices},{record.RingReadableFrames},{record.RingWritableFrames},{record.BatchIndex},{record.ApplicationActive}")));
+        File.WriteAllLines(path, lines);
+        _lastStallTracePath = path;
+    }
+
+
+    private readonly record struct StallTraceRecord(long Timestamp, string Operation, double DurationMilliseconds, int RunnerThreadId, int CurrentDebtSlices, int RingReadableFrames, int RingWritableFrames, long BatchIndex, bool? ApplicationActive);
 
     private static void TryCleanup(Action action, ref List<Exception>? failures)
     {
