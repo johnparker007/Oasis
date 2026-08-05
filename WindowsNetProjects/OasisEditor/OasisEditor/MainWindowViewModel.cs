@@ -245,7 +245,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _emulationBackendFactory = new EmulationBackendFactory(
             () => FabricRuntimeLibraryPath, () => ProductionAmberLibraryPath,
             () => System6AudioBufferLengthMilliseconds,
-            errorLogger: message => AddOutputEntry(message, OutputLogStatus.Error));
+            errorLogger: message => AddOutputEntry(message, OutputLogStatus.Error),
+            infoLogger: message => AddOutputEntry(message, OutputLogStatus.Info));
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
@@ -1916,6 +1917,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ToolWindowCloseRequested?.Invoke(EditorToolWindowId.Preferences);
     }
 
+    private CoalescedMachineOutputDispatcher? _machineOutputDispatcher;
+
     private static void DispatchToUiThread(Action work)
     {
         ArgumentNullException.ThrowIfNull(work);
@@ -2017,6 +2020,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ?? throw new InvalidOperationException($"No emulation backend is available for platform '{SelectedFruitMachinePlatform}'.");
 
         _activeEmulationBackend = backend;
+        _machineOutputDispatcher = new CoalescedMachineOutputDispatcher(DispatchToUiThread, ApplyMachineOutputBatch);
         backend.StateChanged += OnActiveBackendStateChanged;
         backend.LampChanged += OnActiveBackendLampChanged;
         backend.ReelChanged += OnActiveBackendReelChanged;
@@ -2034,6 +2038,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             backend.ReelChanged -= OnActiveBackendReelChanged;
             backend.SegmentChanged -= OnActiveBackendSegmentChanged;
             backend.VfdBrightnessChanged -= OnActiveBackendVfdBrightnessChanged;
+            _machineOutputDispatcher?.Detach();
+            _machineOutputDispatcher = null;
             await backend.DisposeAsync().ConfigureAwait(false);
             _activeEmulationBackend = null;
             throw;
@@ -2266,24 +2272,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             : fullPath;
     }
 
-    private void OnActiveBackendLampChanged(object? sender, MachineLampChangedEventArgs e)
-    {
-        _lampRuntimeAdapter.ApplyLampState(e.LampId, e.Value);
-    }
+    private void OnActiveBackendLampChanged(object? sender, MachineLampChangedEventArgs e) =>
+        _machineOutputDispatcher?.EnqueueLamp(e.LampId, e.Value);
 
-    private void OnActiveBackendReelChanged(object? sender, MachineReelChangedEventArgs e)
-    {
-        _reelRuntimeAdapter.ApplyReelState(e.ReelId, e.Position);
-    }
+    private void OnActiveBackendReelChanged(object? sender, MachineReelChangedEventArgs e) =>
+        _machineOutputDispatcher?.EnqueueReel(e.ReelId, e.Position);
 
-    private void OnActiveBackendSegmentChanged(object? sender, MachineSegmentChangedEventArgs e)
-    {
-        _segmentRuntimeAdapter.ApplySegmentState(e.CellId, e.SegmentMask, e.OutputType);
-    }
+    private void OnActiveBackendSegmentChanged(object? sender, MachineSegmentChangedEventArgs e) =>
+        _machineOutputDispatcher?.EnqueueSegment(e.CellId, e.SegmentMask, e.OutputType);
 
-    private void OnActiveBackendVfdBrightnessChanged(object? sender, MachineVfdBrightnessChangedEventArgs e)
+    private void OnActiveBackendVfdBrightnessChanged(object? sender, MachineVfdBrightnessChangedEventArgs e) =>
+        _machineOutputDispatcher?.EnqueueVfdBrightness(e.CellId, e.NormalizedBrightness);
+
+    private void ApplyMachineOutputBatch(MachineOutputBatch batch)
     {
-        _segmentRuntimeAdapter.ApplyVfdBrightness(e.CellId, e.NormalizedBrightness);
+        foreach (var lamp in batch.Lamps)
+            _lampRuntimeAdapter.ApplyLampState(lamp.Id, lamp.Value);
+        foreach (var reel in batch.Reels)
+            _reelRuntimeAdapter.ApplyReelState(reel.Id, reel.Value);
+        foreach (var segment in batch.Segments)
+            _segmentRuntimeAdapter.ApplySegmentState(segment.Id, segment.Mask, segment.OutputType);
+        foreach (var brightness in batch.VfdBrightness)
+            _segmentRuntimeAdapter.ApplyVfdBrightness(brightness.Id, brightness.Value);
     }
 
     private void OnActiveBackendStateChanged(object? sender, EmulationBackendState state)
@@ -2336,6 +2346,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         backend.ReelChanged -= OnActiveBackendReelChanged;
         backend.SegmentChanged -= OnActiveBackendSegmentChanged;
         backend.VfdBrightnessChanged -= OnActiveBackendVfdBrightnessChanged;
+        _machineOutputDispatcher?.Detach();
+        _machineOutputDispatcher = null;
         await backend.DisposeAsync();
         _activeEmulationBackend = null;
         _playViewInputRouter = null;

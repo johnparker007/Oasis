@@ -10,6 +10,10 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private const string JpmSystem6MachineIdentifier = "jpm-system6";
     private const int EmulationPumpHz = 1000;
     private const ulong NanosecondsPerPump = 1_000_000;
+    private const int MaxCatchUpSlices = 64;
+    private const int ExceptionalDelayCapMilliseconds = 500;
+    private const int VisualSnapshotCadenceSlices = 16;
+    private const long NanosecondsPerMillisecond = 1_000_000;
     private static readonly TimeSpan PumpInterval = TimeSpan.FromMilliseconds(1);
     private static readonly EmulationBackendCapabilities BackendCapabilities =
         new(true, true, true, true, false, false, false);
@@ -20,6 +24,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private readonly IEmulationAudioSink _audioSink;
     private readonly IFabricClock _clock;
     private readonly Action<string> _errorLogger;
+    private readonly Action<string> _infoLogger;
     private readonly SemaphoreSlim _sessionGate = new(1, 1);
     private readonly ConcurrentQueue<InputCommand> _inputCommands = new();
     private readonly HashSet<int> _assertedInputs = [];
@@ -32,7 +37,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private IFabricRuntimeLibrary? _runtime;
     private IFabricMachineSession? _session;
     private CancellationTokenSource? _pumpCancellation;
-    private Task? _pumpTask;
+    private Thread? _pumpThread;
+    private readonly ManualResetEventSlim _runnerWake = new(false);
     private FabricAudioFormat? _audioFormat;
     private short[] _audioBuffer = [];
     private EmulationBackendState _state = EmulationBackendState.Stopped;
@@ -40,6 +46,14 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private bool _audioStarted;
     private bool _disposed;
     private long _scheduleGeneration;
+    private long _runnerStartTimestamp;
+    private long _totalEmulationSlices;
+    private long _maxCatchUpBatch;
+    private long _exceptionalDiscardedTicks;
+    private long _fabricAudioFramesRead;
+    private string _timingMode = "Unstarted";
+    private bool _highResolutionTimerActive;
+    private bool _mmcssRegistered;
 
     public FabricEmulationBackend(string runtimePath, string amberPath)
         : this(runtimePath, amberPath, path => new FabricRuntimeLibrary(path),
@@ -53,7 +67,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         Func<string, IFabricRuntimeLibrary> runtimeFactory,
         IEmulationAudioSink audioSink,
         IFabricClock clock,
-        Action<string>? errorLogger = null)
+        Action<string>? errorLogger = null,
+        Action<string>? infoLogger = null)
     {
         _runtimePath = runtimePath;
         _amberPath = amberPath;
@@ -61,6 +76,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _audioSink = audioSink;
         _clock = clock;
         _errorLogger = errorLogger ?? WriteDebugError;
+        _infoLogger = infoLogger ?? WriteDebugInfo;
     }
 
     public EmulationBackendKind BackendKind => EmulationBackendKind.Fabric;
@@ -110,9 +126,17 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             }
 
             _shutdown = false;
+            ResetRunnerStatistics();
             LastFailure = null;
             _pumpCancellation = new CancellationTokenSource();
-            _pumpTask = Task.Run(() => PumpAsync(_pumpCancellation.Token), CancellationToken.None);
+            _runnerWake.Reset();
+            _pumpThread = new Thread(() => Pump(_pumpCancellation.Token))
+            {
+                Name = "Oasis Fabric Emulation Runner",
+                IsBackground = true,
+                Priority = ThreadPriority.Normal
+            };
+            _pumpThread.Start();
             SetState(EmulationBackendState.Running);
         }
         catch
@@ -130,21 +154,16 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         if (State != EmulationBackendState.Failed)
             SetState(EmulationBackendState.Stopping);
 
-        if (_pumpCancellation is not null)
-            await _pumpCancellation.CancelAsync().ConfigureAwait(false);
-        if (_pumpTask is not null && Task.CurrentId != _pumpTask.Id)
+        _pumpCancellation?.Cancel();
+        _runnerWake.Set();
+        var thread = _pumpThread;
+        if (thread is not null && thread.ManagedThreadId != Environment.CurrentManagedThreadId)
         {
-            try
+            while (thread.IsAlive)
             {
-                await _pumpTask.WaitAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                // The caller may stop waiting, but native cleanup below is never abandoned.
-            }
-            catch
-            {
-                // LastFailure retains the pump exception; cleanup must continue.
+                cancellationToken.ThrowIfCancellationRequested();
+                if (thread.Join(25))
+                    break;
             }
         }
         await CleanupResourcesAsync().ConfigureAwait(false);
@@ -156,7 +175,10 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         cancellationToken.ThrowIfCancellationRequested();
         ThrowIfDisposed();
         if (State == EmulationBackendState.Running)
+        {
             SetState(EmulationBackendState.Paused);
+            _runnerWake.Set();
+        }
         return Task.CompletedTask;
     }
 
@@ -168,6 +190,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         {
             Interlocked.Increment(ref _scheduleGeneration);
             SetState(EmulationBackendState.Running);
+            _runnerWake.Set();
         }
         return Task.CompletedTask;
     }
@@ -185,6 +208,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             ClearOutputCaches();
             _audioSink.Clear();
             Interlocked.Increment(ref _scheduleGeneration);
+            _runnerWake.Set();
         }
         finally
         {
@@ -246,6 +270,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             return;
         await StopAsync(CancellationToken.None).ConfigureAwait(false);
         _audioSink.Dispose();
+        _runnerWake.Dispose();
         _sessionGate.Dispose();
         _disposed = true;
     }
@@ -294,20 +319,27 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         }
     }
 
-    private async Task PumpAsync(CancellationToken cancellationToken)
+    private void Pump(CancellationToken cancellationToken)
     {
         try
         {
+            using var timer = new FabricRunnerTimer(_runnerWake);
+            using var mmcss = FabricRunnerMmcssRegistration.Register("Games");
+            _timingMode = timer.TimingMode;
+            _highResolutionTimerActive = timer.HighResolutionTimerActive;
+            _mmcssRegistered = mmcss.Registered;
             var pumpTicks = Math.Max(1L, _clock.Frequency / EmulationPumpHz);
             var nextDeadline = _clock.GetTimestamp();
             var scheduleGeneration = Interlocked.Read(ref _scheduleGeneration);
+            var slicesSinceSnapshot = 0;
             while (!cancellationToken.IsCancellationRequested)
             {
                 if (State != EmulationBackendState.Running)
                 {
-                    await Task.Delay(PumpInterval, cancellationToken).ConfigureAwait(false);
+                    timer.Wait(PumpInterval, cancellationToken);
                     nextDeadline = _clock.GetTimestamp();
                     scheduleGeneration = Interlocked.Read(ref _scheduleGeneration);
+                    slicesSinceSnapshot = 0;
                     continue;
                 }
 
@@ -316,38 +348,61 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 {
                     nextDeadline = _clock.GetTimestamp();
                     scheduleGeneration = currentGeneration;
+                    slicesSinceSnapshot = 0;
                 }
 
-                await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-                try
-                {
-                    var session = RequireSession();
-                    session.Advance(NanosecondsPerPump);
-                    ProcessInputs(session);
-                    PublishSnapshot(session.GetSnapshot());
-                    ReadAudio(session);
-                }
-                finally
-                {
-                    _sessionGate.Release();
-                }
-
-                nextDeadline += pumpTicks;
+                WaitUntil(timer, nextDeadline, cancellationToken);
                 var now = _clock.GetTimestamp();
-                // Execute the current slice, then abandon catch-up once over three ticks late.
-                if (now - nextDeadline > pumpTicks * 3)
-                    nextDeadline = now + pumpTicks;
+                var exceptionalCapTicks = pumpTicks * ExceptionalDelayCapMilliseconds;
+                if (now - nextDeadline > exceptionalCapTicks)
+                {
+                    Interlocked.Add(ref _exceptionalDiscardedTicks, now - nextDeadline - exceptionalCapTicks);
+                    nextDeadline = now - exceptionalCapTicks;
+                }
 
-                var remainingTicks = nextDeadline - _clock.GetTimestamp();
-                if (remainingTicks > 0)
+                var availableSlices = CalculateAvailableSlices(now, nextDeadline, pumpTicks);
+                if (availableSlices <= 0)
+                    continue;
+
+                var writableFrames = _audioStarted ? _audioSink.WritableFrames : int.MaxValue;
+                var capacityLimitedSlices = CalculateAudioCapacityLimitedSlices(writableFrames);
+                var schedulerLimitedSlices = Math.Min(availableSlices, MaxCatchUpSlices);
+                var slices = Math.Min(schedulerLimitedSlices, capacityLimitedSlices);
+                if (slices <= 0)
                 {
-                    var remaining = TimeSpan.FromSeconds((double)remainingTicks / _clock.Frequency);
-                    await Task.Delay(remaining, cancellationToken).ConfigureAwait(false);
+                    timer.Wait(PumpInterval, cancellationToken);
+                    continue;
                 }
-                else
+                for (var slice = 0; slice < slices; slice++)
                 {
-                    await Task.Yield();
+                    WaitSessionGate(cancellationToken);
+                    try
+                    {
+                        var session = RequireSession();
+                        session.Advance(NanosecondsPerPump);
+                        ProcessInputs(session);
+                        ReadAudio(session);
+                    }
+                    finally
+                    {
+                        _sessionGate.Release();
+                    }
+
+                    nextDeadline += pumpTicks;
+                    slicesSinceSnapshot++;
                 }
+
+                Interlocked.Add(ref _totalEmulationSlices, slices);
+                UpdateMaxCatchUpBatch(slices);
+
+                if (slicesSinceSnapshot >= VisualSnapshotCadenceSlices || slices > 1)
+                {
+                    PublishLatestSnapshot(cancellationToken);
+                    slicesSinceSnapshot = 0;
+                }
+
+                if (_clock.GetTimestamp() >= nextDeadline)
+                    Thread.Yield();
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -358,16 +413,57 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             LastFailure = exception;
             LogException("Fabric emulation pump failed.", exception);
             _pumpCancellation?.Cancel();
-            try
-            {
-                await CleanupResourcesAsync().ConfigureAwait(false);
-            }
-            catch (Exception cleanupException)
-            {
-                LogException("Fabric cleanup after pump failure also failed.", cleanupException);
-            }
+            _runnerWake.Set();
             SetState(EmulationBackendState.Failed);
         }
+    }
+
+    private void WaitUntil(FabricRunnerTimer timer, long deadline, CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var remainingTicks = deadline - _clock.GetTimestamp();
+            if (remainingTicks <= 0)
+                return;
+            var remainingMilliseconds = (double)remainingTicks * 1000 / _clock.Frequency;
+            if (remainingMilliseconds > 2)
+            {
+                var wait = TimeSpan.FromMilliseconds(Math.Max(0, remainingMilliseconds - 1));
+                timer.Wait(wait, cancellationToken);
+                continue;
+            }
+            var spin = new SpinWait();
+            while (_clock.GetTimestamp() < deadline)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (spin.Count < 10)
+                    spin.SpinOnce();
+                else
+                    Thread.Yield();
+            }
+            return;
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    private void WaitSessionGate(CancellationToken cancellationToken) =>
+        _sessionGate.Wait(cancellationToken);
+
+    private void PublishLatestSnapshot(CancellationToken cancellationToken)
+    {
+        FabricMachineSnapshot snapshot;
+        WaitSessionGate(cancellationToken);
+        try
+        {
+            var session = RequireSession();
+            snapshot = session.GetSnapshot();
+        }
+        finally
+        {
+            _sessionGate.Release();
+        }
+
+        PublishSnapshot(snapshot);
     }
 
     private void ConfigureAudio(IFabricMachineSession session)
@@ -381,11 +477,14 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _audioFormat = format;
         var frameCapacity = CalculateAudioFramesPerTick(checked((int)format.SampleRate));
         _audioBuffer = new short[checked(frameCapacity * (int)format.ChannelCount)];
-        _audioSink.Start(new(
+        var audioFormat = new EmulationAudioFormat(
             checked((int)format.SampleRate),
             checked((int)format.ChannelCount),
-            checked((int)format.BitsPerSample)));
+            checked((int)format.BitsPerSample));
+        _audioSink.Start(audioFormat);
         _audioStarted = true;
+        var statistics = _audioSink.GetStatistics();
+        _infoLogger($"Fabric audio startup: sampleRate={audioFormat.SampleRate}, channels={audioFormat.Channels}, ringCapacityFrames={statistics.CapacityFrames}, ringCapacityMs={(double)statistics.CapacityFrames * 1000 / audioFormat.SampleRate:F1}, prebufferFrames={statistics.PrebufferThresholdFrames}, prebufferMs={statistics.PrebufferThresholdMilliseconds}, outputBackend=WasapiOut, wasapiLatencyMs={statistics.WasapiLatencyMilliseconds}.");
     }
 
     internal static int CalculateAudioFramesPerTick(int sampleRate)
@@ -413,6 +512,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             return;
         var frameCapacity = _audioBuffer.Length / format.ChannelCount;
         var framesWritten = session.ReadAudio(_audioBuffer, frameCapacity);
+        Interlocked.Add(ref _fabricAudioFramesRead, framesWritten);
         var sampleCount = checked(framesWritten * format.ChannelCount);
         var bytes = MemoryMarshal.AsBytes(_audioBuffer.AsSpan(0, sampleCount));
         if (!bytes.IsEmpty)
@@ -510,18 +610,21 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 TryCleanup(_session.Dispose, ref failures);
                 _session = null;
             }
+            EmulationAudioPlaybackStatistics audioStatistics = default;
             if (_audioStarted)
             {
                 TryCleanup(_audioSink.Stop, ref failures);
+                audioStatistics = _audioSink.GetStatistics();
                 _audioStarted = false;
             }
+            EmitStopSummary(audioStatistics);
             if (_runtime is not null)
                 TryCleanup(_runtime.Dispose, ref failures);
             _runtime = null;
             _audioFormat = null;
             _pumpCancellation?.Dispose();
             _pumpCancellation = null;
-            _pumpTask = null;
+            _pumpThread = null;
             ClearPendingInputs();
         }
         finally
@@ -531,6 +634,107 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         if (failures is { Count: > 0 })
             throw failures.Count == 1 ? failures[0] : new AggregateException("Multiple Fabric cleanup operations failed.", failures);
     }
+
+    private void ResetRunnerStatistics()
+    {
+        Interlocked.Exchange(ref _runnerStartTimestamp, _clock.GetTimestamp());
+        Interlocked.Exchange(ref _totalEmulationSlices, 0);
+        Interlocked.Exchange(ref _maxCatchUpBatch, 0);
+        Interlocked.Exchange(ref _exceptionalDiscardedTicks, 0);
+        Interlocked.Exchange(ref _fabricAudioFramesRead, 0);
+        _timingMode = "Unstarted";
+        _highResolutionTimerActive = false;
+        _mmcssRegistered = false;
+    }
+
+    internal static int CalculateSafeFramesPerSlice(int sampleRate)
+    {
+        if (sampleRate <= 0)
+            throw new ArgumentOutOfRangeException(nameof(sampleRate));
+        return checked((sampleRate + EmulationPumpHz - 1) / EmulationPumpHz);
+    }
+
+    internal int CalculateAudioCapacityLimitedSlices(int writableFrames)
+    {
+        if (!_audioStarted || _audioFormat is not { } format)
+            return MaxCatchUpSlices;
+        if (writableFrames <= 0)
+            return 0;
+        return CalculateAudioCapacityLimitedSlices(checked((int)format.SampleRate), writableFrames);
+    }
+
+    internal static int CalculateAudioCapacityLimitedSlices(int sampleRate, int writableFrames)
+    {
+        if (writableFrames <= 0)
+            return 0;
+        return writableFrames / CalculateSafeFramesPerSlice(sampleRate);
+    }
+
+    internal static int CalculateAvailableSlices(long now, long nextDeadline, long pumpTicks)
+    {
+        if (now < nextDeadline)
+            return 0;
+        return checked((int)Math.Min(int.MaxValue, ((now - nextDeadline) / pumpTicks) + 1));
+    }
+
+    private static void UpdateMax(ref long target, long value)
+    {
+        var current = Interlocked.Read(ref target);
+        while (value > current)
+        {
+            var previous = Interlocked.CompareExchange(ref target, value, current);
+            if (previous == current) return;
+            current = previous;
+        }
+    }
+
+    private void UpdateMaxCatchUpBatch(int slices)
+    {
+        var current = Interlocked.Read(ref _maxCatchUpBatch);
+        while (slices > current)
+        {
+            var previous = Interlocked.CompareExchange(ref _maxCatchUpBatch, slices, current);
+            if (previous == current)
+                return;
+            current = previous;
+        }
+    }
+
+    private void EmitStopSummary(EmulationAudioPlaybackStatistics audioStatistics)
+    {
+        var start = Interlocked.Read(ref _runnerStartTimestamp);
+        var wallMs = start == 0 ? 0 : (double)(_clock.GetTimestamp() - start) * 1000 / _clock.Frequency;
+        var slices = Interlocked.Read(ref _totalEmulationSlices);
+        var emulatedMs = slices;
+        var ratio = wallMs > 0 ? emulatedMs / wallMs : 0;
+        var discardedMs = (double)Interlocked.Read(ref _exceptionalDiscardedTicks) * 1000 / _clock.Frequency;
+        _infoLogger(FormatStopSummary(
+            wallMs,
+            emulatedMs,
+            ratio,
+            slices,
+            Interlocked.Read(ref _maxCatchUpBatch),
+            discardedMs,
+            Interlocked.Read(ref _fabricAudioFramesRead),
+            _timingMode,
+            _highResolutionTimerActive,
+            _mmcssRegistered,
+            audioStatistics));
+    }
+
+    internal static string FormatStopSummary(
+        double wallMilliseconds,
+        double emulatedMilliseconds,
+        double ratio,
+        long slices,
+        long maxCatchUpBatch,
+        double discardedMilliseconds,
+        long fabricAudioFrames,
+        string timingMode,
+        bool highResolutionTimerActive,
+        bool mmcssRegistered,
+        EmulationAudioPlaybackStatistics audioStatistics) =>
+        $"Fabric stop summary: wallMs={wallMilliseconds:F1}, emulatedMs={emulatedMilliseconds:F1}, ratio={ratio:F5}, slices={slices}, maximumCatchUpBatch={maxCatchUpBatch}, discardedMs={discardedMilliseconds:F1}, fabricAudioFrames={fabricAudioFrames}, ringWritten={audioStatistics.RingFramesWritten}, ringRejected={audioStatistics.RingFramesRejected}, devicePcmFrames={audioStatistics.DeviceFramesDelivered}, silenceFrames={audioStatistics.SilenceFrames}, underrunEpisodes={audioStatistics.UnderrunEpisodes}, minimumRingFrames={audioStatistics.MinimumRingFrames}, ringCapacityFrames={audioStatistics.CapacityFrames}, timingMode={timingMode}, highResolutionTimerActive={highResolutionTimerActive}, mmcssRegistered={mmcssRegistered}.";
 
     private static void TryCleanup(Action action, ref List<Exception>? failures)
     {
@@ -542,6 +746,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _errorLogger($"[Error] {message}{Environment.NewLine}{exception}");
 
     private static void WriteDebugError(string message) => Debug.WriteLine(message);
+    private static void WriteDebugInfo(string message) => Debug.WriteLine(message);
 
     private void ReleaseAssertedInputs()
     {
