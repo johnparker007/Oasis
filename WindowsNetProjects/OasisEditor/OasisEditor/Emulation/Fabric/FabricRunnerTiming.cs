@@ -22,6 +22,7 @@ internal sealed class FabricRunnerTimer : IDisposable
         }
 
         _timerHandle = CreateWaitableTimerEx(IntPtr.Zero, null, CreateWaitableTimerHighResolution, TimerAllAccess);
+        HighResolutionTimerActive = !_timerHandle.IsInvalid;
         if (_timerHandle.IsInvalid)
             _timerHandle = CreateWaitableTimerEx(IntPtr.Zero, null, 0, TimerAllAccess);
         if (_timerHandle.IsInvalid)
@@ -32,7 +33,6 @@ internal sealed class FabricRunnerTimer : IDisposable
             return;
         }
 
-        HighResolutionTimerActive = true;
         TimingMode = "WaitableTimer";
         _timerWaitHandle = new EventWaitHandle(false, EventResetMode.AutoReset) { SafeWaitHandle = _timerHandle };
     }

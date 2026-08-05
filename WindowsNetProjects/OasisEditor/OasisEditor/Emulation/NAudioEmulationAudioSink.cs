@@ -111,9 +111,6 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         return state?.CreateStatistics(RingFramesWritten, RingFramesRejected) ?? _lastStatistics;
     }
 
-    internal static bool ShouldDropIncomingBlock(int bufferedBytes, int bufferCapacityBytes, int incomingBytes)
-        => incomingBytes > bufferCapacityBytes - bufferedBytes;
-
     private void ResetDiagnostics()
     {
         Interlocked.Exchange(ref _ringFramesWritten, 0);
@@ -176,11 +173,6 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
             Ring.CapacityFrames,
             Prebuffer.ThresholdFrames,
             Prebuffer.ThresholdMilliseconds,
-            Provider.MaximumRingFrames,
-            Prebuffer.StartupRingFrames,
-            Provider.MinimumRequestedFrames,
-            Provider.MaximumRequestedFrames,
-            Provider.TotalRequestedFrames,
             WasapiLatencyMilliseconds,
             Prebuffer.PlaybackStarted);
     }
@@ -191,25 +183,13 @@ internal sealed class AudioPrebufferPolicy
     internal AudioPrebufferPolicy(EmulationAudioFormat format, int bufferLengthMilliseconds)
     {
         ThresholdMilliseconds = CalculateThresholdMilliseconds(bufferLengthMilliseconds);
-        BytesPerFrame = checked(format.Channels * (format.BitsPerSample / 8));
         ThresholdFrames = Math.Max(1, checked((int)(((long)format.SampleRate * ThresholdMilliseconds + 999) / 1000)));
-        ThresholdBytes = checked(ThresholdFrames * BytesPerFrame);
     }
     internal int ThresholdMilliseconds { get; }
     internal int ThresholdFrames { get; }
-    internal int ThresholdBytes { get; }
-    private int BytesPerFrame { get; }
     internal bool PlaybackStarted { get; private set; }
-    internal int StartupRingFrames { get; private set; }
-    internal bool ObserveQueuedFrames(int queuedFrames) { if (!PlaybackStarted && queuedFrames >= ThresholdFrames) { StartupRingFrames = queuedFrames; PlaybackStarted = true; } return PlaybackStarted; }
-    internal bool ObserveQueuedBytes(int bufferedBytes) => ObserveQueuedFrames(bufferedBytes / BytesPerFrame);
-    internal void Reset() { PlaybackStarted = false; StartupRingFrames = 0; }
+    internal bool ObserveQueuedFrames(int queuedFrames) { if (!PlaybackStarted && queuedFrames >= ThresholdFrames) PlaybackStarted = true; return PlaybackStarted; }
+    internal void Reset() => PlaybackStarted = false;
     internal static int CalculateThresholdMilliseconds(int bufferLengthMilliseconds) => Math.Max(1, (bufferLengthMilliseconds * 3 + 3) / 4);
     internal static int CalculateCapacityFrames(EmulationAudioFormat format, int bufferLengthMilliseconds) => Math.Max(1, checked((int)(((long)format.SampleRate * bufferLengthMilliseconds + 999) / 1000)));
-}
-
-internal static class EmulationAudioFormatExtensions
-{
-    internal static int BytesPerMillisecond(this EmulationAudioFormat format) =>
-        Math.Max(1, checked((format.SampleRate * format.Channels * (format.BitsPerSample / 8)) / 1000));
 }

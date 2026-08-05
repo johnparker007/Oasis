@@ -19,31 +19,12 @@ public sealed class NAudioEmulationAudioSinkTests
     {
         var policy = new AudioPrebufferPolicy(new(48000, 2, 16), 50);
 
-        Assert.Equal(7296, policy.ThresholdBytes);
-        Assert.False(policy.ObserveQueuedBytes(7292));
-        Assert.True(policy.ObserveQueuedBytes(7296));
+        Assert.Equal(1824, policy.ThresholdFrames);
+        Assert.False(policy.ObserveQueuedFrames(1823));
+        Assert.True(policy.ObserveQueuedFrames(1824));
         policy.Reset();
         Assert.False(policy.PlaybackStarted);
-        Assert.False(policy.ObserveQueuedBytes(192));
-    }
-
-    [Theory]
-    [InlineData(48000, 2, 192)]
-    [InlineData(48000, 1, 96)]
-    [InlineData(44100, 2, 176)]
-    public void BufferDepthByteRate_AccountsForChannelsExactlyOnce(int rate, int channels, int expected)
-    {
-        Assert.Equal(expected, new EmulationAudioFormat(rate, channels, 16).BytesPerMillisecond());
-    }
-    [Theory]
-    [InlineData(800, 1000, 192, false)]
-    [InlineData(900, 1000, 192, true)]
-    [InlineData(1000, 1000, 1, true)]
-    public void IncomingBlockIsDroppedRatherThanRequiringBufferedAudioToBeCleared(
-        int bufferedBytes, int capacityBytes, int incomingBytes, bool expectedDrop)
-    {
-        Assert.Equal(expectedDrop,
-            NAudioEmulationAudioSink.ShouldDropIncomingBlock(bufferedBytes, capacityBytes, incomingBytes));
+        Assert.False(policy.ObserveQueuedFrames(48));
     }
 
     [Fact]

@@ -197,54 +197,87 @@ public sealed class EmulationRuntimeStabilityTests
         Assert.Equal(1, provider.UnderrunEpisodes);
     }
 
+
     [Fact]
-    public void WaveProvider_TracksActualDeviceRequestSizes()
+    public void LowLatencyRing_CapacityAwareCatchUpAfterProducerDelayRejectsNoPcmAndAvoidsSilence()
     {
-        var ring = new PcmFrameRingBuffer(1, 16);
-        var provider = new PcmRingWaveProvider(ring, new WaveFormat(48000, 16, 1));
-        provider.Read(new byte[4], 0, 4);
-        provider.Read(new byte[10], 0, 10);
-        Assert.Equal(2, provider.MinimumRequestedFrames);
-        Assert.Equal(5, provider.MaximumRequestedFrames);
-        Assert.Equal(7, provider.TotalRequestedFrames);
+        var format = new EmulationAudioFormat(48000, 2, 16);
+        var ring = new PcmFrameRingBuffer(format.Channels, AudioPrebufferPolicy.CalculateCapacityFrames(format, 50));
+        var provider = new PcmRingWaveProvider(ring, new WaveFormat(format.SampleRate, format.BitsPerSample, format.Channels));
+        var initialReserveFrames = new AudioPrebufferPolicy(format, 50).ThresholdFrames;
+        var samplesPerFrame = format.Channels;
+        var reserve = new short[initialReserveFrames * samplesPerFrame];
+        Assert.Equal(initialReserveFrames, ring.Write(reserve, initialReserveFrames));
+
+        var requestedDuringDelayFrames = 30 * FabricEmulationBackend.CalculateSafeFramesPerSlice(format.SampleRate);
+        Assert.Equal(requestedDuringDelayFrames * format.Channels * sizeof(short),
+            provider.Read(new byte[requestedDuringDelayFrames * format.Channels * sizeof(short)], 0, requestedDuringDelayFrames * format.Channels * sizeof(short)));
+
+        var dueSlices = 64;
+        var executableSlices = Math.Min(dueSlices, FabricEmulationBackend.CalculateAudioCapacityLimitedSlices(format.SampleRate, ring.WritableFrames));
+        var framesPerSlice = FabricEmulationBackend.CalculateSafeFramesPerSlice(format.SampleRate);
+        var catchUpFrames = executableSlices * framesPerSlice;
+        Assert.Equal(catchUpFrames, ring.Write(new short[catchUpFrames * samplesPerFrame], catchUpFrames));
+
+        Assert.True(executableSlices < dueSlices);
+        Assert.Equal(0, provider.SilenceFrames);
+        Assert.Equal(0, provider.UnderrunEpisodes);
+        Assert.True(ring.ReadableFrames > 0);
+    }
+
+    [Fact]
+    public void Coalescer_LongRunningOutputGenerationKeepsPendingStateBoundedAndStopsCleanly()
+    {
+        var scheduled = new Queue<Action>();
+        var batches = 0;
+        var coalescer = new CoalescedMachineOutputDispatcher(a => scheduled.Enqueue(a), _ => batches++);
+        for (var i = 0; i < 100_000; i++)
+        {
+            coalescer.EnqueueLamp(i % 32, i);
+            coalescer.EnqueueReel(i % 8, i);
+            coalescer.EnqueueSegment(i % 16, i, SegmentOutputType.Digit);
+            coalescer.EnqueueVfdBrightness(i % 16, i / 100_000d);
+        }
+
+        Assert.Single(scheduled);
+        Assert.Equal(72, coalescer.PendingEntryCount);
+        scheduled.Dequeue()();
+        coalescer.Detach();
+        coalescer.EnqueueLamp(1, 1);
+
+        Assert.Empty(scheduled);
+        Assert.Equal(1, batches);
+        Assert.False(coalescer.DispatchPending);
     }
 
 
     [Fact]
-    public void StopSummary_ContainsEveryRequiredField()
+    public void StopSummary_ContainsProductionRuntimeFields()
     {
-        var statistics = new EmulationAudioPlaybackStatistics(10, 2, 8, 3, 1, 0, 4, 2400, 1800, 38, 1200, 1800, 96, 192, 10000, 25, true);
-        var summary = FabricEmulationBackend.FormatStopSummary(30012.4, 30005, 0.99975, 30005, 42, 6, 0, 1440240, 0, 48, 48, 2, 2, 30, 1440, 123, "Normal", 100, 4, 1.04, 1.5, 1, 0, 0, 0, 0, 0, 2, 0.1, 0.2, 0.3, 0.4, 0.05, 0.01, "WaitableTimer", true, true, 100, 2, 1, 3, 0.2, 30005, 0.02, 1, 0, 0, 0, 0, 0, 30005, 0.01, 12, 0.03, 12, 0.04, 2, "trace.csv", statistics);
+        var statistics = new EmulationAudioPlaybackStatistics(10, 2, 8, 3, 1, 0, 4, 2400, 1800, 38, 25, true);
+        var summary = FabricEmulationBackend.FormatStopSummary(30012.4, 30005, 0.99975, 30005, 6, 0, 1440240, "WaitableTimer", true, true, statistics);
         foreach (var field in new[]
         {
-            "wallMs=", "emulatedMs=", "ratio=", "slices=", "catchUpSlices=", "maxCatchUpBatch=", "discardedMs=",
+            "wallMs=", "emulatedMs=", "ratio=", "slices=", "maximumCatchUpBatch=", "discardedMs=",
             "fabricAudioFrames=", "ringWritten=", "ringRejected=", "devicePcmFrames=", "silenceFrames=",
-            "underrunEpisodes=", "startupRingFrames=", "minimumRingFrames=", "maximumRingFrames=", "currentRingFrames=", "ringCapacityFrames=",
-            "writableFramesAtLargestCatchUpBatch=", "capacityLimitedCatchUpBatches=", "retainedDebtIterations=",
-            "maxRetainedSlices=", "runnerThreadId=", "runnerThreadPriority=", "singleSliceBatches=", "multiSliceBatches=",
-            "averageBatchSize=", "catchUpSlicePercent=", "timingMode=", "highResolutionTimerActive=", "mmcssRegistered=",
-            "timedWaitCount=", "debtContinuationCount=", "capacityContinuationCount=", "yieldContinuationCount=",
-            "averageTimedWakeLatenessMs=", "maxTimedWakeLatenessMs=", "wakeLateOver2Ms=", "wakeLateOver5Ms=",
-            "wakeLateOver10Ms=", "wakeLateOver20Ms=", "wakeLateOver50Ms=", "wakeLateOver100Ms=",
-            "longestConsecutiveLateWakes=", "advanceCalls=", "averageAdvanceDurationMs=", "maxAdvanceDurationMs=",
-            "advanceOver2Ms=", "advanceOver5Ms=", "advanceOver10Ms=", "advanceOver20Ms=", "advanceOver50Ms=", "advanceOver100Ms=",
-            "readAudioCalls=", "averageReadAudioDurationMs=", "maxReadAudioDurationMs=",
-            "snapshotCalls=", "averageSnapshotDurationMs=", "maxSnapshotDurationMs=",
-            "publishCalls=", "averagePublishDurationMs=", "stallTraceCount=", "stallTracePath=",
-            "maxPublishDurationMs=", "maxInputDurationMs=", "maxSessionGateWaitMs=",
-            "maxFramesGeneratedByOneSlice=", "minimumRequestedFrames=", "maximumRequestedFrames=",
-            "totalRequestedFrames=", "playbackStarted="
+            "underrunEpisodes=", "minimumRingFrames=", "ringCapacityFrames=",
+            "timingMode=", "highResolutionTimerActive=", "mmcssRegistered="
         })
         {
             Assert.Contains(field, summary);
         }
+
+        Assert.DoesNotContain("stallTrace", summary);
+        Assert.DoesNotContain("wakeLateOver", summary);
+        Assert.DoesNotContain("catchUpSlicePercent", summary);
     }
+
 
     [Fact]
     public void RingRejection_IsReportedIndependentlyInStatisticsShape()
     {
-        var statistics = new EmulationAudioPlaybackStatistics(100, 7, 93, 0, 0, 12, 64, 128, 96, 38, 120, 96, 48, 96, 100, 25, true);
-        var summary = FabricEmulationBackend.FormatStopSummary(1000, 1000, 1, 1000, 0, 1, 0, 100, 0, 48, 48, 0, 0, 0, 128, 123, "Normal", 1000, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "ManagedWait", false, false, 1, 0, 0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, 1000, 0, 0, 0, 0, 0, 0, 0, string.Empty, statistics);
+        var statistics = new EmulationAudioPlaybackStatistics(100, 7, 93, 0, 0, 12, 64, 128, 96, 38, 25, true);
+        var summary = FabricEmulationBackend.FormatStopSummary(1000, 1000, 1, 1000, 1, 0, 100, "ManagedWait", false, false, statistics);
         Assert.Contains("ringRejected=7", summary);
         Assert.Contains("devicePcmFrames=93", summary);
         Assert.Contains("silenceFrames=0", summary);

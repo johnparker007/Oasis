@@ -407,7 +407,7 @@ public sealed class FabricManagedBehaviorTests
         var session = new FakeSession { FramesToWrite = 48 };
         var messages = new List<string>();
         var backend = new FabricEmulationBackend("runtime", "amber", _ => new FakeRuntime(session),
-            new FakeAudioSink { Statistics = new(100, 3, 90, 10, 1, 0, 120, 2400, 1800, 38, 2000, 1800, 48, 192, 100, 25, true) }, new FakeClock(), null, messages.Add);
+            new FakeAudioSink { Statistics = new(100, 3, 90, 10, 1, 0, 120, 2400, 1800, 38, 25, true) }, new FakeClock(), null, messages.Add);
 
         await backend.StartAsync(CreateRequest(), CancellationToken.None);
         await session.FirstAudioRead.Task.WaitAsync(TimeSpan.FromSeconds(2));
@@ -600,7 +600,7 @@ public sealed class FabricManagedBehaviorTests
         public int StopCount { get; private set; }
         public EmulationAudioFormat? StartedFormat { get; private set; }
         public int LastPcmBytes { get; private set; }
-        public EmulationAudioPlaybackStatistics Statistics { get; init; } = new(10, 0, 8, 0, 0, 2, 4, 2400, 1800, 38, 2000, 1800, 48, 192, 100, 25, true);
+        public EmulationAudioPlaybackStatistics Statistics { get; init; } = new(10, 0, 8, 0, 0, 2, 4, 2400, 1800, 38, 25, true);
         public void Start(EmulationAudioFormat format) { StartedFormat = format; StartCount++; }
         public void PushPcm(ReadOnlySpan<byte> pcmBytes) => LastPcmBytes = pcmBytes.Length;
         public void Stop() => StopCount++;

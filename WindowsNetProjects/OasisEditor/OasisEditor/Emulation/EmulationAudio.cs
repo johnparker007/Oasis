@@ -13,11 +13,6 @@ public readonly record struct EmulationAudioPlaybackStatistics(
     int CapacityFrames,
     int PrebufferThresholdFrames,
     int PrebufferThresholdMilliseconds,
-    int MaximumRingFrames,
-    int StartupRingFrames,
-    int MinimumRequestedFrames,
-    int MaximumRequestedFrames,
-    long TotalRequestedFrames,
     int WasapiLatencyMilliseconds,
     bool PlaybackStarted);
 

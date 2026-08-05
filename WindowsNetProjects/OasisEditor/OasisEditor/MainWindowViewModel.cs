@@ -1682,16 +1682,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var handled = await dispatcher.TryHandleKeyDownAsync(SelectedFruitMachinePlatform, keyboardShortcut, isFocused, isRepeat, cancellationToken).ConfigureAwait(false);
-        if (!handled && canRoute && isFocused && !isRepeat && !IsStandaloneAltShortcut(keyboardShortcut) && !dispatcher.CanResolveShortcut(keyboardShortcut))
+        if (!handled && canRoute && isFocused && !isRepeat && !dispatcher.CanResolveShortcut(keyboardShortcut))
         {
             AddOutputEntry($"Play View key input unresolved: '{keyboardShortcut}' on platform '{SelectedFruitMachinePlatform}'.", OutputLogStatus.Warning);
         }
 
         return handled;
     }
-
-    private static bool IsStandaloneAltShortcut(string keyboardShortcut) =>
-        string.Equals(keyboardShortcut, "ALT", StringComparison.OrdinalIgnoreCase);
 
     public Task<bool> TryHandlePlayViewKeyUpAsync(string keyboardShortcut, bool isFocused, CancellationToken cancellationToken)
     {
