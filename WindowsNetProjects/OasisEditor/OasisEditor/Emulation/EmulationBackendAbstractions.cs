@@ -62,9 +62,17 @@ public sealed record EmulationBackendCapabilities(
     bool SupportsThrottle);
 
 public sealed record EmulationLaunchRequest(
-    System6NativeRomSettings System6Configuration,
+    FruitMachinePlatformType Platform,
+    System6NativeRomSettings? System6Configuration,
+    Mpu5NativeRomSettings? Mpu5Configuration,
     IReadOnlyList<int>? ConfiguredLampIds = null,
-    IReadOnlyList<int>? ConfiguredSevenSegmentDisplayIds = null);
+    IReadOnlyList<int>? ConfiguredSevenSegmentDisplayIds = null)
+{
+    public EmulationLaunchRequest(System6NativeRomSettings system6Configuration, IReadOnlyList<int>? configuredLampIds = null, IReadOnlyList<int>? configuredSevenSegmentDisplayIds = null)
+        : this(FruitMachinePlatformType.Impact, system6Configuration, null, configuredLampIds, configuredSevenSegmentDisplayIds) { }
+    public EmulationLaunchRequest(Mpu5NativeRomSettings mpu5Configuration, IReadOnlyList<int>? configuredLampIds = null, IReadOnlyList<int>? configuredSevenSegmentDisplayIds = null)
+        : this(FruitMachinePlatformType.MPU5, null, mpu5Configuration, configuredLampIds, configuredSevenSegmentDisplayIds) { }
+}
 
 public enum SegmentOutputType
 {

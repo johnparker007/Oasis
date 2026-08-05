@@ -8,6 +8,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 {
     private const string AmberBackendKind = "amber";
     private const string JpmSystem6MachineIdentifier = "jpm-system6";
+    private const string BarcrestMpu5MachineIdentifier = "barcrest-mpu5";
     private const int EmulationPumpHz = 1000;
     private const ulong NanosecondsPerPump = 1_000_000;
     private const int MaxCatchUpSlices = 64;
@@ -103,15 +104,14 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         SetState(EmulationBackendState.Starting);
         try
         {
-            var settings = request.System6Configuration;
-            var resources = BuildRomResources(settings);
+            var launch = BuildAmberLaunch(request);
             cancellationToken.ThrowIfCancellationRequested();
             _runtime = _runtimeFactory(_runtimePath);
-            var configuration = FabricAmberConfiguration.FromSystem6(settings);
-            WriteCoinConfigurationDiagnostics(configuration);
+            if (launch.Configuration is FabricAmberConfiguration system6Configuration)
+                WriteCoinConfigurationDiagnostics(system6Configuration);
             _session = _runtime.CreateSession(new FabricLaunchRequest(
-                AmberBackendKind, JpmSystem6MachineIdentifier, _amberPath, resources,
-                configuration));
+                AmberBackendKind, launch.MachineIdentifier, _amberPath, launch.Resources,
+                launch.Configuration));
 
             await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
@@ -273,6 +273,25 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _runnerWake.Dispose();
         _sessionGate.Dispose();
         _disposed = true;
+    }
+
+
+    internal static (string MachineIdentifier, IReadOnlyList<FabricRomResource> Resources, IFabricBackendConfiguration Configuration) BuildAmberLaunch(EmulationLaunchRequest request)
+    {
+        return request.Platform switch
+        {
+            FruitMachinePlatformType.Impact => (JpmSystem6MachineIdentifier, BuildRomResources(request.System6Configuration ?? throw new InvalidOperationException("System 6 configuration is required.")), FabricAmberConfiguration.FromSystem6(request.System6Configuration ?? throw new InvalidOperationException("System 6 configuration is required."))),
+            FruitMachinePlatformType.MPU5 => (BarcrestMpu5MachineIdentifier, BuildRomResources(request.Mpu5Configuration ?? throw new InvalidOperationException("MPU5 configuration is required.")), FabricAmberMpu5Configuration.FromMpu5(request.Mpu5Configuration ?? throw new InvalidOperationException("MPU5 configuration is required."))),
+            _ => throw new NotSupportedException($"Platform '{request.Platform}' is not supported by Fabric Amber emulation.")
+        };
+    }
+
+    internal static IReadOnlyList<FabricRomResource> BuildRomResources(Mpu5NativeRomSettings settings)
+    {
+        var resources = new List<FabricRomResource>(8);
+        AddRomRole(resources, settings.ProgramRomPaths, FabricRomRole.Program);
+        AddRomRole(resources, settings.SoundRomPaths, FabricRomRole.Sound);
+        return resources;
     }
 
     internal static IReadOnlyList<FabricRomResource> BuildRomResources(System6NativeRomSettings settings)

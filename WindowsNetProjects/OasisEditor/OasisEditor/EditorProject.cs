@@ -10,6 +10,7 @@ public sealed class EditorProject
     public required string GeneratedDirectory { get; init; }
     public FruitMachinePlatformType FruitMachinePlatform { get; set; } = FruitMachinePlatformType.None;
     public System6NativeRomSettings System6NativeRoms { get; set; } = new();
+    public Mpu5NativeRomSettings Mpu5NativeRoms { get; set; } = new();
     public List<InputDefinitionModel> InputDefinitions { get; } = [];
 }
 
@@ -122,6 +123,56 @@ public sealed class System6CoinSettings
         LockoutInvert = DefaultLockoutInvert
     };
 }
+
+public sealed class Mpu5NativeRomSettings
+{
+    public const int DefaultDipSwitchCount = 16;
+    public const int DefaultPercent = 0;
+    public const int DefaultStake = 0;
+    public const int DefaultPrize = 0;
+
+    public List<System6ReelOptoSettings> ReelOptos { get; set; } = System6NativeRomSettings.CreateDefaultReelOptos();
+    public List<Mpu5DipSwitchSettings> DipSwitches { get; set; } = CreateDefaultDipSwitches();
+    public string ProgramRom1Path { get; set; } = string.Empty;
+    public string ProgramRom2Path { get; set; } = string.Empty;
+    public string ProgramRom3Path { get; set; } = string.Empty;
+    public string ProgramRom4Path { get; set; } = string.Empty;
+    public string SoundRom1Path { get; set; } = string.Empty;
+    public string SoundRom2Path { get; set; } = string.Empty;
+    public string SoundRom3Path { get; set; } = string.Empty;
+    public string SoundRom4Path { get; set; } = string.Empty;
+    public int Percentage { get; set; } = DefaultPercent;
+    public int Stake { get; set; } = DefaultStake;
+    public int Prize { get; set; } = DefaultPrize;
+    public Mpu5PicMode PicMode { get; set; } = Mpu5PicMode.None;
+    public uint CharacteriserAddress { get; set; }
+    public bool SecFitted { get; set; }
+    public Mpu5HopperType HopperType { get; set; } = Mpu5HopperType.None;
+    public uint ReelJumperProfile { get; set; }
+    public AmberCoinCommunicationStyle CoinCommunicationStyle { get; set; } = AmberCoinCommunicationStyle.Parallel;
+    public bool CoinCommunicationInvert { get; set; }
+    public uint CoinPulseCycles { get; set; } = 800_000;
+
+    public IReadOnlyList<string> ProgramRomPaths => [ProgramRom1Path, ProgramRom2Path, ProgramRom3Path, ProgramRom4Path];
+    public IReadOnlyList<string> SoundRomPaths => [SoundRom1Path, SoundRom2Path, SoundRom3Path, SoundRom4Path];
+
+    public static List<Mpu5DipSwitchSettings> CreateDefaultDipSwitches()
+    {
+        var dips = new List<Mpu5DipSwitchSettings>(DefaultDipSwitchCount);
+        for (var index = 0; index < DefaultDipSwitchCount; index++)
+            dips.Add(new Mpu5DipSwitchSettings { Index = index });
+        return dips;
+    }
+}
+
+public sealed class Mpu5DipSwitchSettings
+{
+    public int Index { get; set; }
+    public bool Enabled { get; set; }
+}
+
+public enum Mpu5PicMode { None = 0, Characteriser = 1, Pic = 2 }
+public enum Mpu5HopperType { None = 0, Parallel = 1, Serial = 2 }
 
 public enum AmberCoinCommunicationStyle { Parallel = 0 }
 

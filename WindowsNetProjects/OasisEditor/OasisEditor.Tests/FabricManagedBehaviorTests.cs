@@ -298,6 +298,34 @@ public sealed class FabricManagedBehaviorTests
     }
 
     [Fact]
+    public void Backend_BuildsMpu5AmberLaunchWithoutLoadingProviderDirectly()
+    {
+        var request = new EmulationLaunchRequest(new Mpu5NativeRomSettings { ProgramRom1Path = "mpu5.p1", SoundRom1Path = "mpu5.s1" });
+
+        var launch = FabricEmulationBackend.BuildAmberLaunch(request);
+
+        Assert.Equal("barcrest-mpu5", launch.MachineIdentifier);
+        Assert.IsType<FabricAmberMpu5Configuration>(launch.Configuration);
+        Assert.Contains(launch.Resources, resource => resource.Path == "mpu5.p1");
+        Assert.Contains(launch.Resources, resource => resource.Path == "mpu5.s1");
+    }
+
+    [Fact]
+    public void AmberMpu5Configuration_RejectsInvalidIndicesBeforeNativeStartup()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => FabricAmberMpu5Configuration.FromMpu5(new Mpu5NativeRomSettings
+        {
+            DipSwitches = [new Mpu5DipSwitchSettings { Index = 16, Enabled = true }]
+        }));
+
+        var configuration = FabricAmberMpu5Configuration.FromMpu5(new Mpu5NativeRomSettings
+        {
+            ReelOptos = [new System6ReelOptoSettings { ReelIndex = 8, Enabled = true, Steps = 96 }]
+        });
+        Assert.Throws<ArgumentOutOfRangeException>(() => configuration.ToNativeBytes());
+    }
+
+    [Fact]
     public async Task Backend_PumpFailureIsRecordedAndCleanedUp()
     {
         var failure = new FabricException(FabricResult.BackendError, "FabricSessionAdvance",

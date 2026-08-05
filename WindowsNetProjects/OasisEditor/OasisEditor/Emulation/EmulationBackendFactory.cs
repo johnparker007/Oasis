@@ -61,7 +61,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         return platform switch
         {
             FruitMachinePlatformType.None => null,
-            FruitMachinePlatformType.Impact => CreateFabricBackend(),
+            FruitMachinePlatformType.Impact or FruitMachinePlatformType.MPU5 => CreateFabricBackend(),
             _ => throw new NotSupportedException($"Platform '{platform}' is not supported by Fabric Amber emulation.")
         };
     }

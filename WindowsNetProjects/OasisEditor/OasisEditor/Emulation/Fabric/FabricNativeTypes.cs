@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace OasisEditor;
 
-internal static class FabricAbi { internal const uint Version = 0x00030000; internal const int IdentifierCapacity=64, PathCapacity=1024, CharacterCapacity=16, SegmentCapacity=16; }
+internal static class FabricAbi { internal const uint Version = 0x00030000; internal const int IdentifierCapacity=64, PathCapacity=1024, CharacterCapacity=16, SegmentCapacity=40; }
 
 public enum FabricInputKind : uint { Digital = 0, Coin = 1 }
 
@@ -13,7 +13,7 @@ public enum FabricInputKind : uint { Digital = 0, Coin = 1 }
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricLampNative { internal uint Size,Version; internal fixed byte Identifier[64]; internal int Index; internal byte LogicalState; internal fixed byte Reserved[3]; internal float Brightness; }
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricReelNative { internal uint Size,Version; internal fixed byte Identifier[64]; internal int Index,Position; }
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricCharacterDisplayNative { internal uint Size,Version; internal fixed byte Identifier[64]; internal uint Count,Capacity; internal fixed uint Characters[16]; internal fixed byte Attributes[16]; internal float Brightness; }
-[StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricSegmentDisplayNative { internal uint Size,Version; internal fixed byte Identifier[64]; internal uint Count,Capacity; internal fixed ulong Masks[16]; }
+[StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricSegmentDisplayNative { internal uint Size,Version; internal fixed byte Identifier[64]; internal uint Count,Capacity; internal fixed ulong Masks[40]; }
 [StructLayout(LayoutKind.Sequential)] internal struct FabricMachineSnapshotNative { internal uint Size,Version; internal ulong Sequence; internal nint Lamps; internal uint LampCapacity,LampCount; internal nint Reels; internal uint ReelCapacity,ReelCount; internal nint Characters; internal uint CharacterCapacity,CharacterCount; internal nint Segments; internal uint SegmentCapacity,SegmentCount; }
 [StructLayout(LayoutKind.Sequential)] internal struct FabricAudioFormatNative { internal uint Size,Version,SampleRate; internal ushort Channels,BitsPerSample; internal byte Interleaved,Signed,LittleEndian,Reserved; }
 
@@ -30,3 +30,5 @@ internal unsafe struct AmberCoinsNative
     internal fixed byte Routes[8 * 32];
 }
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricAmberConfigurationNative { internal uint Magic,Size,Version,Flags; internal AmberReelsNative Reels; internal AmberCoinsNative Coins; internal uint Percentage; internal fixed uint Reserved[3]; }
+
+[StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricAmberMpu5ConfigurationNative { internal uint Magic,Size,Version,Flags; internal AmberReelsNative Reels; internal uint DipSwitchMask,Percentage,Stake,Prize,PicMode,CharacteriserAddress,SecFitted,HopperType,ReelJumperProfile,CoinCommunicationStyle,CoinCommunicationInvert,CoinPulseCycles; internal fixed uint Reserved[8]; }

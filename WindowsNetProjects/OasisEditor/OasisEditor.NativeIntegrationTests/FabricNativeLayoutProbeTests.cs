@@ -33,7 +33,7 @@ public sealed class FabricNativeLayoutProbeTests
             ["sizeof.FabricLamp"] = 84,
             ["sizeof.FabricReel"] = 80,
             ["sizeof.FabricCharacterDisplay"] = 164,
-            ["sizeof.FabricSegmentDisplay"] = 208,
+            ["sizeof.FabricSegmentDisplay"] = 400,
             ["sizeof.FabricMachineSnapshot"] = 80,
             ["sizeof.FabricAudioFormat"] = 20,
             ["sizeof.AmberReelConfigV1"] = 24,
@@ -42,6 +42,7 @@ public sealed class FabricNativeLayoutProbeTests
             ["sizeof.AmberCoinRouteConfigV1"] = 32,
             ["sizeof.AmberCoinConfigurationV1"] = 408,
             ["sizeof.FabricAmberConfigurationV1"] = 648,
+            ["sizeof.FabricAmberMpu5ConfigurationV1"] = 304,
             ["offsetof.FabricLaunchRequest.rom_paths"] = 1160,
             ["offsetof.FabricLaunchRequest.machine_configuration"] = 1176,
             ["offsetof.FabricLaunchRequest.rom_resources"] = 1192,
@@ -50,7 +51,8 @@ public sealed class FabricNativeLayoutProbeTests
             ["offsetof.FabricMachineSnapshot.reels"] = 32,
             ["offsetof.FabricMachineSnapshot.character_displays"] = 48,
             ["offsetof.FabricMachineSnapshot.segment_displays"] = 64,
-            ["offsetof.FabricCharacterDisplay.brightness"] = 160
+            ["offsetof.FabricCharacterDisplay.brightness"] = 160,
+            ["offsetof.FabricAmberMpu5ConfigurationV1.dip_switch_mask"] = 224
         };
 
         Assert.Equal(expected.Count, values.Count);

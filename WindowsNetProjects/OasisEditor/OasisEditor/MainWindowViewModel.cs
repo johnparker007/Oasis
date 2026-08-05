@@ -398,7 +398,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
     public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "Player", "Fabric Emulation"];
-    public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "Impact / Fabric"];
+    public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "Impact / MPU5 Fabric"];
     public IReadOnlyList<string> NativeProjectSettingsTabs { get; } = ["ROMS", "Stake/Prize", "Reels", "Coins"];
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
     public IReadOnlyList<InputDefinitionModel> InputDefinitions => LoadedProject?.InputDefinitions ?? [];
@@ -2048,10 +2048,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private EmulationLaunchRequest BuildEmulationLaunchRequest()
     {
-        return new EmulationLaunchRequest(
-            BuildSystem6NativeRomSettingsForLaunch(),
-            BuildConfiguredLampIdsForLaunch(),
-            BuildConfiguredSevenSegmentDisplayIdsForLaunch());
+        return SelectedFruitMachinePlatform switch
+        {
+            FruitMachinePlatformType.Impact => new EmulationLaunchRequest(
+                BuildSystem6NativeRomSettingsForLaunch(),
+                BuildConfiguredLampIdsForLaunch(),
+                BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
+            FruitMachinePlatformType.MPU5 => new EmulationLaunchRequest(
+                LoadedProject?.Mpu5NativeRoms ?? new Mpu5NativeRomSettings(),
+                BuildConfiguredLampIdsForLaunch(),
+                BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
+            _ => throw new NotSupportedException($"Platform '{SelectedFruitMachinePlatform}' is not supported by Fabric Amber emulation.")
+        };
     }
 
     private IReadOnlyList<int>? BuildConfiguredLampIdsForLaunch()
@@ -2484,6 +2492,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var generatedDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "generated");
         var fruitMachinePlatform = ResolveFruitMachinePlatform(projectDocument.RootElement);
         var system6NativeRoms = ResolveSystem6NativeRomSettings(projectDocument.RootElement);
+        var mpu5NativeRoms = ResolveMpu5NativeRomSettings(projectDocument.RootElement);
         var inputDefinitions = ResolveInputDefinitions(projectDocument.RootElement);
 
         return new EditorProject
@@ -2495,7 +2504,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             MachinesDirectory = machinesDirectory,
             GeneratedDirectory = generatedDirectory,
             FruitMachinePlatform = fruitMachinePlatform,
-            System6NativeRoms = system6NativeRoms
+            System6NativeRoms = system6NativeRoms,
+            Mpu5NativeRoms = mpu5NativeRoms
         }.WithInputDefinitions(inputDefinitions);
     }
 
@@ -2676,7 +2686,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     {
                         wroteProjectSettings = true;
                         writer.WritePropertyName("project_settings");
-                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.System6NativeRoms);
+                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.System6NativeRoms, LoadedProject.Mpu5NativeRoms);
                         continue;
                     }
 
@@ -2697,6 +2707,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     writer.WriteStartObject();
                     writer.WriteString("FruitMachine_Platform", LoadedProject.FruitMachinePlatform.ToString());
                     WriteSystem6NativeRomSettings(writer, LoadedProject.System6NativeRoms);
+                    WriteMpu5NativeRomSettings(writer, LoadedProject.Mpu5NativeRoms);
                     writer.WriteEndObject();
                 }
 
@@ -2717,11 +2728,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, System6NativeRomSettings system6NativeRoms)
+    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, System6NativeRomSettings system6NativeRoms, Mpu5NativeRomSettings mpu5NativeRoms)
     {
         writer.WriteStartObject();
         var wrotePlatform = false;
         var wroteSystem6Settings = false;
+        var wroteMpu5Settings = false;
         foreach (var property in existingProjectSettings.EnumerateObject())
         {
             if (property.NameEquals("FruitMachine_Platform"))
@@ -2734,6 +2746,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 WriteSystem6NativeRomSettings(writer, system6NativeRoms);
                 wroteSystem6Settings = true;
             }
+            else if (property.NameEquals("Mpu5NativeRoms"))
+            {
+                WriteMpu5NativeRomSettings(writer, mpu5NativeRoms);
+                wroteMpu5Settings = true;
+            }
             else if (!property.NameEquals("MameRomName") && !property.NameEquals("AutomaticallyDownloadMissingRoms"))
             {
                 property.WriteTo(writer);
@@ -2741,6 +2758,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
         if (!wrotePlatform) writer.WriteString("FruitMachine_Platform", platform.ToString());
         if (!wroteSystem6Settings) WriteSystem6NativeRomSettings(writer, system6NativeRoms);
+        if (!wroteMpu5Settings) WriteMpu5NativeRomSettings(writer, mpu5NativeRoms);
         writer.WriteEndObject();
     }
 
@@ -2797,6 +2815,40 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
         writer.WriteEndArray();
         writer.WriteEndObject();
+    }
+
+    private static void WriteMpu5NativeRomSettings(Utf8JsonWriter writer, Mpu5NativeRomSettings settings)
+    {
+        writer.WritePropertyName("Mpu5NativeRoms");
+        writer.WriteStartObject();
+        writer.WriteString("ProgramRom1Path", settings.ProgramRom1Path); writer.WriteString("ProgramRom2Path", settings.ProgramRom2Path); writer.WriteString("ProgramRom3Path", settings.ProgramRom3Path); writer.WriteString("ProgramRom4Path", settings.ProgramRom4Path);
+        writer.WriteString("SoundRom1Path", settings.SoundRom1Path); writer.WriteString("SoundRom2Path", settings.SoundRom2Path); writer.WriteString("SoundRom3Path", settings.SoundRom3Path); writer.WriteString("SoundRom4Path", settings.SoundRom4Path);
+        writer.WriteNumber("Percentage", settings.Percentage); writer.WriteNumber("Stake", settings.Stake); writer.WriteNumber("Prize", settings.Prize);
+        writer.WriteNumber("PicMode", (uint)settings.PicMode); writer.WriteNumber("CharacteriserAddress", settings.CharacteriserAddress); writer.WriteBoolean("SecFitted", settings.SecFitted); writer.WriteNumber("HopperType", (uint)settings.HopperType); writer.WriteNumber("ReelJumperProfile", settings.ReelJumperProfile);
+        writer.WriteNumber("CoinCommunicationStyle", (uint)settings.CoinCommunicationStyle); writer.WriteBoolean("CoinCommunicationInvert", settings.CoinCommunicationInvert); writer.WriteNumber("CoinPulseCycles", settings.CoinPulseCycles);
+        writer.WritePropertyName("ReelOptos"); writer.WriteStartArray(); foreach (var reel in settings.ReelOptos) { writer.WriteStartObject(); writer.WriteNumber("ReelIndex", reel.ReelIndex); writer.WriteBoolean("Enabled", reel.Enabled); writer.WriteNumber("Steps", reel.Steps); writer.WriteNumber("OptoStart", reel.OptoStart); writer.WriteNumber("OptoEnd", reel.OptoEnd); writer.WriteBoolean("OptoInvert", reel.OptoInvert); writer.WriteEndObject(); } writer.WriteEndArray();
+        writer.WritePropertyName("DipSwitches"); writer.WriteStartArray(); foreach (var dip in settings.DipSwitches) { writer.WriteStartObject(); writer.WriteNumber("Index", dip.Index); writer.WriteBoolean("Enabled", dip.Enabled); writer.WriteEndObject(); } writer.WriteEndArray();
+        writer.WriteEndObject();
+    }
+
+    private static Mpu5NativeRomSettings ResolveMpu5NativeRomSettings(JsonElement root)
+    {
+        if (!root.TryGetProperty("project_settings", out var projectSettingsElement) || !projectSettingsElement.TryGetProperty("Mpu5NativeRoms", out var romsElement)) return new Mpu5NativeRomSettings();
+        return new Mpu5NativeRomSettings
+        {
+            ProgramRom1Path = GetOptionalString(romsElement, "ProgramRom1Path"), ProgramRom2Path = GetOptionalString(romsElement, "ProgramRom2Path"), ProgramRom3Path = GetOptionalString(romsElement, "ProgramRom3Path"), ProgramRom4Path = GetOptionalString(romsElement, "ProgramRom4Path"),
+            SoundRom1Path = GetOptionalString(romsElement, "SoundRom1Path"), SoundRom2Path = GetOptionalString(romsElement, "SoundRom2Path"), SoundRom3Path = GetOptionalString(romsElement, "SoundRom3Path"), SoundRom4Path = GetOptionalString(romsElement, "SoundRom4Path"),
+            Percentage = GetOptionalInt(romsElement, "Percentage"), Stake = GetOptionalInt(romsElement, "Stake"), Prize = GetOptionalInt(romsElement, "Prize"), PicMode = (Mpu5PicMode)GetOptionalInt(romsElement, "PicMode"), CharacteriserAddress = checked((uint)GetOptionalInt(romsElement, "CharacteriserAddress")), SecFitted = romsElement.TryGetProperty("SecFitted", out var sec) && sec.ValueKind == JsonValueKind.True, HopperType = (Mpu5HopperType)GetOptionalInt(romsElement, "HopperType"), ReelJumperProfile = checked((uint)GetOptionalInt(romsElement, "ReelJumperProfile")),
+            CoinCommunicationStyle = (AmberCoinCommunicationStyle)GetOptionalInt(romsElement, "CoinCommunicationStyle"), CoinCommunicationInvert = romsElement.TryGetProperty("CoinCommunicationInvert", out var invert) && invert.ValueKind == JsonValueKind.True, CoinPulseCycles = checked((uint)GetOptionalInt(romsElement, "CoinPulseCycles", 800_000)),
+            ReelOptos = ResolveSystem6ReelOptoSettings(romsElement),
+            DipSwitches = ResolveMpu5DipSwitchSettings(romsElement)
+        };
+    }
+
+    private static List<Mpu5DipSwitchSettings> ResolveMpu5DipSwitchSettings(JsonElement romsElement)
+    {
+        if (!romsElement.TryGetProperty("DipSwitches", out var dipsElement) || dipsElement.ValueKind != JsonValueKind.Array) return Mpu5NativeRomSettings.CreateDefaultDipSwitches();
+        return dipsElement.EnumerateArray().Select(dip => new Mpu5DipSwitchSettings { Index = GetOptionalInt(dip, "Index"), Enabled = dip.TryGetProperty("Enabled", out var enabled) && enabled.ValueKind == JsonValueKind.True }).ToList();
     }
 
     private static System6NativeRomSettings ResolveSystem6NativeRomSettings(JsonElement root)

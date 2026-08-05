@@ -23,7 +23,7 @@ public sealed class FabricAbiLayoutTests
         Assert.Equal(80, Marshal.SizeOf<FabricReelNative>());
         Assert.Equal(164, Marshal.SizeOf<FabricCharacterDisplayNative>());
         Assert.Equal(160, Marshal.OffsetOf<FabricCharacterDisplayNative>("Brightness").ToInt32());
-        Assert.Equal(208, Marshal.SizeOf<FabricSegmentDisplayNative>());
+        Assert.Equal(400, Marshal.SizeOf<FabricSegmentDisplayNative>());
         Assert.Equal(80, Marshal.SizeOf<FabricMachineSnapshotNative>());
         Assert.Equal(20, Marshal.SizeOf<FabricAudioFormatNative>());
         Assert.Equal(24, Marshal.SizeOf<AmberReelNative>());
@@ -42,12 +42,36 @@ public sealed class FabricAbiLayoutTests
         Assert.Equal(152, Marshal.OffsetOf<AmberCoinsNative>("Routes").ToInt32());
         Assert.Equal(408, Marshal.SizeOf<AmberCoinsNative>());
         Assert.Equal(648, Marshal.SizeOf<FabricAmberConfigurationNative>());
+        Assert.Equal(304, Marshal.SizeOf<FabricAmberMpu5ConfigurationNative>());
+        Assert.Equal(224, Marshal.OffsetOf<FabricAmberMpu5ConfigurationNative>(nameof(FabricAmberMpu5ConfigurationNative.DipSwitchMask)).ToInt32());
         Assert.Equal(224, Marshal.OffsetOf<FabricAmberConfigurationNative>(nameof(FabricAmberConfigurationNative.Coins)).ToInt32());
         Assert.Equal(632, Marshal.OffsetOf<FabricAmberConfigurationNative>(nameof(FabricAmberConfigurationNative.Percentage)).ToInt32());
         Assert.Equal(1160, Marshal.OffsetOf<FabricLaunchRequestNative>("RomPaths").ToInt32());
         Assert.Equal(16, Marshal.OffsetOf<FabricRomResourceNative>("Path").ToInt32());
         Assert.Equal(1UL << 6, (ulong)FabricCapability.CoinInput);
         Assert.Equal(9, (int)FabricResult.InputRejected);
+    }
+
+    [Fact]
+    public void AmberMpu5SerializesCurrentConfigurationLayout()
+    {
+        var bytes = FabricAmberMpu5Configuration.FromMpu5(new Mpu5NativeRomSettings
+        {
+            Percentage = 78, Stake = 25, Prize = 100, PicMode = Mpu5PicMode.Characteriser,
+            CharacteriserAddress = 0x1234, SecFitted = true, HopperType = Mpu5HopperType.Parallel, ReelJumperProfile = 2,
+            DipSwitches = [new Mpu5DipSwitchSettings { Index = 0, Enabled = true }, new Mpu5DipSwitchSettings { Index = 7, Enabled = true }],
+            ReelOptos = [new System6ReelOptoSettings { ReelIndex = 7, Enabled = true, Steps = 96, OptoStart = 5, OptoEnd = 7 }]
+        }).ToNativeBytes();
+
+        Assert.Equal(304, bytes.Length);
+        Assert.Equal(0x35554146u, BitConverter.ToUInt32(bytes, 0));
+        Assert.Equal(1u, BitConverter.ToUInt32(bytes, 8));
+        Assert.Equal(0x81u, BitConverter.ToUInt32(bytes, 224));
+        Assert.Equal(78u, BitConverter.ToUInt32(bytes, 228));
+        Assert.Equal(25u, BitConverter.ToUInt32(bytes, 232));
+        Assert.Equal(100u, BitConverter.ToUInt32(bytes, 236));
+        Assert.Equal(1u, BitConverter.ToUInt32(bytes, 240));
+        Assert.Equal(0x1234u, BitConverter.ToUInt32(bytes, 244));
     }
 
     [Fact]
