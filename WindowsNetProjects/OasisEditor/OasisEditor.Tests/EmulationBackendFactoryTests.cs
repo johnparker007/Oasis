@@ -76,6 +76,7 @@ public sealed class EmulationBackendFactoryTests
         public void PushPcm(ReadOnlySpan<byte> pcmBytes) { }
         public void Stop() { }
         public void Clear() { }
+        public EmulationAudioPlaybackStatistics GetStatistics() => default;
         public void Dispose() { }
     }
 

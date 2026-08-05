@@ -13,6 +13,7 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
     private long _ringFramesWritten;
     private long _ringFramesRejected;
     private long _firstOverflowWarningWritten;
+    private EmulationAudioPlaybackStatistics _lastStatistics;
 
     internal int BufferLengthMilliseconds => _bufferLengthMilliseconds;
     internal int PrebufferThresholdMilliseconds => AudioPrebufferPolicy.CalculateThresholdMilliseconds(_bufferLengthMilliseconds);
@@ -22,7 +23,7 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
     internal long DeviceFramesDelivered => _state?.Provider.FramesDelivered ?? 0;
     internal long SilenceFrames => _state?.Provider.SilenceFrames ?? 0;
     internal long UnderrunEpisodes => _state?.Provider.UnderrunEpisodes ?? 0;
-    internal int MinimumObservedRingFrames => _state?.MinimumObservedRingFramesValue ?? 0;
+    internal int MinimumObservedRingFrames => GetStatistics().MinimumRingFrames;
     internal bool PlaybackStarted => _state?.Prebuffer.PlaybackStarted ?? false;
 
     public NAudioEmulationAudioSink(int bufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds)
@@ -46,7 +47,7 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         ResetDiagnostics();
         lock (_lifecycleGate)
             _state = state;
-        Debug.WriteLine($"NAudio emulation buffer: started; capacityFrames={capacityFrames}, prebufferFrames={state.Prebuffer.ThresholdFrames}.");
+        _lastStatistics = state.CreateStatistics(RingFramesWritten, RingFramesRejected);
     }
 
     public void PushPcm(ReadOnlySpan<byte> pcmBytes)
@@ -57,7 +58,6 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         var samples = MemoryMarshal.Cast<byte, short>(pcmBytes);
         var frameCount = samples.Length / state.Format.Channels;
         if (frameCount <= 0) return;
-        state.ObserveDepthBeforeWrite();
         var written = state.Ring.Write(samples[..(frameCount * state.Format.Channels)], frameCount);
         Interlocked.Add(ref _ringFramesWritten, written);
         var rejected = frameCount - written;
@@ -88,11 +88,17 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
             _state = null;
         }
         if (state is null) return;
-        Debug.WriteLine($"NAudio emulation buffer: stop summary; ringFramesWritten={RingFramesWritten}, ringFramesRejected={RingFramesRejected}, deviceFramesDelivered={state.Provider.FramesDelivered}, silenceFrames={state.Provider.SilenceFrames}, underrunEpisodes={state.Provider.UnderrunEpisodes}, minimumRingFrames={state.MinimumObservedRingFramesValue}.");
+        _lastStatistics = state.CreateStatistics(RingFramesWritten, RingFramesRejected);
         state.StopDisposeAndClear();
     }
 
     public void Dispose() => Stop();
+
+    public EmulationAudioPlaybackStatistics GetStatistics()
+    {
+        var state = Volatile.Read(ref _state);
+        return state?.CreateStatistics(RingFramesWritten, RingFramesRejected) ?? _lastStatistics;
+    }
 
     internal static bool ShouldDropIncomingBlock(int bufferedBytes, int bufferCapacityBytes, int incomingBytes)
         => incomingBytes > bufferCapacityBytes - bufferedBytes;
@@ -114,7 +120,6 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
     private sealed class PlaybackState
     {
         private int _playStarted;
-        private int _minimumObservedRingFrames = int.MaxValue;
         public PlaybackState(EmulationAudioFormat format, PcmFrameRingBuffer ring, PcmRingWaveProvider provider, WasapiOut output, AudioPrebufferPolicy prebuffer)
         { Format = format; Ring = ring; Provider = provider; Output = output; Prebuffer = prebuffer; }
         public EmulationAudioFormat Format { get; }
@@ -123,8 +128,6 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         public WasapiOut Output { get; }
         public AudioPrebufferPolicy Prebuffer { get; }
         public volatile bool IsStopping;
-        public int MinimumObservedRingFramesValue => _minimumObservedRingFrames == int.MaxValue ? 0 : _minimumObservedRingFrames;
-        public void ObserveDepthBeforeWrite() => _minimumObservedRingFrames = Math.Min(_minimumObservedRingFrames, Ring.ReadableFrames);
         public void PlayOnce()
         {
             if (IsStopping || Interlocked.Exchange(ref _playStarted, 1) != 0) return;
@@ -137,7 +140,6 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
             Ring.Clear();
             Prebuffer.Reset();
             Interlocked.Exchange(ref _playStarted, 0);
-            _minimumObservedRingFrames = int.MaxValue;
         }
         public void StopDisposeAndClear()
         {
@@ -145,6 +147,19 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
             try { Output.Dispose(); } catch { }
             Ring.Clear();
         }
+
+        public EmulationAudioPlaybackStatistics CreateStatistics(long ringFramesWritten, long ringFramesRejected) => new(
+            ringFramesWritten,
+            ringFramesRejected,
+            Provider.FramesDelivered,
+            Provider.SilenceFrames,
+            Provider.UnderrunEpisodes,
+            Provider.MinimumRingFrames,
+            Ring.ReadableFrames,
+            Ring.CapacityFrames,
+            Prebuffer.ThresholdFrames,
+            Prebuffer.ThresholdMilliseconds,
+            Prebuffer.PlaybackStarted);
     }
 }
 

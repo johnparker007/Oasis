@@ -42,6 +42,12 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private bool _audioStarted;
     private bool _disposed;
     private long _scheduleGeneration;
+    private long _runnerStartTimestamp;
+    private long _totalEmulationSlices;
+    private long _catchUpSlices;
+    private long _maxCatchUpBatch;
+    private long _exceptionalDiscardedTicks;
+    private long _fabricAudioFramesRead;
 
     public FabricEmulationBackend(string runtimePath, string amberPath)
         : this(runtimePath, amberPath, path => new FabricRuntimeLibrary(path),
@@ -112,6 +118,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             }
 
             _shutdown = false;
+            ResetRunnerStatistics();
             LastFailure = null;
             _pumpCancellation = new CancellationTokenSource();
             _pumpTask = Task.Run(() => PumpAsync(_pumpCancellation.Token), CancellationToken.None);
@@ -324,7 +331,10 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 var now = _clock.GetTimestamp();
                 var exceptionalCapTicks = pumpTicks * ExceptionalDelayCapMilliseconds;
                 if (now - nextDeadline > exceptionalCapTicks)
+                {
+                    Interlocked.Add(ref _exceptionalDiscardedTicks, now - nextDeadline - exceptionalCapTicks);
                     nextDeadline = now - exceptionalCapTicks;
+                }
 
                 do
                 {
@@ -346,6 +356,11 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                     now = _clock.GetTimestamp();
                 }
                 while (now >= nextDeadline && slices < MaxCatchUpSlices);
+
+                Interlocked.Add(ref _totalEmulationSlices, slices);
+                if (slices > 1)
+                    Interlocked.Add(ref _catchUpSlices, slices - 1);
+                UpdateMaxCatchUpBatch(slices);
 
                 await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
@@ -392,11 +407,14 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _audioFormat = format;
         var frameCapacity = CalculateAudioFramesPerTick(checked((int)format.SampleRate));
         _audioBuffer = new short[checked(frameCapacity * (int)format.ChannelCount)];
-        _audioSink.Start(new(
+        var audioFormat = new EmulationAudioFormat(
             checked((int)format.SampleRate),
             checked((int)format.ChannelCount),
-            checked((int)format.BitsPerSample)));
+            checked((int)format.BitsPerSample));
+        _audioSink.Start(audioFormat);
         _audioStarted = true;
+        var statistics = _audioSink.GetStatistics();
+        _errorLogger($"Fabric audio startup: sampleRate={audioFormat.SampleRate}, channels={audioFormat.Channels}, ringCapacityFrames={statistics.CapacityFrames}, ringCapacityMs={(double)statistics.CapacityFrames * 1000 / audioFormat.SampleRate:F1}, prebufferFrames={statistics.PrebufferThresholdFrames}, prebufferMs={statistics.PrebufferThresholdMilliseconds}, outputBackend=WasapiOut, wasapiLatencyMs={(double)statistics.CapacityFrames * 1000 / audioFormat.SampleRate:F1}.");
     }
 
     internal static int CalculateAudioFramesPerTick(int sampleRate)
@@ -424,6 +442,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             return;
         var frameCapacity = _audioBuffer.Length / format.ChannelCount;
         var framesWritten = session.ReadAudio(_audioBuffer, frameCapacity);
+        Interlocked.Add(ref _fabricAudioFramesRead, framesWritten);
         var sampleCount = checked(framesWritten * format.ChannelCount);
         var bytes = MemoryMarshal.AsBytes(_audioBuffer.AsSpan(0, sampleCount));
         if (!bytes.IsEmpty)
@@ -521,11 +540,14 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 TryCleanup(_session.Dispose, ref failures);
                 _session = null;
             }
+            EmulationAudioPlaybackStatistics audioStatistics = default;
             if (_audioStarted)
             {
                 TryCleanup(_audioSink.Stop, ref failures);
+                audioStatistics = _audioSink.GetStatistics();
                 _audioStarted = false;
             }
+            EmitStopSummary(audioStatistics);
             if (_runtime is not null)
                 TryCleanup(_runtime.Dispose, ref failures);
             _runtime = null;
@@ -542,6 +564,60 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         if (failures is { Count: > 0 })
             throw failures.Count == 1 ? failures[0] : new AggregateException("Multiple Fabric cleanup operations failed.", failures);
     }
+
+    private void ResetRunnerStatistics()
+    {
+        Interlocked.Exchange(ref _runnerStartTimestamp, _clock.GetTimestamp());
+        Interlocked.Exchange(ref _totalEmulationSlices, 0);
+        Interlocked.Exchange(ref _catchUpSlices, 0);
+        Interlocked.Exchange(ref _maxCatchUpBatch, 0);
+        Interlocked.Exchange(ref _exceptionalDiscardedTicks, 0);
+        Interlocked.Exchange(ref _fabricAudioFramesRead, 0);
+    }
+
+    private void UpdateMaxCatchUpBatch(int slices)
+    {
+        var current = Interlocked.Read(ref _maxCatchUpBatch);
+        while (slices > current)
+        {
+            var previous = Interlocked.CompareExchange(ref _maxCatchUpBatch, slices, current);
+            if (previous == current)
+                return;
+            current = previous;
+        }
+    }
+
+    private void EmitStopSummary(EmulationAudioPlaybackStatistics audioStatistics)
+    {
+        var start = Interlocked.Read(ref _runnerStartTimestamp);
+        var wallMs = start == 0 ? 0 : (double)(_clock.GetTimestamp() - start) * 1000 / _clock.Frequency;
+        var slices = Interlocked.Read(ref _totalEmulationSlices);
+        var emulatedMs = slices;
+        var ratio = wallMs > 0 ? emulatedMs / wallMs : 0;
+        var discardedMs = (double)Interlocked.Read(ref _exceptionalDiscardedTicks) * 1000 / _clock.Frequency;
+        _errorLogger(FormatStopSummary(
+            wallMs,
+            emulatedMs,
+            ratio,
+            slices,
+            Interlocked.Read(ref _catchUpSlices),
+            Interlocked.Read(ref _maxCatchUpBatch),
+            discardedMs,
+            Interlocked.Read(ref _fabricAudioFramesRead),
+            audioStatistics));
+    }
+
+    internal static string FormatStopSummary(
+        double wallMilliseconds,
+        double emulatedMilliseconds,
+        double ratio,
+        long slices,
+        long catchUpSlices,
+        long maxCatchUpBatch,
+        double discardedMilliseconds,
+        long fabricAudioFrames,
+        EmulationAudioPlaybackStatistics audioStatistics) =>
+        $"Fabric stop summary: wallMs={wallMilliseconds:F1}, emulatedMs={emulatedMilliseconds:F1}, ratio={ratio:F5}, slices={slices}, catchUpSlices={catchUpSlices}, maxCatchUpBatch={maxCatchUpBatch}, discardedMs={discardedMilliseconds:F1}, fabricAudioFrames={fabricAudioFrames}, ringWritten={audioStatistics.RingFramesWritten}, ringRejected={audioStatistics.RingFramesRejected}, devicePcmFrames={audioStatistics.DeviceFramesDelivered}, silenceFrames={audioStatistics.SilenceFrames}, underrunEpisodes={audioStatistics.UnderrunEpisodes}, minimumRingFrames={audioStatistics.MinimumRingFrames}, currentRingFrames={audioStatistics.CurrentRingFrames}, ringCapacityFrames={audioStatistics.CapacityFrames}, playbackStarted={audioStatistics.PlaybackStarted}.";
 
     private static void TryCleanup(Action action, ref List<Exception>? failures)
     {

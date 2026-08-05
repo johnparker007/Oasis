@@ -396,8 +396,49 @@ public sealed class FabricManagedBehaviorTests
         await backend.StopAsync(CancellationToken.None);
 
         Assert.Null(backend.LastFailure);
-        Assert.Empty(errors);
+        Assert.Equal(2, errors.Count);
+        Assert.StartsWith("Fabric audio startup:", errors[0]);
+        Assert.StartsWith("Fabric stop summary:", errors[1]);
         Assert.Equal(EmulationBackendState.Stopped, backend.State);
+    }
+
+
+    [Fact]
+    public async Task Backend_StopEmitsExactlyOneCombinedSummaryAndNoCallbackSummaries()
+    {
+        var session = new FakeSession { FramesToWrite = 48 };
+        var messages = new List<string>();
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => new FakeRuntime(session),
+            new FakeAudioSink { Statistics = new(100, 3, 90, 10, 1, 0, 120, 2400, 1800, 38, true) }, new FakeClock(), messages.Add);
+
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        await session.FirstAudioRead.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Equal(1, messages.Count(message => message.StartsWith("Fabric audio startup:")));
+        var summary = Assert.Single(messages.Where(message => message.StartsWith("Fabric stop summary:")));
+        Assert.Contains("fabricAudioFrames=", summary);
+        Assert.Contains("ringRejected=3", summary);
+        Assert.Contains("devicePcmFrames=90", summary);
+        Assert.Contains("silenceFrames=10", summary);
+        Assert.Contains("underrunEpisodes=1", summary);
+    }
+
+    [Fact]
+    public async Task Backend_StopWithoutAudioCapabilityStillEmitsSafeSummary()
+    {
+        var session = new FakeSession { Capabilities = new((ulong)FabricCapability.DigitalInput) };
+        var messages = new List<string>();
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => new FakeRuntime(session),
+            new FakeAudioSink(), new FakeClock(), messages.Add);
+
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.StopAsync(CancellationToken.None);
+
+        var summary = Assert.Single(messages.Where(message => message.StartsWith("Fabric stop summary:")));
+        Assert.Contains("ringCapacityFrames=0", summary);
+        Assert.DoesNotContain(messages, message => message.StartsWith("Fabric audio startup:"));
     }
 
     [Theory]
@@ -517,7 +558,7 @@ public sealed class FabricManagedBehaviorTests
         public int DisposeCount { get; private set; }
         public int FramesToWrite { get; init; }
         public List<ulong> Advances { get; } = [];
-        public FabricCapabilities Capabilities => new((ulong)(FabricCapability.DigitalInput | FabricCapability.Audio));
+        public FabricCapabilities Capabilities { get; init; } = new((ulong)(FabricCapability.DigitalInput | FabricCapability.Audio));
         public void Initialise() => Invoke(() => { });
         public void Reset() => Invoke(() => ResetCount++);
         public void Advance(ulong elapsedNanoseconds) => Invoke(() => { Advances.Add(elapsedNanoseconds); FirstAdvance.TrySetResult(); if (AdvanceFailure is not null) throw AdvanceFailure; });
@@ -561,10 +602,12 @@ public sealed class FabricManagedBehaviorTests
         public int StopCount { get; private set; }
         public EmulationAudioFormat? StartedFormat { get; private set; }
         public int LastPcmBytes { get; private set; }
+        public EmulationAudioPlaybackStatistics Statistics { get; init; } = new(10, 0, 8, 0, 0, 2, 4, 2400, 1800, 38, true);
         public void Start(EmulationAudioFormat format) { StartedFormat = format; StartCount++; }
         public void PushPcm(ReadOnlySpan<byte> pcmBytes) => LastPcmBytes = pcmBytes.Length;
         public void Stop() => StopCount++;
         public void Clear() { }
+        public EmulationAudioPlaybackStatistics GetStatistics() => Statistics;
         public void Dispose() { }
     }
 }

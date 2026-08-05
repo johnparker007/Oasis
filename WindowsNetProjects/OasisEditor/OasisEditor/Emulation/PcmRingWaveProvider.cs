@@ -10,6 +10,7 @@ internal sealed class PcmRingWaveProvider : IWaveProvider
     private bool _inUnderrun;
     private long _framesDelivered;
     private long _silenceFrames;
+    private int _minimumRingFrames = int.MaxValue;
     private long _underrunEpisodes;
 
     public PcmRingWaveProvider(PcmFrameRingBuffer ring, WaveFormat waveFormat)
@@ -24,6 +25,7 @@ internal sealed class PcmRingWaveProvider : IWaveProvider
     public WaveFormat WaveFormat { get; }
     public long FramesDelivered => Interlocked.Read(ref _framesDelivered);
     public long SilenceFrames => Interlocked.Read(ref _silenceFrames);
+    public int MinimumRingFrames => _minimumRingFrames == int.MaxValue ? 0 : _minimumRingFrames;
     public long UnderrunEpisodes => Interlocked.Read(ref _underrunEpisodes);
 
     public int Read(byte[] buffer, int offset, int count)
@@ -33,6 +35,7 @@ internal sealed class PcmRingWaveProvider : IWaveProvider
         var requestedBytes = requestedFrames * bytesPerFrame;
         var destinationBytes = buffer.AsSpan(offset, requestedBytes);
         var destinationSamples = MemoryMarshal.Cast<byte, short>(destinationBytes);
+        ObserveMinimumRingFrames();
         var framesRead = 0;
         while (framesRead < requestedFrames)
         {
@@ -57,9 +60,23 @@ internal sealed class PcmRingWaveProvider : IWaveProvider
         {
             _inUnderrun = false;
         }
-        Interlocked.Add(ref _framesDelivered, requestedFrames);
+        Interlocked.Add(ref _framesDelivered, framesRead);
+        ObserveMinimumRingFrames();
         if (count > requestedBytes)
             buffer.AsSpan(offset + requestedBytes, count - requestedBytes).Clear();
         return count;
+    }
+
+    private void ObserveMinimumRingFrames()
+    {
+        var depth = _ring.ReadableFrames;
+        var current = _minimumRingFrames;
+        while (depth < current)
+        {
+            var previous = Interlocked.CompareExchange(ref _minimumRingFrames, depth, current);
+            if (previous == current)
+                return;
+            current = previous;
+        }
     }
 }
