@@ -54,7 +54,7 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         var provider = new PcmRingWaveProvider(ring, waveFormat, () => state?.IsPlaybackActive == true);
         var output = new WasapiOut(AudioClientShareMode.Shared, _wasapiLatencyMilliseconds);
         output.Init(provider);
-        state = new PlaybackState(format, ring, provider, output, new AudioPrebufferPolicy(format, _bufferLengthMilliseconds));
+        state = new PlaybackState(format, ring, provider, output, new AudioPrebufferPolicy(format, _bufferLengthMilliseconds), _wasapiLatencyMilliseconds);
         ResetDiagnostics();
         lock (_lifecycleGate)
             _state = state;
@@ -131,13 +131,14 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
     private sealed class PlaybackState
     {
         private int _playStarted;
-        public PlaybackState(EmulationAudioFormat format, PcmFrameRingBuffer ring, PcmRingWaveProvider provider, WasapiOut output, AudioPrebufferPolicy prebuffer)
-        { Format = format; Ring = ring; Provider = provider; Output = output; Prebuffer = prebuffer; }
+        public PlaybackState(EmulationAudioFormat format, PcmFrameRingBuffer ring, PcmRingWaveProvider provider, WasapiOut output, AudioPrebufferPolicy prebuffer, int wasapiLatencyMilliseconds)
+        { Format = format; Ring = ring; Provider = provider; Output = output; Prebuffer = prebuffer; WasapiLatencyMilliseconds = wasapiLatencyMilliseconds; }
         public EmulationAudioFormat Format { get; }
         public PcmFrameRingBuffer Ring { get; }
         public PcmRingWaveProvider Provider { get; }
         public WasapiOut Output { get; }
         public AudioPrebufferPolicy Prebuffer { get; }
+        public int WasapiLatencyMilliseconds { get; }
         public volatile bool IsStopping;
         private volatile bool _playbackActive;
         public bool IsPlaybackActive => _playbackActive && !IsStopping;
@@ -180,7 +181,7 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
             Provider.MinimumRequestedFrames,
             Provider.MaximumRequestedFrames,
             Provider.TotalRequestedFrames,
-            _wasapiLatencyMilliseconds,
+            WasapiLatencyMilliseconds,
             Prebuffer.PlaybackStarted);
     }
 }
