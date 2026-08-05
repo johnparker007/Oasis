@@ -245,7 +245,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _emulationBackendFactory = new EmulationBackendFactory(
             () => FabricRuntimeLibraryPath, () => ProductionAmberLibraryPath,
             () => System6AudioBufferLengthMilliseconds,
-            errorLogger: message => AddOutputEntry(message, OutputLogStatus.Error));
+            errorLogger: message => AddOutputEntry(message, OutputLogStatus.Error),
+            infoLogger: message => AddOutputEntry(message, OutputLogStatus.Info));
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();

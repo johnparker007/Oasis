@@ -106,6 +106,8 @@ public sealed class EmulationRuntimeStabilityTests
     public void PrebufferPolicy_UsesSeventyFivePercentCapacity()
     {
         var format = new EmulationAudioFormat(48000, 2, 16);
+        Assert.Equal(4800, AudioPrebufferPolicy.CalculateCapacityFrames(format, 100));
+        Assert.Equal(75, AudioPrebufferPolicy.CalculateThresholdMilliseconds(100));
         Assert.Equal(2400, AudioPrebufferPolicy.CalculateCapacityFrames(format, 50));
         Assert.Equal(38, AudioPrebufferPolicy.CalculateThresholdMilliseconds(50));
         var policy = new AudioPrebufferPolicy(format, 50);
@@ -148,16 +150,79 @@ public sealed class EmulationRuntimeStabilityTests
         Assert.Equal(2, provider.MinimumRingFrames);
     }
 
+
+
+    [Fact]
+    public void CapacityAwareSliceLimit_RunsOnlySlicesThatFitAndRetainsDebtByCalculation()
+    {
+        var available = FabricEmulationBackend.CalculateAvailableSlices(now: 39, nextDeadline: 0, pumpTicks: 1);
+        var executable = Math.Min(available, FabricEmulationBackend.CalculateAudioCapacityLimitedSlices(48000, 480));
+        Assert.Equal(40, available);
+        Assert.Equal(10, executable);
+        Assert.Equal(30, available - executable);
+    }
+
+    [Fact]
+    public void CapacityAwareSliceLimit_ZeroWritableFramesExecutesNoAudioSlices()
+    {
+        Assert.Equal(0, FabricEmulationBackend.CalculateAudioCapacityLimitedSlices(48000, 0));
+    }
+
+
+    [Theory]
+    [InlineData(48000, 48)]
+    [InlineData(44100, 45)]
+    [InlineData(32000, 32)]
+    public void FrameCapacity_UsesCeilingSafeFramesPerOneMillisecondSlice(int sampleRate, int expectedFrames)
+    {
+        Assert.Equal(expectedFrames, FabricEmulationBackend.CalculateSafeFramesPerSlice(sampleRate));
+    }
+
+    [Fact]
+    public void WaveProvider_UnderrunCountersExcludeInactivePlaybackReads()
+    {
+        var active = false;
+        var ring = new PcmFrameRingBuffer(1, 8);
+        var provider = new PcmRingWaveProvider(ring, new WaveFormat(48000, 16, 1), () => active);
+        provider.Read(new byte[8], 0, 8);
+        Assert.Equal(0, provider.SilenceFrames);
+        Assert.Equal(0, provider.UnderrunEpisodes);
+        active = true;
+        provider.Read(new byte[8], 0, 8);
+        Assert.Equal(4, provider.SilenceFrames);
+        Assert.Equal(1, provider.UnderrunEpisodes);
+        active = false;
+        provider.Read(new byte[8], 0, 8);
+        Assert.Equal(4, provider.SilenceFrames);
+        Assert.Equal(1, provider.UnderrunEpisodes);
+    }
+
+    [Fact]
+    public void WaveProvider_TracksActualDeviceRequestSizes()
+    {
+        var ring = new PcmFrameRingBuffer(1, 16);
+        var provider = new PcmRingWaveProvider(ring, new WaveFormat(48000, 16, 1));
+        provider.Read(new byte[4], 0, 4);
+        provider.Read(new byte[10], 0, 10);
+        Assert.Equal(2, provider.MinimumRequestedFrames);
+        Assert.Equal(5, provider.MaximumRequestedFrames);
+        Assert.Equal(7, provider.TotalRequestedFrames);
+    }
+
+
     [Fact]
     public void StopSummary_ContainsEveryRequiredField()
     {
-        var statistics = new EmulationAudioPlaybackStatistics(10, 2, 8, 3, 1, 0, 4, 2400, 1800, 38, true);
-        var summary = FabricEmulationBackend.FormatStopSummary(30012.4, 30005, 0.99975, 30005, 42, 6, 0, 1440240, statistics);
+        var statistics = new EmulationAudioPlaybackStatistics(10, 2, 8, 3, 1, 0, 4, 2400, 1800, 38, 1200, 1800, 96, 192, 10000, 25, true);
+        var summary = FabricEmulationBackend.FormatStopSummary(30012.4, 30005, 0.99975, 30005, 42, 6, 0, 1440240, 0, 48, 48, 2, 2, 30, 1440, statistics);
         foreach (var field in new[]
         {
             "wallMs=", "emulatedMs=", "ratio=", "slices=", "catchUpSlices=", "maxCatchUpBatch=", "discardedMs=",
             "fabricAudioFrames=", "ringWritten=", "ringRejected=", "devicePcmFrames=", "silenceFrames=",
-            "underrunEpisodes=", "minimumRingFrames=", "currentRingFrames=", "ringCapacityFrames=", "playbackStarted="
+            "underrunEpisodes=", "startupRingFrames=", "minimumRingFrames=", "maximumRingFrames=", "currentRingFrames=", "ringCapacityFrames=",
+            "writableFramesAtLargestCatchUpBatch=", "capacityLimitedCatchUpBatches=", "retainedDebtIterations=",
+            "maxRetainedSlices=", "maxFramesGeneratedByOneSlice=", "minimumRequestedFrames=", "maximumRequestedFrames=",
+            "totalRequestedFrames=", "playbackStarted="
         })
         {
             Assert.Contains(field, summary);
@@ -167,8 +232,8 @@ public sealed class EmulationRuntimeStabilityTests
     [Fact]
     public void RingRejection_IsReportedIndependentlyInStatisticsShape()
     {
-        var statistics = new EmulationAudioPlaybackStatistics(100, 7, 93, 0, 0, 12, 64, 128, 96, 38, true);
-        var summary = FabricEmulationBackend.FormatStopSummary(1000, 1000, 1, 1000, 0, 1, 0, 100, statistics);
+        var statistics = new EmulationAudioPlaybackStatistics(100, 7, 93, 0, 0, 12, 64, 128, 96, 38, 120, 96, 48, 96, 100, 25, true);
+        var summary = FabricEmulationBackend.FormatStopSummary(1000, 1000, 1, 1000, 0, 1, 0, 100, 0, 48, 48, 0, 0, 0, 128, statistics);
         Assert.Contains("ringRejected=7", summary);
         Assert.Contains("devicePcmFrames=93", summary);
         Assert.Contains("silenceFrames=0", summary);

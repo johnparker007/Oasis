@@ -8,7 +8,9 @@ namespace OasisEditor;
 public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
 {
     private readonly object _lifecycleGate = new();
+    private const int DefaultWasapiLatencyMilliseconds = 25;
     private readonly int _bufferLengthMilliseconds;
+    private readonly int _wasapiLatencyMilliseconds;
     private PlaybackState? _state;
     private long _ringFramesWritten;
     private long _ringFramesRejected;
@@ -16,6 +18,7 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
     private EmulationAudioPlaybackStatistics _lastStatistics;
 
     internal int BufferLengthMilliseconds => _bufferLengthMilliseconds;
+    internal int WasapiLatencyMilliseconds => _wasapiLatencyMilliseconds;
     internal int PrebufferThresholdMilliseconds => AudioPrebufferPolicy.CalculateThresholdMilliseconds(_bufferLengthMilliseconds);
     internal int PrebufferThresholdFrames => _state?.Prebuffer.ThresholdFrames ?? 0;
     internal long RingFramesWritten => Interlocked.Read(ref _ringFramesWritten);
@@ -25,12 +28,19 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
     internal long UnderrunEpisodes => _state?.Provider.UnderrunEpisodes ?? 0;
     internal int MinimumObservedRingFrames => GetStatistics().MinimumRingFrames;
     internal bool PlaybackStarted => _state?.Prebuffer.PlaybackStarted ?? false;
+    public int WritableFrames => Volatile.Read(ref _state)?.Ring.WritableFrames ?? 0;
+    public int CapacityFrames => Volatile.Read(ref _state)?.Ring.CapacityFrames ?? 0;
 
-    public NAudioEmulationAudioSink(int bufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds)
+    public NAudioEmulationAudioSink(
+        int bufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds,
+        int wasapiLatencyMilliseconds = DefaultWasapiLatencyMilliseconds)
     {
         if (bufferLengthMilliseconds <= 0)
             throw new ArgumentOutOfRangeException(nameof(bufferLengthMilliseconds), bufferLengthMilliseconds, "Audio buffer length must be greater than zero.");
+        if (wasapiLatencyMilliseconds <= 0)
+            throw new ArgumentOutOfRangeException(nameof(wasapiLatencyMilliseconds), wasapiLatencyMilliseconds, "WASAPI latency must be greater than zero.");
         _bufferLengthMilliseconds = bufferLengthMilliseconds;
+        _wasapiLatencyMilliseconds = wasapiLatencyMilliseconds;
     }
 
     public void Start(EmulationAudioFormat format)
@@ -40,10 +50,11 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         var waveFormat = new WaveFormat(format.SampleRate, format.BitsPerSample, format.Channels);
         var capacityFrames = AudioPrebufferPolicy.CalculateCapacityFrames(format, _bufferLengthMilliseconds);
         var ring = new PcmFrameRingBuffer(format.Channels, capacityFrames);
-        var provider = new PcmRingWaveProvider(ring, waveFormat);
-        var output = new WasapiOut(AudioClientShareMode.Shared, _bufferLengthMilliseconds);
+        PlaybackState? state = null;
+        var provider = new PcmRingWaveProvider(ring, waveFormat, () => state?.IsPlaybackActive == true);
+        var output = new WasapiOut(AudioClientShareMode.Shared, _wasapiLatencyMilliseconds);
         output.Init(provider);
-        var state = new PlaybackState(format, ring, provider, output, new AudioPrebufferPolicy(format, _bufferLengthMilliseconds));
+        state = new PlaybackState(format, ring, provider, output, new AudioPrebufferPolicy(format, _bufferLengthMilliseconds));
         ResetDiagnostics();
         lock (_lifecycleGate)
             _state = state;
@@ -128,14 +139,18 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         public WasapiOut Output { get; }
         public AudioPrebufferPolicy Prebuffer { get; }
         public volatile bool IsStopping;
+        private volatile bool _playbackActive;
+        public bool IsPlaybackActive => _playbackActive && !IsStopping;
         public void PlayOnce()
         {
             if (IsStopping || Interlocked.Exchange(ref _playStarted, 1) != 0) return;
+            _playbackActive = true;
             Output.Play();
         }
         public void ClearForFreshPrebuffer()
         {
             IsStopping = false;
+            _playbackActive = false;
             Output.Stop();
             Ring.Clear();
             Prebuffer.Reset();
@@ -143,6 +158,7 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
         }
         public void StopDisposeAndClear()
         {
+            _playbackActive = false;
             try { Output.Stop(); } catch { }
             try { Output.Dispose(); } catch { }
             Ring.Clear();
@@ -159,6 +175,12 @@ public sealed class NAudioEmulationAudioSink : IEmulationAudioSink
             Ring.CapacityFrames,
             Prebuffer.ThresholdFrames,
             Prebuffer.ThresholdMilliseconds,
+            Provider.MaximumRingFrames,
+            Prebuffer.StartupRingFrames,
+            Provider.MinimumRequestedFrames,
+            Provider.MaximumRequestedFrames,
+            Provider.TotalRequestedFrames,
+            _wasapiLatencyMilliseconds,
             Prebuffer.PlaybackStarted);
     }
 }
@@ -177,9 +199,10 @@ internal sealed class AudioPrebufferPolicy
     internal int ThresholdBytes { get; }
     private int BytesPerFrame { get; }
     internal bool PlaybackStarted { get; private set; }
-    internal bool ObserveQueuedFrames(int queuedFrames) { if (!PlaybackStarted && queuedFrames >= ThresholdFrames) PlaybackStarted = true; return PlaybackStarted; }
+    internal int StartupRingFrames { get; private set; }
+    internal bool ObserveQueuedFrames(int queuedFrames) { if (!PlaybackStarted && queuedFrames >= ThresholdFrames) { StartupRingFrames = queuedFrames; PlaybackStarted = true; } return PlaybackStarted; }
     internal bool ObserveQueuedBytes(int bufferedBytes) => ObserveQueuedFrames(bufferedBytes / BytesPerFrame);
-    internal void Reset() => PlaybackStarted = false;
+    internal void Reset() { PlaybackStarted = false; StartupRingFrames = 0; }
     internal static int CalculateThresholdMilliseconds(int bufferLengthMilliseconds) => Math.Max(1, (bufferLengthMilliseconds * 3 + 3) / 4);
     internal static int CalculateCapacityFrames(EmulationAudioFormat format, int bufferLengthMilliseconds) => Math.Max(1, checked((int)(((long)format.SampleRate * bufferLengthMilliseconds + 999) / 1000)));
 }

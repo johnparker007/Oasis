@@ -13,6 +13,12 @@ public readonly record struct EmulationAudioPlaybackStatistics(
     int CapacityFrames,
     int PrebufferThresholdFrames,
     int PrebufferThresholdMilliseconds,
+    int MaximumRingFrames,
+    int StartupRingFrames,
+    int MinimumRequestedFrames,
+    int MaximumRequestedFrames,
+    long TotalRequestedFrames,
+    int WasapiLatencyMilliseconds,
     bool PlaybackStarted);
 
 public interface IEmulationAudioSink : IDisposable
@@ -22,4 +28,6 @@ public interface IEmulationAudioSink : IDisposable
     void Stop();
     void Clear();
     EmulationAudioPlaybackStatistics GetStatistics();
+    int WritableFrames { get; }
+    int CapacityFrames { get; }
 }

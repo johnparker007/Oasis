@@ -6,16 +6,22 @@ namespace OasisEditor;
 internal sealed class PcmRingWaveProvider : IWaveProvider
 {
     private readonly PcmFrameRingBuffer _ring;
+    private readonly Func<bool> _isPlaybackActive;
     private readonly short[] _scratch;
     private bool _inUnderrun;
     private long _framesDelivered;
     private long _silenceFrames;
     private int _minimumRingFrames = int.MaxValue;
+    private int _maximumRingFrames;
+    private int _minimumRequestedFrames = int.MaxValue;
+    private int _maximumRequestedFrames;
+    private long _totalRequestedFrames;
     private long _underrunEpisodes;
 
-    public PcmRingWaveProvider(PcmFrameRingBuffer ring, WaveFormat waveFormat)
+    public PcmRingWaveProvider(PcmFrameRingBuffer ring, WaveFormat waveFormat, Func<bool>? isPlaybackActive = null)
     {
         _ring = ring ?? throw new ArgumentNullException(nameof(ring));
+        _isPlaybackActive = isPlaybackActive ?? (() => true);
         WaveFormat = waveFormat ?? throw new ArgumentNullException(nameof(waveFormat));
         if (waveFormat.BitsPerSample != 16 || waveFormat.Channels != ring.Channels)
             throw new ArgumentException("Wave format must be 16-bit PCM and match the ring channel count.");
@@ -26,6 +32,10 @@ internal sealed class PcmRingWaveProvider : IWaveProvider
     public long FramesDelivered => Interlocked.Read(ref _framesDelivered);
     public long SilenceFrames => Interlocked.Read(ref _silenceFrames);
     public int MinimumRingFrames => _minimumRingFrames == int.MaxValue ? 0 : _minimumRingFrames;
+    public int MaximumRingFrames => Volatile.Read(ref _maximumRingFrames);
+    public int MinimumRequestedFrames => _minimumRequestedFrames == int.MaxValue ? 0 : _minimumRequestedFrames;
+    public int MaximumRequestedFrames => Volatile.Read(ref _maximumRequestedFrames);
+    public long TotalRequestedFrames => Interlocked.Read(ref _totalRequestedFrames);
     public long UnderrunEpisodes => Interlocked.Read(ref _underrunEpisodes);
 
     public int Read(byte[] buffer, int offset, int count)
@@ -33,9 +43,12 @@ internal sealed class PcmRingWaveProvider : IWaveProvider
         var bytesPerFrame = WaveFormat.BlockAlign;
         var requestedFrames = count / bytesPerFrame;
         var requestedBytes = requestedFrames * bytesPerFrame;
+        ObserveRequestedFrames(requestedFrames);
         var destinationBytes = buffer.AsSpan(offset, requestedBytes);
         var destinationSamples = MemoryMarshal.Cast<byte, short>(destinationBytes);
-        ObserveMinimumRingFrames();
+        var playbackActive = _isPlaybackActive();
+        if (playbackActive)
+            ObserveRingFrames();
         var framesRead = 0;
         while (framesRead < requestedFrames)
         {
@@ -49,11 +62,14 @@ internal sealed class PcmRingWaveProvider : IWaveProvider
         if (silenceFrames > 0)
         {
             destinationSamples[(framesRead * _ring.Channels)..(requestedFrames * _ring.Channels)].Clear();
-            Interlocked.Add(ref _silenceFrames, silenceFrames);
-            if (!_inUnderrun)
+            if (playbackActive)
             {
-                _inUnderrun = true;
-                Interlocked.Increment(ref _underrunEpisodes);
+                Interlocked.Add(ref _silenceFrames, silenceFrames);
+                if (!_inUnderrun)
+                {
+                    _inUnderrun = true;
+                    Interlocked.Increment(ref _underrunEpisodes);
+                }
             }
         }
         else
@@ -61,21 +77,45 @@ internal sealed class PcmRingWaveProvider : IWaveProvider
             _inUnderrun = false;
         }
         Interlocked.Add(ref _framesDelivered, framesRead);
-        ObserveMinimumRingFrames();
+        if (playbackActive)
+            ObserveRingFrames();
         if (count > requestedBytes)
             buffer.AsSpan(offset + requestedBytes, count - requestedBytes).Clear();
         return count;
     }
 
-    private void ObserveMinimumRingFrames()
+    private void ObserveRequestedFrames(int requestedFrames)
+    {
+        Interlocked.Add(ref _totalRequestedFrames, requestedFrames);
+        UpdateMinimum(ref _minimumRequestedFrames, requestedFrames);
+        UpdateMaximum(ref _maximumRequestedFrames, requestedFrames);
+    }
+
+    private void ObserveRingFrames()
     {
         var depth = _ring.ReadableFrames;
-        var current = _minimumRingFrames;
-        while (depth < current)
+        UpdateMinimum(ref _minimumRingFrames, depth);
+        UpdateMaximum(ref _maximumRingFrames, depth);
+    }
+
+    private static void UpdateMinimum(ref int target, int value)
+    {
+        var current = Volatile.Read(ref target);
+        while (value < current)
         {
-            var previous = Interlocked.CompareExchange(ref _minimumRingFrames, depth, current);
-            if (previous == current)
-                return;
+            var previous = Interlocked.CompareExchange(ref target, value, current);
+            if (previous == current) return;
+            current = previous;
+        }
+    }
+
+    private static void UpdateMaximum(ref int target, int value)
+    {
+        var current = Volatile.Read(ref target);
+        while (value > current)
+        {
+            var previous = Interlocked.CompareExchange(ref target, value, current);
+            if (previous == current) return;
             current = previous;
         }
     }

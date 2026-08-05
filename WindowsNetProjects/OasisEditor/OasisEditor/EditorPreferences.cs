@@ -23,7 +23,7 @@ public sealed class OasisPlayerPreferences
 
 public sealed class NativeEmulationPreferences
 {
-    public const int DefaultAudioBufferLengthMilliseconds = 50;
+    public const int DefaultAudioBufferLengthMilliseconds = 100;
 
     public string FabricRuntimeLibraryPath { get; init; } = string.Empty;
     public string ProductionAmberLibraryPath { get; init; } = string.Empty;

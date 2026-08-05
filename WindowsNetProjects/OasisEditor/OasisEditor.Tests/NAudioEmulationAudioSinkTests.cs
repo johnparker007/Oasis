@@ -45,4 +45,13 @@ public sealed class NAudioEmulationAudioSinkTests
         Assert.Equal(expectedDrop,
             NAudioEmulationAudioSink.ShouldDropIncomingBlock(bufferedBytes, capacityBytes, incomingBytes));
     }
+
+    [Fact]
+    public void WasapiLatency_IsIndependentFromRingReserveCapacity()
+    {
+        using var sink = new NAudioEmulationAudioSink(bufferLengthMilliseconds: 100, wasapiLatencyMilliseconds: 25);
+
+        Assert.Equal(100, sink.BufferLengthMilliseconds);
+        Assert.Equal(25, sink.WasapiLatencyMilliseconds);
+    }
 }

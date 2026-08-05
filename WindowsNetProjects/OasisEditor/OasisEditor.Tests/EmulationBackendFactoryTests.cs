@@ -77,6 +77,8 @@ public sealed class EmulationBackendFactoryTests
         public void Stop() { }
         public void Clear() { }
         public EmulationAudioPlaybackStatistics GetStatistics() => default;
+        public int WritableFrames => int.MaxValue;
+        public int CapacityFrames => int.MaxValue;
         public void Dispose() { }
     }
 
