@@ -27,6 +27,7 @@ public sealed class NativeEmulationPreferences
 
     public string FabricRuntimeLibraryPath { get; init; } = string.Empty;
     public string ProductionAmberLibraryPath { get; init; } = string.Empty;
+    public string Mpu5AmberLibraryPath { get; init; } = string.Empty;
     public int AudioBufferLengthMilliseconds { get; init; } = DefaultAudioBufferLengthMilliseconds;
 }
 

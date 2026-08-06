@@ -34,6 +34,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private ThemePreference _selectedThemePreference;
     private string _fabricRuntimeLibraryPath = string.Empty;
     private string _productionAmberLibraryPath = string.Empty;
+    private string _mpu5AmberLibraryPath = string.Empty;
     private int _system6AudioBufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds;
     private string _lastMfmeFmlImportDirectory = string.Empty;
     private FaceGenerationSettingsModel _defaultFaceGenerationSettings = FaceGenerationSettingsModel.Default;
@@ -214,6 +215,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _selectedThemePreference = preferences.ThemePreference;
             _fabricRuntimeLibraryPath = preferences.NativeEmulation.FabricRuntimeLibraryPath;
             _productionAmberLibraryPath = preferences.NativeEmulation.ProductionAmberLibraryPath;
+            _mpu5AmberLibraryPath = preferences.NativeEmulation.Mpu5AmberLibraryPath;
             _system6AudioBufferLengthMilliseconds = NormalizeSystem6AudioBufferLengthMilliseconds(preferences.NativeEmulation.AudioBufferLengthMilliseconds);
             _oasisPlayerExecutablePath = preferences.Player.ExecutablePath;
             _oasisPlayerFullscreen = preferences.Player.Fullscreen;
@@ -246,7 +248,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => FabricRuntimeLibraryPath, () => ProductionAmberLibraryPath,
             () => System6AudioBufferLengthMilliseconds,
             errorLogger: message => AddOutputEntry(message, OutputLogStatus.Error),
-            infoLogger: message => AddOutputEntry(message, OutputLogStatus.Info));
+            infoLogger: message => AddOutputEntry(message, OutputLogStatus.Info),
+            mpu5AmberPathProvider: () => Mpu5AmberLibraryPath);
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
@@ -486,6 +489,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public int OasisPlayerPreviewHeight { get => _oasisPlayerPreviewHeight; set { if (SetProperty(ref _oasisPlayerPreviewHeight, value)) SavePreferences(); } }
     public string FabricRuntimeLibraryPath { get => _fabricRuntimeLibraryPath; set { if (SetProperty(ref _fabricRuntimeLibraryPath, value)) SavePreferences(); } }
     public string ProductionAmberLibraryPath { get => _productionAmberLibraryPath; set { if (SetProperty(ref _productionAmberLibraryPath, value)) SavePreferences(); } }
+    public string Mpu5AmberLibraryPath { get => _mpu5AmberLibraryPath; set { if (SetProperty(ref _mpu5AmberLibraryPath, value)) SavePreferences(); } }
     public int System6AudioBufferLengthMilliseconds
     {
         get => _system6AudioBufferLengthMilliseconds;
@@ -1860,6 +1864,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 FabricRuntimeLibraryPath = FabricRuntimeLibraryPath,
                 ProductionAmberLibraryPath = ProductionAmberLibraryPath,
+                Mpu5AmberLibraryPath = Mpu5AmberLibraryPath,
                 AudioBufferLengthMilliseconds = System6AudioBufferLengthMilliseconds
             },
             Player = new OasisPlayerPreferences
@@ -2048,10 +2053,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private EmulationLaunchRequest BuildEmulationLaunchRequest()
     {
-        return new EmulationLaunchRequest(
-            BuildSystem6NativeRomSettingsForLaunch(),
-            BuildConfiguredLampIdsForLaunch(),
-            BuildConfiguredSevenSegmentDisplayIdsForLaunch());
+        return SelectedFruitMachinePlatform switch
+        {
+            FruitMachinePlatformType.Impact => new EmulationLaunchRequest(
+                BuildSystem6NativeRomSettingsForLaunch(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
+            FruitMachinePlatformType.MPU5 => EmulationLaunchRequest.ForMpu5(
+                LoadedProject?.Mpu5NativeRoms ?? new Mpu5NativeRomSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
+            _ => throw new NotSupportedException($"Platform '{SelectedFruitMachinePlatform}' is not supported by Fabric Amber emulation.")
+        };
     }
 
     private IReadOnlyList<int>? BuildConfiguredLampIdsForLaunch()
@@ -2484,6 +2493,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var generatedDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "generated");
         var fruitMachinePlatform = ResolveFruitMachinePlatform(projectDocument.RootElement);
         var system6NativeRoms = ResolveSystem6NativeRomSettings(projectDocument.RootElement);
+        var mpu5NativeRoms = ResolveMpu5NativeRomSettings(projectDocument.RootElement);
         var inputDefinitions = ResolveInputDefinitions(projectDocument.RootElement);
 
         return new EditorProject
@@ -2495,7 +2505,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             MachinesDirectory = machinesDirectory,
             GeneratedDirectory = generatedDirectory,
             FruitMachinePlatform = fruitMachinePlatform,
-            System6NativeRoms = system6NativeRoms
+            System6NativeRoms = system6NativeRoms,
+            Mpu5NativeRoms = mpu5NativeRoms
         }.WithInputDefinitions(inputDefinitions);
     }
 
@@ -2676,7 +2687,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     {
                         wroteProjectSettings = true;
                         writer.WritePropertyName("project_settings");
-                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.System6NativeRoms);
+                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.System6NativeRoms, LoadedProject.Mpu5NativeRoms);
                         continue;
                     }
 
@@ -2697,6 +2708,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     writer.WriteStartObject();
                     writer.WriteString("FruitMachine_Platform", LoadedProject.FruitMachinePlatform.ToString());
                     WriteSystem6NativeRomSettings(writer, LoadedProject.System6NativeRoms);
+                    WriteMpu5NativeRomSettings(writer, LoadedProject.Mpu5NativeRoms);
                     writer.WriteEndObject();
                 }
 
@@ -2717,11 +2729,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, System6NativeRomSettings system6NativeRoms)
+    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, System6NativeRomSettings system6NativeRoms, Mpu5NativeRomSettings mpu5NativeRoms)
     {
         writer.WriteStartObject();
         var wrotePlatform = false;
         var wroteSystem6Settings = false;
+        var wroteMpu5Settings = false;
         foreach (var property in existingProjectSettings.EnumerateObject())
         {
             if (property.NameEquals("FruitMachine_Platform"))
@@ -2734,6 +2747,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 WriteSystem6NativeRomSettings(writer, system6NativeRoms);
                 wroteSystem6Settings = true;
             }
+            else if (property.NameEquals("Mpu5NativeRoms"))
+            {
+                WriteMpu5NativeRomSettings(writer, mpu5NativeRoms);
+                wroteMpu5Settings = true;
+            }
             else if (!property.NameEquals("MameRomName") && !property.NameEquals("AutomaticallyDownloadMissingRoms"))
             {
                 property.WriteTo(writer);
@@ -2741,7 +2759,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
         if (!wrotePlatform) writer.WriteString("FruitMachine_Platform", platform.ToString());
         if (!wroteSystem6Settings) WriteSystem6NativeRomSettings(writer, system6NativeRoms);
+        if (!wroteMpu5Settings) WriteMpu5NativeRomSettings(writer, mpu5NativeRoms);
         writer.WriteEndObject();
+    }
+
+    private static void WriteMpu5NativeRomSettings(Utf8JsonWriter writer, Mpu5NativeRomSettings settings)
+    {
+        writer.WritePropertyName("Mpu5NativeRoms");
+        JsonSerializer.Serialize(writer, settings);
+    }
+
+    private static Mpu5NativeRomSettings ResolveMpu5NativeRomSettings(JsonElement root)
+    {
+        if (!root.TryGetProperty("project_settings", out var projectSettings)
+            || !projectSettings.TryGetProperty("Mpu5NativeRoms", out var settings))
+            return new Mpu5NativeRomSettings();
+        return settings.Deserialize<Mpu5NativeRomSettings>()
+            ?? throw new InvalidOperationException("MPU5 native ROM settings are invalid.");
     }
 
     private static void WriteSystem6NativeRomSettings(Utf8JsonWriter writer, System6NativeRomSettings settings)

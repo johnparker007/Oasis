@@ -37,6 +37,16 @@ public sealed class EmulationBackendAbstractionsTests
     }
 
     [Fact]
+    public void LaunchRequest_StoresSeparateMpu5Configuration()
+    {
+        var settings = new Mpu5NativeRomSettings();
+        var request = EmulationLaunchRequest.ForMpu5(settings);
+        Assert.Equal(FruitMachinePlatformType.MPU5, request.Platform);
+        Assert.Same(settings, request.Mpu5Configuration);
+        Assert.Null(request.System6Configuration);
+    }
+
+    [Fact]
     public void RuntimeEventArgs_PreserveConstructorValues()
     {
         var lamp = new MachineLampChangedEventArgs(1, 255);

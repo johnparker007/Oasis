@@ -6,6 +6,21 @@ using OasisEditor;
 public sealed class FabricAbiLayoutTests
 {
     [Fact]
+    public void Mpu5Configuration_HasStableNativeLayout()
+    {
+        Assert.Equal(420, Marshal.SizeOf<FabricAmberMpu5ConfigurationNative>());
+        Assert.Equal(16, Marshal.OffsetOf<FabricAmberMpu5ConfigurationNative>(nameof(FabricAmberMpu5ConfigurationNative.Reels)).ToInt32());
+        Assert.Equal(256, Marshal.OffsetOf<FabricAmberMpu5ConfigurationNative>(nameof(FabricAmberMpu5ConfigurationNative.Coins)).ToInt32());
+        Assert.Equal(368, Marshal.OffsetOf<FabricAmberMpu5ConfigurationNative>(nameof(FabricAmberMpu5ConfigurationNative.Options)).ToInt32());
+    }
+
+    [Fact]
+    public void Mpu5Configuration_RejectsOutOfRangeReelBeforeNativeStartup()
+    {
+        var settings = new Mpu5NativeRomSettings { Reels = [new() { ReelIndex = 8 }] };
+        Assert.Throws<ArgumentOutOfRangeException>(() => FabricAmberMpu5Configuration.FromMpu5(settings));
+    }
+    [Fact]
     public void X64NativeLayoutsMatchPublishedAbi()
     {
         Assert.Equal(0x00030000u, FabricAbi.Version);
@@ -61,7 +76,7 @@ public sealed class FabricAbiLayoutTests
     [Fact]
     public void AmberV2SerializesGlobalCoinMechanismWithoutTruncatingPulseCycles()
     {
-        var bytes = FabricAmberConfiguration.FromSystem6(new System6NativeRomSettings
+        var bytes = FabricAmberSystem6Configuration.FromSystem6(new System6NativeRomSettings
         {
             CoinCommunicationStyle = AmberCoinCommunicationStyle.Parallel,
             CoinCommunicationInvert = false,
@@ -89,7 +104,7 @@ public sealed class FabricAbiLayoutTests
     [Fact]
     public void AmberV2SerializesNonContiguousChannelsAndRoutesIntoIndexedSlots()
     {
-        var bytes = FabricAmberConfiguration.FromSystem6(new System6NativeRomSettings
+        var bytes = FabricAmberSystem6Configuration.FromSystem6(new System6NativeRomSettings
         {
             Coins = [new System6CoinSettings { Num = 2, Enabled = true, CoinEnable = 1, CoinValue = 3 }]
         }).ToNativeBytes();

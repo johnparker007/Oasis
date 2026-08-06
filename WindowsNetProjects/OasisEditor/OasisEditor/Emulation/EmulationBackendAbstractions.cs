@@ -62,9 +62,18 @@ public sealed record EmulationBackendCapabilities(
     bool SupportsThrottle);
 
 public sealed record EmulationLaunchRequest(
-    System6NativeRomSettings System6Configuration,
+    FruitMachinePlatformType Platform,
+    System6NativeRomSettings? System6Configuration,
+    Mpu5NativeRomSettings? Mpu5Configuration,
     IReadOnlyList<int>? ConfiguredLampIds = null,
-    IReadOnlyList<int>? ConfiguredSevenSegmentDisplayIds = null);
+    IReadOnlyList<int>? ConfiguredSevenSegmentDisplayIds = null)
+{
+    public EmulationLaunchRequest(System6NativeRomSettings settings, IReadOnlyList<int>? lamps = null, IReadOnlyList<int>? segments = null)
+        : this(FruitMachinePlatformType.Impact, settings, null, lamps, segments) { }
+
+    public static EmulationLaunchRequest ForMpu5(Mpu5NativeRomSettings settings, IReadOnlyList<int>? lamps = null, IReadOnlyList<int>? segments = null) =>
+        new(FruitMachinePlatformType.MPU5, null, settings, lamps, segments);
+}
 
 public enum SegmentOutputType
 {
