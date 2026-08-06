@@ -173,6 +173,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         BrowseMpu5SoundRom2Command = new RelayCommand(() => BrowseMpu5RomPath(2, false));
         BrowseMpu5SoundRom3Command = new RelayCommand(() => BrowseMpu5RomPath(3, false));
         BrowseMpu5SoundRom4Command = new RelayCommand(() => BrowseMpu5RomPath(4, false));
+        SaveMpu5ProjectSettingsCommand = new RelayCommand(SaveMpu5ProjectSettings);
         ResetSystem6ReelOptosCommand = new RelayCommand(ResetSystem6ReelOptosToDefaults);
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
@@ -400,6 +401,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand BrowseMpu5SoundRom2Command { get; }
     public ICommand BrowseMpu5SoundRom3Command { get; }
     public ICommand BrowseMpu5SoundRom4Command { get; }
+    public ICommand SaveMpu5ProjectSettingsCommand { get; }
     public ICommand CloseProjectSettingsCommand { get; }
     public ICommand ResetSystem6ReelOptosCommand { get; }
     public ICommand ApplyInspectorSummaryCommand { get; }
@@ -423,6 +425,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "Platform Settings"];
     public IReadOnlyList<string> NativeProjectSettingsTabs { get; } = ["ROMS", "Stake/Prize", "Reels", "Coins"];
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
+    public IReadOnlyList<Mpu5CoinCommunicationStyle> Mpu5CoinCommunicationStyles { get; } = Enum.GetValues<Mpu5CoinCommunicationStyle>();
+    public IReadOnlyList<Mpu5PicMode> Mpu5PicModes { get; } = Enum.GetValues<Mpu5PicMode>();
+    public IReadOnlyList<Mpu5HopperType> Mpu5HopperTypes { get; } = Enum.GetValues<Mpu5HopperType>();
+    public IReadOnlyList<Mpu5ReelJumperProfile> Mpu5ReelJumperProfiles { get; } = Enum.GetValues<Mpu5ReelJumperProfile>();
     public IReadOnlyList<InputDefinitionModel> InputDefinitions => LoadedProject?.InputDefinitions ?? [];
     public IReadOnlyList<InputMapDiagnostic> InputMapDiagnostics
     {
@@ -2168,14 +2174,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void SaveMpu5NativeRomSettings()
     {
         if (LoadedProject is null) return;
-        LoadedProject.Mpu5NativeRoms = new Mpu5NativeRomSettings
-        {
-            ProgramRom1Path=Mpu5ProgramRom1Path, ProgramRom2Path=Mpu5ProgramRom2Path,
-            ProgramRom3Path=Mpu5ProgramRom3Path, ProgramRom4Path=Mpu5ProgramRom4Path,
-            SoundRom1Path=Mpu5SoundRom1Path, SoundRom2Path=Mpu5SoundRom2Path,
-            SoundRom3Path=Mpu5SoundRom3Path, SoundRom4Path=Mpu5SoundRom4Path
-        };
+        var settings=LoadedProject.Mpu5NativeRoms;
+        settings.ProgramRom1Path=Mpu5ProgramRom1Path; settings.ProgramRom2Path=Mpu5ProgramRom2Path;
+        settings.ProgramRom3Path=Mpu5ProgramRom3Path; settings.ProgramRom4Path=Mpu5ProgramRom4Path;
+        settings.SoundRom1Path=Mpu5SoundRom1Path; settings.SoundRom2Path=Mpu5SoundRom2Path;
+        settings.SoundRom3Path=Mpu5SoundRom3Path; settings.SoundRom4Path=Mpu5SoundRom4Path;
         SaveLoadedProjectMetadata();
+    }
+
+    private void SaveMpu5ProjectSettings()
+    {
+        if (LoadedProject is null) return;
+        SaveMpu5NativeRomSettings();
+        _ = FabricAmberMpu5Configuration.FromMpu5(LoadedProject.Mpu5NativeRoms);
+        Mpu5NativeRomStatus = "MPU5 project settings saved and validated.";
     }
 
     private void ApplyMpu5NativeRomSettingsToViewModel(Mpu5NativeRomSettings settings)
@@ -2847,12 +2859,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private static void WriteMpu5NativeRomSettings(Utf8JsonWriter writer, Mpu5NativeRomSettings settings)
     {
         writer.WritePropertyName("Mpu5NativeRoms");
-        writer.WriteStartObject();
-        writer.WriteString("ProgramRom1Path", settings.ProgramRom1Path); writer.WriteString("ProgramRom2Path", settings.ProgramRom2Path);
-        writer.WriteString("ProgramRom3Path", settings.ProgramRom3Path); writer.WriteString("ProgramRom4Path", settings.ProgramRom4Path);
-        writer.WriteString("SoundRom1Path", settings.SoundRom1Path); writer.WriteString("SoundRom2Path", settings.SoundRom2Path);
-        writer.WriteString("SoundRom3Path", settings.SoundRom3Path); writer.WriteString("SoundRom4Path", settings.SoundRom4Path);
-        writer.WriteEndObject();
+        JsonSerializer.Serialize(writer, settings);
     }
 
     private static Mpu5NativeRomSettings ResolveMpu5NativeRomSettings(JsonElement root)
@@ -2860,13 +2867,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (!root.TryGetProperty("project_settings", out var projectSettings)
             || !projectSettings.TryGetProperty("Mpu5NativeRoms", out var settings))
             return new Mpu5NativeRomSettings();
-        return new Mpu5NativeRomSettings
-        {
-            ProgramRom1Path=GetOptionalString(settings,"ProgramRom1Path"), ProgramRom2Path=GetOptionalString(settings,"ProgramRom2Path"),
-            ProgramRom3Path=GetOptionalString(settings,"ProgramRom3Path"), ProgramRom4Path=GetOptionalString(settings,"ProgramRom4Path"),
-            SoundRom1Path=GetOptionalString(settings,"SoundRom1Path"), SoundRom2Path=GetOptionalString(settings,"SoundRom2Path"),
-            SoundRom3Path=GetOptionalString(settings,"SoundRom3Path"), SoundRom4Path=GetOptionalString(settings,"SoundRom4Path")
-        };
+        return settings.Deserialize<Mpu5NativeRomSettings>() ?? throw new InvalidOperationException("MPU5 project settings are invalid.");
     }
 
     private static void WriteSystem6NativeRomSettings(Utf8JsonWriter writer, System6NativeRomSettings settings)

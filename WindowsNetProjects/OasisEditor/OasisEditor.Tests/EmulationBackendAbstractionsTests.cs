@@ -47,16 +47,12 @@ public sealed class EmulationBackendAbstractionsTests
     }
 
     [Fact]
-    public void Mpu5SettingsExposeOnlyCurrentRomResourceContract()
+    public void Mpu5ReelContractHasApplyButNoInventedEnabledSetter()
     {
-        var writable = typeof(Mpu5NativeRomSettings).GetProperties()
-            .Where(property => property.SetMethod?.IsPublic == true)
-            .Select(property => property.Name).Order().ToArray();
-        Assert.Equal(new[]
-        {
-            "ProgramRom1Path", "ProgramRom2Path", "ProgramRom3Path", "ProgramRom4Path",
-            "SoundRom1Path", "SoundRom2Path", "SoundRom3Path", "SoundRom4Path"
-        }.Order(), writable);
+        Assert.NotNull(typeof(Mpu5ReelSettings).GetProperty(nameof(Mpu5ReelSettings.Apply)));
+        Assert.Null(typeof(Mpu5ReelSettings).GetProperty("Enabled"));
+        Assert.Equal(8, new Mpu5NativeRomSettings().Reels.Count);
+        Assert.Equal(6, new Mpu5NativeRomSettings().Coins.Count);
     }
 
     [Fact]

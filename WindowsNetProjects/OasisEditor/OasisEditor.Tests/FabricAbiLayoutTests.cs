@@ -6,10 +6,55 @@ using OasisEditor;
 public sealed class FabricAbiLayoutTests
 {
     [Fact]
-    public void Mpu5DoesNotDeclareAnInventedNativeConfigurationAbi()
+    public void Mpu5NativeLayoutsMatchFabricHeader()
     {
-        Assert.Null(typeof(FabricAbi).Assembly.GetType("OasisEditor.FabricAmberMpu5ConfigurationNative"));
-        Assert.Null(typeof(FabricAbi).Assembly.GetType("OasisEditor.FabricAmberMpu5Configuration"));
+        Assert.Equal(20, Marshal.SizeOf<FabricAmberMpu5ReelConfigNative>());
+        Assert.Equal(176, Marshal.SizeOf<FabricAmberMpu5ReelConfigurationNative>());
+        Assert.Equal(20, Marshal.SizeOf<FabricAmberMpu5CoinChannelConfigNative>());
+        Assert.Equal(152, Marshal.SizeOf<FabricAmberMpu5CoinConfigurationNative>());
+        Assert.Equal(60, Marshal.SizeOf<FabricAmberMpu5OptionsNative>());
+        Assert.Equal(404, Marshal.SizeOf<FabricAmberMpu5ConfigurationNative>());
+        Assert.Equal(16, Marshal.OffsetOf<FabricAmberMpu5ConfigurationNative>(nameof(FabricAmberMpu5ConfigurationNative.Reels)).ToInt32());
+        Assert.Equal(192, Marshal.OffsetOf<FabricAmberMpu5ConfigurationNative>(nameof(FabricAmberMpu5ConfigurationNative.Coins)).ToInt32());
+        Assert.Equal(344, Marshal.OffsetOf<FabricAmberMpu5ConfigurationNative>(nameof(FabricAmberMpu5ConfigurationNative.Options)).ToInt32());
+    }
+
+    [Fact]
+    public void Mpu5SerializerWritesExactHeaderMasksAndAppliedZeroOptions()
+    {
+        var settings=new Mpu5NativeRomSettings { ConfigureReels=true,ConfigureCoins=true,ConfigureMachineOptions=true,ApplyPercentage=true,Percentage=0,ApplyHopperType=true,HopperType=Mpu5HopperType.Compact };
+        settings.Reels[7].Apply=true; settings.Coins[5].Apply=true; settings.Coins[5].Value=255;
+        var bytes=FabricAmberMpu5Configuration.FromMpu5(settings)!.ToNativeBytes();
+        Assert.Equal(404,bytes.Length); Assert.Equal(0x354D4146u,BitConverter.ToUInt32(bytes,0)); Assert.Equal(1u,BitConverter.ToUInt32(bytes,8)); Assert.Equal(7u,BitConverter.ToUInt32(bytes,12));
+        Assert.Equal(1u<<7,BitConverter.ToUInt32(bytes,28)); Assert.Equal(1u<<5,BitConverter.ToUInt32(bytes,204));
+        Assert.Equal(FabricAmberMpu5Configuration.OptionPercentage|FabricAmberMpu5Configuration.OptionHopperType,BitConverter.ToUInt32(bytes,352));
+        Assert.All(bytes[396..404], value=>Assert.Equal(0,value));
+    }
+
+    [Fact]
+    public void Mpu5SerializerReturnsNullOnlyWithoutSelectedSections()
+    {
+        Assert.Null(FabricAmberMpu5Configuration.FromMpu5(new()));
+        Assert.NotNull(FabricAmberMpu5Configuration.FromMpu5(new(){ConfigureMachineOptions=true}));
+    }
+
+    [Theory]
+    [InlineData(0, 0, 0, 0)]
+    [InlineData(3, 3, 2, 255)]
+    public void Mpu5SerializerAcceptsConfirmedEnumAndCoinRanges(int communication, int hopper, int jumper, int coinValue)
+    {
+        var s=new Mpu5NativeRomSettings { ConfigureCoins=true,CommunicationStyle=(Mpu5CoinCommunicationStyle)communication,HopperType=(Mpu5HopperType)hopper,ReelJumperProfile0=(Mpu5ReelJumperProfile)jumper };
+        s.Coins[0].Value=coinValue;
+        Assert.Equal(404,FabricAmberMpu5Configuration.FromMpu5(s)!.ToNativeBytes().Length);
+    }
+
+    [Fact]
+    public void Mpu5SerializerRejectsInvalidNativeRangesBeforeStartup()
+    {
+        var s=new Mpu5NativeRomSettings { ConfigureReels=true }; s.Reels[0].Steps=0;
+        Assert.Throws<ArgumentOutOfRangeException>(()=>FabricAmberMpu5Configuration.FromMpu5(s));
+        s=new(){ConfigureCoins=true}; s.Coins[0].Value=256;
+        Assert.Throws<ArgumentOutOfRangeException>(()=>FabricAmberMpu5Configuration.FromMpu5(s));
     }
 
     [Fact]

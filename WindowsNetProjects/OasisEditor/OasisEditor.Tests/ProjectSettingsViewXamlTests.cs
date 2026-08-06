@@ -52,8 +52,9 @@ public sealed class ProjectSettingsViewXamlTests
         Assert.Contains("Mpu5ProgramRom1Path", xaml);
         Assert.Contains("Mpu5SoundRom4Path", xaml);
         Assert.DoesNotContain("System6", xaml);
-        Assert.DoesNotContain("Stake", xaml);
-        Assert.DoesNotContain("Jumper", xaml);
+        Assert.Contains("ConfigureReels", xaml);
+        Assert.Contains("ConfigureCoins", xaml);
+        Assert.Contains("ConfigureMachineOptions", xaml);
     }
 
     private static XDocument LoadView()

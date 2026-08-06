@@ -109,7 +109,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 FruitMachinePlatformType.Impact when request.System6Configuration is not null =>
                     (JpmSystem6MachineIdentifier, BuildRomResources(request.System6Configuration), (IFabricBackendConfiguration)FabricAmberSystem6Configuration.FromSystem6(request.System6Configuration)),
                 FruitMachinePlatformType.MPU5 when request.Mpu5Configuration is not null =>
-                    (BarcrestMpu5MachineIdentifier, BuildRomResources(request.Mpu5Configuration), (IFabricBackendConfiguration?)null),
+                    (BarcrestMpu5MachineIdentifier, BuildRomResources(request.Mpu5Configuration), (IFabricBackendConfiguration?)FabricAmberMpu5Configuration.FromMpu5(request.Mpu5Configuration)),
                 _ => throw new InvalidOperationException($"Launch settings do not match Fabric platform '{request.Platform}'.")
             };
             cancellationToken.ThrowIfCancellationRequested();

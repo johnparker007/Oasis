@@ -30,3 +30,9 @@ internal unsafe struct AmberCoinsNative
     internal fixed byte Routes[8 * 32];
 }
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricAmberConfigurationNative { internal uint Magic,Size,Version,Flags; internal AmberReelsNative Reels; internal AmberCoinsNative Coins; internal uint Percentage; internal fixed uint Reserved[3]; }
+[StructLayout(LayoutKind.Sequential)] internal struct FabricAmberMpu5ReelConfigNative { internal uint ReelIndex,Steps,OptoStart,OptoEnd,OptoInvert; }
+[StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricAmberMpu5ReelConfigurationNative { internal uint Size,Version,Count,ApplyMask; internal fixed byte Reels[8*20]; }
+[StructLayout(LayoutKind.Sequential)] internal struct FabricAmberMpu5CoinChannelConfigNative { internal uint ChannelIndex,Enabled,Value,LockoutInvert,Reserved; }
+[StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricAmberMpu5CoinConfigurationNative { internal uint Size,Version,Count,ApplyMask,CommunicationStyle,CommunicationInvert,PulseCycles,EdcEnabled; internal fixed byte Channels[6*20]; }
+[StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricAmberMpu5OptionsNative { internal uint Size,Version,ApplyMask,DipSwitchBits,Stake,Prize,Percentage,CharacteriserAddress,PicMode,SecFitted,HopperType,ReelJumperProfile0,ReelJumperProfile1; internal fixed uint Reserved[2]; }
+[StructLayout(LayoutKind.Sequential)] internal struct FabricAmberMpu5ConfigurationNative { internal uint Magic,Size,Version,Flags; internal FabricAmberMpu5ReelConfigurationNative Reels; internal FabricAmberMpu5CoinConfigurationNative Coins; internal FabricAmberMpu5OptionsNative Options; }

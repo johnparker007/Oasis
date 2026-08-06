@@ -13,9 +13,9 @@ Oasis loads and resolves exports only from `FabricRuntime.dll`. Provider paths a
 | Project platform | Fabric backend | Fabric machine | Configuration |
 |---|---|---|---|
 | Impact / JPM System 6 | `amber` | `jpm-system6` | Current System 6 Fabric Amber configuration |
-| Barcrest MPU5 | `amber` | `barcrest-mpu5` | No machine configuration blob; ROM resources only |
+| Barcrest MPU5 | `amber` | `barcrest-mpu5` | Fabric Amber MPU5 configuration v1 |
 
-The earlier Oasis-invented 420-byte `FAM5` structure was removed. No final MPU5 configuration declarations from Fabric's public `fabric_amber.h` are checked into this repository, so Oasis deliberately sends no MPU5 machine-configuration blob rather than guessing an ABI. Reels, coins, percentage and specialist machine options remain deferred until authoritative public declarations are available.
+The obsolete 420-byte layout is removed. Oasis now emits Fabric's supplied 404-byte MPU5 v1 structure (`FAM5`, magic `0x354D4146`) with explicit reel, coin, and machine-option section flags and per-option apply bits. It emits no blob only when the project selects none of those sections.
 
 ## Preferences and Project Settings
 
@@ -23,7 +23,9 @@ Application-level **Preferences** own the Fabric runtime path, separate JPM Syst
 
 Project-level **Project Settings** own the fruit-machine platform and ROM resource paths. The generic **Platform Settings** category switches immediately from the existing JPM System 6 / Impact controls to a dedicated MPU5 view when `SelectedFruitMachinePlatform` changes. Unsupported platforms show an explicit empty state. A future platform is added as another platform settings view plus one selection mapping rather than by adding controls to the MPU5 view.
 
-The MPU5 view currently edits four program ROM slots and four optional sound ROM slots in `Mpu5NativeRomSettings`. Program ROM 1 is required and Fabric ROM slots must remain contiguous. Unsupported/deferred MPU5 reel, coin, stake, prize, DIP, PIC, characteriser, SEC, hopper and reel-profile properties are not serialized.
+The current project schema is version 3 and only that version is supported; it serializes the current MPU5 apply flags, reels, coins, and machine options directly without a legacy reader.
+
+The MPU5 view edits four program ROM slots, four optional sound ROM slots, eight reel entries, two reel-controller jumper profiles, six coin channels and their global communication settings, and explicitly applied DIP/stake/prize/percentage/characteriser/PIC/SEC/hopper options. Program ROM 1 is required and Fabric ROM slots must remain contiguous.
 
 ## Runtime behavior
 

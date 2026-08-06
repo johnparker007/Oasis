@@ -23,6 +23,12 @@ typedef struct AmberCoinChannelConfigV1 { uint32_t channel_index, enabled, value
 typedef struct AmberCoinRouteConfigV1 { uint32_t route_index, enabled, counter_in, counter_out, port_index, coin_code, level, full_level; } AmberCoinRouteConfigV1;
 typedef struct AmberCoinConfigurationV1 { uint32_t struct_size, version, channel_apply_mask, route_apply_mask; AmberCoinChannelConfigV1 channels[6]; AmberCoinRouteConfigV1 routes[8]; uint32_t lockout_port_base, lockout_port_value, configuration_flags, reserved; } AmberCoinConfigurationV1;
 typedef struct FabricAmberConfigurationV1 { uint32_t magic, struct_size, version, flags; AmberReelConfigurationV1 reels; AmberCoinConfigurationV1 coins; uint32_t percentage_switch, reserved[3]; } FabricAmberConfigurationV1;
+typedef struct FabricAmberMpu5ReelConfigV1 { uint32_t reel_index,steps,opto_start,opto_end,opto_invert; } FabricAmberMpu5ReelConfigV1;
+typedef struct FabricAmberMpu5ReelConfigurationV1 { uint32_t struct_size,version,reel_count,apply_mask; FabricAmberMpu5ReelConfigV1 reels[8]; } FabricAmberMpu5ReelConfigurationV1;
+typedef struct FabricAmberMpu5CoinChannelConfigV1 { uint32_t channel_index,enabled,value,lockout_invert,reserved; } FabricAmberMpu5CoinChannelConfigV1;
+typedef struct FabricAmberMpu5CoinConfigurationV1 { uint32_t struct_size,version,channel_count,apply_mask,communication_style,communication_invert,pulse_cycles,edc_enabled; FabricAmberMpu5CoinChannelConfigV1 channels[6]; } FabricAmberMpu5CoinConfigurationV1;
+typedef struct FabricAmberMpu5OptionsV1 { uint32_t struct_size,version,apply_mask,dip_switch_bits,stake,prize,percentage,characteriser_address,pic_mode,sec_fitted,hopper_type,reel_jumper_profile_0,reel_jumper_profile_1,reserved[2]; } FabricAmberMpu5OptionsV1;
+typedef struct FabricAmberMpu5ConfigurationV1 { uint32_t magic,struct_size,version,flags; FabricAmberMpu5ReelConfigurationV1 reels; FabricAmberMpu5CoinConfigurationV1 coins; FabricAmberMpu5OptionsV1 options; } FabricAmberMpu5ConfigurationV1;
 
 #define SIZE(T) printf("sizeof.%s=%zu\n", #T, sizeof(T))
 #define OFF(T,F) printf("offsetof.%s.%s=%zu\n", #T, #F, offsetof(T,F))
@@ -32,10 +38,12 @@ int main(void) {
     SIZE(FabricMachineSnapshot); SIZE(FabricAudioFormat); SIZE(AmberReelConfigV1);
     SIZE(AmberReelConfigurationV1); SIZE(AmberCoinChannelConfigV1); SIZE(AmberCoinRouteConfigV1);
     SIZE(AmberCoinConfigurationV1); SIZE(FabricAmberConfigurationV1);
+    SIZE(FabricAmberMpu5ReelConfigV1); SIZE(FabricAmberMpu5ReelConfigurationV1); SIZE(FabricAmberMpu5CoinChannelConfigV1); SIZE(FabricAmberMpu5CoinConfigurationV1); SIZE(FabricAmberMpu5OptionsV1); SIZE(FabricAmberMpu5ConfigurationV1);
     OFF(FabricLaunchRequest, rom_paths); OFF(FabricLaunchRequest, machine_configuration);
     OFF(FabricLaunchRequest, rom_resources); OFF(FabricRomResource, path);
     OFF(FabricMachineSnapshot, lamps); OFF(FabricMachineSnapshot, reels);
     OFF(FabricMachineSnapshot, character_displays); OFF(FabricMachineSnapshot, segment_displays);
     OFF(FabricCharacterDisplay, brightness);
+    OFF(FabricAmberMpu5ConfigurationV1,reels); OFF(FabricAmberMpu5ConfigurationV1,coins); OFF(FabricAmberMpu5ConfigurationV1,options);
     return 0;
 }
