@@ -60,11 +60,14 @@ public sealed class Mpu5NativeRomSettings
 
 public sealed class Mpu5ReelSettings
 {
+    public const int DefaultOptoStart = 0;
+    public const int DefaultOptoEnd = 2;
+
     public bool Apply { get; set; }
     public int ReelIndex { get; set; }
     public int Steps { get; set; } = 96;
-    public int OptoStart { get; set; } = 5;
-    public int OptoEnd { get; set; } = 7;
+    public int OptoStart { get; set; } = DefaultOptoStart;
+    public int OptoEnd { get; set; } = DefaultOptoEnd;
     public bool OptoInvert { get; set; }
     public static Mpu5ReelSettings CreateDefault(int index) => new() { ReelIndex = index };
 }

@@ -51,8 +51,26 @@ public sealed class EmulationBackendAbstractionsTests
     {
         Assert.NotNull(typeof(Mpu5ReelSettings).GetProperty(nameof(Mpu5ReelSettings.Apply)));
         Assert.Null(typeof(Mpu5ReelSettings).GetProperty("Enabled"));
-        Assert.Equal(8, new Mpu5NativeRomSettings().Reels.Count);
+        var reels = new Mpu5NativeRomSettings().Reels;
+        Assert.Equal(8, reels.Count);
+        Assert.All(reels, reel =>
+        {
+            Assert.Equal(0, reel.OptoStart);
+            Assert.Equal(2, reel.OptoEnd);
+        });
         Assert.Equal(6, new Mpu5NativeRomSettings().Coins.Count);
+    }
+
+    [Fact]
+    public void System6ReelsRetainTheirPlatformSpecificOptoDefaults()
+    {
+        var reels = new System6NativeRomSettings().ReelOptos;
+
+        Assert.All(reels, reel =>
+        {
+            Assert.Equal(5, reel.OptoStart);
+            Assert.Equal(7, reel.OptoEnd);
+        });
     }
 
     [Fact]
