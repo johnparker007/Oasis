@@ -7,7 +7,7 @@ public sealed class InternalReelOffsetResolverTests
 {
     [Theory]
     [InlineData(FruitMachinePlatformType.MPU5, 16, -0.22d)]
-    [InlineData(FruitMachinePlatformType.MPU5, 12, 0d)]
+    [InlineData(FruitMachinePlatformType.MPU5, 12, -0.075d)]
     [InlineData(FruitMachinePlatformType.MPU5, 24, 0d)]
     [InlineData(FruitMachinePlatformType.MPU4, 16, -0.05d)]
     [InlineData(FruitMachinePlatformType.Impact, 12, 0.025d)]
