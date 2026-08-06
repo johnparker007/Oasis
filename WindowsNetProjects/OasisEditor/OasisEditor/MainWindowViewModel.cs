@@ -68,6 +68,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _system6NativeRomStatus = "Program ROM 1 and 2 are required for Fabric Amber launch.";
     private ObservableCollection<System6ReelOptoSettingsViewModel> _system6ReelOptos = [];
     private ObservableCollection<System6CoinSettingsViewModel> _system6Coins = [];
+    private Mpu5ProjectSettingsViewModel? _mpu5ProjectSettings;
     private bool _isFmlImportInProgress;
     private bool _isEditorProgressVisible;
     private bool _isEditorProgressIndeterminate;
@@ -173,7 +174,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         BrowseMpu5SoundRom2Command = new RelayCommand(() => BrowseMpu5RomPath(2, false));
         BrowseMpu5SoundRom3Command = new RelayCommand(() => BrowseMpu5RomPath(3, false));
         BrowseMpu5SoundRom4Command = new RelayCommand(() => BrowseMpu5RomPath(4, false));
-        SaveMpu5ProjectSettingsCommand = new RelayCommand(SaveMpu5ProjectSettings);
         ResetSystem6ReelOptosCommand = new RelayCommand(ResetSystem6ReelOptosToDefaults);
         CloseProjectSettingsCommand = new RelayCommand(CloseProjectSettings);
         CloseProjectCommand = new RelayCommand(CloseProject, CanCloseProject);
@@ -404,7 +404,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand BrowseMpu5SoundRom2Command { get; }
     public ICommand BrowseMpu5SoundRom3Command { get; }
     public ICommand BrowseMpu5SoundRom4Command { get; }
-    public ICommand SaveMpu5ProjectSettingsCommand { get; }
     public ICommand CloseProjectSettingsCommand { get; }
     public ICommand ResetSystem6ReelOptosCommand { get; }
     public ICommand ApplyInspectorSummaryCommand { get; }
@@ -588,6 +587,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string System6NativeRomStatus { get => _system6NativeRomStatus; private set => SetProperty(ref _system6NativeRomStatus, value); }
     public ObservableCollection<System6ReelOptoSettingsViewModel> System6ReelOptos { get => _system6ReelOptos; private set => SetProperty(ref _system6ReelOptos, value); }
     public ObservableCollection<System6CoinSettingsViewModel> System6Coins { get => _system6Coins; private set => SetProperty(ref _system6Coins, value); }
+    public Mpu5ProjectSettingsViewModel? Mpu5ProjectSettings { get => _mpu5ProjectSettings; private set => SetProperty(ref _mpu5ProjectSettings, value); }
 
     public bool IsEditorProgressVisible
     {
@@ -2196,16 +2196,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SaveLoadedProjectMetadata();
     }
 
-    private void SaveMpu5ProjectSettings()
+    private void SaveMpu5ProjectSettings(Mpu5NativeRomSettings settings)
     {
         if (LoadedProject is null) return;
+        LoadedProject.Mpu5NativeRoms = settings;
         SaveMpu5NativeRomSettings();
-        _ = FabricAmberMpu5Configuration.FromMpu5(LoadedProject.Mpu5NativeRoms);
-        Mpu5NativeRomStatus = "MPU5 project settings saved and validated.";
+        Mpu5NativeRomStatus = "MPU5 project settings auto-saved.";
     }
 
     private void ApplyMpu5NativeRomSettingsToViewModel(Mpu5NativeRomSettings settings)
     {
+        Mpu5ProjectSettings = new Mpu5ProjectSettingsViewModel(settings, SaveMpu5ProjectSettings);
         _mpu5ProgramRom1Path=settings.ProgramRom1Path; _mpu5ProgramRom2Path=settings.ProgramRom2Path;
         _mpu5ProgramRom3Path=settings.ProgramRom3Path; _mpu5ProgramRom4Path=settings.ProgramRom4Path;
         _mpu5SoundRom1Path=settings.SoundRom1Path; _mpu5SoundRom2Path=settings.SoundRom2Path;
