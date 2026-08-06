@@ -439,6 +439,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public int InputMapWarningCount => InputMapDiagnostics.Count(d => d.Severity == InputMapDiagnosticSeverity.Warning);
     public bool HasInputMapDiagnostics => InputMapDiagnostics.Count > 0;
 
+    public void NotifyInputDefinitionChanged()
+    {
+        if (LoadedProject is null)
+        {
+            return;
+        }
+
+        SaveLoadedProjectMetadata();
+        RefreshInputMapDiagnostics();
+    }
+
     public int DeleteInputDefinitions(IReadOnlyCollection<InputDefinitionModel> selectedInputs)
     {
         if (LoadedProject is null || selectedInputs.Count == 0)
