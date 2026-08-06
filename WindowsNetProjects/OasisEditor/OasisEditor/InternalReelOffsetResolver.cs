@@ -13,6 +13,7 @@ internal static class InternalReelOffsetResolver
         return platform switch
         {
             FruitMachinePlatformType.MPU4 when safeStops == 16 => -0.05d,
+            FruitMachinePlatformType.MPU5 when safeStops == 16 => -0.22d,
             FruitMachinePlatformType.Impact when safeStops == 12 =>
                 ImpactTwelveStopBaseOffset + ImpactTwelveStopBandCorrection,
             FruitMachinePlatformType.Impact when safeStops == 16 =>
