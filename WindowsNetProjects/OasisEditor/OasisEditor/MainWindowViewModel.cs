@@ -250,8 +250,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => OpenDocuments, () => false, _ => { }, DispatchToUiThread);
         _reelRuntimeAdapter = new MachineReelRuntimeAdapter(
             () => OpenDocuments, () => SelectedFruitMachinePlatform, () => false, _ => { }, DispatchToUiThread,
-            reelId => System6ReelOptos.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps
-                ?? System6ReelOptoSettings.DefaultSteps);
+            reelId => SelectedFruitMachinePlatform == FruitMachinePlatformType.MPU5
+                ? LoadedProject?.Mpu5NativeRoms.Reels.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps
+                    ?? System6ReelOptoSettings.DefaultSteps
+                : System6ReelOptos.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps
+                    ?? System6ReelOptoSettings.DefaultSteps);
         _segmentRuntimeAdapter = new MachineSegmentRuntimeAdapter(
             () => OpenDocuments,
             DispatchToUiThread,
@@ -2383,7 +2386,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _machineOutputDispatcher?.EnqueueLamp(e.LampId, e.Value);
 
     private void OnActiveBackendReelChanged(object? sender, MachineReelChangedEventArgs e) =>
-        _machineOutputDispatcher?.EnqueueReel(e.ReelId, e.Position);
+        _machineOutputDispatcher?.EnqueueReel(e.ReelId, e.Position, e.Convention);
 
     private void OnActiveBackendSegmentChanged(object? sender, MachineSegmentChangedEventArgs e) =>
         _machineOutputDispatcher?.EnqueueSegment(e.CellId, e.SegmentMask, e.OutputType);
@@ -2396,7 +2399,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         foreach (var lamp in batch.Lamps)
             _lampRuntimeAdapter.ApplyLampState(lamp.Id, lamp.Value);
         foreach (var reel in batch.Reels)
-            _reelRuntimeAdapter.ApplyReelState(reel.Id, reel.Value);
+            _reelRuntimeAdapter.ApplyReelState(reel.Id, reel.Value, reel.Convention);
         foreach (var segment in batch.Segments)
             _segmentRuntimeAdapter.ApplySegmentState(segment.Id, segment.Mask, segment.OutputType);
         foreach (var brightness in batch.VfdBrightness)

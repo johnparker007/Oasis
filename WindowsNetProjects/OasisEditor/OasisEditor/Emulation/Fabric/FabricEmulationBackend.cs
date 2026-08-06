@@ -553,7 +553,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             if (_reels.TryGetValue(reel.NumericalIndex, out var previous) && previous == reel.Position)
                 continue;
             _reels[reel.NumericalIndex] = reel.Position;
-            ReelChanged?.Invoke(this, new(reel.NumericalIndex, reel.Position));
+            ReelChanged?.Invoke(this, new(reel.NumericalIndex, reel.Position, ReelPositionConvention.Amber));
         }
         for (var displayOrdinal = 0; displayOrdinal < snapshot.CharacterDisplays.Count; displayOrdinal++)
         {

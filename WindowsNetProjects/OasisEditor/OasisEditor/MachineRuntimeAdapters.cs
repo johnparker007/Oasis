@@ -7,7 +7,7 @@ public interface IMachineLampRuntimeAdapter
 
 public interface IMachineReelRuntimeAdapter
 {
-    void ApplyReelState(int reelId, int reelValue);
+    void ApplyReelState(int reelId, int reelValue, ReelPositionConvention convention = ReelPositionConvention.Oasis);
 }
 
 public interface IMachineSegmentRuntimeAdapter
