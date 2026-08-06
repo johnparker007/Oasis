@@ -10,8 +10,8 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
     private readonly Func<bool> _debugOutputEnabledProvider;
     private readonly Action<string> _infoLogger;
     private readonly Action<Action> _uiDispatch;
-    private readonly Dictionary<int, int> _pendingReelValues = new();
-    private readonly Dictionary<int, int> _latestReelValues = new();
+    private readonly Dictionary<int, PendingReelValue> _pendingReelValues = new();
+    private readonly Dictionary<int, PendingReelValue> _latestReelValues = new();
     private readonly Dictionary<Guid, ReelDocumentMappingCacheEntry> _reelMappingsByDocumentId = new();
     private readonly IMachineObjectReferenceResolver _machineObjectReferenceResolver;
     private bool _uiUpdateScheduled;
@@ -33,12 +33,12 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
         _machineObjectReferenceResolver = MachineObjectReferenceResolver.Instance;
     }
 
-    public void ApplyReelState(int reelId, int reelValue)
+    public void ApplyReelState(int reelId, int reelValue, ReelPositionConvention convention = ReelPositionConvention.Oasis)
     {
         lock (_pendingSync)
         {
-            _pendingReelValues[reelId] = reelValue;
-            _latestReelValues[reelId] = reelValue;
+            _pendingReelValues[reelId] = new(reelValue, convention);
+            _latestReelValues[reelId] = new(reelValue, convention);
             if (_uiUpdateScheduled)
             {
                 return;
@@ -52,10 +52,10 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
 
     private void ApplyPendingOnUiThread()
     {
-        Dictionary<int, int> snapshot;
+        Dictionary<int, PendingReelValue> snapshot;
         lock (_pendingSync)
         {
-            snapshot = new Dictionary<int, int>(_pendingReelValues);
+            snapshot = new Dictionary<int, PendingReelValue>(_pendingReelValues);
             _pendingReelValues.Clear();
             _uiUpdateScheduled = false;
         }
@@ -77,11 +77,12 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
             var changedObjectIds = new HashSet<string>(StringComparer.Ordinal);
             var changedFaceObjectIds = new HashSet<string>(StringComparer.Ordinal);
 
-            foreach (var (reelId, reelValue) in snapshot)
+            foreach (var (reelId, pendingValue) in snapshot)
             {
+                var reelValue = pendingValue.Position;
                 var reelReference = MachineObjectReference.Reel(reelId);
                 var positionCount = _reelPositionCountProvider(reelId);
-                var machinePosition = NormalizePlatformReelPosition(platform, reelValue, positionCount);
+                var machinePosition = NormalizeBackendReelPosition(pendingValue.Convention, reelValue, positionCount);
                 if (document.RuntimeState.SetReelPositionIfChanged(reelReference, machinePosition)
                     && faceObjectIdsByReel.TryGetValue(reelReference, out var matchingFaceObjectIds))
                 {
@@ -98,7 +99,7 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
 
                 foreach (var objectId in objectIds)
                 {
-                    if (!TryResolveEffectiveReelPosition(document, objectId, reelValue, positionCount, out var effectiveReelPosition, out var stops, out var normalizedPosition))
+                    if (!TryResolveEffectiveReelPosition(document, objectId, reelValue, positionCount, pendingValue.Convention, out var effectiveReelPosition, out var stops, out var normalizedPosition))
                     {
                         continue;
                     }
@@ -168,11 +169,11 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
         return cacheEntry.MappingByReelId;
     }
 
-    internal static double NormalizePlatformReelPosition(FruitMachinePlatformType platform, int backendPosition, int positionCount)
+    internal static double NormalizeBackendReelPosition(ReelPositionConvention convention, int backendPosition, int positionCount)
     {
         var safePositionCount = positionCount > 0 ? positionCount : ReelPositionsPerRevolution;
         var normalizedBackendPosition = WrapPosition(backendPosition, safePositionCount);
-        var platformPosition = platform == FruitMachinePlatformType.Impact
+        var platformPosition = convention == ReelPositionConvention.Amber
             ? ReversePosition(normalizedBackendPosition, safePositionCount)
             : normalizedBackendPosition;
         return platformPosition * (double)ReelPositionsPerRevolution / safePositionCount;
@@ -194,7 +195,7 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
         return ((position % positionCount) + positionCount) % positionCount;
     }
 
-    private bool TryResolveEffectiveReelPosition(DocumentTabViewModel document, string objectId, int rawReelValue, int positionCount, out double effectiveReelPosition, out int stops, out double normalizedPosition)
+    private bool TryResolveEffectiveReelPosition(DocumentTabViewModel document, string objectId, int rawReelValue, int positionCount, ReelPositionConvention convention, out double effectiveReelPosition, out int stops, out double normalizedPosition)
     {
         effectiveReelPosition = 0d;
         stops = 0;
@@ -209,7 +210,7 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
 
         stops = reelElement.Stops.Value;
         var platform = _platformProvider();
-        var canonicalPosition = NormalizePlatformReelPosition(platform, rawReelValue, positionCount);
+        var canonicalPosition = NormalizeBackendReelPosition(convention, rawReelValue, positionCount);
         effectiveReelPosition = ResolveEffectiveReelPosition(canonicalPosition, reelElement.Stops.Value, reelElement.IsReversed == true, reelElement.BandOffset ?? 0d, platform);
         var wrappedPosition = ((effectiveReelPosition % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
         normalizedPosition = wrappedPosition / ReelPositionsPerRevolution;
@@ -260,6 +261,8 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
 
         _uiDispatch(ApplyPendingOnUiThread);
     }
+
+    private readonly record struct PendingReelValue(int Position, ReelPositionConvention Convention);
 
     private sealed class ReelDocumentMappingCacheEntry
     {

@@ -96,14 +96,22 @@ public sealed class MachineLampChangedEventArgs : EventArgs
 
 public sealed class MachineReelChangedEventArgs : EventArgs
 {
-    public MachineReelChangedEventArgs(int reelId, int position)
+    public MachineReelChangedEventArgs(int reelId, int position, ReelPositionConvention convention = ReelPositionConvention.Oasis)
     {
         ReelId = reelId;
         Position = position;
+        Convention = convention;
     }
 
     public int ReelId { get; }
     public int Position { get; }
+    public ReelPositionConvention Convention { get; }
+}
+
+public enum ReelPositionConvention
+{
+    Oasis,
+    Amber
 }
 
 public sealed class MachineSegmentChangedEventArgs : EventArgs

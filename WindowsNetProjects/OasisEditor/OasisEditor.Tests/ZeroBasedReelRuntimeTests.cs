@@ -15,6 +15,7 @@ public sealed class ZeroBasedReelRuntimeTests
         backend.PublishSnapshot(CreateSnapshot());
 
         Assert.Equal([0, 1, 2, 3], changes.Select(change => change.ReelId));
+        Assert.All(changes, change => Assert.Equal(ReelPositionConvention.Amber, change.Convention));
     }
 
     [Fact]
@@ -33,7 +34,7 @@ public sealed class ZeroBasedReelRuntimeTests
         var adapter = new MachineReelRuntimeAdapter(() => [document], () => FruitMachinePlatformType.Impact,
             () => false, _ => { }, dispatches.Add);
         var backend = new FabricEmulationBackend("fabric", "amber");
-        backend.ReelChanged += (_, change) => adapter.ApplyReelState(change.ReelId, change.Position);
+        backend.ReelChanged += (_, change) => adapter.ApplyReelState(change.ReelId, change.Position, change.Convention);
 
         backend.PublishSnapshot(CreateSnapshot());
         Assert.Single(dispatches)();
@@ -47,24 +48,26 @@ public sealed class ZeroBasedReelRuntimeTests
     }
 
     [Theory]
-    [InlineData(FruitMachinePlatformType.Impact, 0, 96, 0d)]
-    [InlineData(FruitMachinePlatformType.Impact, 1, 96, 95d)]
-    [InlineData(FruitMachinePlatformType.Impact, 95, 96, 1d)]
-    [InlineData(FruitMachinePlatformType.Impact, 96, 96, 0d)]
-    [InlineData(FruitMachinePlatformType.Impact, 97, 96, 95d)]
-    [InlineData(FruitMachinePlatformType.Impact, -1, 96, 1d)]
-    [InlineData(FruitMachinePlatformType.Scorpion4, 10, 96, 10d)]
-    [InlineData(FruitMachinePlatformType.Impact, 10, 48, 76d)]
-    public void PlatformNormalization_UsesConfiguredBackendMotorStepRange(
-        FruitMachinePlatformType platform, int position, int positionCount, double expected)
+    [InlineData(ReelPositionConvention.Amber, 0, 96, 0d)]
+    [InlineData(ReelPositionConvention.Amber, 1, 96, 95d)]
+    [InlineData(ReelPositionConvention.Amber, 95, 96, 1d)]
+    [InlineData(ReelPositionConvention.Amber, 96, 96, 0d)]
+    [InlineData(ReelPositionConvention.Amber, 97, 96, 95d)]
+    [InlineData(ReelPositionConvention.Amber, -1, 96, 1d)]
+    [InlineData(ReelPositionConvention.Oasis, 10, 96, 10d)]
+    [InlineData(ReelPositionConvention.Amber, 10, 48, 76d)]
+    public void BackendNormalization_UsesConventionAndConfiguredMotorStepRange(
+        ReelPositionConvention convention, int position, int positionCount, double expected)
     {
-        Assert.Equal(expected, MachineReelRuntimeAdapter.NormalizePlatformReelPosition(platform, position, positionCount));
+        Assert.Equal(expected, MachineReelRuntimeAdapter.NormalizeBackendReelPosition(convention, position, positionCount));
     }
 
     [Theory]
-    [InlineData(false, 86d)]
-    [InlineData(true, 10d)]
-    public void ImpactPlatformCorrection_PrecedesComponentReversal(bool isReversed, double expected)
+    [InlineData(FruitMachinePlatformType.Impact, false, 86d)]
+    [InlineData(FruitMachinePlatformType.Impact, true, 10d)]
+    [InlineData(FruitMachinePlatformType.MPU5, false, 86d)]
+    [InlineData(FruitMachinePlatformType.MPU5, true, 10d)]
+    public void FabricAmberNormalization_AppliesOnceBeforeComponentReversal(FruitMachinePlatformType platform, bool isReversed, double expected)
     {
         var document = new DocumentTabViewModel(EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel"));
         document.SetPanelElements([new PanelElementModel
@@ -73,13 +76,33 @@ public sealed class ZeroBasedReelRuntimeTests
             Stops = 24, IsReversed = isReversed
         }]);
         var dispatches = new List<Action>();
+        var adapter = new MachineReelRuntimeAdapter(() => [document], () => platform,
+            () => false, _ => { }, dispatches.Add);
+
+        adapter.ApplyReelState(0, 10, ReelPositionConvention.Amber);
+        Assert.Single(dispatches)();
+
+        Assert.Equal(expected, document.RuntimeState.GetReelPosition("reel-0"));
+        Assert.Equal(86d, document.RuntimeState.GetReelPosition(MachineObjectReference.Reel(0)));
+    }
+
+    [Fact]
+    public void ConventionNeutralBackend_RemainsUnreversed()
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel"));
+        document.SetPanelElements([new PanelElementModel
+        {
+            ObjectId = "reel-0", Kind = PanelElementKind.Reel, DisplayNumber = 0, Stops = 24
+        }]);
+        var dispatches = new List<Action>();
         var adapter = new MachineReelRuntimeAdapter(() => [document], () => FruitMachinePlatformType.Impact,
             () => false, _ => { }, dispatches.Add);
 
         adapter.ApplyReelState(0, 10);
         Assert.Single(dispatches)();
 
-        Assert.Equal(expected, document.RuntimeState.GetReelPosition("reel-0"));
+        Assert.Equal(10d, document.RuntimeState.GetReelPosition("reel-0"));
+        Assert.Equal(10d, document.RuntimeState.GetReelPosition(MachineObjectReference.Reel(0)));
     }
 
     [Fact]
@@ -90,7 +113,7 @@ public sealed class ZeroBasedReelRuntimeTests
     }
 
     [Fact]
-    public void ImpactAdapter_AllowsEachReelToUseItsConfiguredMotorStepCount()
+    public void AmberAdapter_AllowsEachReelToUseItsConfiguredMotorStepCount()
     {
         var document = new DocumentTabViewModel(EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel"));
         document.SetPanelElements(Enumerable.Range(0, 2).Select(reelId => new PanelElementModel
@@ -102,8 +125,8 @@ public sealed class ZeroBasedReelRuntimeTests
         var adapter = new MachineReelRuntimeAdapter(() => [document], () => FruitMachinePlatformType.Impact,
             () => false, _ => { }, dispatches.Add, reelId => reelId == 0 ? 48 : 96);
 
-        adapter.ApplyReelState(0, 10);
-        adapter.ApplyReelState(1, 10);
+        adapter.ApplyReelState(0, 10, ReelPositionConvention.Amber);
+        adapter.ApplyReelState(1, 10, ReelPositionConvention.Amber);
         Assert.Single(dispatches)();
 
         Assert.Equal(76d, document.RuntimeState.GetReelPosition("reel-0"));
