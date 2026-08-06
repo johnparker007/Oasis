@@ -215,7 +215,7 @@ public sealed class FabricManagedBehaviorTests
     [InlineData(15)]
     public void AmberConfiguration_PreservesRawPercentageSwitch(int value)
     {
-        var configuration = FabricAmberConfiguration.FromSystem6(new System6NativeRomSettings { PercentSwitchValue = value });
+        var configuration = FabricAmberSystem6Configuration.FromSystem6(new System6NativeRomSettings { PercentSwitchValue = value });
         Assert.Equal((uint)value, configuration.PercentageSwitch);
     }
 
@@ -225,7 +225,7 @@ public sealed class FabricManagedBehaviorTests
     public void AmberConfiguration_RejectsInvalidPercentageSwitch(int value)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            FabricAmberConfiguration.FromSystem6(new System6NativeRomSettings { PercentSwitchValue = value }));
+            FabricAmberSystem6Configuration.FromSystem6(new System6NativeRomSettings { PercentSwitchValue = value }));
     }
 
     [Fact]
@@ -242,7 +242,7 @@ public sealed class FabricManagedBehaviorTests
             PercentSwitchValue = 12
         };
 
-        var configuration = FabricAmberConfiguration.FromSystem6(settings);
+        var configuration = FabricAmberSystem6Configuration.FromSystem6(settings);
 
         Assert.Equal(1u << 2, configuration.ReelApplyMask);
         Assert.Equal(new FabricAmberReel(2, false, 96, 5, 7, true), Assert.Single(configuration.Reels));
@@ -256,7 +256,7 @@ public sealed class FabricManagedBehaviorTests
     [Fact]
     public void AmberConfiguration_FormatsBoundedFabricV2StartupDiagnostics()
     {
-        var configuration = FabricAmberConfiguration.FromSystem6(new System6NativeRomSettings
+        var configuration = FabricAmberSystem6Configuration.FromSystem6(new System6NativeRomSettings
         {
             Coins = [new System6CoinSettings { Num = 0, Enabled = true, CoinEnable = 1, CoinValue = 0 }]
         });
@@ -295,6 +295,25 @@ public sealed class FabricManagedBehaviorTests
         Assert.Equal(1, runtime.DisposeCount);
         Assert.Equal(1, audio.StartCount);
         Assert.Equal(1, audio.StopCount);
+    }
+
+    [Fact]
+    public async Task Backend_Mpu5UsesExplicitMachineAndUnchangedProviderPath()
+    {
+        var session = new FakeSession { Capabilities = new(0) };
+        var runtime = new FakeRuntime(session);
+        const string provider = "D:/providers/explicit-provider.dll";
+        var backend = new FabricEmulationBackend("C:/fabric/FabricRuntime.dll", provider,
+            _ => runtime, new FakeAudioSink(), new FakeClock());
+
+        await backend.StartAsync(EmulationLaunchRequest.ForMpu5(new Mpu5NativeRomSettings { ProgramRom1Path = "p0", ConfigureMachineOptions = true }), CancellationToken.None);
+        await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Equal("amber", runtime.Request!.BackendKind);
+        Assert.Equal("barcrest-mpu5", runtime.Request.MachineIdentifier);
+        Assert.Equal(provider, runtime.Request.BackendPath);
+        Assert.IsType<FabricAmberMpu5Configuration>(runtime.Request.Configuration);
     }
 
     [Fact]

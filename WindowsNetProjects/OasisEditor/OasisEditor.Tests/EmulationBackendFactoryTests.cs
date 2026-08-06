@@ -19,6 +19,15 @@ public sealed class EmulationBackendFactoryTests
         Assert.IsType<FabricEmulationBackend>(factory.CreateBackend(FruitMachinePlatformType.Impact));
     }
 
+    [Fact]
+    public void Mpu5_WithValidPlatformSpecificProvider_ReturnsFabricBackend()
+    {
+        using var files = NativeFiles.Create();
+        var factory = new EmulationBackendFactory(() => files.Runtime, () => null, () => 50,
+            mpu5AmberPathProvider: () => files.Amber);
+        Assert.IsType<FabricEmulationBackend>(factory.CreateBackend(FruitMachinePlatformType.MPU5));
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -53,7 +62,7 @@ public sealed class EmulationBackendFactoryTests
     [Fact]
     public void EveryOtherUnsupportedEnumValue_ThrowsNotSupportedException()
     {
-        foreach (var platform in Enum.GetValues<FruitMachinePlatformType>().Where(value => value is not FruitMachinePlatformType.None and not FruitMachinePlatformType.Impact and not FruitMachinePlatformType.Epoch))
+        foreach (var platform in Enum.GetValues<FruitMachinePlatformType>().Where(value => value is not FruitMachinePlatformType.None and not FruitMachinePlatformType.Impact and not FruitMachinePlatformType.MPU5 and not FruitMachinePlatformType.Epoch))
             Assert.Throws<NotSupportedException>(() => CreateFactory(null, null).CreateBackend(platform));
     }
 

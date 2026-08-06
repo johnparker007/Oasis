@@ -8,6 +8,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
 {
     private const string AmberBackendKind = "amber";
     private const string JpmSystem6MachineIdentifier = "jpm-system6";
+    private const string BarcrestMpu5MachineIdentifier = "barcrest-mpu5";
     private const int EmulationPumpHz = 1000;
     private const ulong NanosecondsPerPump = 1_000_000;
     private const int MaxCatchUpSlices = 64;
@@ -103,14 +104,20 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         SetState(EmulationBackendState.Starting);
         try
         {
-            var settings = request.System6Configuration;
-            var resources = BuildRomResources(settings);
+            var (machineIdentifier, resources, configuration) = request.Platform switch
+            {
+                FruitMachinePlatformType.Impact when request.System6Configuration is not null =>
+                    (JpmSystem6MachineIdentifier, BuildRomResources(request.System6Configuration), (IFabricBackendConfiguration)FabricAmberSystem6Configuration.FromSystem6(request.System6Configuration)),
+                FruitMachinePlatformType.MPU5 when request.Mpu5Configuration is not null =>
+                    (BarcrestMpu5MachineIdentifier, BuildRomResources(request.Mpu5Configuration), (IFabricBackendConfiguration?)FabricAmberMpu5Configuration.FromMpu5(request.Mpu5Configuration)),
+                _ => throw new InvalidOperationException($"Launch settings do not match Fabric platform '{request.Platform}'.")
+            };
             cancellationToken.ThrowIfCancellationRequested();
             _runtime = _runtimeFactory(_runtimePath);
-            var configuration = FabricAmberConfiguration.FromSystem6(settings);
-            WriteCoinConfigurationDiagnostics(configuration);
+            if (configuration is FabricAmberSystem6Configuration system6Configuration)
+                WriteCoinConfigurationDiagnostics(system6Configuration);
             _session = _runtime.CreateSession(new FabricLaunchRequest(
-                AmberBackendKind, JpmSystem6MachineIdentifier, _amberPath, resources,
+                AmberBackendKind, machineIdentifier, _amberPath, resources,
                 configuration));
 
             await _sessionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -283,7 +290,17 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         return resources;
     }
 
-    internal static IReadOnlyList<string> BuildCoinConfigurationDiagnostics(FabricAmberConfiguration configuration)
+    internal static IReadOnlyList<FabricRomResource> BuildRomResources(Mpu5NativeRomSettings settings)
+    {
+        if (string.IsNullOrWhiteSpace(settings.ProgramRom1Path))
+            throw new InvalidOperationException("Current project settings are missing required MPU5 Program ROM 1.");
+        var resources = new List<FabricRomResource>(8);
+        AddRomRole(resources, settings.ProgramRomPaths, FabricRomRole.Program);
+        AddRomRole(resources, settings.SoundRomPaths, FabricRomRole.Sound);
+        return resources;
+    }
+
+    internal static IReadOnlyList<string> BuildCoinConfigurationDiagnostics(FabricAmberSystem6Configuration configuration)
     {
         var lines = new List<string>(configuration.CoinChannels.Count + 1)
         {
@@ -294,7 +311,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         return lines;
     }
 
-    private static void WriteCoinConfigurationDiagnostics(FabricAmberConfiguration configuration)
+    private static void WriteCoinConfigurationDiagnostics(FabricAmberSystem6Configuration configuration)
     {
         foreach (var line in BuildCoinConfigurationDiagnostics(configuration))
             Debug.WriteLine(line);

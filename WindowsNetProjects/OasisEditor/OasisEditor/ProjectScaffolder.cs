@@ -50,7 +50,7 @@ public sealed class ProjectScaffolder
         {
             name = sanitizedName,
             createdUtc = DateTime.UtcNow,
-            version = 1,
+            version = EditorProject.CurrentSchemaVersion,
             layout = new
             {
                 assets = "Assets",

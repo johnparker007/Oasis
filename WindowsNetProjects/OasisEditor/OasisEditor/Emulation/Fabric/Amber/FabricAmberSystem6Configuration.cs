@@ -10,7 +10,7 @@ public sealed record FabricAmberCoinRoute(
     uint Index, bool Enabled, uint CounterIn, uint CounterOut,
     uint PortIndex, uint CoinCode, uint Level, uint FullLevel);
 
-public sealed record FabricAmberConfiguration(
+public sealed record FabricAmberSystem6Configuration(
     uint ReelApplyMask,
     IReadOnlyList<FabricAmberReel> Reels,
     uint CoinChannelApplyMask,
@@ -23,7 +23,7 @@ public sealed record FabricAmberConfiguration(
     bool EdcEnabled,
     uint? PercentageSwitch) : IFabricBackendConfiguration
 {
-    public static FabricAmberConfiguration FromSystem6(System6NativeRomSettings settings)
+    public static FabricAmberSystem6Configuration FromSystem6(System6NativeRomSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
         var reels = settings.ReelOptos.Select(reel => new FabricAmberReel(
@@ -32,7 +32,7 @@ public sealed record FabricAmberConfiguration(
 
         // Only enabled coin slots are intentionally applied.
         var coins = settings.Coins.Where(coin => coin.Enabled).ToArray();
-        return new FabricAmberConfiguration(
+        return new FabricAmberSystem6Configuration(
             reels.Aggregate(0u, (mask, reel) => mask | 1u << (int)reel.Index),
             reels,
             coins.Aggregate(0u, (mask, coin) => mask | 1u << coin.Num),

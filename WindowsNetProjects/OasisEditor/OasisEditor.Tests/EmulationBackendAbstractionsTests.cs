@@ -37,6 +37,25 @@ public sealed class EmulationBackendAbstractionsTests
     }
 
     [Fact]
+    public void LaunchRequest_StoresSeparateMpu5Configuration()
+    {
+        var settings = new Mpu5NativeRomSettings();
+        var request = EmulationLaunchRequest.ForMpu5(settings);
+        Assert.Equal(FruitMachinePlatformType.MPU5, request.Platform);
+        Assert.Same(settings, request.Mpu5Configuration);
+        Assert.Null(request.System6Configuration);
+    }
+
+    [Fact]
+    public void Mpu5ReelContractHasApplyButNoInventedEnabledSetter()
+    {
+        Assert.NotNull(typeof(Mpu5ReelSettings).GetProperty(nameof(Mpu5ReelSettings.Apply)));
+        Assert.Null(typeof(Mpu5ReelSettings).GetProperty("Enabled"));
+        Assert.Equal(8, new Mpu5NativeRomSettings().Reels.Count);
+        Assert.Equal(6, new Mpu5NativeRomSettings().Coins.Count);
+    }
+
+    [Fact]
     public void RuntimeEventArgs_PreserveConstructorValues()
     {
         var lamp = new MachineLampChangedEventArgs(1, 255);

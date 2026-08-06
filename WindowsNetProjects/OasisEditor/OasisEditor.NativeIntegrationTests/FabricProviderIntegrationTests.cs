@@ -145,7 +145,7 @@ public sealed class FabricProviderIntegrationTests
         };
         return new FabricLaunchRequest(
             "amber", "jpm-system6", amberPath, resources,
-            FabricAmberConfiguration.FromSystem6(settings));
+            FabricAmberSystem6Configuration.FromSystem6(settings));
     }
 
     private static IReadOnlyList<FabricRomResource> DiscoverRealRomResources(string root)

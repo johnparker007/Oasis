@@ -92,8 +92,10 @@
                 <TextBlock FontSize="18" FontWeight="SemiBold" Text="Fabric Emulation" />
                 <TextBlock Margin="0,8,0,4" Text="FabricRuntime.dll path" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <TextBox Text="{Binding FabricRuntimeLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-                <TextBlock Margin="0,8,0,4" Text="Production Amber API v2 provider DLL path" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBlock Margin="0,8,0,4" Text="JPM System 6 Amber provider DLL path" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <TextBox Text="{Binding ProductionAmberLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                <TextBlock Margin="0,8,0,4" Text="Barcrest MPU5 Amber provider DLL path" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBox Text="{Binding Mpu5AmberLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                 <TextBlock Margin="0,16,0,4" Text="Audio Buffer Length (ms)" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <TextBox Width="120"
                          HorizontalAlignment="Left"
@@ -105,7 +107,7 @@
                 <TextBlock Margin="0,8,0,0"
                            TextWrapping="Wrap"
                            Foreground="{DynamicResource TextSecondaryBrush}"
-                           Text="Impact emulation uses FabricRuntime.dll with the configured production Amber API v2 provider DLL." />
+                           Text="System 6 and MPU5 emulation use FabricRuntime.dll with their explicitly configured Amber provider DLL; Oasis never loads either provider directly." />
             </StackPanel>
         </Grid>
     </Grid>

@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:local="clr-namespace:OasisEditor"
+             xmlns:views="clr-namespace:OasisEditor.Views"
              mc:Ignorable="d"
              d:DesignHeight="640"
              d:DesignWidth="620">
@@ -56,20 +57,30 @@
                     <Style TargetType="ScrollViewer">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding SelectedProjectSettingsCategory}" Value="Impact / Fabric">
+                            <DataTrigger Binding="{Binding SelectedProjectSettingsCategory}" Value="Platform Settings">
                                 <Setter Property="Visibility" Value="Visible" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </ScrollViewer.Style>
                 <Grid>
+                <views:Mpu5FabricSettingsView>
+                    <views:Mpu5FabricSettingsView.Style><Style TargetType="views:Mpu5FabricSettingsView"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding SelectedFruitMachinePlatform}" Value="{x:Static local:FruitMachinePlatformType.MPU5}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></views:Mpu5FabricSettingsView.Style>
+                </views:Mpu5FabricSettingsView>
+                <StackPanel>
+                    <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding SelectedFruitMachinePlatform}" Value="{x:Static local:FruitMachinePlatformType.Impact}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding SelectedFruitMachinePlatform}" Value="{x:Static local:FruitMachinePlatformType.MPU5}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Text="Platform Settings" />
+                    <TextBlock Margin="0,12,0,0" TextWrapping="Wrap" Text="The selected fruit machine platform does not currently expose project-specific emulation settings." />
+                </StackPanel>
+                <Grid>
+                <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding SelectedFruitMachinePlatform}" Value="{x:Static local:FruitMachinePlatformType.Impact}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Impact / Fabric" />
+                <TextBlock Grid.Row="0" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="JPM System 6 / Impact" />
                 <ListBox Grid.Row="1"
                          Margin="0,14,0,12"
                          ItemsSource="{Binding NativeProjectSettingsTabs}"
@@ -219,6 +230,7 @@
                         <TextBlock Margin="0,8,0,0" Text="Only enabled coin rows are sent to the Fabric Amber provider." Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
                     </StackPanel>
                 </ScrollViewer>
+            </Grid>
             </Grid>
             </ScrollViewer>
         </Grid>

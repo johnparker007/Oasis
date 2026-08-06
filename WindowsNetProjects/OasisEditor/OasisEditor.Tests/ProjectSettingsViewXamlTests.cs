@@ -18,18 +18,19 @@ public sealed class ProjectSettingsViewXamlTests
 
         Assert.Equal(2, categoryRoots.Length);
         AssertCategoryVisibility(categoryRoots.Single(IsGeneralCategoryRoot), "General");
-        AssertCategoryVisibility(categoryRoots.Single(IsImpactFabricCategoryRoot), "Impact / Fabric");
+        AssertCategoryVisibility(categoryRoots.Single(IsPlatformSettingsCategoryRoot), "Platform Settings");
     }
 
     [Fact]
-    public void ImpactFabricVisibilityBelongsToOuterScrollViewer()
+    public void PlatformSettingsUseDedicatedMpu5ViewAndGenericCategory()
     {
-        var impactRoot = LoadView()
+        var platformRoot = LoadView()
             .Descendants(Presentation + "ScrollViewer")
-            .Single(IsImpactFabricCategoryRoot);
+            .Single(IsPlatformSettingsCategoryRoot);
 
-        Assert.NotNull(impactRoot.Element(Presentation + "ScrollViewer.Style"));
-        Assert.Null(impactRoot.Element(Presentation + "Grid")?.Element(Presentation + "Grid.Style"));
+        Assert.NotNull(platformRoot.Element(Presentation + "ScrollViewer.Style"));
+        Assert.Contains(platformRoot.Descendants(), element => element.Name.LocalName == "Mpu5FabricSettingsView");
+        Assert.DoesNotContain("Impact / Fabric", File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Views", "ProjectSettingsView.xaml")));
     }
 
     [Fact]
@@ -42,6 +43,18 @@ public sealed class ProjectSettingsViewXamlTests
         Assert.False(string.Equals("False", comboBox.Attribute("IsEnabled")?.Value, StringComparison.OrdinalIgnoreCase));
         Assert.Equal("{Binding SelectedFruitMachinePlatform}", comboBox.Attribute("SelectedItem")?.Value);
         Assert.NotEmpty(Enum.GetValues<FruitMachinePlatformType>());
+    }
+
+    [Fact]
+    public void Mpu5ViewContainsOnlyMpu5RomBindings()
+    {
+        var xaml = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Views", "Mpu5FabricSettingsView.xaml"));
+        Assert.Contains("Mpu5ProgramRom1Path", xaml);
+        Assert.Contains("Mpu5SoundRom4Path", xaml);
+        Assert.DoesNotContain("System6", xaml);
+        Assert.Contains("ConfigureReels", xaml);
+        Assert.Contains("ConfigureCoins", xaml);
+        Assert.Contains("ConfigureMachineOptions", xaml);
     }
 
     private static XDocument LoadView()
@@ -73,9 +86,9 @@ public sealed class ProjectSettingsViewXamlTests
         return HasHeading(element, "General");
     }
 
-    private static bool IsImpactFabricCategoryRoot(XElement element)
+    private static bool IsPlatformSettingsCategoryRoot(XElement element)
     {
-        return HasHeading(element, "Impact / Fabric");
+        return HasHeading(element, "Platform Settings");
     }
 
     private static bool HasHeading(XElement element, string heading)
