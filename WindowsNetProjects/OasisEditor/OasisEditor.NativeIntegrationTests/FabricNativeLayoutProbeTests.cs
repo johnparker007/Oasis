@@ -42,12 +42,6 @@ public sealed class FabricNativeLayoutProbeTests
             ["sizeof.AmberCoinRouteConfigV1"] = 32,
             ["sizeof.AmberCoinConfigurationV1"] = 408,
             ["sizeof.FabricAmberConfigurationV1"] = 648,
-            ["sizeof.AmberMpu5ReelConfigV1"] = 28,
-            ["sizeof.AmberMpu5ReelConfigurationV1"] = 240,
-            ["sizeof.AmberMpu5CoinConfigV1"] = 16,
-            ["sizeof.AmberMpu5CoinConfigurationV1"] = 112,
-            ["sizeof.AmberMpu5MachineOptionsV1"] = 36,
-            ["sizeof.FabricAmberMpu5ConfigurationV1"] = 420,
             ["offsetof.FabricLaunchRequest.rom_paths"] = 1160,
             ["offsetof.FabricLaunchRequest.machine_configuration"] = 1176,
             ["offsetof.FabricLaunchRequest.rom_resources"] = 1192,
@@ -57,9 +51,6 @@ public sealed class FabricNativeLayoutProbeTests
             ["offsetof.FabricMachineSnapshot.character_displays"] = 48,
             ["offsetof.FabricMachineSnapshot.segment_displays"] = 64,
             ["offsetof.FabricCharacterDisplay.brightness"] = 160
-            ,["offsetof.FabricAmberMpu5ConfigurationV1.reels"] = 16
-            ,["offsetof.FabricAmberMpu5ConfigurationV1.coins"] = 256
-            ,["offsetof.FabricAmberMpu5ConfigurationV1.options"] = 368
         };
 
         Assert.Equal(expected.Count, values.Count);

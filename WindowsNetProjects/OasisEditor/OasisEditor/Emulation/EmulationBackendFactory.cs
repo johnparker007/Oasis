@@ -74,7 +74,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         return platform switch
         {
             FruitMachinePlatformType.None => null,
-            FruitMachinePlatformType.Impact => CreateFabricBackend(_productionAmberPathProvider, "JPM System 6 Amber provider DLL"),
+            FruitMachinePlatformType.Impact => CreateFabricBackend(_productionAmberPathProvider, "JPM System 6 production Amber provider DLL"),
             FruitMachinePlatformType.MPU5 => CreateFabricBackend(_mpu5AmberPathProvider, "Barcrest MPU5 Amber provider DLL"),
             _ => throw new NotSupportedException($"Platform '{platform}' is not supported by Fabric Amber emulation.")
         };

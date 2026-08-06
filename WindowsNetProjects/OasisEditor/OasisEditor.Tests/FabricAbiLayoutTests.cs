@@ -6,20 +6,12 @@ using OasisEditor;
 public sealed class FabricAbiLayoutTests
 {
     [Fact]
-    public void Mpu5Configuration_HasStableNativeLayout()
+    public void Mpu5DoesNotDeclareAnInventedNativeConfigurationAbi()
     {
-        Assert.Equal(420, Marshal.SizeOf<FabricAmberMpu5ConfigurationNative>());
-        Assert.Equal(16, Marshal.OffsetOf<FabricAmberMpu5ConfigurationNative>(nameof(FabricAmberMpu5ConfigurationNative.Reels)).ToInt32());
-        Assert.Equal(256, Marshal.OffsetOf<FabricAmberMpu5ConfigurationNative>(nameof(FabricAmberMpu5ConfigurationNative.Coins)).ToInt32());
-        Assert.Equal(368, Marshal.OffsetOf<FabricAmberMpu5ConfigurationNative>(nameof(FabricAmberMpu5ConfigurationNative.Options)).ToInt32());
+        Assert.Null(typeof(FabricAbi).Assembly.GetType("OasisEditor.FabricAmberMpu5ConfigurationNative"));
+        Assert.Null(typeof(FabricAbi).Assembly.GetType("OasisEditor.FabricAmberMpu5Configuration"));
     }
 
-    [Fact]
-    public void Mpu5Configuration_RejectsOutOfRangeReelBeforeNativeStartup()
-    {
-        var settings = new Mpu5NativeRomSettings { Reels = [new() { ReelIndex = 8 }] };
-        Assert.Throws<ArgumentOutOfRangeException>(() => FabricAmberMpu5Configuration.FromMpu5(settings));
-    }
     [Fact]
     public void X64NativeLayoutsMatchPublishedAbi()
     {

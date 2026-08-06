@@ -1,41 +1,36 @@
 # Fabric Amber emulation
 
-Oasis Editor has one native-emulation architecture:
+Oasis Editor uses one native-emulation architecture:
 
 ```text
 OasisEditor -> FabricRuntime.dll -> production Amber provider DLL
 ```
 
-Oasis loads and resolves exports only from `FabricRuntime.dll`. The absolute provider path is an opaque launch value passed unchanged to Fabric; Oasis never loads the provider, resolves Amber exports, calls the Amber ABI, identifies a machine from a DLL filename, or falls back to another emulator.
+Oasis loads and resolves exports only from `FabricRuntime.dll`. Provider paths are opaque absolute launch values passed unchanged to Fabric. Oasis never loads an Amber provider, resolves Amber exports, identifies a machine from a provider filename, implements native timing, or falls back to another emulator.
 
-## Supported machines
+## Machines
 
-| Oasis platform | Fabric backend | Fabric machine | Provider preference |
+| Project platform | Fabric backend | Fabric machine | Configuration |
 |---|---|---|---|
-| JPM System 6 (`Impact` project metadata) | `amber` | `jpm-system6` | JPM System 6 Amber provider DLL |
-| Barcrest MPU5 (`MPU5` project metadata) | `amber` | `barcrest-mpu5` | Barcrest MPU5 Amber provider DLL |
+| Impact / JPM System 6 | `amber` | `jpm-system6` | Current System 6 Fabric Amber configuration |
+| Barcrest MPU5 | `amber` | `barcrest-mpu5` | No machine configuration blob; ROM resources only |
 
-The Fabric runtime path and the two provider paths are distinct settings and are validated independently. Program and sound ROM paths are also validated as ROM resources. No provider is substituted for another platform.
+The earlier Oasis-invented 420-byte `FAM5` structure was removed. No final MPU5 configuration declarations from Fabric's public `fabric_amber.h` are checked into this repository, so Oasis deliberately sends no MPU5 machine-configuration blob rather than guessing an ABI. Reels, coins, percentage and specialist machine options remain deferred until authoritative public declarations are available.
 
-## Machine configuration
+## Preferences and Project Settings
 
-System 6 and MPU5 have separate project and Fabric configuration models. The MPU5 model supplies up to four program ROMs, four sound ROMs, eight indexed reel configurations (enable, steps, opto window/inversion and jumper profile), machine percentage/stake/prize/DIP/PIC/characteriser/SEC/hopper options, and six indexed coin channels (enable, value and lockout inversion). These fields are serialized into the current fixed-width Fabric MPU5 configuration blob; they are not Amber provider calls.
+Application-level **Preferences** own the Fabric runtime path, separate JPM System 6 and Barcrest MPU5 provider paths, and shared audio buffer length. Each path is validated independently.
 
-Fabric owns reset, native ABI adaptation, each machine's cycles per millisecond, snapshot count validation and normalization, coin-call differences, and audio scheduling. Oasis advances a Fabric session in nanoseconds and shares the existing NAudio buffering and shutdown lifecycle for both machines.
+Project-level **Project Settings** own the fruit-machine platform and ROM resource paths. The generic **Platform Settings** category switches immediately from the existing JPM System 6 / Impact controls to a dedicated MPU5 view when `SelectedFruitMachinePlatform` changes. Unsupported platforms show an explicit empty state. A future platform is added as another platform settings view plus one selection mapping rather than by adding controls to the MPU5 view.
 
-## Outputs and inputs
+The MPU5 view currently edits four program ROM slots and four optional sound ROM slots in `Mpu5NativeRomSettings`. Program ROM 1 is required and Fabric ROM slots must remain contiguous. Unsupported/deferred MPU5 reel, coin, stake, prize, DIP, PIC, characteriser, SEC, hopper and reel-profile properties are not serialized.
 
-Oasis consumes the counts and numerical indices returned in each Fabric snapshot rather than manufacturing a System 6-shaped snapshot. Current normalized ranges are:
+## Runtime behavior
 
-* System 6: 512 matrix lamps, eight reels, one 16-character alpha display, and 16 segment cells.
-* MPU5: 320 matrix lamps (indices 0-319), eight reels (0-7), as many as two independent 16-character alpha displays (indices 0 and 1), and 40 segment cells (0-39).
+Fabric owns provider loading, native ABI adaptation, reset, machine timing, snapshot validation and normalization, coin-call differences, and audio scheduling. Oasis advances Fabric in nanoseconds and uses the shared NAudio lifecycle.
 
-Character masks, punctuation attributes and display brightness remain distinct for each alpha display. Segment cells above 15 are neither wrapped nor discarded. The MPU5 multicolour status LED is not in the current public snapshot and Oasis does not invent a boolean substitute.
-
-Cabinet switches use Fabric digital inputs. Coins use Fabric's dedicated coin input with channel, denomination and active state, on the existing inactive-to-active input path. Fabric internally uses MPU5 mechanism zero; Oasis does not expose that native mechanism. `FABRIC_INPUT_REJECTED` means a rejected coin and does not fail the session.
-
-Specialist native MPU5 secondary-test/test-mode helpers are deliberately unsupported because the current Fabric public ABI does not expose them. Normal service controls should use Fabric digital inputs.
+Oasis consumes Fabric snapshot counts without padding. Current MPU5 ranges are lamps 0-319, reels 0-7, alpha displays 0-1, and segment cells 0-39. Coins use Fabric's dedicated coin input; Fabric's mechanism-zero detail is not exposed. Coin rejection does not fail the session. Specialist MPU5 test-mode helpers and the multistate status LED remain unsupported unless Fabric exposes them publicly.
 
 ## Manual validation
 
-A proprietary provider or ROM is not committed. On Windows, configure absolute Fabric runtime, machine-specific provider and ROM paths, then manually smoke-test start/reset/audio/input/output/shutdown and switching between System 6 and MPU5 projects. Automated selection, managed serialization and native layout probes do not require the proprietary MPU5 DLL.
+On Windows, configure Fabric and the relevant provider in Preferences, select the platform in Project Settings, configure ROMs, save/reopen, and start emulation. A real proprietary MPU5 provider/ROM smoke test must verify startup, reset, audio, inputs, all reported outputs, shutdown, and switching between System 6 and MPU5 projects.

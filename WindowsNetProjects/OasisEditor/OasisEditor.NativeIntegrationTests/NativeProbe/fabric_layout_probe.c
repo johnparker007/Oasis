@@ -23,12 +23,6 @@ typedef struct AmberCoinChannelConfigV1 { uint32_t channel_index, enabled, value
 typedef struct AmberCoinRouteConfigV1 { uint32_t route_index, enabled, counter_in, counter_out, port_index, coin_code, level, full_level; } AmberCoinRouteConfigV1;
 typedef struct AmberCoinConfigurationV1 { uint32_t struct_size, version, channel_apply_mask, route_apply_mask; AmberCoinChannelConfigV1 channels[6]; AmberCoinRouteConfigV1 routes[8]; uint32_t lockout_port_base, lockout_port_value, configuration_flags, reserved; } AmberCoinConfigurationV1;
 typedef struct FabricAmberConfigurationV1 { uint32_t magic, struct_size, version, flags; AmberReelConfigurationV1 reels; AmberCoinConfigurationV1 coins; uint32_t percentage_switch, reserved[3]; } FabricAmberConfigurationV1;
-typedef struct AmberMpu5ReelConfigV1 { uint32_t reel_index, enabled, steps, opto_start, opto_end, opto_invert, jumper_profile; } AmberMpu5ReelConfigV1;
-typedef struct AmberMpu5ReelConfigurationV1 { uint32_t struct_size, version, reel_count, apply_mask; AmberMpu5ReelConfigV1 reels[8]; } AmberMpu5ReelConfigurationV1;
-typedef struct AmberMpu5CoinConfigV1 { uint32_t channel_index, enabled, value, lockout_invert; } AmberMpu5CoinConfigV1;
-typedef struct AmberMpu5CoinConfigurationV1 { uint32_t struct_size, version, channel_count, apply_mask; AmberMpu5CoinConfigV1 channels[6]; } AmberMpu5CoinConfigurationV1;
-typedef struct AmberMpu5MachineOptionsV1 { uint32_t percentage, stake, prize, dip_switches, pic_mode, pic_selection, characteriser_address, sec_fitted, hopper_type; } AmberMpu5MachineOptionsV1;
-typedef struct FabricAmberMpu5ConfigurationV1 { uint32_t magic, struct_size, version, flags; AmberMpu5ReelConfigurationV1 reels; AmberMpu5CoinConfigurationV1 coins; AmberMpu5MachineOptionsV1 options; uint32_t reserved[4]; } FabricAmberMpu5ConfigurationV1;
 
 #define SIZE(T) printf("sizeof.%s=%zu\n", #T, sizeof(T))
 #define OFF(T,F) printf("offsetof.%s.%s=%zu\n", #T, #F, offsetof(T,F))
@@ -38,13 +32,10 @@ int main(void) {
     SIZE(FabricMachineSnapshot); SIZE(FabricAudioFormat); SIZE(AmberReelConfigV1);
     SIZE(AmberReelConfigurationV1); SIZE(AmberCoinChannelConfigV1); SIZE(AmberCoinRouteConfigV1);
     SIZE(AmberCoinConfigurationV1); SIZE(FabricAmberConfigurationV1);
-    SIZE(AmberMpu5ReelConfigV1); SIZE(AmberMpu5ReelConfigurationV1); SIZE(AmberMpu5CoinConfigV1);
-    SIZE(AmberMpu5CoinConfigurationV1); SIZE(AmberMpu5MachineOptionsV1); SIZE(FabricAmberMpu5ConfigurationV1);
     OFF(FabricLaunchRequest, rom_paths); OFF(FabricLaunchRequest, machine_configuration);
     OFF(FabricLaunchRequest, rom_resources); OFF(FabricRomResource, path);
     OFF(FabricMachineSnapshot, lamps); OFF(FabricMachineSnapshot, reels);
     OFF(FabricMachineSnapshot, character_displays); OFF(FabricMachineSnapshot, segment_displays);
     OFF(FabricCharacterDisplay, brightness);
-    OFF(FabricAmberMpu5ConfigurationV1, reels); OFF(FabricAmberMpu5ConfigurationV1, coins); OFF(FabricAmberMpu5ConfigurationV1, options);
     return 0;
 }

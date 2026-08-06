@@ -306,14 +306,14 @@ public sealed class FabricManagedBehaviorTests
         var backend = new FabricEmulationBackend("C:/fabric/FabricRuntime.dll", provider,
             _ => runtime, new FakeAudioSink(), new FakeClock());
 
-        await backend.StartAsync(EmulationLaunchRequest.ForMpu5(new Mpu5NativeRomSettings()), CancellationToken.None);
+        await backend.StartAsync(EmulationLaunchRequest.ForMpu5(new Mpu5NativeRomSettings { ProgramRom1Path = "p0" }), CancellationToken.None);
         await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
         await backend.StopAsync(CancellationToken.None);
 
         Assert.Equal("amber", runtime.Request!.BackendKind);
         Assert.Equal("barcrest-mpu5", runtime.Request.MachineIdentifier);
         Assert.Equal(provider, runtime.Request.BackendPath);
-        Assert.IsType<FabricAmberMpu5Configuration>(runtime.Request.Configuration);
+        Assert.Null(runtime.Request.Configuration);
     }
 
     [Fact]

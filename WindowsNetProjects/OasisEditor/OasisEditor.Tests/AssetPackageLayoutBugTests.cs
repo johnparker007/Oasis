@@ -23,6 +23,14 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         Assert.True(Directory.Exists(Path.Combine(projectDirectory, "Assets", "Cabinet3D")));
     }
 
+    [Fact]
+    public void CreateProject_WritesOnlyCurrentProjectSchema()
+    {
+        var directory = new ProjectScaffolder().CreateProject("SchemaProject", _root);
+        using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, "SchemaProject.oasisproj")));
+        Assert.Equal(EditorProject.CurrentSchemaVersion, document.RootElement.GetProperty("version").GetInt32());
+    }
+
     [Theory]
     [InlineData("Assets/Panel2D/Main Panel/asset.panel2d", "Main Panel")]
     [InlineData("Assets/Faces/Top Glass/asset.face", "Top Glass")]

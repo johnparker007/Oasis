@@ -47,6 +47,19 @@ public sealed class EmulationBackendAbstractionsTests
     }
 
     [Fact]
+    public void Mpu5SettingsExposeOnlyCurrentRomResourceContract()
+    {
+        var writable = typeof(Mpu5NativeRomSettings).GetProperties()
+            .Where(property => property.SetMethod?.IsPublic == true)
+            .Select(property => property.Name).Order().ToArray();
+        Assert.Equal(new[]
+        {
+            "ProgramRom1Path", "ProgramRom2Path", "ProgramRom3Path", "ProgramRom4Path",
+            "SoundRom1Path", "SoundRom2Path", "SoundRom3Path", "SoundRom4Path"
+        }.Order(), writable);
+    }
+
+    [Fact]
     public void RuntimeEventArgs_PreserveConstructorValues()
     {
         var lamp = new MachineLampChangedEventArgs(1, 255);

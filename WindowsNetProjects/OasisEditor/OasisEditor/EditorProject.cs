@@ -2,6 +2,7 @@ namespace OasisEditor;
 
 public sealed class EditorProject
 {
+    public const int CurrentSchemaVersion = 2;
     public required string Name { get; init; }
     public required string ProjectFilePath { get; init; }
     public required string ProjectDirectory { get; init; }
@@ -16,8 +17,6 @@ public sealed class EditorProject
 
 public sealed class Mpu5NativeRomSettings
 {
-    public const int ReelSlotCount = 8;
-    public const int CoinChannelCount = 6;
     public string ProgramRom1Path { get; set; } = string.Empty;
     public string ProgramRom2Path { get; set; } = string.Empty;
     public string ProgramRom3Path { get; set; } = string.Empty;
@@ -26,40 +25,8 @@ public sealed class Mpu5NativeRomSettings
     public string SoundRom2Path { get; set; } = string.Empty;
     public string SoundRom3Path { get; set; } = string.Empty;
     public string SoundRom4Path { get; set; } = string.Empty;
-    public List<Mpu5ReelSettings> Reels { get; set; } = Enumerable.Range(0, ReelSlotCount).Select(Mpu5ReelSettings.CreateDefault).ToList();
-    public List<Mpu5CoinSettings> Coins { get; set; } = Enumerable.Range(0, CoinChannelCount).Select(Mpu5CoinSettings.CreateDefault).ToList();
-    public uint Percentage { get; set; }
-    public uint Stake { get; set; }
-    public uint Prize { get; set; }
-    public uint DipSwitches { get; set; }
-    public uint PicMode { get; set; }
-    public uint PicSelection { get; set; }
-    public uint CharacteriserAddress { get; set; }
-    public bool SecFitted { get; set; }
-    public uint HopperType { get; set; }
     public IReadOnlyList<string> ProgramRomPaths => [ProgramRom1Path, ProgramRom2Path, ProgramRom3Path, ProgramRom4Path];
     public IReadOnlyList<string> SoundRomPaths => [SoundRom1Path, SoundRom2Path, SoundRom3Path, SoundRom4Path];
-}
-
-public sealed class Mpu5ReelSettings
-{
-    public bool Enabled { get; set; } = true;
-    public int ReelIndex { get; set; }
-    public int Steps { get; set; } = 96;
-    public int OptoStart { get; set; } = 5;
-    public int OptoEnd { get; set; } = 7;
-    public bool OptoInvert { get; set; }
-    public uint JumperProfile { get; set; }
-    public static Mpu5ReelSettings CreateDefault(int index) => new() { ReelIndex = index };
-}
-
-public sealed class Mpu5CoinSettings
-{
-    public bool Enabled { get; set; }
-    public int Channel { get; set; }
-    public uint Value { get; set; }
-    public bool LockoutInvert { get; set; }
-    public static Mpu5CoinSettings CreateDefault(int channel) => new() { Channel = channel };
 }
 
 
