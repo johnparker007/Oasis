@@ -5,6 +5,60 @@ namespace OasisEditor.Tests;
 
 public sealed class FabricSevenSegmentRuntimeTests
 {
+    [Theory]
+    [InlineData(FruitMachinePlatformType.Impact)]
+    [InlineData(FruitMachinePlatformType.MPU5)]
+    public void AmberPlatformsInvertImportedAlphaReversedMeaning(FruitMachinePlatformType platform)
+    {
+        Assert.Equal(15, AlphaCellOrder.SourceIndexForCanonicalCell(0, 16, false, platform));
+        Assert.Equal(0, AlphaCellOrder.SourceIndexForCanonicalCell(0, 16, true, platform));
+        Assert.Equal(0, AlphaCellOrder.SourceIndexForCanonicalCell(15, 16, false, platform));
+        Assert.Equal(15, AlphaCellOrder.SourceIndexForCanonicalCell(15, 16, true, platform));
+    }
+
+    [Fact]
+    public void NonAmberPlatformRetainsImportedAlphaReversedMeaning()
+    {
+        Assert.Equal(0, AlphaCellOrder.SourceIndexForCanonicalCell(
+            canonicalIndex: 0,
+            cellCount: 16,
+            sourceAddressingReversed: false,
+            FruitMachinePlatformType.MPU4));
+        Assert.Equal(15, AlphaCellOrder.SourceIndexForCanonicalCell(
+            canonicalIndex: 0,
+            cellCount: 16,
+            sourceAddressingReversed: true,
+            FruitMachinePlatformType.MPU4));
+    }
+
+    [Theory]
+    [InlineData(FruitMachinePlatformType.Impact)]
+    [InlineData(FruitMachinePlatformType.MPU5)]
+    public void AmberPlatformRuntimeUsesForwardSourceOrderWhenAlphaIsReversed(FruitMachinePlatformType platform)
+    {
+        var document = new DocumentTabViewModel(
+            EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel"));
+        document.SetPanelElements([
+            new PanelElementModel
+            {
+                ObjectId = "alpha-0",
+                Kind = PanelElementKind.Alpha,
+                DisplayNumber = 0,
+                IsReversed = true
+            }
+        ]);
+        var dispatches = new List<Action>();
+        var adapter = new MachineSegmentRuntimeAdapter(() => [document], dispatches.Add, () => platform);
+
+        for (var cell = 0; cell < 16; cell++)
+        {
+            adapter.ApplySegmentState(cell, cell + 1, SegmentOutputType.NativeAlpha);
+        }
+        Assert.Single(dispatches)();
+
+        Assert.Equal(Enumerable.Range(1, 16), document.RuntimeState.GetSegmentCellMasks("alpha-0", 16));
+    }
+
     [Fact]
     public void AlphaBrightnessAtEachDisplayBaseIndexReachesRuntimeCells()
     {
