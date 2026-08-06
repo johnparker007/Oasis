@@ -24,8 +24,10 @@
                   RowHeaderWidth="0"
                   SelectionMode="Extended"
                   SelectionUnit="FullRow"
+                  CellEditEnding="InputMapGrid_OnCellEditEnding"
                   PreviewKeyDown="InputMapGrid_OnPreviewKeyDown"
-                  PreviewMouseRightButtonDown="InputMapGrid_OnPreviewMouseRightButtonDown">
+                  PreviewMouseRightButtonDown="InputMapGrid_OnPreviewMouseRightButtonDown"
+                  Unloaded="InputMapGrid_OnUnloaded">
             <DataGrid.ContextMenu>
                 <ContextMenu Opened="InputMapContextMenu_OnOpened">
                     <MenuItem x:Name="DeleteMenuItem"
@@ -34,17 +36,17 @@
                 </ContextMenu>
             </DataGrid.ContextMenu>
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="1.2*" />
-                <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="0.7*" />
-                <DataGridTextColumn Header="Button No" Binding="{Binding ButtonNumber}" Width="0.8*" />
-                <DataGridCheckBoxColumn Header="Coin" Binding="{Binding CoinInput}" Width="0.6*" />
+                <DataGridTextColumn Header="Name" Binding="{Binding Name, UpdateSourceTrigger=LostFocus}" Width="1.2*" />
+                <DataGridTextColumn Header="Kind" Binding="{Binding Kind, UpdateSourceTrigger=LostFocus}" Width="0.7*" />
+                <DataGridTextColumn Header="Button No" Binding="{Binding ButtonNumber, UpdateSourceTrigger=LostFocus}" Width="0.8*" />
+                <DataGridCheckBoxColumn Header="Coin" Binding="{Binding CoinInput, UpdateSourceTrigger=LostFocus}" Width="0.6*" />
                 <DataGridTextColumn Header="Coin Channel (0-5)" Binding="{Binding CoinChannel, UpdateSourceTrigger=LostFocus}" Width="1.0*" />
                 <DataGridTextColumn Header="Coin Value / Denomination (0-12)" Binding="{Binding CoinValue, UpdateSourceTrigger=LostFocus}" Width="1.4*" />
-                <DataGridTextColumn Header="Key" Binding="{Binding KeyboardShortcut}" Width="0.8*" />
-                <DataGridTextColumn Header="Raw MFME Key" Binding="{Binding RawMfmeShortcut}" Width="0.9*" />
-                <DataGridTextColumn Header="Linked Visual" Binding="{Binding LinkedVisualElementId}" Width="1.3*" />
-                <DataGridCheckBoxColumn Header="Inverted" Binding="{Binding Inverted}" Width="0.8*" />
-                <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="1.3*" />
+                <DataGridTextColumn Header="Key" Binding="{Binding KeyboardShortcut, UpdateSourceTrigger=LostFocus}" Width="0.8*" />
+                <DataGridTextColumn Header="Raw MFME Key" Binding="{Binding RawMfmeShortcut, UpdateSourceTrigger=LostFocus}" Width="0.9*" />
+                <DataGridTextColumn Header="Linked Visual" Binding="{Binding LinkedVisualElementId, UpdateSourceTrigger=LostFocus}" Width="1.3*" />
+                <DataGridCheckBoxColumn Header="Inverted" Binding="{Binding Inverted, UpdateSourceTrigger=LostFocus}" Width="0.8*" />
+                <DataGridTextColumn Header="Notes" Binding="{Binding Notes, UpdateSourceTrigger=LostFocus}" Width="1.3*" />
             </DataGrid.Columns>
         </DataGrid>
 
