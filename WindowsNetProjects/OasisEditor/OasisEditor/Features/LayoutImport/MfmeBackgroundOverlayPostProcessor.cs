@@ -7,6 +7,52 @@ namespace OasisEditor.Features.LayoutImport;
 
 internal static class MfmeBackgroundOverlayPostProcessor
 {
+    public static bool TryNormalizeBackground(
+        string backgroundPath,
+        PanelElementModel background,
+        string projectAssetsRoot,
+        ICollection<string> copied,
+        out string? updatedBackgroundPath,
+        out string? error)
+    {
+        updatedBackgroundPath = null;
+        error = null;
+
+        try
+        {
+            var width = (int)Math.Round(background.Width);
+            var height = (int)Math.Round(background.Height);
+            if (width <= 0 || height <= 0)
+            {
+                return true;
+            }
+
+            var source = LoadBgra32(backgroundPath);
+            var normalized = new PixelBuffer(width, height, checked(width * 4), new byte[checked(width * height * 4)]);
+            var copyWidth = Math.Min(source.Width, normalized.Width);
+            var copyHeight = Math.Min(source.Height, normalized.Height);
+            for (var y = 0; y < copyHeight; y++)
+            {
+                Buffer.BlockCopy(source.Pixels, y * source.Stride, normalized.Pixels, y * normalized.Stride, copyWidth * 4);
+            }
+
+            var outputPath = ResolveOutputPath(backgroundPath);
+            SavePng(normalized, outputPath);
+            if (!string.Equals(outputPath, backgroundPath, StringComparison.OrdinalIgnoreCase))
+            {
+                updatedBackgroundPath = ToProjectRelativeAssetPath(outputPath, projectAssetsRoot);
+                copied.Add(updatedBackgroundPath);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
     public static bool TryBakeDisplayOverlays(
         string backgroundPath,
         PanelElementModel background,
@@ -143,12 +189,10 @@ internal static class MfmeBackgroundOverlayPostProcessor
             return new PixelRect(0, 0, 0, 0);
         }
 
-        var scaleX = backgroundImage.Width / background.Width;
-        var scaleY = backgroundImage.Height / background.Height;
-        var x = (int)Math.Round((overlayElement.X - background.X) * scaleX);
-        var y = (int)Math.Round((overlayElement.Y - background.Y) * scaleY);
-        var width = Math.Max(1, (int)Math.Round(overlayElement.Width * scaleX));
-        var height = Math.Max(1, (int)Math.Round(overlayElement.Height * scaleY));
+        var x = (int)Math.Round(overlayElement.X - background.X);
+        var y = (int)Math.Round(overlayElement.Y - background.Y);
+        var width = Math.Max(1, (int)Math.Round(overlayElement.Width));
+        var height = Math.Max(1, (int)Math.Round(overlayElement.Height));
         return new PixelRect(x, y, width, height);
     }
 

@@ -48,6 +48,13 @@ internal sealed class LayoutImportAssetCopier
         if (errors.Count == 0)
         {
             mappedElements = backgroundMode == FmlBackgroundMode.ImageBackedBackground
+                ? NormalizeBackgroundAssets(mappedElements, projectAssetsRoot, copied, errors)
+                : mappedElements;
+        }
+
+        if (errors.Count == 0)
+        {
+            mappedElements = backgroundMode == FmlBackgroundMode.ImageBackedBackground
                 ? BakeDisplayOverlaysIntoBackgrounds(mappedElements, projectAssetsRoot, copied, errors)
                 : mappedElements;
         }
@@ -65,6 +72,43 @@ internal sealed class LayoutImportAssetCopier
             Warnings = warnings,
             Errors = []
         };
+    }
+
+    private static PanelElementModel[] NormalizeBackgroundAssets(
+        PanelElementModel[] elements,
+        string projectAssetsRoot,
+        ICollection<string> copied,
+        ICollection<string> errors)
+    {
+        var updatedElements = elements;
+        for (var index = 0; index < updatedElements.Length; index++)
+        {
+            var background = updatedElements[index];
+            if (background.Kind != PanelElementKind.Background || string.IsNullOrWhiteSpace(background.AssetPath))
+            {
+                continue;
+            }
+
+            var backgroundPath = TryResolveProjectAssetPath(background.AssetPath, projectAssetsRoot);
+            if (backgroundPath is null || !File.Exists(backgroundPath))
+            {
+                continue;
+            }
+
+            if (!MfmeBackgroundOverlayPostProcessor.TryNormalizeBackground(backgroundPath, background, projectAssetsRoot, copied, out var updatedBackgroundPath, out var processingError))
+            {
+                errors.Add($"Failed to normalize MFME background asset '{background.AssetPath}': {processingError}");
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(updatedBackgroundPath))
+            {
+                updatedElements = (PanelElementModel[])updatedElements.Clone();
+                updatedElements[index] = CloneWithAssetPath(background, updatedBackgroundPath);
+            }
+        }
+
+        return updatedElements;
     }
 
     private static readonly IReadOnlyDictionary<string, string> StagingFolderToProjectFolder = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
