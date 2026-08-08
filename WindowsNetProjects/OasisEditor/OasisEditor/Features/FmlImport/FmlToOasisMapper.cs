@@ -98,7 +98,7 @@ internal sealed class FmlToOasisMapper
         var hasBorder = noOutline.HasValue ? !noOutline.Value : c is Button;
         foreach (var entry in entries)
         {
-            var main = FindLampImage(images, index, entry.SublampIndex, isMask: false) ?? FindLampImage(images, index, entry.SublampIndex, isMask: null) ?? FirstLampImage(images, index, isMask: false);
+            var main = FindLampImage(images, index, entry.SublampIndex, isMask: false) ?? FirstLampImage(images, index, isMask: false);
             var mask = FindLampImage(images, index, entry.SublampIndex, isMask: true) ?? FirstLampImage(images, index, isMask: true);
             var displayNumber = entry.SublampNumber >= 0 ? entry.SublampNumber : (int?)null;
             var font = Font(c);
@@ -268,10 +268,10 @@ internal sealed class FmlToOasisMapper
     private static string? BackgroundAssetPath(BaseComponent c, IReadOnlyDictionary<FmlDecodedImageKey, string> images, int index) => c is Background ? FirstRoleImage(images, index, IsMainBackgroundImage) : FirstImage(images, index);
     private static string? FirstImage(IReadOnlyDictionary<FmlDecodedImageKey, string> images, int index) => images.Where(k => k.Key.ComponentIndex == index).OrderBy(k => k.Key.ImageName, StringComparer.Ordinal).Select(k => k.Value).FirstOrDefault();
     private static string? FirstRoleImage(IReadOnlyDictionary<FmlDecodedImageKey, string> images, int index, Func<string, bool> role) => images.Where(k => k.Key.ComponentIndex == index && role(k.Key.ImageName)).OrderBy(k => k.Key.ImageName, StringComparer.Ordinal).Select(k => k.Value).FirstOrDefault();
-    private static string? FindLampImage(IReadOnlyDictionary<FmlDecodedImageKey, string> images, int index, int sub, bool? isMask) => images.Where(k => k.Key.ComponentIndex == index && IsSublamp(k.Key.ImageName, sub) && MatchesMask(k.Key.ImageName, isMask)).OrderBy(k => k.Key.ImageName, StringComparer.Ordinal).Select(k => k.Value).FirstOrDefault();
-    private static string? FirstLampImage(IReadOnlyDictionary<FmlDecodedImageKey, string> images, int index, bool? isMask) => images.Where(k => k.Key.ComponentIndex == index && MatchesMask(k.Key.ImageName, isMask)).OrderBy(k => k.Key.ImageName, StringComparer.Ordinal).Select(k => k.Value).FirstOrDefault();
+    private static string? FindLampImage(IReadOnlyDictionary<FmlDecodedImageKey, string> images, int index, int sub, bool isMask) => images.Where(k => k.Key.ComponentIndex == index && IsSublamp(k.Key.ImageName, sub) && MatchesMask(k.Key.ImageName, isMask)).OrderBy(k => k.Key.ImageName, StringComparer.Ordinal).Select(k => k.Value).FirstOrDefault();
+    private static string? FirstLampImage(IReadOnlyDictionary<FmlDecodedImageKey, string> images, int index, bool isMask) => images.Where(k => k.Key.ComponentIndex == index && MatchesMask(k.Key.ImageName, isMask)).OrderBy(k => k.Key.ImageName, StringComparer.Ordinal).Select(k => k.Value).FirstOrDefault();
     private static bool IsSublamp(string key, int sub) { var n = Norm(key); return n.StartsWith($"sublamp_{sub}_", StringComparison.Ordinal) || key.StartsWith($"Sublamp {sub} ", StringComparison.OrdinalIgnoreCase); }
-    private static bool MatchesMask(string key, bool? mask) => mask is null || Norm(key).Contains("mask", StringComparison.Ordinal) == mask.Value;
+    private static bool MatchesMask(string key, bool mask) => Norm(key).Contains("mask", StringComparison.Ordinal) == mask;
     private static bool IsReelBand(string k) { var n = Norm(k); return n.Contains("band") || n.Contains("gradient") || n.Contains("strip") || n.Contains("reel_image") || n.EndsWith("reel"); }
     private static bool IsOverlay(string k) { var n = Norm(k); return n.Contains("overlay") || n.Contains("over_lay") || n.Contains("window") || n.Contains("cutout") || n.Contains("cut_out") || n.Contains("mask_overlay"); }
     private static bool IsMainBackgroundImage(string k) { var n = Norm(k); return n.Contains("background") && !n.Contains("mask") && !IsOverlay(k); }
