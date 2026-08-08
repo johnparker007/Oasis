@@ -88,6 +88,64 @@ public sealed class FmlToOasisMapperTests
     }
 
     [Fact]
+    public void Map_WithMultiSublampMasks_InheritsFirstMainImageAndPreservesIndividualMasks()
+    {
+        var lamp = new Lamp
+        {
+            Width = 30,
+            Height = 40,
+            SublampTable =
+            [
+                new LampSublampTableEntry(1, 10),
+                new LampSublampTableEntry(2, 11),
+                new LampSublampTableEntry(3, 12)
+            ]
+        };
+        var images = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new FmlDecodedImageKey(0, "Sublamp 1 Main")] = "lamps/shared-main.bmp",
+            [new FmlDecodedImageKey(0, "Sublamp 1 Mask")] = "lamps/mask-1.bmp",
+            [new FmlDecodedImageKey(0, "Sublamp 2 Mask")] = "lamps/mask-2.bmp",
+            [new FmlDecodedImageKey(0, "Sublamp 3 Mask")] = "lamps/mask-3.bmp"
+        };
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), images);
+
+        Assert.Equal([10, 11, 12], result.Elements.Select(element => element.DisplayNumber));
+        Assert.All(result.Elements, element => Assert.Equal("lamps/shared-main.bmp", element.AssetPath));
+        Assert.Equal(
+            ["lamps/mask-1.bmp", "lamps/mask-2.bmp", "lamps/mask-3.bmp"],
+            result.Elements.Select(element => element.SecondaryAssetPath));
+    }
+
+    [Fact]
+    public void Map_WithSublampSpecificMainImage_PrefersItOverInheritedFirstMainImage()
+    {
+        var lamp = new Lamp
+        {
+            Width = 30,
+            Height = 40,
+            SublampTable =
+            [
+                new LampSublampTableEntry(1, 10),
+                new LampSublampTableEntry(2, 11)
+            ]
+        };
+        var images = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new FmlDecodedImageKey(0, "Sublamp 1 Main")] = "lamps/main-1.bmp",
+            [new FmlDecodedImageKey(0, "Sublamp 1 Mask")] = "lamps/mask-1.bmp",
+            [new FmlDecodedImageKey(0, "Sublamp 2 Main")] = "lamps/main-2.bmp",
+            [new FmlDecodedImageKey(0, "Sublamp 2 Mask")] = "lamps/mask-2.bmp"
+        };
+
+        var result = new FmlToOasisMapper().Map(new Layout([lamp]), images);
+
+        Assert.Equal(["lamps/main-1.bmp", "lamps/main-2.bmp"], result.Elements.Select(element => element.AssetPath));
+        Assert.Equal(["lamps/mask-1.bmp", "lamps/mask-2.bmp"], result.Elements.Select(element => element.SecondaryAssetPath));
+    }
+
+    [Fact]
     public void Map_WithCoreComponentTypes_PreservesDirectMappingBehavior()
     {
         var background = new Background { X = 1, Y = 2, Width = 300, Height = 200 };
