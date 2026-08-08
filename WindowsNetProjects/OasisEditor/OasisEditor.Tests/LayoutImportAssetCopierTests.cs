@@ -16,11 +16,12 @@ public sealed class LayoutImportAssetCopierTests
         var projectRoot = Path.Combine(tempRoot, "project");
         var assetsRoot = Path.Combine(projectRoot, "Assets");
         Directory.CreateDirectory(Path.Combine(stagingRoot, "background"));
-        File.WriteAllBytes(Path.Combine(stagingRoot, "background", "bg.png"), [1, 2, 3]);
+        WriteBgra32Bmp(Path.Combine(stagingRoot, "background", "bg.bmp"), 10, 10,
+            Enumerable.Repeat(Colors.Black, 100).ToArray());
 
         var elements = new[]
         {
-            new PanelElementModel { ObjectId = "bg", Name = "Background", Kind = PanelElementKind.Background, Width = 10, Height = 10, AssetPath = "background/bg.png" }
+            new PanelElementModel { ObjectId = "bg", Name = "Background", Kind = PanelElementKind.Background, Width = 10, Height = 10, AssetPath = "background/bg.bmp" }
         };
 
         var result = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "My Layout", assetsRoot, copyAssets: true, elements);
@@ -28,6 +29,102 @@ public sealed class LayoutImportAssetCopierTests
         Assert.True(result.Succeeded);
         Assert.Contains("Assets/FmlImport/My Layout/Background/bg.png", result.CopiedAssetRelativePaths);
         Assert.Contains(result.Elements, element => element.Kind == PanelElementKind.Background && element.AssetPath == "Assets/FmlImport/My Layout/Background/bg.png");
+    }
+
+    [Fact]
+    public void CopyAssetsFromStaging_OversizedMfmeBackgroundIsCroppedAtNativePixelScale()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "OasisEditorTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var stagingRoot = Path.Combine(tempRoot, "staging");
+            var assetsRoot = Path.Combine(tempRoot, "project", "Assets");
+            Directory.CreateDirectory(Path.Combine(stagingRoot, "background"));
+            var sourcePixels = CreateCoordinatePixels(1000, 750);
+            WriteBgra32Bmp(Path.Combine(stagingRoot, "background", "bg.bmp"), 1000, 750, sourcePixels);
+            var background = new PanelElementModel { ObjectId = "bg", Kind = PanelElementKind.Background, X = 0, Y = 0, Width = 800, Height = 600, AssetPath = "background/bg.bmp" };
+            var lamp = new PanelElementModel { ObjectId = "lamp", Kind = PanelElementKind.Lamp, X = 91, Y = 123, Width = 20, Height = 30 };
+
+            var result = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "Native Background", assetsRoot, true, [background, lamp]);
+
+            Assert.True(result.Succeeded);
+            var importedBackground = Assert.Single(result.Elements.Where(element => element.Kind == PanelElementKind.Background));
+            var importedLamp = Assert.Single(result.Elements.Where(element => element.Kind == PanelElementKind.Lamp));
+            var pixels = ReadPixels(ResolveAsset(assetsRoot, importedBackground.AssetPath!), out var width, out var height);
+            Assert.Equal((800, 600), (width, height));
+            Assert.Equal(sourcePixels[0], pixels[0]);
+            Assert.Equal(sourcePixels[(599 * 1000) + 799], pixels[(599 * 800) + 799]);
+            Assert.NotEqual(sourcePixels[^1], pixels[^1]);
+            Assert.Equal((0d, 0d, 800d, 600d), (importedBackground.X, importedBackground.Y, importedBackground.Width, importedBackground.Height));
+            Assert.Equal((91d, 123d, 20d, 30d), (importedLamp.X, importedLamp.Y, importedLamp.Width, importedLamp.Height));
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot)) Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void CopyAssetsFromStaging_OversizedBackgroundCutoutUsesUnscaledCoordinates()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "OasisEditorTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var stagingRoot = Path.Combine(tempRoot, "staging");
+            var assetsRoot = Path.Combine(tempRoot, "project", "Assets");
+            Directory.CreateDirectory(Path.Combine(stagingRoot, "background"));
+            WriteBgra32Bmp(Path.Combine(stagingRoot, "background", "bg.bmp"), 1000, 750,
+                Enumerable.Repeat(Colors.Red, 1000 * 750).ToArray());
+            var background = new PanelElementModel { ObjectId = "bg", Kind = PanelElementKind.Background, Width = 800, Height = 600, AssetPath = "background/bg.bmp" };
+            var reel = new PanelElementModel { ObjectId = "reel", Kind = PanelElementKind.Reel, X = 100, Y = 200, Width = 50, Height = 80 };
+
+            var result = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "Cutout", assetsRoot, true, [background, reel]);
+
+            Assert.True(result.Succeeded);
+            var importedBackground = Assert.Single(result.Elements.Where(element => element.Kind == PanelElementKind.Background));
+            var pixels = ReadPixels(ResolveAsset(assetsRoot, importedBackground.AssetPath!), out var width, out _);
+            Assert.Equal(0, pixels[(200 * width) + 100].A);
+            Assert.Equal(0, pixels[(279 * width) + 149].A);
+            Assert.Equal(255, pixels[(199 * width) + 100].A);
+            Assert.Equal(255, pixels[(250 * width) + 160].A);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot)) Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(800, 600)]
+    [InlineData(400, 300)]
+    public void CopyAssetsFromStaging_BackgroundAtOrBelowLayoutSizeIsNotScaled(int sourceWidth, int sourceHeight)
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "OasisEditorTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var stagingRoot = Path.Combine(tempRoot, "staging");
+            var assetsRoot = Path.Combine(tempRoot, "project", "Assets");
+            Directory.CreateDirectory(Path.Combine(stagingRoot, "background"));
+            var sourcePixels = CreateCoordinatePixels(sourceWidth, sourceHeight);
+            WriteBgra32Bmp(Path.Combine(stagingRoot, "background", "bg.bmp"), sourceWidth, sourceHeight, sourcePixels);
+            var background = new PanelElementModel { ObjectId = "bg", Kind = PanelElementKind.Background, Width = 800, Height = 600, AssetPath = "background/bg.bmp" };
+
+            var result = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "No Scaling", assetsRoot, true, [background]);
+
+            Assert.True(result.Succeeded);
+            var imported = Assert.Single(result.Elements);
+            var pixels = ReadPixels(ResolveAsset(assetsRoot, imported.AssetPath!), out var width, out var height);
+            Assert.Equal((800, 600), (width, height));
+            Assert.Equal(sourcePixels[(sourceHeight - 1) * sourceWidth + sourceWidth - 1], pixels[(sourceHeight - 1) * width + sourceWidth - 1]);
+            if (sourceWidth < width || sourceHeight < height)
+            {
+                Assert.Equal(0, pixels[^1].A);
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot)) Directory.Delete(tempRoot, recursive: true);
+        }
     }
 
 
@@ -151,6 +248,18 @@ public sealed class LayoutImportAssetCopierTests
         return Enumerable.Range(0, width * height)
             .Select(index => Color.FromArgb(pixels[(index * 4) + 3], pixels[(index * 4) + 2], pixels[(index * 4) + 1], pixels[index * 4]))
             .ToArray();
+    }
+
+    private static Color[] CreateCoordinatePixels(int width, int height)
+    {
+        return Enumerable.Range(0, width * height)
+            .Select(index => Color.FromArgb(255, (byte)(index / width % 251), (byte)(index % width % 253), (byte)((index / width + index % width) % 249)))
+            .ToArray();
+    }
+
+    private static string ResolveAsset(string assetsRoot, string assetPath)
+    {
+        return Path.Combine(assetsRoot, assetPath["Assets/".Length..].Replace('/', Path.DirectorySeparatorChar));
     }
 
 }
