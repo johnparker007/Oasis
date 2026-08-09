@@ -35,6 +35,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _fabricRuntimeLibraryPath = string.Empty;
     private string _productionAmberLibraryPath = string.Empty;
     private string _mpu5AmberLibraryPath = string.Empty;
+    private string _epochAmberLibraryPath = string.Empty;
     private string _mpu5ProgramRom1Path = string.Empty, _mpu5ProgramRom2Path = string.Empty, _mpu5ProgramRom3Path = string.Empty, _mpu5ProgramRom4Path = string.Empty;
     private string _mpu5SoundRom1Path = string.Empty, _mpu5SoundRom2Path = string.Empty, _mpu5SoundRom3Path = string.Empty, _mpu5SoundRom4Path = string.Empty;
     private string _mpu5NativeRomStatus = "Program ROM 1 is required for Fabric Amber launch.";
@@ -69,6 +70,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private ObservableCollection<System6ReelOptoSettingsViewModel> _system6ReelOptos = [];
     private ObservableCollection<System6CoinSettingsViewModel> _system6Coins = [];
     private Mpu5ProjectSettingsViewModel? _mpu5ProjectSettings;
+    private EpochProjectSettingsViewModel? _epochProjectSettings;
     private bool _isFmlImportInProgress;
     private bool _isEditorProgressVisible;
     private bool _isEditorProgressIndeterminate;
@@ -228,6 +230,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _fabricRuntimeLibraryPath = preferences.NativeEmulation.FabricRuntimeLibraryPath;
             _productionAmberLibraryPath = preferences.NativeEmulation.ProductionAmberLibraryPath;
             _mpu5AmberLibraryPath = preferences.NativeEmulation.Mpu5AmberLibraryPath;
+            _epochAmberLibraryPath = preferences.NativeEmulation.EpochAmberLibraryPath;
             _system6AudioBufferLengthMilliseconds = NormalizeSystem6AudioBufferLengthMilliseconds(preferences.NativeEmulation.AudioBufferLengthMilliseconds);
             _oasisPlayerExecutablePath = preferences.Player.ExecutablePath;
             _oasisPlayerFullscreen = preferences.Player.Fullscreen;
@@ -250,11 +253,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => OpenDocuments, () => false, _ => { }, DispatchToUiThread);
         _reelRuntimeAdapter = new MachineReelRuntimeAdapter(
             () => OpenDocuments, () => SelectedFruitMachinePlatform, () => false, _ => { }, DispatchToUiThread,
-            reelId => SelectedFruitMachinePlatform == FruitMachinePlatformType.MPU5
-                ? LoadedProject?.Mpu5NativeRoms.Reels.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps
-                    ?? System6ReelOptoSettings.DefaultSteps
-                : System6ReelOptos.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps
-                    ?? System6ReelOptoSettings.DefaultSteps);
+            reelId => SelectedFruitMachinePlatform switch
+            {
+                FruitMachinePlatformType.MPU5 => LoadedProject?.Mpu5NativeRoms.Reels.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? System6ReelOptoSettings.DefaultSteps,
+                FruitMachinePlatformType.Epoch => LoadedProject?.EpochNativeRoms.Reels.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? EpochReelSettings.DefaultSteps,
+                _ => System6ReelOptos.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? System6ReelOptoSettings.DefaultSteps
+            });
         _segmentRuntimeAdapter = new MachineSegmentRuntimeAdapter(
             () => OpenDocuments,
             DispatchToUiThread,
@@ -264,7 +268,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => System6AudioBufferLengthMilliseconds,
             errorLogger: message => AddOutputEntry(message, OutputLogStatus.Error),
             infoLogger: message => AddOutputEntry(message, OutputLogStatus.Info),
-            mpu5AmberPathProvider: () => Mpu5AmberLibraryPath);
+            mpu5AmberPathProvider: () => Mpu5AmberLibraryPath,
+            epochAmberPathProvider: () => EpochAmberLibraryPath);
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
@@ -428,6 +433,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public IReadOnlyList<string> NativeProjectSettingsTabs { get; } = ["ROMS", "Stake/Prize", "Reels", "Coins"];
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
     public IReadOnlyList<Mpu5CoinCommunicationStyle> Mpu5CoinCommunicationStyles { get; } = Enum.GetValues<Mpu5CoinCommunicationStyle>();
+    public IReadOnlyList<EpochCoinCommunicationStyle> EpochCoinCommunicationStyles { get; } = Enum.GetValues<EpochCoinCommunicationStyle>();
     public IReadOnlyList<Mpu5PicMode> Mpu5PicModes { get; } = Enum.GetValues<Mpu5PicMode>();
     public IReadOnlyList<Mpu5HopperType> Mpu5HopperTypes { get; } = Enum.GetValues<Mpu5HopperType>();
     public IReadOnlyList<Mpu5ReelJumperProfile> Mpu5ReelJumperProfiles { get; } = Enum.GetValues<Mpu5ReelJumperProfile>();
@@ -528,6 +534,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string FabricRuntimeLibraryPath { get => _fabricRuntimeLibraryPath; set { if (SetProperty(ref _fabricRuntimeLibraryPath, value)) SavePreferences(); } }
     public string ProductionAmberLibraryPath { get => _productionAmberLibraryPath; set { if (SetProperty(ref _productionAmberLibraryPath, value)) SavePreferences(); } }
     public string Mpu5AmberLibraryPath { get => _mpu5AmberLibraryPath; set { if (SetProperty(ref _mpu5AmberLibraryPath, value)) SavePreferences(); } }
+    public string EpochAmberLibraryPath { get => _epochAmberLibraryPath; set { if (SetProperty(ref _epochAmberLibraryPath, value)) SavePreferences(); } }
     public int System6AudioBufferLengthMilliseconds
     {
         get => _system6AudioBufferLengthMilliseconds;
@@ -588,6 +595,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<System6ReelOptoSettingsViewModel> System6ReelOptos { get => _system6ReelOptos; private set => SetProperty(ref _system6ReelOptos, value); }
     public ObservableCollection<System6CoinSettingsViewModel> System6Coins { get => _system6Coins; private set => SetProperty(ref _system6Coins, value); }
     public Mpu5ProjectSettingsViewModel? Mpu5ProjectSettings { get => _mpu5ProjectSettings; private set => SetProperty(ref _mpu5ProjectSettings, value); }
+    public EpochProjectSettingsViewModel? EpochProjectSettings { get => _epochProjectSettings; private set => SetProperty(ref _epochProjectSettings, value); }
 
     public bool IsEditorProgressVisible
     {
@@ -1913,6 +1921,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 FabricRuntimeLibraryPath = FabricRuntimeLibraryPath,
                 ProductionAmberLibraryPath = ProductionAmberLibraryPath,
                 Mpu5AmberLibraryPath = Mpu5AmberLibraryPath,
+                EpochAmberLibraryPath = EpochAmberLibraryPath,
                 AudioBufferLengthMilliseconds = System6AudioBufferLengthMilliseconds
             },
             Player = new OasisPlayerPreferences
@@ -2107,6 +2116,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 BuildSystem6NativeRomSettingsForLaunch(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
             FruitMachinePlatformType.MPU5 => EmulationLaunchRequest.ForMpu5(
                 LoadedProject?.Mpu5NativeRoms ?? new Mpu5NativeRomSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
+            FruitMachinePlatformType.Epoch => EmulationLaunchRequest.ForEpoch(
+                LoadedProject?.EpochNativeRoms ?? new EpochNativeRomSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
             _ => throw new NotSupportedException($"Platform '{SelectedFruitMachinePlatform}' is not supported by Fabric Amber emulation.")
         };
     }
@@ -2530,6 +2541,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RefreshSystem6NativeRomStatus();
         ApplyMpu5NativeRomSettingsToViewModel(project.Mpu5NativeRoms);
         RefreshMpu5NativeRomStatus();
+        EpochProjectSettings = new EpochProjectSettingsViewModel(project.EpochNativeRoms, SaveEpochProjectSettings);
         ProjectAssetPathResolver.ProjectDirectoryPath = project.ProjectDirectory;
         ProjectFilePath = project.ProjectFilePath;
         UpdateRecentProjects(project.ProjectFilePath);
@@ -2602,6 +2614,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var fruitMachinePlatform = ResolveFruitMachinePlatform(projectDocument.RootElement);
         var system6NativeRoms = ResolveSystem6NativeRomSettings(projectDocument.RootElement);
         var mpu5NativeRoms = ResolveMpu5NativeRomSettings(projectDocument.RootElement);
+        var epochNativeRoms = ResolveEpochNativeRomSettings(projectDocument.RootElement);
         var inputDefinitions = ResolveInputDefinitions(projectDocument.RootElement);
 
         return new EditorProject
@@ -2614,7 +2627,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             GeneratedDirectory = generatedDirectory,
             FruitMachinePlatform = fruitMachinePlatform,
             System6NativeRoms = system6NativeRoms,
-            Mpu5NativeRoms = mpu5NativeRoms
+            Mpu5NativeRoms = mpu5NativeRoms,
+            EpochNativeRoms = epochNativeRoms
         }.WithInputDefinitions(inputDefinitions);
     }
 
@@ -2795,7 +2809,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     {
                         wroteProjectSettings = true;
                         writer.WritePropertyName("project_settings");
-                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.System6NativeRoms, LoadedProject.Mpu5NativeRoms);
+                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.System6NativeRoms, LoadedProject.Mpu5NativeRoms, LoadedProject.EpochNativeRoms);
                         continue;
                     }
 
@@ -2817,6 +2831,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     writer.WriteString("FruitMachine_Platform", LoadedProject.FruitMachinePlatform.ToString());
                     WriteSystem6NativeRomSettings(writer, LoadedProject.System6NativeRoms);
                     WriteMpu5NativeRomSettings(writer, LoadedProject.Mpu5NativeRoms);
+                    WriteEpochNativeRomSettings(writer, LoadedProject.EpochNativeRoms);
                     writer.WriteEndObject();
                 }
 
@@ -2837,12 +2852,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, System6NativeRomSettings system6NativeRoms, Mpu5NativeRomSettings mpu5NativeRoms)
+    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, System6NativeRomSettings system6NativeRoms, Mpu5NativeRomSettings mpu5NativeRoms, EpochNativeRomSettings epochNativeRoms)
     {
         writer.WriteStartObject();
         var wrotePlatform = false;
         var wroteSystem6Settings = false;
         var wroteMpu5Settings = false;
+        var wroteEpochSettings = false;
         foreach (var property in existingProjectSettings.EnumerateObject())
         {
             if (property.NameEquals("FruitMachine_Platform"))
@@ -2860,6 +2876,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 WriteMpu5NativeRomSettings(writer, mpu5NativeRoms);
                 wroteMpu5Settings = true;
             }
+            else if (property.NameEquals("EpochNativeRoms"))
+            {
+                WriteEpochNativeRomSettings(writer, epochNativeRoms);
+                wroteEpochSettings = true;
+            }
             else if (!property.NameEquals("MameRomName") && !property.NameEquals("AutomaticallyDownloadMissingRoms"))
             {
                 property.WriteTo(writer);
@@ -2868,7 +2889,29 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (!wrotePlatform) writer.WriteString("FruitMachine_Platform", platform.ToString());
         if (!wroteSystem6Settings) WriteSystem6NativeRomSettings(writer, system6NativeRoms);
         if (!wroteMpu5Settings) WriteMpu5NativeRomSettings(writer, mpu5NativeRoms);
+        if (!wroteEpochSettings) WriteEpochNativeRomSettings(writer, epochNativeRoms);
         writer.WriteEndObject();
+    }
+
+    private void SaveEpochProjectSettings(EpochNativeRomSettings settings)
+    {
+        if (LoadedProject is null) return;
+        LoadedProject.EpochNativeRoms = settings;
+        SaveLoadedProjectMetadata();
+    }
+
+    private static void WriteEpochNativeRomSettings(Utf8JsonWriter writer, EpochNativeRomSettings settings)
+    {
+        writer.WritePropertyName("EpochNativeRoms");
+        JsonSerializer.Serialize(writer, settings);
+    }
+
+    private static EpochNativeRomSettings ResolveEpochNativeRomSettings(JsonElement root)
+    {
+        if (!root.TryGetProperty("project_settings", out var projectSettings)
+            || !projectSettings.TryGetProperty("EpochNativeRoms", out var settings))
+            throw new InvalidOperationException("Epoch project settings are missing from schema version 4.");
+        return settings.Deserialize<EpochNativeRomSettings>() ?? throw new InvalidOperationException("Epoch project settings are invalid.");
     }
 
     private static void WriteMpu5NativeRomSettings(Utf8JsonWriter writer, Mpu5NativeRomSettings settings)

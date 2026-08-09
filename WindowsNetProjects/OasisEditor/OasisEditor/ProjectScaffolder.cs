@@ -59,7 +59,10 @@ public sealed class ProjectScaffolder
             },
             project_settings = new
             {
-                FruitMachine_Platform = FruitMachinePlatformType.None.ToString()
+                FruitMachine_Platform = FruitMachinePlatformType.None.ToString(),
+                System6NativeRoms = new System6NativeRomSettings(),
+                Mpu5NativeRoms = new Mpu5NativeRomSettings(),
+                EpochNativeRoms = new EpochNativeRomSettings()
             },
             input_definitions = Array.Empty<object>()
         };
