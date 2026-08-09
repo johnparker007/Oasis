@@ -2,7 +2,7 @@ namespace OasisEditor;
 
 public sealed class EditorProject
 {
-    public const int CurrentSchemaVersion = 5;
+    public const int CurrentSchemaVersion = 6;
     public required string Name { get; init; }
     public required string ProjectFilePath { get; init; }
     public required string ProjectDirectory { get; init; }
@@ -39,7 +39,6 @@ public sealed class Mpu3ProgramRomSettings
 {
     public int Slot { get; set; }
     public string Path { get; set; } = string.Empty;
-    public ulong LoadAddress { get; set; }
     public static Mpu3ProgramRomSettings CreateDefault(int slot) => new() { Slot = slot };
 }
 

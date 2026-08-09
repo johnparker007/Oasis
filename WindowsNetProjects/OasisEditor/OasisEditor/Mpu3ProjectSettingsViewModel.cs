@@ -35,12 +35,10 @@ public sealed class Mpu3ProjectSettingsViewModel
 public sealed class Mpu3ProgramRomSettingsViewModel(Mpu3ProgramRomSettings model, Action changed) : NotifyAndSaveViewModel(changed)
 {
     private string _path = model.Path;
-    private ulong _loadAddress = model.LoadAddress;
 
     public int Slot { get; } = model.Slot;
     public string Path { get => _path; set => SetAndSave(ref _path, value ?? string.Empty); }
-    public ulong LoadAddress { get => _loadAddress; set => SetAndSave(ref _loadAddress, value); }
-    public Mpu3ProgramRomSettings ToModel() => new() { Slot = Slot, Path = Path, LoadAddress = LoadAddress };
+    public Mpu3ProgramRomSettings ToModel() => new() { Slot = Slot, Path = Path };
 }
 
 public sealed class Mpu3ReelSettingsViewModel(Mpu3ReelSettings model, Action changed) : NotifyAndSaveViewModel(changed)

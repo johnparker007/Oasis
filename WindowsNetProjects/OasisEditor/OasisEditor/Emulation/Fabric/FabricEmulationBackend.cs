@@ -336,8 +336,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         foreach (var rom in settings.ProgramRoms.OrderBy(x => x.Slot))
         {
             if (rom.Slot is < 0 or > 3) throw new InvalidOperationException("MPU3 program ROM slot must be 0..3.");
-            if (rom.LoadAddress > int.MaxValue) throw new InvalidOperationException("MPU3 program ROM load address must not exceed INT32_MAX.");
-            if (!string.IsNullOrWhiteSpace(rom.Path)) resources.Add(new(FabricRomRole.Program, (uint)rom.Slot, rom.Path, rom.LoadAddress));
+            if (!string.IsNullOrWhiteSpace(rom.Path)) resources.Add(new(FabricRomRole.Program, (uint)rom.Slot, rom.Path));
         }
         if (resources.Count == 0) throw new InvalidOperationException("Current project settings are missing required MPU3 program ROMs.");
         return resources;

@@ -2937,7 +2937,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (!root.TryGetProperty("project_settings", out var projectSettings)
             || !projectSettings.TryGetProperty("EpochNativeRoms", out var settings))
-            throw new InvalidOperationException("Epoch project settings are missing from schema version 5.");
+            throw new InvalidOperationException("Epoch project settings are missing from schema version 6.");
         return settings.Deserialize<EpochNativeRomSettings>() ?? throw new InvalidOperationException("Epoch project settings are invalid.");
     }
 
@@ -2951,7 +2951,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (!root.TryGetProperty("project_settings", out var projectSettings)
             || !projectSettings.TryGetProperty("Mpu3Settings", out var settings))
-            throw new InvalidOperationException("MPU3 project settings are missing from schema version 5.");
+            throw new InvalidOperationException("MPU3 project settings are missing from schema version 6.");
         var result = settings.Deserialize<Mpu3ProjectSettings>() ?? throw new InvalidOperationException("MPU3 project settings are invalid.");
         FabricAmberMpu3Configuration.Validate(result);
         return result;

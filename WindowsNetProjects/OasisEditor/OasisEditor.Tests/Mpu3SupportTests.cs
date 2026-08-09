@@ -44,34 +44,41 @@ public sealed class Mpu3SupportTests
     }
 
     [Fact]
-    public void DedicatedSettingsRoundTripPreservesReelsDipsAndAddresses()
+    public void DedicatedSettingsRoundTripPreservesThreeProgramRomPathsReelsAndDips()
     {
         var settings = new Mpu3ProjectSettings();
         settings.Reels[3].Steps = 128;
         settings.Reels[3].OptoInvert = true;
         settings.Dips[7] = true;
-        settings.ProgramRoms[0].Path = "program.bin";
-        settings.ProgramRoms[0].LoadAddress = 0x1234;
-        var result = JsonSerializer.Deserialize<Mpu3ProjectSettings>(JsonSerializer.Serialize(settings))!;
+        settings.ProgramRoms[0].Path = "rr1.bin";
+        settings.ProgramRoms[1].Path = "rr2.bin";
+        settings.ProgramRoms[2].Path = "rr3.bin";
+        var json = JsonSerializer.Serialize(settings);
+        var result = JsonSerializer.Deserialize<Mpu3ProjectSettings>(json)!;
         Assert.Equal(4, result.Reels.Count);
         Assert.Equal(16, result.Dips.Count);
         Assert.Equal(128, result.Reels[3].Steps);
         Assert.True(result.Reels[3].OptoInvert);
         Assert.True(result.Dips[7]);
-        Assert.Equal(0x1234ul, result.ProgramRoms[0].LoadAddress);
+        Assert.Equal(["rr1.bin", "rr2.bin", "rr3.bin", ""], result.ProgramRoms.Select(rom => rom.Path));
+        Assert.DoesNotContain("LoadAddress", json, StringComparison.Ordinal);
+        Assert.Null(typeof(Mpu3ProgramRomSettings).GetProperty("LoadAddress"));
     }
 
     [Fact]
-    public void ProgramResourcesUseDirectAddressesAndRejectNativeOverflow()
+    public void ProgramResourcesPreserveSlotsAndAllowBlankTrailingSlot()
     {
         var settings = new Mpu3ProjectSettings();
-        settings.ProgramRoms[0].Path = "program.bin";
-        settings.ProgramRoms[0].LoadAddress = 0x4000;
-        var resource = Assert.Single(FabricEmulationBackend.BuildRomResources(settings));
-        Assert.Equal(FabricRomRole.Program, resource.Role);
-        Assert.Equal(0x4000ul, resource.LoadAddress);
-        settings.ProgramRoms[0].LoadAddress = (ulong)int.MaxValue + 1;
-        Assert.Throws<InvalidOperationException>(() => FabricEmulationBackend.BuildRomResources(settings));
+        settings.ProgramRoms[0].Path = "rr1.bin";
+        settings.ProgramRoms[1].Path = "rr2.bin";
+        settings.ProgramRoms[2].Path = "rr3.bin";
+        var resources = FabricEmulationBackend.BuildRomResources(settings);
+        Assert.Equal(3, resources.Count);
+        Assert.Equal([0u, 1u, 2u], resources.Select(resource => resource.Slot));
+        Assert.All(resources, resource => Assert.Equal(FabricRomRole.Program, resource.Role));
+        Assert.Equal(["rr1.bin", "rr2.bin", "rr3.bin"], resources.Select(resource => resource.Path));
+        settings.ProgramRoms[3].Path = "rr4.bin";
+        Assert.Equal(3u, FabricEmulationBackend.BuildRomResources(settings)[3].Slot);
     }
 
     [Fact]

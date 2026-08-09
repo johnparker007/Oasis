@@ -15,13 +15,11 @@ public sealed class Mpu3ProjectSettingsViewModelTests
         for (var slot = 0; slot < 4; slot++)
         {
             viewModel.ProgramRoms[slot].Path = $"rom-{slot}.bin";
-            viewModel.ProgramRoms[slot].LoadAddress = (ulong)(0x1000 + slot);
             Assert.Equal(slot, model.ProgramRoms[slot].Slot);
             Assert.Equal($"rom-{slot}.bin", model.ProgramRoms[slot].Path);
-            Assert.Equal((ulong)(0x1000 + slot), model.ProgramRoms[slot].LoadAddress);
         }
 
-        Assert.Equal(8, saves);
+        Assert.Equal(4, saves);
     }
 
     [Fact]
@@ -67,14 +65,13 @@ public sealed class Mpu3ProjectSettingsViewModelTests
         var model = new Mpu3ProjectSettings();
         var viewModel = new Mpu3ProjectSettingsViewModel(model, _ => { });
         viewModel.ProgramRoms[3].Path = "fourth.rom";
-        viewModel.ProgramRoms[3].LoadAddress = 0x7654;
         viewModel.Dips[15].IsEnabled = true;
 
         var restored = JsonSerializer.Deserialize<Mpu3ProjectSettings>(JsonSerializer.Serialize(model))!;
         Assert.Equal("fourth.rom", restored.ProgramRoms[3].Path);
-        Assert.Equal(0x7654ul, restored.ProgramRoms[3].LoadAddress);
         Assert.True(restored.Dips[15]);
-        Assert.Equal(5, EditorProject.CurrentSchemaVersion);
+        Assert.Equal(6, EditorProject.CurrentSchemaVersion);
+        Assert.Null(typeof(Mpu3ProgramRomSettingsViewModel).GetProperty("LoadAddress"));
     }
 
     [Fact]
