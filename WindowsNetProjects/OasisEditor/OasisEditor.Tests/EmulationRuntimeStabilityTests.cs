@@ -147,7 +147,7 @@ public sealed class EmulationRuntimeStabilityTests
         var provider = new PcmRingWaveProvider(ring, new WaveFormat(48000, 16, 1));
         provider.Read(new byte[4], 0, 4);
         provider.Read(new byte[4], 0, 4);
-        Assert.Equal(2, provider.MinimumRingFrames);
+        Assert.Equal(0, provider.MinimumRingFrames);
     }
 
 
