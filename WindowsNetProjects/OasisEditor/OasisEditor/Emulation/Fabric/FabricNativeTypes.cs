@@ -37,8 +37,16 @@ internal unsafe struct AmberCoinsNative
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricAmberMpu5OptionsNative { internal uint Size,Version,ApplyMask,DipSwitchBits,Stake,Prize,Percentage,CharacteriserAddress,PicMode,SecFitted,HopperType,ReelJumperProfile0,ReelJumperProfile1; internal fixed uint Reserved[2]; }
 [StructLayout(LayoutKind.Sequential)] internal struct FabricAmberMpu5ConfigurationNative { internal uint Magic,Size,Version,Flags; internal FabricAmberMpu5ReelConfigurationNative Reels; internal FabricAmberMpu5CoinConfigurationNative Coins; internal FabricAmberMpu5OptionsNative Options; }
 [StructLayout(LayoutKind.Sequential)] internal struct FabricAmberEpochReelConfigNative { internal uint ReelIndex,Steps,OptoStart,OptoEnd,OptoInvert; }
-[StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricAmberEpochReelConfigurationNative { internal uint Size,Version,Count,ApplyMask,ReelExt,ReelExtApply; internal fixed byte Reels[8*20]; }
 [StructLayout(LayoutKind.Sequential)] internal struct FabricAmberEpochCoinChannelConfigNative { internal uint ChannelIndex,Enabled,Value,LockoutValue,LockoutInvert; }
-[StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricAmberEpochCoinConfigurationNative { internal uint Size,Version,Count,ApplyMask,CommunicationStyle,CommunicationInvert,PulseCycles,EdcEnabled; internal fixed byte Channels[6*20]; }
-[StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricAmberEpochOptionsNative { internal uint Size,Version,ApplyMask,DipSwitchBits,Stake,Prize,Percentage; internal fixed uint Reserved[4]; }
-[StructLayout(LayoutKind.Sequential)] internal struct FabricAmberEpochConfigurationNative { internal uint Magic,Size,Version,Flags,FlashRomMode; internal FabricAmberEpochReelConfigurationNative Reels; internal FabricAmberEpochCoinConfigurationNative Coins; internal FabricAmberEpochOptionsNative Options; }
+[StructLayout(LayoutKind.Sequential)]
+internal unsafe struct FabricAmberEpochConfigurationNative
+{
+    internal uint Magic, Size, Version, Flags;
+    internal uint FlashRomMode, ReelCount, ReelApplyMask, ReelExt;
+    internal fixed byte Reels[8 * 20];
+    internal uint CommunicationStyle, CommunicationInvert, PulseCycles, EdcEnabled;
+    internal uint CoinChannelCount, CoinApplyMask;
+    internal fixed byte Coins[6 * 20];
+    internal uint OptionsApplyMask, DipSwitchBits, Stake, Prize, Percentage;
+    internal fixed uint Reserved[4];
+}
