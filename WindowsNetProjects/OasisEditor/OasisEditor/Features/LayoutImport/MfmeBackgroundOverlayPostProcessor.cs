@@ -122,6 +122,118 @@ internal static class MfmeBackgroundOverlayPostProcessor
         }
     }
 
+    public static bool TryBakeLampOffArtwork(
+        string backgroundPath,
+        PanelElementModel background,
+        IEnumerable<PanelElementModel> elements,
+        string projectAssetsRoot,
+        ICollection<string> copied,
+        out string? updatedBackgroundPath,
+        out string? error)
+    {
+        updatedBackgroundPath = null;
+        error = null;
+
+        try
+        {
+            // MFME's Main image is both the graphical lamp's unlit/base artwork and
+            // the image Oasis illuminates at runtime. Masks only select illuminated regions.
+            // MapLampLike can emit several Oasis lamps sharing that Main image, so choose
+            // exactly one representative for each original MFME component.
+            var lamps = elements
+                .Where(element => element.Kind == PanelElementKind.Lamp && !string.IsNullOrWhiteSpace(element.AssetPath))
+                .Select((element, sequence) => (element, sequence))
+                .GroupBy(item => item.element.SourceComponentIndex.HasValue
+                    ? $"component:{item.element.SourceComponentIndex.Value}"
+                    : !string.IsNullOrWhiteSpace(item.element.SharedSourceSetId)
+                        ? $"set:{item.element.SharedSourceSetId}"
+                        : $"element:{item.sequence}", StringComparer.Ordinal)
+                .Select(group => group
+                    .OrderBy(item => item.element.SourceElementIndex ?? int.MaxValue)
+                    .ThenBy(item => item.sequence)
+                    .First())
+                .OrderBy(item => item.element.SourceComponentIndex ?? int.MaxValue)
+                .ThenBy(item => item.sequence)
+                .Select(item => item.element)
+                .ToArray();
+
+            if (lamps.Length == 0)
+            {
+                return true;
+            }
+
+            var backgroundImage = LoadBgra32(backgroundPath);
+            foreach (var lamp in lamps)
+            {
+                if (TryResolveProjectAssetPath(lamp.AssetPath, projectAssetsRoot) is not { } lampPath || !File.Exists(lampPath))
+                {
+                    continue;
+                }
+
+                CompositeLampIntoBackground(backgroundImage, background, lamp, LoadBgra32(lampPath));
+            }
+
+            var outputPath = ResolveOutputPath(backgroundPath);
+            SavePng(backgroundImage, outputPath);
+            if (!string.Equals(outputPath, backgroundPath, StringComparison.OrdinalIgnoreCase))
+            {
+                updatedBackgroundPath = ToProjectRelativeAssetPath(outputPath, projectAssetsRoot);
+                copied.Add(updatedBackgroundPath);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
+    private static void CompositeLampIntoBackground(PixelBuffer destination, PanelElementModel background, PanelElementModel lamp, PixelBuffer source)
+    {
+        var rect = GetElementDestinationRect(destination, background, lamp);
+        for (var y = 0; y < rect.Height; y++)
+        {
+            var destinationY = rect.Y + y;
+            if (destinationY < 0 || destinationY >= destination.Height) continue;
+            var sourceY = ScaleCoordinate(y, rect.Height, source.Height);
+
+            for (var x = 0; x < rect.Width; x++)
+            {
+                var destinationX = rect.X + x;
+                if (destinationX < 0 || destinationX >= destination.Width) continue;
+                var sourceX = ScaleCoordinate(x, rect.Width, source.Width);
+                SourceOver(destination, destinationX, destinationY, source, sourceX, sourceY);
+            }
+        }
+    }
+
+    private static void SourceOver(PixelBuffer destination, int destinationX, int destinationY, PixelBuffer source, int sourceX, int sourceY)
+    {
+        var destinationOffset = (destinationY * destination.Stride) + (destinationX * 4);
+        var sourceOffset = (sourceY * source.Stride) + (sourceX * 4);
+        var sourceAlpha = source.Pixels[sourceOffset + 3];
+        if (sourceAlpha == 0) return;
+        if (sourceAlpha == 255)
+        {
+            Buffer.BlockCopy(source.Pixels, sourceOffset, destination.Pixels, destinationOffset, 4);
+            return;
+        }
+
+        var destinationAlpha = destination.Pixels[destinationOffset + 3];
+        var inverseSourceAlpha = 255 - sourceAlpha;
+        var outputAlphaNumerator = (sourceAlpha * 255) + (destinationAlpha * inverseSourceAlpha);
+        var outputAlpha = (outputAlphaNumerator + 127) / 255;
+        for (var channel = 0; channel < 3; channel++)
+        {
+            var numerator = (source.Pixels[sourceOffset + channel] * sourceAlpha * 255)
+                + (destination.Pixels[destinationOffset + channel] * destinationAlpha * inverseSourceAlpha);
+            destination.Pixels[destinationOffset + channel] = (byte)((numerator + (outputAlphaNumerator / 2)) / outputAlphaNumerator);
+        }
+        destination.Pixels[destinationOffset + 3] = (byte)outputAlpha;
+    }
+
     private static bool IsBackgroundCutoutDisplay(PanelElementModel element)
     {
         return element.Kind is PanelElementKind.Reel or PanelElementKind.Alpha or PanelElementKind.SevenSegment or PanelElementKind.VfdDotMatrix;
