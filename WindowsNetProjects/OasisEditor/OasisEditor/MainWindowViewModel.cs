@@ -72,6 +72,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private ObservableCollection<System6CoinSettingsViewModel> _system6Coins = [];
     private Mpu5ProjectSettingsViewModel? _mpu5ProjectSettings;
     private EpochProjectSettingsViewModel? _epochProjectSettings;
+    private Mpu3ProjectSettingsViewModel? _mpu3ProjectSettings;
     private bool _isFmlImportInProgress;
     private bool _isEditorProgressVisible;
     private bool _isEditorProgressIndeterminate;
@@ -600,6 +601,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<System6CoinSettingsViewModel> System6Coins { get => _system6Coins; private set => SetProperty(ref _system6Coins, value); }
     public Mpu5ProjectSettingsViewModel? Mpu5ProjectSettings { get => _mpu5ProjectSettings; private set => SetProperty(ref _mpu5ProjectSettings, value); }
     public EpochProjectSettingsViewModel? EpochProjectSettings { get => _epochProjectSettings; private set => SetProperty(ref _epochProjectSettings, value); }
+    public Mpu3ProjectSettingsViewModel? Mpu3ProjectSettings { get => _mpu3ProjectSettings; private set => SetProperty(ref _mpu3ProjectSettings, value); }
 
     public bool IsEditorProgressVisible
     {
@@ -662,6 +664,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _loadedProject, value))
             {
+                Mpu3ProjectSettings = value is null ? null : new Mpu3ProjectSettingsViewModel(value.Mpu3Settings, SaveMpu3ProjectSettings);
                 OnPropertyChanged(nameof(HasLoadedProject));
                 OnPropertyChanged(nameof(InputDefinitions));
                 OnPropertyChanged(nameof(WindowTitle));
@@ -2914,6 +2917,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (LoadedProject is null) return;
         LoadedProject.EpochNativeRoms = settings;
+        SaveLoadedProjectMetadata();
+    }
+
+    private void SaveMpu3ProjectSettings(Mpu3ProjectSettings settings)
+    {
+        if (LoadedProject is null) return;
+        LoadedProject.Mpu3Settings = settings;
         SaveLoadedProjectMetadata();
     }
 
