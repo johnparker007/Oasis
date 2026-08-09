@@ -67,6 +67,8 @@ public sealed class ZeroBasedReelRuntimeTests
     [InlineData(FruitMachinePlatformType.Impact, true, 10d)]
     [InlineData(FruitMachinePlatformType.MPU5, false, 86d)]
     [InlineData(FruitMachinePlatformType.MPU5, true, 10d)]
+    [InlineData(FruitMachinePlatformType.Epoch, false, 10d)]
+    [InlineData(FruitMachinePlatformType.Epoch, true, 86d)]
     public void FabricAmberNormalization_AppliesOnceBeforeComponentReversal(FruitMachinePlatformType platform, bool isReversed, double expected)
     {
         var document = new DocumentTabViewModel(EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel"));

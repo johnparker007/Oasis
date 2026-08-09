@@ -64,18 +64,13 @@ public sealed class FaceRuntimeStateResolver : IFaceRuntimeStateResolver
         const double positionsPerRevolution = 96d;
         var safeStops = Math.Max(1, stops);
         var wrapped = ((rawReelPosition % positionsPerRevolution) + positionsPerRevolution) % positionsPerRevolution;
-        var shouldReverse = RequiresPlatformReversal(platform) ^ reelReversed;
+        var shouldReverse = PlatformReelDirectionResolver.RequiresReversal(platform) ^ reelReversed;
         var directionAdjusted = shouldReverse && wrapped != 0d
             ? positionsPerRevolution - wrapped
             : wrapped;
         var platformOffset = MachineReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(platform, safeStops);
         var offsetAdjusted = directionAdjusted + ((platformOffset + reelBandOffset) * positionsPerRevolution);
         return ((offsetAdjusted % positionsPerRevolution) + positionsPerRevolution) % positionsPerRevolution;
-    }
-
-    private static bool RequiresPlatformReversal(FruitMachinePlatformType platform)
-    {
-        return platform == FruitMachinePlatformType.MPU4;
     }
 
     public bool TryGetSevenSegmentDisplayReference(FaceSevenSegmentDisplayElement display, out MachineObjectReference reference)

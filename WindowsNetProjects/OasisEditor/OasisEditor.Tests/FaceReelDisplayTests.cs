@@ -136,4 +136,27 @@ public sealed class FaceReelDisplayTests
         Assert.Equal(79.2d, position, 2);
     }
 
+    [Theory]
+    [InlineData(false, 10d)]
+    [InlineData(true, 86d)]
+    public void RuntimeResolver_AppliesEpochPlatformReversalLikePanelReels(bool isReversed, double expected)
+    {
+        var runtimeState = new MachineRuntimeState
+        {
+            FruitMachinePlatform = FruitMachinePlatformType.Epoch
+        };
+        runtimeState.SetReelPositionIfChanged(MachineObjectReference.Reel(2), 86d);
+        var reel = new FaceReelDisplayElement
+        {
+            ObjectId = "face-reel-2",
+            LinkedMachineObjectReference = MachineObjectReference.Reel(2),
+            Stops = 24,
+            IsReversed = isReversed
+        };
+
+        var position = FaceRuntimeStateResolver.Instance.GetReelPosition(reel, runtimeState);
+
+        Assert.Equal(expected, position);
+    }
+
 }
