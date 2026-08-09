@@ -136,12 +136,10 @@ internal static class MfmeBackgroundOverlayPostProcessor
 
         try
         {
-            // MFME's Main image is both the graphical lamp's unlit/base artwork and
-            // the image Oasis illuminates at runtime. Masks only select illuminated regions.
-            // MapLampLike can emit several Oasis lamps sharing that Main image, so choose
-            // exactly one representative for each original MFME component.
+            // Button and PrismLamp components expose an explicit Off Image. MapLampLike
+            // can emit several Oasis lamps for that component, so bake one representative.
             var lamps = elements
-                .Where(element => element.Kind == PanelElementKind.Lamp && !string.IsNullOrWhiteSpace(element.AssetPath))
+                .Where(element => element.Kind == PanelElementKind.Lamp && !string.IsNullOrWhiteSpace(element.SourceOffImageAssetPath))
                 .Select((element, sequence) => (element, sequence))
                 .GroupBy(item => item.element.SourceComponentIndex.HasValue
                     ? $"component:{item.element.SourceComponentIndex.Value}"
@@ -165,7 +163,7 @@ internal static class MfmeBackgroundOverlayPostProcessor
             var backgroundImage = LoadBgra32(backgroundPath);
             foreach (var lamp in lamps)
             {
-                if (TryResolveProjectAssetPath(lamp.AssetPath, projectAssetsRoot) is not { } lampPath || !File.Exists(lampPath))
+                if (TryResolveProjectAssetPath(lamp.SourceOffImageAssetPath, projectAssetsRoot) is not { } lampPath || !File.Exists(lampPath))
                 {
                     continue;
                 }

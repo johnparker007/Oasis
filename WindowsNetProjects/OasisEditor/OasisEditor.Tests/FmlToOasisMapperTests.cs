@@ -119,6 +119,45 @@ public sealed class FmlToOasisMapperTests
     }
 
     [Fact]
+    public void Map_WithButtonImages_SeparatesDynamicLampMaskAndExplicitOffImage()
+    {
+        var button = new Button
+        {
+            Width = 20,
+            Height = 10,
+            SublampTable = [new LampSublampTableEntry(1, 9)]
+        };
+        var images = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new FmlDecodedImageKey(0, "Lamp 1 image")] = "lamps/on.bmp",
+            [new FmlDecodedImageKey(0, "Off Image")] = "lamps/off.bmp",
+            [new FmlDecodedImageKey(0, "Mask 1 Image")] = "lamps/mask.bmp"
+        };
+
+        var result = new FmlToOasisMapper().Map(new Layout([button]), images);
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal("lamps/on.bmp", element.AssetPath);
+        Assert.Equal("lamps/mask.bmp", element.SecondaryAssetPath);
+        Assert.Equal("lamps/off.bmp", element.SourceOffImageAssetPath);
+    }
+
+    [Fact]
+    public void Map_WithOrdinaryLampMainImage_DoesNotInventOffImage()
+    {
+        var lamp = new Lamp { Width = 20, Height = 10, SublampTable = [new LampSublampTableEntry(1, 9)] };
+        var images = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new FmlDecodedImageKey(0, "Sublamp 1 Main image")] = "lamps/on.bmp"
+        };
+
+        var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([lamp]), images).Elements);
+
+        Assert.Equal("lamps/on.bmp", element.AssetPath);
+        Assert.Null(element.SourceOffImageAssetPath);
+    }
+
+    [Fact]
     public void Map_WithSublampSpecificMainImage_PrefersItOverInheritedFirstMainImage()
     {
         var lamp = new Lamp

@@ -162,7 +162,7 @@ public sealed class LayoutImportAssetCopierTests
     }
 
     [Fact]
-    public void CopyAssetsFromStaging_BakesGraphicalLampMainImageAtComponentCoordinatesWithSourceOverAlpha()
+    public void CopyAssetsFromStaging_BakesExplicitOffImageNotDynamicImageWithSourceOverAlpha()
     {
         var tempRoot = Path.Combine(Path.GetTempPath(), "OasisEditorTests", Guid.NewGuid().ToString("N"));
         try
@@ -171,18 +171,21 @@ public sealed class LayoutImportAssetCopierTests
             var assetsRoot = Path.Combine(tempRoot, "project", "Assets");
             Directory.CreateDirectory(Path.Combine(stagingRoot, "background"));
             Directory.CreateDirectory(Path.Combine(stagingRoot, "lamps"));
-            var backgroundColor = Color.FromArgb(255, 20, 40, 60);
+            var backgroundColor = Colors.Blue;
             WriteBgra32Bmp(Path.Combine(stagingRoot, "background", "bg.bmp"), 30, 40,
                 Enumerable.Repeat(backgroundColor, 30 * 40).ToArray());
-            var lampPixels = Enumerable.Repeat(Color.FromArgb(255, 200, 100, 50), 12).ToArray();
+            var lampPixels = Enumerable.Repeat(Colors.Green, 12).ToArray();
             lampPixels[0] = Color.FromArgb(0, 240, 1, 2);
             lampPixels[1] = Color.FromArgb(128, 220, 120, 20);
-            WriteBgra32Bmp(Path.Combine(stagingRoot, "lamps", "main.bmp"), 4, 3, lampPixels);
+            WriteBgra32Bmp(Path.Combine(stagingRoot, "lamps", "on.bmp"), 4, 3,
+                Enumerable.Repeat(Colors.Red, 12).ToArray());
+            WriteBgra32Bmp(Path.Combine(stagingRoot, "lamps", "off.bmp"), 4, 3, lampPixels);
             var background = new PanelElementModel { ObjectId = "bg", Kind = PanelElementKind.Background, Width = 30, Height = 40, AssetPath = "background/bg.bmp" };
             var lamp = new PanelElementModel
             {
                 ObjectId = "lamp", Kind = PanelElementKind.Lamp, X = 10, Y = 20, Width = 4, Height = 3,
-                AssetPath = "lamps/main.bmp", DisplayNumber = 7, SourceComponentIndex = 1, SourceElementIndex = 0
+                AssetPath = "lamps/on.bmp", SourceOffImageAssetPath = "lamps/off.bmp",
+                DisplayNumber = 7, SourceComponentIndex = 1, SourceElementIndex = 0
             };
 
             var result = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "Lamp Base", assetsRoot, true, [background, lamp]);
@@ -192,10 +195,12 @@ public sealed class LayoutImportAssetCopierTests
             var importedLamp = Assert.Single(result.Elements.Where(element => element.Kind == PanelElementKind.Lamp));
             var output = ReadPixels(ResolveAsset(assetsRoot, importedBackground.AssetPath!), out var width, out _);
             Assert.Equal(backgroundColor, output[(20 * width) + 10]);
-            Assert.Equal(Color.FromArgb(255, 120, 80, 40), output[(20 * width) + 11]);
+            Assert.Equal(Color.FromArgb(255, 110, 60, 137), output[(20 * width) + 11]);
             Assert.Equal(lampPixels[2], output[(20 * width) + 12]);
             Assert.Equal((10d, 20d, 4d, 3d, 7), (importedLamp.X, importedLamp.Y, importedLamp.Width, importedLamp.Height, importedLamp.DisplayNumber!.Value));
-            Assert.EndsWith("/Lamps/main.bmp", importedLamp.AssetPath, StringComparison.Ordinal);
+            Assert.NotEqual(Colors.Red, output[(20 * width) + 12]);
+            Assert.EndsWith("/Lamps/on.bmp", importedLamp.AssetPath, StringComparison.Ordinal);
+            Assert.EndsWith("/Lamps/off.bmp", importedLamp.SourceOffImageAssetPath, StringComparison.Ordinal);
         }
         finally
         {
@@ -215,8 +220,10 @@ public sealed class LayoutImportAssetCopierTests
             Directory.CreateDirectory(Path.Combine(stagingRoot, "lamps"));
             var source = CreateCoordinatePixels(8, 6);
             WriteBgra32Bmp(Path.Combine(stagingRoot, "background", "bg.bmp"), 8, 6, source);
-            WriteBgra32Bmp(Path.Combine(stagingRoot, "lamps", "main.bmp"), 3, 2,
+            WriteBgra32Bmp(Path.Combine(stagingRoot, "lamps", "off.bmp"), 3, 2,
                 Enumerable.Repeat(Colors.Magenta, 6).ToArray());
+            WriteBgra32Bmp(Path.Combine(stagingRoot, "lamps", "on.bmp"), 3, 2,
+                Enumerable.Repeat(Colors.Red, 6).ToArray());
             var background = new PanelElementModel
             {
                 ObjectId = "bg", Kind = PanelElementKind.Background, X = 100, Y = 200, Width = 8, Height = 6,
@@ -225,7 +232,7 @@ public sealed class LayoutImportAssetCopierTests
             var lamp = new PanelElementModel
             {
                 ObjectId = "lamp", Kind = PanelElementKind.Lamp, X = 106, Y = 204, Width = 3, Height = 2,
-                AssetPath = "lamps/main.bmp", SourceComponentIndex = 1
+                AssetPath = "lamps/on.bmp", SourceOffImageAssetPath = "lamps/off.bmp", SourceComponentIndex = 1
             };
 
             var result = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "Relative Lamp", assetsRoot, true, [background, lamp]);
@@ -258,9 +265,9 @@ public sealed class LayoutImportAssetCopierTests
             WriteBgra32Bmp(Path.Combine(stagingRoot, "lamps", "shared.bmp"), 1, 1, [Color.FromArgb(128, 200, 0, 0)]);
             WriteBgra32Bmp(Path.Combine(stagingRoot, "lamps", "later.bmp"), 1, 1, [Color.FromArgb(255, 0, 100, 0)]);
             var background = new PanelElementModel { ObjectId = "bg", Kind = PanelElementKind.Background, Width = 2, Height = 1, AssetPath = "background/bg.bmp" };
-            var sharedA = new PanelElementModel { ObjectId = "a", Kind = PanelElementKind.Lamp, Width = 1, Height = 1, AssetPath = "lamps/shared.bmp", SourceComponentIndex = 3, SourceElementIndex = 0, SharedSourceSetId = "same", SharedSourceSetCount = 2 };
+            var sharedA = new PanelElementModel { ObjectId = "a", Kind = PanelElementKind.Lamp, Width = 1, Height = 1, AssetPath = "lamps/later.bmp", SourceOffImageAssetPath = "lamps/shared.bmp", SourceComponentIndex = 3, SourceElementIndex = 0, SharedSourceSetId = "same", SharedSourceSetCount = 2 };
             var sharedB = PanelElementModelCloner.Clone(sharedA, objectId: "b");
-            var later = new PanelElementModel { ObjectId = "later", Kind = PanelElementKind.Lamp, Width = 1, Height = 1, AssetPath = "lamps/later.bmp", SourceComponentIndex = 4 };
+            var later = new PanelElementModel { ObjectId = "later", Kind = PanelElementKind.Lamp, Width = 1, Height = 1, AssetPath = "lamps/shared.bmp", SourceOffImageAssetPath = "lamps/later.bmp", SourceComponentIndex = 4 };
 
             var result = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "Shared Lamp", assetsRoot, true, [background, later, sharedB, sharedA]);
 

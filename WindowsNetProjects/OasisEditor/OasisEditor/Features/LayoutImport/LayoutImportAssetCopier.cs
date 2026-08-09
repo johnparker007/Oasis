@@ -87,7 +87,7 @@ internal sealed class LayoutImportAssetCopier
         ICollection<string> copied,
         ICollection<string> errors)
     {
-        if (!elements.Any(element => element.Kind == PanelElementKind.Lamp && !string.IsNullOrWhiteSpace(element.AssetPath)))
+        if (!elements.Any(element => element.Kind == PanelElementKind.Lamp && !string.IsNullOrWhiteSpace(element.SourceOffImageAssetPath)))
         {
             return elements;
         }
@@ -206,6 +206,17 @@ internal sealed class LayoutImportAssetCopier
             warnings,
             errors);
 
+        var offImage = CopyOneAsset(
+            element.Kind,
+            element.SourceOffImageAssetPath,
+            stagingRootPath,
+            destinationRoot,
+            projectAssetsRoot,
+            pathMap,
+            copied,
+            warnings,
+            errors);
+
 
         if (element.Kind == PanelElementKind.Lamp &&
             !string.IsNullOrWhiteSpace(primary) &&
@@ -220,6 +231,19 @@ internal sealed class LayoutImportAssetCopier
                 {
                     errors.Add($"Failed to process lamp asset '{element.AssetPath}': {processingError}");
                 }
+            }
+        }
+
+        if (element.Kind == PanelElementKind.Lamp &&
+            !string.IsNullOrWhiteSpace(offImage) &&
+            string.Equals(Path.GetExtension(element.SourceOffImageAssetPath), ".bmp", StringComparison.OrdinalIgnoreCase))
+        {
+            var sourceOffImagePath = TryResolveSourceAssetPath(element.SourceOffImageAssetPath, stagingRootPath);
+            var outputOffImagePath = Path.Combine(projectAssetsRoot, offImage["Assets/".Length..].Replace('/', Path.DirectorySeparatorChar));
+            if (sourceOffImagePath is not null && File.Exists(sourceOffImagePath) &&
+                !MfmeLampAssetPostProcessor.TryProcessLamp(sourceOffImagePath, outputOffImagePath, out var processingError))
+            {
+                errors.Add($"Failed to process lamp off image asset '{element.SourceOffImageAssetPath}': {processingError}");
             }
         }
 
@@ -253,6 +277,8 @@ internal sealed class LayoutImportAssetCopier
             overrideAssetPath: true,
             secondaryAssetPath: secondary,
             overrideSecondaryAssetPath: true,
+            sourceOffImageAssetPath: offImage,
+            overrideSourceOffImageAssetPath: true,
             reelLampTransmissionMaskAssetPath: transmissionMask,
             overrideReelLampTransmissionMaskAssetPath: true);
     }

@@ -43,6 +43,8 @@ internal sealed class PanelElementModel
     public double Height { get; init; }
     public string? AssetPath { get; init; }
     public string? SecondaryAssetPath { get; init; }
+    [JsonIgnore]
+    public string? SourceOffImageAssetPath { get; init; }
     public int? DisplayNumber { get; init; }
     public int? LampNumber { get; init; }
     public string? SegmentDisplayType { get; init; }
