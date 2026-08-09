@@ -106,16 +106,82 @@ public sealed class FmlToOasisMapperTests
             [new FmlDecodedImageKey(0, "Sublamp 1 Main")] = "lamps/shared-main.bmp",
             [new FmlDecodedImageKey(0, "Sublamp 1 Mask")] = "lamps/mask-1.bmp",
             [new FmlDecodedImageKey(0, "Sublamp 2 Mask")] = "lamps/mask-2.bmp",
-            [new FmlDecodedImageKey(0, "Sublamp 3 Mask")] = "lamps/mask-3.bmp"
+            [new FmlDecodedImageKey(0, "Sublamp 3 Mask")] = "lamps/mask-3.bmp",
+            [new FmlDecodedImageKey(0, "Brightmask Main")] = "lamps/shared-off.bmp",
+            [new FmlDecodedImageKey(0, "Brightmask Mask")] = "lamps/brightmask-mask.bmp"
         };
 
         var result = new FmlToOasisMapper().Map(new Layout([lamp]), images);
 
         Assert.Equal([10, 11, 12], result.Elements.Select(element => element.DisplayNumber));
         Assert.All(result.Elements, element => Assert.Equal("lamps/shared-main.bmp", element.AssetPath));
+        Assert.All(result.Elements, element => Assert.Equal("lamps/shared-off.bmp", element.SourceOffImageAssetPath));
         Assert.Equal(
             ["lamps/mask-1.bmp", "lamps/mask-2.bmp", "lamps/mask-3.bmp"],
             result.Elements.Select(element => element.SecondaryAssetPath));
+    }
+
+    [Fact]
+    public void Map_WithButtonImages_SeparatesDynamicLampMaskAndExplicitOffImage()
+    {
+        var button = new Button
+        {
+            Width = 20,
+            Height = 10,
+            SublampTable = [new LampSublampTableEntry(1, 9)]
+        };
+        var images = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new FmlDecodedImageKey(0, "Lamp 1 image")] = "lamps/on.bmp",
+            [new FmlDecodedImageKey(0, "Off Image")] = "lamps/off.bmp",
+            [new FmlDecodedImageKey(0, "Mask 1 Image")] = "lamps/mask.bmp"
+        };
+
+        var result = new FmlToOasisMapper().Map(new Layout([button]), images);
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal("lamps/on.bmp", element.AssetPath);
+        Assert.Equal("lamps/mask.bmp", element.SecondaryAssetPath);
+        Assert.Equal("lamps/off.bmp", element.SourceOffImageAssetPath);
+    }
+
+    [Fact]
+    public void Map_WithPrismLampImages_UsesExplicitOffImage()
+    {
+        var prismLamp = new PrismLamp { Width = 20, Height = 10 };
+        prismLamp.UInt32s["Number"] = 9;
+        var images = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new FmlDecodedImageKey(0, "Lamp 1 Image")] = "lamps/on.bmp",
+            [new FmlDecodedImageKey(0, "Lamp 1 Mask Image")] = "lamps/mask.bmp",
+            [new FmlDecodedImageKey(0, "Off Image")] = "lamps/off.bmp"
+        };
+
+        var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([prismLamp]), images).Elements);
+
+        Assert.Equal("lamps/on.bmp", element.AssetPath);
+        Assert.Equal("lamps/mask.bmp", element.SecondaryAssetPath);
+        Assert.Equal("lamps/off.bmp", element.SourceOffImageAssetPath);
+    }
+
+    [Fact]
+    public void Map_WithOrdinaryLampImages_UsesBrightmaskMainAsSharedOffImage()
+    {
+        var lamp = new Lamp { Width = 20, Height = 10, SublampTable = [new LampSublampTableEntry(1, 9)] };
+        var images = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new FmlDecodedImageKey(0, "Sublamp 1 Main image")] = "lamps/on.bmp",
+            [new FmlDecodedImageKey(0, "Sublamp 1 Mask image")] = "lamps/mask.bmp",
+            [new FmlDecodedImageKey(0, "Brightmask Main")] = "lamps/off.bmp",
+            [new FmlDecodedImageKey(0, "Brightmask Mask")] = "lamps/brightmask-mask.bmp"
+        };
+
+        var element = Assert.Single(new FmlToOasisMapper().Map(new Layout([lamp]), images).Elements);
+
+        Assert.Equal("lamps/on.bmp", element.AssetPath);
+        Assert.Equal("lamps/mask.bmp", element.SecondaryAssetPath);
+        Assert.Equal("lamps/off.bmp", element.SourceOffImageAssetPath);
+        Assert.NotEqual("lamps/brightmask-mask.bmp", element.SourceOffImageAssetPath);
     }
 
     [Fact]
