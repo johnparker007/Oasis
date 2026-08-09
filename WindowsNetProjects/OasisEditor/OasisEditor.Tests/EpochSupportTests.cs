@@ -45,7 +45,7 @@ public sealed class EpochSupportTests
         var settings=new EpochNativeRomSettings{ProgramRom1Path="p0",ProgramRom2Path="p1",SoundRom1Path="s0"};
         var resources=FabricEmulationBackend.BuildRomResources(settings);
         Assert.Equal([FabricRomRole.Program,FabricRomRole.Program,FabricRomRole.Sound],resources.Select(x=>x.Role));
-        Assert.Throws<InvalidOperationException>(()=>FabricEmulationBackend.BuildRomResources(new()));
+        Assert.Throws<InvalidOperationException>(()=>FabricEmulationBackend.BuildRomResources(new EpochNativeRomSettings()));
         settings.ProgramRom2Path=""; settings.ProgramRom3Path="p2";
         Assert.Throws<InvalidOperationException>(()=>FabricEmulationBackend.BuildRomResources(settings));
     }
