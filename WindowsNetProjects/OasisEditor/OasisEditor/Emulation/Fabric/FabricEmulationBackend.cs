@@ -9,6 +9,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private const string AmberBackendKind = "amber";
     private const string JpmSystem6MachineIdentifier = "jpm-system6";
     private const string BarcrestMpu5MachineIdentifier = "barcrest-mpu5";
+    internal const string MaygayEpochMachineIdentifier = "maygay-epoch";
     private const int EmulationPumpHz = 1000;
     private const ulong NanosecondsPerPump = 1_000_000;
     private const int MaxCatchUpSlices = 64;
@@ -110,8 +111,11 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                     (JpmSystem6MachineIdentifier, BuildRomResources(request.System6Configuration), (IFabricBackendConfiguration)FabricAmberSystem6Configuration.FromSystem6(request.System6Configuration)),
                 FruitMachinePlatformType.MPU5 when request.Mpu5Configuration is not null =>
                     (BarcrestMpu5MachineIdentifier, BuildRomResources(request.Mpu5Configuration), (IFabricBackendConfiguration?)FabricAmberMpu5Configuration.FromMpu5(request.Mpu5Configuration)),
+                FruitMachinePlatformType.Epoch when request.EpochConfiguration is not null =>
+                    (MaygayEpochMachineIdentifier, BuildRomResources(request.EpochConfiguration), (IFabricBackendConfiguration)FabricAmberEpochConfiguration.FromEpoch(request.EpochConfiguration)),
                 _ => throw new InvalidOperationException($"Launch settings do not match Fabric platform '{request.Platform}'.")
             };
+            _infoLogger($"Fabric launch: platform={request.Platform} backend={AmberBackendKind} machine={machineIdentifier} AmberDll={_amberPath} programRoms={resources.Count(item => item.Role == FabricRomRole.Program)} soundRoms={resources.Count(item => item.Role == FabricRomRole.Sound)} flashRomMode={(request.EpochConfiguration?.FlashRomMode == true ? 1 : 0)}.");
             cancellationToken.ThrowIfCancellationRequested();
             _runtime = _runtimeFactory(_runtimePath);
             if (configuration is FabricAmberSystem6Configuration system6Configuration)
@@ -294,6 +298,16 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     {
         if (string.IsNullOrWhiteSpace(settings.ProgramRom1Path))
             throw new InvalidOperationException("Current project settings are missing required MPU5 Program ROM 1.");
+        var resources = new List<FabricRomResource>(8);
+        AddRomRole(resources, settings.ProgramRomPaths, FabricRomRole.Program);
+        AddRomRole(resources, settings.SoundRomPaths, FabricRomRole.Sound);
+        return resources;
+    }
+
+    internal static IReadOnlyList<FabricRomResource> BuildRomResources(EpochNativeRomSettings settings)
+    {
+        if (string.IsNullOrWhiteSpace(settings.ProgramRom1Path))
+            throw new InvalidOperationException("Current project settings are missing required Epoch Program ROM 1.");
         var resources = new List<FabricRomResource>(8);
         AddRomRole(resources, settings.ProgramRomPaths, FabricRomRole.Program);
         AddRomRole(resources, settings.SoundRomPaths, FabricRomRole.Sound);

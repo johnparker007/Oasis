@@ -2,7 +2,7 @@ namespace OasisEditor;
 
 public sealed class EditorProject
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
     public required string Name { get; init; }
     public required string ProjectFilePath { get; init; }
     public required string ProjectDirectory { get; init; }
@@ -12,8 +12,68 @@ public sealed class EditorProject
     public FruitMachinePlatformType FruitMachinePlatform { get; set; } = FruitMachinePlatformType.None;
     public System6NativeRomSettings System6NativeRoms { get; set; } = new();
     public Mpu5NativeRomSettings Mpu5NativeRoms { get; set; } = new();
+    public EpochNativeRomSettings EpochNativeRoms { get; set; } = new();
     public List<InputDefinitionModel> InputDefinitions { get; } = [];
 }
+
+public sealed class EpochNativeRomSettings
+{
+    public string ProgramRom1Path { get; set; } = string.Empty;
+    public string ProgramRom2Path { get; set; } = string.Empty;
+    public string ProgramRom3Path { get; set; } = string.Empty;
+    public string ProgramRom4Path { get; set; } = string.Empty;
+    public string SoundRom1Path { get; set; } = string.Empty;
+    public string SoundRom2Path { get; set; } = string.Empty;
+    public string SoundRom3Path { get; set; } = string.Empty;
+    public string SoundRom4Path { get; set; } = string.Empty;
+    public bool FlashRomMode { get; set; }
+    public bool ConfigureReels { get; set; }
+    public List<EpochReelSettings> Reels { get; set; } = Enumerable.Range(0, 8).Select(EpochReelSettings.CreateDefault).ToList();
+    public bool ApplyReelExt { get; set; }
+    public uint ReelExt { get; set; }
+    public bool ConfigureCoins { get; set; }
+    public EpochCoinCommunicationStyle CommunicationStyle { get; set; }
+    public bool CommunicationInvert { get; set; }
+    public uint PulseCycles { get; set; } = 800_000;
+    public bool EdcEnabled { get; set; }
+    public List<EpochCoinChannelSettings> Coins { get; set; } = Enumerable.Range(0, 6).Select(EpochCoinChannelSettings.CreateDefault).ToList();
+    public bool ConfigureMachineOptions { get; set; }
+    public bool ApplyDips { get; set; }
+    public bool ApplyStake { get; set; }
+    public bool ApplyPrize { get; set; }
+    public bool ApplyPercentage { get; set; }
+    public uint DipSwitchBits { get; set; }
+    public uint Stake { get; set; }
+    public uint Prize { get; set; }
+    public uint Percentage { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore] public IReadOnlyList<string> ProgramRomPaths => [ProgramRom1Path, ProgramRom2Path, ProgramRom3Path, ProgramRom4Path];
+    [System.Text.Json.Serialization.JsonIgnore] public IReadOnlyList<string> SoundRomPaths => [SoundRom1Path, SoundRom2Path, SoundRom3Path, SoundRom4Path];
+}
+
+public sealed class EpochReelSettings
+{
+    public const int DefaultSteps = 96, DefaultOptoStart = 0, DefaultOptoEnd = 2;
+    public bool Apply { get; set; }
+    public int ReelIndex { get; set; }
+    public int Steps { get; set; } = DefaultSteps;
+    public int OptoStart { get; set; } = DefaultOptoStart;
+    public int OptoEnd { get; set; } = DefaultOptoEnd;
+    public bool OptoInvert { get; set; }
+    public static EpochReelSettings CreateDefault(int index) => new() { ReelIndex = index };
+}
+
+public sealed class EpochCoinChannelSettings
+{
+    public bool Apply { get; set; }
+    public int Channel { get; set; }
+    public bool Enabled { get; set; }
+    public int Value { get; set; }
+    public int LockoutValue { get; set; }
+    public bool LockoutInvert { get; set; }
+    public static EpochCoinChannelSettings CreateDefault(int channel) => new() { Channel = channel };
+}
+
+public enum EpochCoinCommunicationStyle { Parallel, Bcd, Serial, CcTalk }
 
 public sealed class Mpu5NativeRomSettings
 {

@@ -12,6 +12,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
     private readonly Func<string?> _fabricRuntimePathProvider;
     private readonly Func<string?> _productionAmberPathProvider;
     private readonly Func<string?> _mpu5AmberPathProvider;
+    private readonly Func<string?> _epochAmberPathProvider;
     private readonly Func<int> _audioBufferLengthMillisecondsProvider;
     private readonly Func<string, IFabricRuntimeLibrary> _runtimeFactory;
     private readonly Func<int, IEmulationAudioSink> _audioSinkFactory;
@@ -25,11 +26,13 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         Func<int>? audioBufferLengthMillisecondsProvider = null,
         Action<string>? errorLogger = null,
         Action<string>? infoLogger = null,
-        Func<string?>? mpu5AmberPathProvider = null)
+        Func<string?>? mpu5AmberPathProvider = null,
+        Func<string?>? epochAmberPathProvider = null)
         : this(
             fabricRuntimePathProvider,
             productionAmberPathProvider,
             mpu5AmberPathProvider ?? productionAmberPathProvider,
+            epochAmberPathProvider ?? productionAmberPathProvider,
             audioBufferLengthMillisecondsProvider,
             static path => new FabricRuntimeLibrary(path),
             static bufferLength => new NAudioEmulationAudioSink(bufferLength),
@@ -44,13 +47,14 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         Func<int>? audioBufferLengthMillisecondsProvider, Func<string, IFabricRuntimeLibrary> runtimeFactory,
         Func<int, IEmulationAudioSink> audioSinkFactory, IFabricClock clock,
         Action<string>? errorLogger, Action<string>? infoLogger = null)
-        : this(fabricRuntimePathProvider, productionAmberPathProvider, productionAmberPathProvider,
+        : this(fabricRuntimePathProvider, productionAmberPathProvider, productionAmberPathProvider, productionAmberPathProvider,
             audioBufferLengthMillisecondsProvider, runtimeFactory, audioSinkFactory, clock, errorLogger, infoLogger) { }
 
     internal EmulationBackendFactory(
         Func<string?> fabricRuntimePathProvider,
         Func<string?> productionAmberPathProvider,
         Func<string?> mpu5AmberPathProvider,
+        Func<string?> epochAmberPathProvider,
         Func<int>? audioBufferLengthMillisecondsProvider,
         Func<string, IFabricRuntimeLibrary> runtimeFactory,
         Func<int, IEmulationAudioSink> audioSinkFactory,
@@ -61,6 +65,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         _fabricRuntimePathProvider = fabricRuntimePathProvider ?? throw new ArgumentNullException(nameof(fabricRuntimePathProvider));
         _productionAmberPathProvider = productionAmberPathProvider ?? throw new ArgumentNullException(nameof(productionAmberPathProvider));
         _mpu5AmberPathProvider = mpu5AmberPathProvider ?? throw new ArgumentNullException(nameof(mpu5AmberPathProvider));
+        _epochAmberPathProvider = epochAmberPathProvider ?? throw new ArgumentNullException(nameof(epochAmberPathProvider));
         _audioBufferLengthMillisecondsProvider = audioBufferLengthMillisecondsProvider ?? (() => NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds);
         _runtimeFactory = runtimeFactory ?? throw new ArgumentNullException(nameof(runtimeFactory));
         _audioSinkFactory = audioSinkFactory ?? throw new ArgumentNullException(nameof(audioSinkFactory));
@@ -76,6 +81,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
             FruitMachinePlatformType.None => null,
             FruitMachinePlatformType.Impact => CreateFabricBackend(_productionAmberPathProvider, "JPM System 6 production Amber provider DLL"),
             FruitMachinePlatformType.MPU5 => CreateFabricBackend(_mpu5AmberPathProvider, "Barcrest MPU5 Amber provider DLL"),
+            FruitMachinePlatformType.Epoch => CreateFabricBackend(_epochAmberPathProvider, "Maygay Epoch Amber provider DLL"),
             _ => throw new NotSupportedException($"Platform '{platform}' is not supported by Fabric Amber emulation.")
         };
     }

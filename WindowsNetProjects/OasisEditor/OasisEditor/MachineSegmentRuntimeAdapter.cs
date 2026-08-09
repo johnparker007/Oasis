@@ -269,6 +269,7 @@ internal static class AlphaCellOrder
         {
             FruitMachinePlatformType.Impact => true,
             FruitMachinePlatformType.MPU5 => true,
+            FruitMachinePlatformType.Epoch => true,
             _ => false
         };
     }

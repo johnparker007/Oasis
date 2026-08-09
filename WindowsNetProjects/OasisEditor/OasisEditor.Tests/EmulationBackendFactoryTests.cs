@@ -53,10 +53,12 @@ public sealed class EmulationBackendFactoryTests
     }
 
     [Fact]
-    public void Epoch_ThrowsBeforePathValidation()
+    public void Epoch_WithValidPlatformSpecificProvider_ReturnsFabricBackend()
     {
-        var error = Assert.Throws<NotSupportedException>(() => CreateFactory(null, null).CreateBackend(FruitMachinePlatformType.Epoch));
-        Assert.Contains("Epoch", error.Message);
+        using var files = NativeFiles.Create();
+        var factory = new EmulationBackendFactory(() => files.Runtime, () => null, () => 50,
+            epochAmberPathProvider: () => files.Amber);
+        Assert.IsType<FabricEmulationBackend>(factory.CreateBackend(FruitMachinePlatformType.Epoch));
     }
 
     [Fact]
