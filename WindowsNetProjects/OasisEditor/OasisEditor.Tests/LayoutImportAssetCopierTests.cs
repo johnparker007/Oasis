@@ -206,6 +206,85 @@ public sealed class LayoutImportAssetCopierTests
         }
     }
 
+    [Theory]
+    [InlineData(0, 0, 0, 0, 0, 0)]
+    [InlineData(2, 1, 0, 0, 2, 1)]
+    [InlineData(-2, -1, 2, 1, 0, 0)]
+    public void CopyAssetsFromStaging_MfmeBackgroundOffsetPlacesPixelsAtNativeScale(
+        int offsetX,
+        int offsetY,
+        int sourceX,
+        int sourceY,
+        int destinationX,
+        int destinationY)
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "OasisEditorTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var stagingRoot = Path.Combine(tempRoot, "staging");
+            var assetsRoot = Path.Combine(tempRoot, "project", "Assets");
+            Directory.CreateDirectory(Path.Combine(stagingRoot, "background"));
+            var sourcePixels = CreateCoordinatePixels(8, 6);
+            WriteBgra32Bmp(Path.Combine(stagingRoot, "background", "bg.bmp"), 8, 6, sourcePixels);
+            var background = new PanelElementModel
+            {
+                ObjectId = "bg", Kind = PanelElementKind.Background, Width = 8, Height = 6,
+                AssetPath = "background/bg.bmp", SourceImageOffsetX = offsetX, SourceImageOffsetY = offsetY
+            };
+
+            var result = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "Offset", assetsRoot, true, [background]);
+
+            Assert.True(result.Succeeded);
+            var imported = Assert.Single(result.Elements);
+            var output = ReadPixels(ResolveAsset(assetsRoot, imported.AssetPath!), out var width, out _);
+            Assert.Equal(sourcePixels[(sourceY * 8) + sourceX], output[(destinationY * width) + destinationX]);
+            if (offsetX > 0 || offsetY > 0)
+            {
+                Assert.Equal(0, output[0].A);
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot)) Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void CopyAssetsFromStaging_OversizedShiftedBackgroundIsClippedBeforeUnshiftedReelCutout()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), "OasisEditorTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var stagingRoot = Path.Combine(tempRoot, "staging");
+            var assetsRoot = Path.Combine(tempRoot, "project", "Assets");
+            Directory.CreateDirectory(Path.Combine(stagingRoot, "background"));
+            var sourcePixels = CreateCoordinatePixels(1000, 750);
+            WriteBgra32Bmp(Path.Combine(stagingRoot, "background", "bg.bmp"), 1000, 750, sourcePixels);
+            var background = new PanelElementModel
+            {
+                ObjectId = "bg", Kind = PanelElementKind.Background, Width = 800, Height = 600,
+                AssetPath = "background/bg.bmp", SourceImageOffsetX = -50, SourceImageOffsetY = -25
+            };
+            var reel = new PanelElementModel { ObjectId = "reel", Kind = PanelElementKind.Reel, X = 200, Y = 150, Width = 50, Height = 100 };
+
+            var result = new LayoutImportAssetCopier().CopyAssetsFromStaging(stagingRoot, "Shifted Cutout", assetsRoot, true, [background, reel]);
+
+            Assert.True(result.Succeeded);
+            var imported = Assert.Single(result.Elements.Where(element => element.Kind == PanelElementKind.Background));
+            var output = ReadPixels(ResolveAsset(assetsRoot, imported.AssetPath!), out var width, out var height);
+            Assert.Equal((800, 600), (width, height));
+            Assert.Equal(sourcePixels[(25 * 1000) + 50], output[0]);
+            Assert.Equal(sourcePixels[(149 + 25) * 1000 + (199 + 50)], output[(149 * width) + 199]);
+            Assert.Equal(0, output[(150 * width) + 200].A);
+            Assert.Equal(0, output[(249 * width) + 249].A);
+            Assert.NotEqual(0, output[(250 * width) + 250].A);
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot)) Directory.Delete(tempRoot, recursive: true);
+        }
+    }
+
     private static void WriteBgra32Bmp(string path, int width, int height, IReadOnlyList<Color> pixels)
     {
         const int headerSize = 54;

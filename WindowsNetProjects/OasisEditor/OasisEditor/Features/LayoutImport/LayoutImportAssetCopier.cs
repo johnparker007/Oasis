@@ -104,7 +104,12 @@ internal sealed class LayoutImportAssetCopier
             if (!string.IsNullOrWhiteSpace(updatedBackgroundPath))
             {
                 updatedElements = (PanelElementModel[])updatedElements.Clone();
-                updatedElements[index] = CloneWithAssetPath(background, updatedBackgroundPath);
+                updatedElements[index] = PanelElementModelCloner.Clone(
+                    background,
+                    assetPath: updatedBackgroundPath,
+                    overrideAssetPath: true,
+                    sourceImageOffsetX: 0,
+                    sourceImageOffsetY: 0);
             }
         }
 

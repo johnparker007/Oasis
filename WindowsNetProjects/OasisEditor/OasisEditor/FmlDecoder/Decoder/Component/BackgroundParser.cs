@@ -13,7 +13,7 @@ namespace MfmeFmlDecoder.src.Decoder.Component
         private const uint TiledTagId = 0x0D;
         private const uint RandomTileTagId = 0x0E;
 
-        private ComponentTagMap componentTagMap = new ComponentTagMap
+        internal static ComponentTagMap ComponentTagMap { get; } = new ComponentTagMap
         {
             { 0x09, new TagInfo(0x01, "Unknown 0x09", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
             { 0x0A, new TagInfo(0x01, "Unknown 0x0A", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
@@ -32,8 +32,8 @@ namespace MfmeFmlDecoder.src.Decoder.Component
             { 0x0E, new TagInfo(0x01, "RandomTile", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
             { 0x0F, new TagInfo(0x01, "Transparency_UseAlphaChannel", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
             { 0x08, new TagInfo(0x01, "Transparency_UseColour", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
-            { 0x0A, new TagInfo(0x04, "Unknown 0x0A", new byte[] { 0x00 }, ValueRole.ARGB_COLOR) },
-            { 0x0B, new TagInfo(0x04, "Unknown 0x0B", new byte[] { 0x00 }, ValueRole.ARGB_COLOR) },
+            { 0x0A, new TagInfo(0x04, "OffsetX", new byte[] { 0x00 }, ValueRole.INT32) },
+            { 0x0B, new TagInfo(0x04, "OffsetY", new byte[] { 0x00 }, ValueRole.INT32) },
         });
 
         public Background Parse(long componentOffset, uint componentId, byte[] data)
@@ -56,9 +56,9 @@ namespace MfmeFmlDecoder.src.Decoder.Component
                     [0x08] = "Use Colour",
                     [0x0F] = "Use Alpha Channel",
                 });
-            var parseResult = ParseExtendedTags(component, componentTagMap, parseData, offset, parseOptions);
+            var parseResult = ParseExtendedTags(component, ComponentTagMap, parseData, offset, parseOptions);
 
-            ApplyExtendedTags(component, parseResult, componentTagMap);
+            ApplyExtendedTags(component, parseResult, ComponentTagMap);
 
             return component;
         }

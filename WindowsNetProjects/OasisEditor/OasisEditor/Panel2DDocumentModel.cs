@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace OasisEditor;
 
@@ -72,6 +73,10 @@ internal sealed class PanelElementModel
     public int? SharedSourceSetCount { get; init; }
     public bool SourceBlend { get; init; }
     public PanelElementImportSourceModel? ImportSource { get; init; }
+    [JsonIgnore]
+    public int SourceImageOffsetX { get; init; }
+    [JsonIgnore]
+    public int SourceImageOffsetY { get; init; }
 }
 
 
