@@ -2,7 +2,7 @@ namespace OasisEditor;
 
 public sealed class EditorProject
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 6;
     public required string Name { get; init; }
     public required string ProjectFilePath { get; init; }
     public required string ProjectDirectory { get; init; }
@@ -13,7 +13,33 @@ public sealed class EditorProject
     public System6NativeRomSettings System6NativeRoms { get; set; } = new();
     public Mpu5NativeRomSettings Mpu5NativeRoms { get; set; } = new();
     public EpochNativeRomSettings EpochNativeRoms { get; set; } = new();
+    public Mpu3ProjectSettings Mpu3Settings { get; set; } = new();
     public List<InputDefinitionModel> InputDefinitions { get; } = [];
+}
+
+public sealed class Mpu3ProjectSettings
+{
+    public List<Mpu3ReelSettings> Reels { get; set; } = Enumerable.Range(0, 4).Select(Mpu3ReelSettings.CreateDefault).ToList();
+    public List<bool> Dips { get; set; } = Enumerable.Repeat(false, 16).ToList();
+    public List<Mpu3ProgramRomSettings> ProgramRoms { get; set; } = Enumerable.Range(0, 4).Select(Mpu3ProgramRomSettings.CreateDefault).ToList();
+}
+
+public sealed class Mpu3ReelSettings
+{
+    public const int DefaultSteps = 96;
+    public int ReelIndex { get; set; }
+    public int Steps { get; set; } = DefaultSteps;
+    public int OptoStart { get; set; }
+    public int OptoEnd { get; set; } = 2;
+    public bool OptoInvert { get; set; }
+    public static Mpu3ReelSettings CreateDefault(int index) => new() { ReelIndex = index };
+}
+
+public sealed class Mpu3ProgramRomSettings
+{
+    public int Slot { get; set; }
+    public string Path { get; set; } = string.Empty;
+    public static Mpu3ProgramRomSettings CreateDefault(int slot) => new() { Slot = slot };
 }
 
 public sealed class EpochNativeRomSettings

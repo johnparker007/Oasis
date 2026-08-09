@@ -98,6 +98,8 @@
                 <TextBox Text="{Binding Mpu5AmberLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                 <TextBlock Margin="0,8,0,4" Text="Epoch Amber DLL path" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <TextBox Text="{Binding EpochAmberLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                <TextBlock Margin="0,8,0,4" Text="Barcrest MPU3 Amber provider DLL path" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBox Text="{Binding Mpu3AmberLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                 <TextBlock Margin="0,16,0,4" Text="Audio Buffer Length (ms)" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <TextBox Width="120"
                          HorizontalAlignment="Left"
@@ -109,7 +111,7 @@
                 <TextBlock Margin="0,8,0,0"
                            TextWrapping="Wrap"
                            Foreground="{DynamicResource TextSecondaryBrush}"
-                           Text="System 6, MPU5 and Epoch emulation use FabricRuntime.dll with their explicitly configured Amber provider DLL; Oasis never loads a provider directly." />
+                           Text="System 6, MPU3, MPU5 and Epoch emulation use FabricRuntime.dll with their explicitly configured Amber provider DLL; Oasis never loads a provider directly." />
             </StackPanel>
         </Grid>
     </Grid>

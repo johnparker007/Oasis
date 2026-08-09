@@ -97,9 +97,23 @@ public sealed class FabricAbiLayoutTests
         Assert.Equal(224, Marshal.OffsetOf<FabricAmberConfigurationNative>(nameof(FabricAmberConfigurationNative.Coins)).ToInt32());
         Assert.Equal(632, Marshal.OffsetOf<FabricAmberConfigurationNative>(nameof(FabricAmberConfigurationNative.Percentage)).ToInt32());
         Assert.Equal(1160, Marshal.OffsetOf<FabricLaunchRequestNative>("RomPaths").ToInt32());
+        Assert.Equal(0, Marshal.OffsetOf<FabricRomResourceNative>(nameof(FabricRomResourceNative.Size)).ToInt32());
+        Assert.Equal(4, Marshal.OffsetOf<FabricRomResourceNative>(nameof(FabricRomResourceNative.Version)).ToInt32());
+        Assert.Equal(8, Marshal.OffsetOf<FabricRomResourceNative>(nameof(FabricRomResourceNative.Role)).ToInt32());
+        Assert.Equal(12, Marshal.OffsetOf<FabricRomResourceNative>(nameof(FabricRomResourceNative.Slot)).ToInt32());
         Assert.Equal(16, Marshal.OffsetOf<FabricRomResourceNative>("Path").ToInt32());
+        Assert.Equal(24, Marshal.OffsetOf<FabricRomResourceNative>(nameof(FabricRomResourceNative.Reserved)).ToInt32());
         Assert.Equal(1UL << 6, (ulong)FabricCapability.CoinInput);
         Assert.Equal(9, (int)FabricResult.InputRejected);
+    }
+
+    [Fact]
+    public unsafe void RomResourceTrailingReservedValuesDefaultToZero()
+    {
+        var resource = new FabricRomResourceNative();
+        Assert.Equal(0ul, resource.Reserved[0]);
+        Assert.Equal(0ul, resource.Reserved[1]);
+        Assert.Null(typeof(FabricRomResourceNative).GetField("LoadAddress", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic));
     }
 
     [Fact]
