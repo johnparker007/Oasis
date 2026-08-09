@@ -115,6 +115,41 @@ public sealed class ZeroBasedReelRuntimeTests
     }
 
     [Fact]
+    public void EpochTwelveStopCorrection_UsesSameEffectivePositionPipelineForPanelAndFaceReels()
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel"));
+        document.SetPanelElements([new PanelElementModel
+        {
+            ObjectId = "reel-0", Kind = PanelElementKind.Reel, DisplayNumber = 0,
+            Stops = 12, BandOffset = 0.05d
+        }]);
+        var dispatches = new List<Action>();
+        var adapter = new MachineReelRuntimeAdapter(() => [document], () => FruitMachinePlatformType.Epoch,
+            () => false, _ => { }, dispatches.Add);
+
+        adapter.ApplyReelState(0, 10, ReelPositionConvention.Oasis);
+        Assert.Single(dispatches)();
+
+        var faceRuntimeState = new MachineRuntimeState
+        {
+            FruitMachinePlatform = FruitMachinePlatformType.Epoch
+        };
+        faceRuntimeState.SetReelPositionIfChanged(MachineObjectReference.Reel(0), 10d);
+        var faceReel = new FaceReelDisplayElement
+        {
+            LinkedMachineObjectReference = MachineObjectReference.Reel(0),
+            Stops = 12,
+            BandOffset = 0.05d
+        };
+
+        var panelPosition = document.RuntimeState.GetReelPosition("reel-0");
+        var facePosition = FaceRuntimeStateResolver.Instance.GetReelPosition(faceReel, faceRuntimeState);
+
+        Assert.Equal(75.44d, panelPosition, 6);
+        Assert.Equal(panelPosition, facePosition, 6);
+    }
+
+    [Fact]
     public void AmberAdapter_AllowsEachReelToUseItsConfiguredMotorStepCount()
     {
         var document = new DocumentTabViewModel(EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel"));
