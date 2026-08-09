@@ -17,7 +17,9 @@ internal static class PanelElementModelCloner
         string? reelLampTransmissionMaskAssetPath = null,
         bool overrideReelLampTransmissionMaskAssetPath = false,
         bool? isTransformLocked = null,
-        bool? isVisible = null)
+        bool? isVisible = null,
+        int? sourceImageOffsetX = null,
+        int? sourceImageOffsetY = null)
     {
         ArgumentNullException.ThrowIfNull(source);
 
@@ -61,7 +63,9 @@ internal static class PanelElementModelCloner
             SharedSourceSetId = source.SharedSourceSetId,
             SharedSourceSetCount = source.SharedSourceSetCount,
             SourceBlend = source.SourceBlend,
-            ImportSource = CloneImportSource(source.ImportSource)
+            ImportSource = CloneImportSource(source.ImportSource),
+            SourceImageOffsetX = sourceImageOffsetX ?? source.SourceImageOffsetX,
+            SourceImageOffsetY = sourceImageOffsetY ?? source.SourceImageOffsetY
         };
     }
 

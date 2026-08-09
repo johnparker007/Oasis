@@ -1,6 +1,7 @@
 using System.Text;
 using MfmeFmlDecoder.Decoder;
 using MfmeFmlDecoder.src.Decoder.Component.Core;
+using MfmeFmlDecoder.src.Decoder.Component;
 using MfmeFmlDecoder.src.Model;
 using MfmeFmlDecoder.Model;
 using Xunit;
@@ -52,6 +53,38 @@ public sealed class FmlDecoderRegressionTests
         Assert.DoesNotContain(0x18u, absent.PresentTagIds);
         Assert.Equal(0u, explicitZero.UInt32sByAttributeName["ButtonNumber"]);
         Assert.Contains(0x18u, explicitZero.PresentTagIds);
+    }
+
+    [Fact]
+    public void BackgroundNestedOffsets_DecodeAsSignedInt32WithZeroDefaults()
+    {
+        var bytes = new byte[]
+        {
+            0x4C, 0x00, 0x00,
+            0x0A, 0xEC, 0xFF, 0xFF, 0xFF,
+            0x0B, 0xF6, 0xFF, 0xFF, 0xFF,
+            0x00,
+            0x00
+        };
+
+        var parsed = new ExtendedTagParser().Parse(
+            BackgroundParser.ComponentTagMap,
+            bytes,
+            0,
+            ExtendedTagParser.Options.Default.WithoutMatchedTagLogging());
+
+        Assert.NotNull(parsed.NestedTagBlockResult);
+        Assert.Equal(-20, parsed.NestedTagBlockResult.Int32sByAttributeName["OffsetX"]);
+        Assert.Equal(-10, parsed.NestedTagBlockResult.Int32sByAttributeName["OffsetY"]);
+
+        var onlyOffsetX = new byte[] { 0x4C, 0x00, 0x00, 0x0A, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00 };
+        var parsedWithAbsentY = new ExtendedTagParser().Parse(
+            BackgroundParser.ComponentTagMap,
+            onlyOffsetX,
+            0,
+            ExtendedTagParser.Options.Default.WithoutMatchedTagLogging());
+        Assert.Equal(5, parsedWithAbsentY.NestedTagBlockResult!.Int32sByAttributeName["OffsetX"]);
+        Assert.Equal(0, parsedWithAbsentY.NestedTagBlockResult.Int32sByAttributeName["OffsetY"]);
     }
 
     private static byte[] BuildTlv(params (uint Tag, byte[] Value)[] records)

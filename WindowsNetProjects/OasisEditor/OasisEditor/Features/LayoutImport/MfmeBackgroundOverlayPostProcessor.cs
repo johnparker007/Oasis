@@ -29,11 +29,20 @@ internal static class MfmeBackgroundOverlayPostProcessor
 
             var source = LoadBgra32(backgroundPath);
             var normalized = new PixelBuffer(width, height, checked(width * 4), new byte[checked(width * height * 4)]);
-            var copyWidth = Math.Min(source.Width, normalized.Width);
-            var copyHeight = Math.Min(source.Height, normalized.Height);
+            var sourceX = (int)Math.Min(source.Width, Math.Max(0L, -(long)background.SourceImageOffsetX));
+            var sourceY = (int)Math.Min(source.Height, Math.Max(0L, -(long)background.SourceImageOffsetY));
+            var destinationX = (int)Math.Min(normalized.Width, Math.Max(0L, background.SourceImageOffsetX));
+            var destinationY = (int)Math.Min(normalized.Height, Math.Max(0L, background.SourceImageOffsetY));
+            var copyWidth = Math.Min(source.Width - sourceX, normalized.Width - destinationX);
+            var copyHeight = Math.Min(source.Height - sourceY, normalized.Height - destinationY);
             for (var y = 0; y < copyHeight; y++)
             {
-                Buffer.BlockCopy(source.Pixels, y * source.Stride, normalized.Pixels, y * normalized.Stride, copyWidth * 4);
+                Buffer.BlockCopy(
+                    source.Pixels,
+                    ((sourceY + y) * source.Stride) + (sourceX * 4),
+                    normalized.Pixels,
+                    ((destinationY + y) * normalized.Stride) + (destinationX * 4),
+                    copyWidth * 4);
             }
 
             var outputPath = ResolveOutputPath(backgroundPath);

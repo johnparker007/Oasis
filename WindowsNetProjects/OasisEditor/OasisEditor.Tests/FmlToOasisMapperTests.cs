@@ -226,6 +226,21 @@ public sealed class FmlToOasisMapperTests
     }
 
     [Fact]
+    public void MfmeBackground_ImageOffsetsDoNotChangeMappedElementGeometry()
+    {
+        var background = new Background { X = 12, Y = 34, Width = 800, Height = 600 };
+        background.Int32s["OffsetX"] = -50;
+        background.Int32s["OffsetY"] = 25;
+
+        var result = new FmlToOasisMapper().Map(new Layout([background]), new Dictionary<FmlDecodedImageKey, string>());
+
+        var element = Assert.Single(result.Elements);
+        Assert.Equal((12d, 34d, 800d, 600d), (element.X, element.Y, element.Width, element.Height));
+        Assert.Equal(-50, element.SourceImageOffsetX);
+        Assert.Equal(25, element.SourceImageOffsetY);
+    }
+
+    [Fact]
     public void Frame_IsReportedAsUnsupported()
     {
         var frame = new Frame { X = 1, Y = 2, Width = 3, Height = 4 };

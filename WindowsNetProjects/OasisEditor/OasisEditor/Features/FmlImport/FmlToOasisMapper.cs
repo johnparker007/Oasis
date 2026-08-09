@@ -67,7 +67,8 @@ internal sealed class FmlToOasisMapper
     {
         ObjectId = Guid.NewGuid().ToString("N"), Name = "Background", Kind = PanelElementKind.Background,
         X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height),
-        AssetPath = BackgroundAssetPath(c, images, index), IsTransformLocked = true, OnColorHex = Color(c, "Colour") ?? Color(c, "Color") ?? Color(c, "BackgroundColour") ?? Color(c, "BackgroundColor"), SourceComponentIndex = index, ImportSource = Source(c, index)
+        AssetPath = BackgroundAssetPath(c, images, index), IsTransformLocked = true, OnColorHex = Color(c, "Colour") ?? Color(c, "Color") ?? Color(c, "BackgroundColour") ?? Color(c, "BackgroundColor"), SourceComponentIndex = index, ImportSource = Source(c, index),
+        SourceImageOffsetX = Int(c, "OffsetX"), SourceImageOffsetY = Int(c, "OffsetY")
     };
 
     private static PanelElementModel MapImage(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images) => new()
@@ -262,6 +263,7 @@ internal sealed class FmlToOasisMapper
     }
     private static string? Str(BaseComponent c, string key) => c.Strings.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value) ? value.Trim() : null;
     private static uint? UInt(BaseComponent c, string key) => c.UInt32s.TryGetValue(key, out var v) ? v : null;
+    private static int Int(BaseComponent c, string key) => c.Int32s.TryGetValue(key, out var v) ? v : 0;
     private static double? Double(BaseComponent c, string key) => c.Floats.TryGetValue(key, out var f) ? f : c.UInt32s.TryGetValue(key, out var u) ? u : null;
     private static bool? Bool(BaseComponent c, string key) => c.Booleans.TryGetValue(key, out var v) ? v : null;
     private static int? Number(BaseComponent c) => c.Int32s.TryGetValue("Number", out var n) ? n : c.UInt32s.TryGetValue("Number", out var u) ? (int)u : c.Number != 0 ? c.Number : null;
