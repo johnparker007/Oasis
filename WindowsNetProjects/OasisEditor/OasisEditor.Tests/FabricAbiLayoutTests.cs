@@ -98,6 +98,8 @@ public sealed class FabricAbiLayoutTests
         Assert.Equal(632, Marshal.OffsetOf<FabricAmberConfigurationNative>(nameof(FabricAmberConfigurationNative.Percentage)).ToInt32());
         Assert.Equal(1160, Marshal.OffsetOf<FabricLaunchRequestNative>("RomPaths").ToInt32());
         Assert.Equal(16, Marshal.OffsetOf<FabricRomResourceNative>("Path").ToInt32());
+        Assert.Equal(24, Marshal.OffsetOf<FabricRomResourceNative>(nameof(FabricRomResourceNative.LoadAddress)).ToInt32());
+        Assert.Equal(32, Marshal.OffsetOf<FabricRomResourceNative>(nameof(FabricRomResourceNative.Reserved)).ToInt32());
         Assert.Equal(1UL << 6, (ulong)FabricCapability.CoinInput);
         Assert.Equal(9, (int)FabricResult.InputRejected);
     }

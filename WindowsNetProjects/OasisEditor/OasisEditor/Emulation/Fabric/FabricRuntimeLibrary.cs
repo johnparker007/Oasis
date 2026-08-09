@@ -19,7 +19,7 @@ public sealed unsafe class FabricRuntimeLibrary : IFabricRuntimeLibrary
         ArgumentNullException.ThrowIfNull(request); Validate(request); lock(_gate) { ObjectDisposedException.ThrowIf(_disposeRequested,this); }
         var allocations=new List<nint>(); try
         {
-            var resources=request.RomResources.Select(r=>new FabricRomResourceNative { Size=(uint)sizeof(FabricRomResourceNative),Version=FabricAbi.Version,Role=(uint)r.Role,Slot=r.Slot,Path=AllocUtf8(r.Path,allocations)}).ToArray();
+            var resources=request.RomResources.Select(r=>new FabricRomResourceNative { Size=(uint)sizeof(FabricRomResourceNative),Version=FabricAbi.Version,Role=(uint)r.Role,Slot=r.Slot,Path=AllocUtf8(r.Path,allocations),LoadAddress=r.LoadAddress,Reserved=0}).ToArray();
             var resourceBytes=resources.Length*sizeof(FabricRomResourceNative); var resourcePtr=resourceBytes==0?0:Marshal.AllocHGlobal(resourceBytes); if(resourcePtr!=0){allocations.Add(resourcePtr); fixed(FabricRomResourceNative* p=resources) Buffer.MemoryCopy(p,(void*)resourcePtr,resourceBytes,resourceBytes);}
             var config=request.Configuration?.ToNativeBytes()??[]; var configPtr=config.Length==0?0:Marshal.AllocHGlobal(config.Length); if(configPtr!=0){allocations.Add(configPtr); Marshal.Copy(config,0,configPtr,config.Length);}
             var native=new FabricLaunchRequestNative { Size=(uint)sizeof(FabricLaunchRequestNative),Version=FabricAbi.Version,Resources=resourcePtr,ResourceCount=(uint)resources.Length,Configuration=configPtr,ConfigurationSize=(uint)config.Length };

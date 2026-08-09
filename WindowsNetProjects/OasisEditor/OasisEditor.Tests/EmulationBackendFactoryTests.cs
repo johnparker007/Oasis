@@ -62,9 +62,22 @@ public sealed class EmulationBackendFactoryTests
     }
 
     [Fact]
+    public void Mpu3_UsesOnlyDedicatedProviderAndReportsMissingPath()
+    {
+        using var files = NativeFiles.Create();
+        var valid = new EmulationBackendFactory(() => files.Runtime, () => null, () => 50,
+            mpu3AmberPathProvider: () => files.Amber);
+        Assert.IsType<FabricEmulationBackend>(valid.CreateBackend(FruitMachinePlatformType.MPU3));
+        var missing = new EmulationBackendFactory(() => files.Runtime, () => files.Amber, () => 50,
+            mpu3AmberPathProvider: () => null);
+        var error = Assert.Throws<InvalidOperationException>(() => missing.CreateBackend(FruitMachinePlatformType.MPU3));
+        Assert.Contains("MPU3", error.Message);
+    }
+
+    [Fact]
     public void EveryOtherUnsupportedEnumValue_ThrowsNotSupportedException()
     {
-        foreach (var platform in Enum.GetValues<FruitMachinePlatformType>().Where(value => value is not FruitMachinePlatformType.None and not FruitMachinePlatformType.Impact and not FruitMachinePlatformType.MPU5 and not FruitMachinePlatformType.Epoch))
+        foreach (var platform in Enum.GetValues<FruitMachinePlatformType>().Where(value => value is not FruitMachinePlatformType.None and not FruitMachinePlatformType.Impact and not FruitMachinePlatformType.MPU3 and not FruitMachinePlatformType.MPU5 and not FruitMachinePlatformType.Epoch))
             Assert.Throws<NotSupportedException>(() => CreateFactory(null, null).CreateBackend(platform));
     }
 

@@ -4,7 +4,7 @@ namespace OasisEditor;
 public enum FabricCapability : ulong { DigitalInput=1, Lamps=2, Reels=4, CharacterDisplays=8, SegmentDisplays=16, Audio=32, CoinInput=1UL << 6 }
 public enum FabricRomRole : uint { Other, Program, Sound }
 
-public sealed record FabricRomResource(FabricRomRole Role, uint Slot, string Path);
+public sealed record FabricRomResource(FabricRomRole Role, uint Slot, string Path, ulong LoadAddress = 0);
 public interface IFabricBackendConfiguration { byte[] ToNativeBytes(); }
 public sealed record FabricLaunchRequest(string BackendKind, string MachineIdentifier, string BackendPath,
     IReadOnlyList<FabricRomResource> RomResources, IFabricBackendConfiguration? Configuration = null);

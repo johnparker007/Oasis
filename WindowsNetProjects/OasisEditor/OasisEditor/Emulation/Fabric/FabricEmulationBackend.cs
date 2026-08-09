@@ -9,6 +9,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private const string AmberBackendKind = "amber";
     private const string JpmSystem6MachineIdentifier = "jpm-system6";
     private const string BarcrestMpu5MachineIdentifier = "barcrest-mpu5";
+    internal const string BarcrestMpu3MachineIdentifier = "barcrest-mpu3";
     internal const string MaygayEpochMachineIdentifier = "maygay-epoch";
     private const int EmulationPumpHz = 1000;
     private const ulong NanosecondsPerPump = 1_000_000;
@@ -113,6 +114,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                     (BarcrestMpu5MachineIdentifier, BuildRomResources(request.Mpu5Configuration), (IFabricBackendConfiguration?)FabricAmberMpu5Configuration.FromMpu5(request.Mpu5Configuration)),
                 FruitMachinePlatformType.Epoch when request.EpochConfiguration is not null =>
                     (MaygayEpochMachineIdentifier, BuildRomResources(request.EpochConfiguration), (IFabricBackendConfiguration)FabricAmberEpochConfiguration.FromEpoch(request.EpochConfiguration)),
+                FruitMachinePlatformType.MPU3 when request.Mpu3Configuration is not null =>
+                    (BarcrestMpu3MachineIdentifier, BuildRomResources(request.Mpu3Configuration), (IFabricBackendConfiguration)FabricAmberMpu3Configuration.FromMpu3(request.Mpu3Configuration)),
                 _ => throw new InvalidOperationException($"Launch settings do not match Fabric platform '{request.Platform}'.")
             };
             _infoLogger($"Fabric launch: platform={request.Platform} backend={AmberBackendKind} machine={machineIdentifier} AmberDll={_amberPath} programRoms={resources.Count(item => item.Role == FabricRomRole.Program)} soundRoms={resources.Count(item => item.Role == FabricRomRole.Sound)} flashRomMode={(request.EpochConfiguration?.FlashRomMode == true ? 1 : 0)}.");
@@ -311,6 +314,21 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         var resources = new List<FabricRomResource>(8);
         AddRomRole(resources, settings.ProgramRomPaths, FabricRomRole.Program);
         AddRomRole(resources, settings.SoundRomPaths, FabricRomRole.Sound);
+        return resources;
+    }
+
+    internal static IReadOnlyList<FabricRomResource> BuildRomResources(Mpu3ProjectSettings settings)
+    {
+        if (settings.ProgramRoms.Count != 4 || settings.ProgramRoms.Select(x => x.Slot).Distinct().Count() != 4)
+            throw new InvalidOperationException("MPU3 requires exactly four uniquely slotted program ROM descriptors.");
+        var resources = new List<FabricRomResource>(4);
+        foreach (var rom in settings.ProgramRoms.OrderBy(x => x.Slot))
+        {
+            if (rom.Slot is < 0 or > 3) throw new InvalidOperationException("MPU3 program ROM slot must be 0..3.");
+            if (rom.LoadAddress > int.MaxValue) throw new InvalidOperationException("MPU3 program ROM load address must not exceed INT32_MAX.");
+            if (!string.IsNullOrWhiteSpace(rom.Path)) resources.Add(new(FabricRomRole.Program, (uint)rom.Slot, rom.Path, rom.LoadAddress));
+        }
+        if (resources.Count == 0) throw new InvalidOperationException("Current project settings are missing required MPU3 program ROMs.");
         return resources;
     }
 
