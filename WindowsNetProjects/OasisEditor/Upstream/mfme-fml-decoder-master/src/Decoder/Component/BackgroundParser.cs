@@ -32,8 +32,8 @@ namespace MfmeFmlDecoder.src.Decoder.Component
             { 0x0E, new TagInfo(0x01, "RandomTile", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
             { 0x0F, new TagInfo(0x01, "Transparency_UseAlphaChannel", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
             { 0x08, new TagInfo(0x01, "Transparency_UseColour", new byte[] { 0x00 }, ValueRole.BOOLEAN) },
-            { 0x0A, new TagInfo(0x04, "Unknown 0x0A", new byte[] { 0x00 }, ValueRole.ARGB_COLOR) },
-            { 0x0B, new TagInfo(0x04, "Unknown 0x0B", new byte[] { 0x00 }, ValueRole.ARGB_COLOR) },
+            { 0x0A, new TagInfo(0x04, "OffsetX", new byte[] { 0x00 }, ValueRole.INT32) },
+            { 0x0B, new TagInfo(0x04, "OffsetY", new byte[] { 0x00 }, ValueRole.INT32) },
         });
 
         public Background Parse(long componentOffset, uint componentId, byte[] data)
