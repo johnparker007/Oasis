@@ -199,8 +199,8 @@ public sealed class LayoutImportAssetCopierTests
             Assert.Equal(lampPixels[2], output[(20 * width) + 12]);
             Assert.Equal((10d, 20d, 4d, 3d, 7), (importedLamp.X, importedLamp.Y, importedLamp.Width, importedLamp.Height, importedLamp.DisplayNumber!.Value));
             Assert.NotEqual(Colors.Red, output[(20 * width) + 12]);
-            Assert.EndsWith("/Lamps/on.bmp", importedLamp.AssetPath, StringComparison.Ordinal);
-            Assert.EndsWith("/Lamps/off.bmp", importedLamp.SourceOffImageAssetPath, StringComparison.Ordinal);
+            Assert.EndsWith("/Lamps/on.png", importedLamp.AssetPath, StringComparison.Ordinal);
+            Assert.EndsWith("/Lamps/off.png", importedLamp.SourceOffImageAssetPath, StringComparison.Ordinal);
         }
         finally
         {

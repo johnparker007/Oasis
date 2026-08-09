@@ -48,7 +48,7 @@ public sealed class AddPanel2DElementCommandTests
         Assert.Equal("#FF3030", lamp.OnColorHex);
         Assert.Equal("#2A0505", lamp.OffColorHex);
         Assert.Equal("Tahoma", lamp.TextBoxFontName);
-        Assert.Equal(1, reel.DisplayNumber);
+        Assert.Equal(0, reel.DisplayNumber);
         Assert.Equal(24, reel.Stops);
         Assert.Equal(3d / 24d, reel.VisibleScale);
         Assert.Equal("#FF4040", sevenSegment.OnColorHex);

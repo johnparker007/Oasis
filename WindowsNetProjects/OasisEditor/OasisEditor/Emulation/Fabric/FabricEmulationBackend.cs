@@ -431,6 +431,14 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             LogException("Fabric emulation pump failed.", exception);
             _pumpCancellation?.Cancel();
             _runnerWake.Set();
+            try
+            {
+                CleanupResourcesAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception cleanupException)
+            {
+                LogException("Fabric cleanup after pump failure failed.", cleanupException);
+            }
             SetState(EmulationBackendState.Failed);
         }
     }

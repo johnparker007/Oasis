@@ -148,8 +148,13 @@ public sealed class FmlToOasisMapperTests
     [Fact]
     public void Map_WithPrismLampImages_UsesExplicitOffImage()
     {
-        var prismLamp = new PrismLamp { Width = 20, Height = 10 };
-        prismLamp.UInt32s["Number"] = 9;
+        var prismLamp = new PrismLamp
+        {
+            Width = 20,
+            Height = 10,
+            SubLamp1Number = 9,
+            SubLamp2Number = unchecked((uint)-2)
+        };
         var images = new Dictionary<FmlDecodedImageKey, string>
         {
             [new FmlDecodedImageKey(0, "Lamp 1 Image")] = "lamps/on.bmp",
