@@ -77,7 +77,7 @@ public sealed class Mpu3SupportTests
     [Fact]
     public void SharedAmberVisualNormalizationIncludesMpu3WithoutEpochOffset()
     {
-        Assert.True(MachineSegmentRuntimeAdapter.IsAmberBackedPlatform(FruitMachinePlatformType.MPU3));
+        Assert.True(AlphaCellOrder.IsAmberBackedPlatform(FruitMachinePlatformType.MPU3));
         Assert.True(PlatformReelDirectionResolver.RequiresReversal(FruitMachinePlatformType.MPU3));
         Assert.Equal(0d, InternalReelOffsetResolver.ResolveNormalizedOffset(FruitMachinePlatformType.MPU3, 12));
     }
