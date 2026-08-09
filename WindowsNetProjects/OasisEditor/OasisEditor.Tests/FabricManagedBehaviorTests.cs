@@ -298,6 +298,64 @@ public sealed class FabricManagedBehaviorTests
     }
 
     [Fact]
+    public async Task Backend_InitialiseFailureDisposesWithoutShutdownAndPreservesOriginalException()
+    {
+        var failure = new FabricException(FabricResult.BackendError, "FabricSessionInitialise", "MPU3 initialization failed");
+        var session = new FakeSession { InitialiseFailure = failure };
+        var runtime = new FakeRuntime(session);
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => runtime, new FakeAudioSink(), new FakeClock());
+
+        var thrown = await Assert.ThrowsAsync<FabricException>(() => backend.StartAsync(CreateRequest(), CancellationToken.None));
+
+        Assert.Same(failure, thrown);
+        Assert.Same(failure, backend.LastFailure);
+        Assert.Equal(0, session.ShutdownCount);
+        Assert.Equal(1, session.DisposeCount);
+        Assert.Equal(1, runtime.DisposeCount);
+        await backend.DisposeAsync();
+        Assert.Equal(0, session.ShutdownCount);
+    }
+
+    [Fact]
+    public async Task Backend_CleanupFailureAfterInitialiseFailureIsLoggedButDoesNotMaskOriginal()
+    {
+        var failure = new FabricException(FabricResult.BackendError, "FabricSessionInitialise", "original failure");
+        var cleanupFailure = new InvalidOperationException("session destroy failed");
+        var session = new FakeSession { InitialiseFailure = failure, DisposeFailure = cleanupFailure };
+        var runtime = new FakeRuntime(session);
+        var errors = new List<string>();
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => runtime, new FakeAudioSink(), new FakeClock(), errors.Add);
+
+        var thrown = await Assert.ThrowsAsync<FabricException>(() => backend.StartAsync(CreateRequest(), CancellationToken.None));
+
+        Assert.Same(failure, thrown);
+        Assert.Same(failure, backend.LastFailure);
+        Assert.Equal(0, session.ShutdownCount);
+        Assert.Equal(1, session.DisposeCount);
+        Assert.Equal(1, runtime.DisposeCount);
+        var log = Assert.Single(errors);
+        Assert.Contains("cleanup after failed startup", log, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("session destroy failed", log);
+    }
+
+    [Fact]
+    public async Task Backend_AudioConfigurationFailureAfterInitialiseShutsDownAndPreservesAudioException()
+    {
+        var failure = new FabricException(FabricResult.BackendError, "FabricSessionGetAudioFormat", "invalid audio format");
+        var session = new FakeSession { GetAudioFormatFailure = failure };
+        var runtime = new FakeRuntime(session);
+        var backend = new FabricEmulationBackend("runtime", "amber", _ => runtime, new FakeAudioSink(), new FakeClock());
+
+        var thrown = await Assert.ThrowsAsync<FabricException>(() => backend.StartAsync(CreateRequest(), CancellationToken.None));
+
+        Assert.Same(failure, thrown);
+        Assert.Same(failure, backend.LastFailure);
+        Assert.Equal(1, session.ShutdownCount);
+        Assert.Equal(1, session.DisposeCount);
+        Assert.Equal(1, runtime.DisposeCount);
+    }
+
+    [Fact]
     public async Task Backend_Mpu5UsesExplicitMachineAndUnchangedProviderPath()
     {
         var session = new FakeSession { Capabilities = new(0) };
@@ -562,6 +620,8 @@ public sealed class FabricManagedBehaviorTests
         public TaskCompletionSource FirstAudioRead { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Disposed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public Exception? AdvanceFailure { get; init; }
+        public Exception? InitialiseFailure { get; init; }
+        public Exception? GetAudioFormatFailure { get; init; }
         public Exception? SnapshotFailure { get; init; }
         public Exception? AudioFailure { get; init; }
         public Exception? ShutdownFailure { get; init; }
@@ -576,14 +636,14 @@ public sealed class FabricManagedBehaviorTests
         public int FramesToWrite { get; init; }
         public List<ulong> Advances { get; } = [];
         public FabricCapabilities Capabilities { get; init; } = new((ulong)(FabricCapability.DigitalInput | FabricCapability.Audio));
-        public void Initialise() => Invoke(() => { });
+        public void Initialise() => Invoke(() => { if (InitialiseFailure is not null) throw InitialiseFailure; });
         public void Reset() => Invoke(() => ResetCount++);
         public void Advance(ulong elapsedNanoseconds) => Invoke(() => { Advances.Add(elapsedNanoseconds); FirstAdvance.TrySetResult(); if (AdvanceFailure is not null) throw AdvanceFailure; });
         public FabricResult SubmitInput(FabricInput input) => Invoke(() => FabricResult.Ok);
         public FabricMachineSnapshot GetSnapshot() => Invoke(() => SnapshotFailure is null
             ? new FabricMachineSnapshot(1, [], [], [], [])
             : throw SnapshotFailure);
-        public FabricAudioFormat GetAudioFormat() => Invoke(() => AudioFormat);
+        public FabricAudioFormat GetAudioFormat() => Invoke(() => GetAudioFormatFailure is null ? AudioFormat : throw GetAudioFormatFailure);
         public int ReadAudio(Span<short> samples, int frameCapacity)
         {
             var sampleCapacity = samples.Length;

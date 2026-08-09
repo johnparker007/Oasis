@@ -46,6 +46,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private short[] _audioBuffer = [];
     private EmulationBackendState _state = EmulationBackendState.Stopped;
     private bool _shutdown;
+    private bool _sessionInitialised;
     private bool _audioStarted;
     private bool _disposed;
     private long _scheduleGeneration;
@@ -123,6 +124,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             _runtime = _runtimeFactory(_runtimePath);
             if (configuration is FabricAmberSystem6Configuration system6Configuration)
                 WriteCoinConfigurationDiagnostics(system6Configuration);
+            _sessionInitialised = false;
+            _shutdown = false;
             _session = _runtime.CreateSession(new FabricLaunchRequest(
                 AmberBackendKind, machineIdentifier, _amberPath, resources,
                 configuration));
@@ -131,6 +134,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             try
             {
                 _session.Initialise();
+                _sessionInitialised = true;
                 ConfigureAudio(_session);
                 Interlocked.Increment(ref _scheduleGeneration);
             }
@@ -139,7 +143,6 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 _sessionGate.Release();
             }
 
-            _shutdown = false;
             ResetRunnerStatistics();
             LastFailure = null;
             _pumpCancellation = new CancellationTokenSource();
@@ -153,9 +156,17 @@ public sealed class FabricEmulationBackend : IEmulationBackend
             _pumpThread.Start();
             SetState(EmulationBackendState.Running);
         }
-        catch
+        catch (Exception startupException)
         {
-            await CleanupResourcesAsync().ConfigureAwait(false);
+            LastFailure = startupException;
+            try
+            {
+                await CleanupResourcesAsync().ConfigureAwait(false);
+            }
+            catch (Exception cleanupException)
+            {
+                LogException("Fabric cleanup after failed startup also failed.", cleanupException);
+            }
             SetState(EmulationBackendState.Failed);
             throw;
         }
@@ -658,14 +669,18 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         {
             if (_session is not null)
             {
-                TryCleanup(ReleaseAssertedInputs, ref failures);
-                if (!_shutdown)
+                if (_sessionInitialised)
                 {
-                    TryCleanup(_session.Shutdown, ref failures);
-                    _shutdown = true;
+                    TryCleanup(ReleaseAssertedInputs, ref failures);
+                    if (!_shutdown)
+                    {
+                        TryCleanup(_session.Shutdown, ref failures);
+                        _shutdown = true;
+                    }
                 }
                 TryCleanup(_session.Dispose, ref failures);
                 _session = null;
+                _sessionInitialised = false;
             }
             EmulationAudioPlaybackStatistics audioStatistics = default;
             if (_audioStarted)
