@@ -220,7 +220,7 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
     private static double ResolveEffectiveReelPosition(double canonicalPosition, int stops, bool reelReversed, double reelBandOffset, FruitMachinePlatformType platform)
     {
         var wrapped = ((canonicalPosition % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
-        var platformReversed = RequiresLegacyPlatformReversal(platform);
+        var platformReversed = PlatformReelDirectionResolver.RequiresReversal(platform);
         var shouldReverse = platformReversed ^ reelReversed;
         var directionAdjusted = shouldReverse && wrapped != 0
             ? ReelPositionsPerRevolution - wrapped
@@ -230,11 +230,6 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
         var offsetSteps = totalOffset * ReelPositionsPerRevolution;
         var offsetAdjusted = directionAdjusted + offsetSteps;
         return ((offsetAdjusted % ReelPositionsPerRevolution) + ReelPositionsPerRevolution) % ReelPositionsPerRevolution;
-    }
-
-    private static bool RequiresLegacyPlatformReversal(FruitMachinePlatformType platform)
-    {
-        return platform == FruitMachinePlatformType.MPU4;
     }
 
     internal static double ResolvePlatformBandOffsetNormalized(FruitMachinePlatformType platform, int stops)
