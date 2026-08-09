@@ -136,8 +136,9 @@ internal static class MfmeBackgroundOverlayPostProcessor
 
         try
         {
-            // Button and PrismLamp components expose an explicit Off Image. MapLampLike
-            // can emit several Oasis lamps for that component, so bake one representative.
+            // Ordinary Lamp uses Brightmask Main as its shared base image, while Button
+            // and PrismLamp expose an explicit Off Image. Sublamp Main images remain the
+            // dynamic images. Bake one representative for each original component.
             var lamps = elements
                 .Where(element => element.Kind == PanelElementKind.Lamp && !string.IsNullOrWhiteSpace(element.SourceOffImageAssetPath))
                 .Select((element, sequence) => (element, sequence))
