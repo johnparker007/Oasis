@@ -15,7 +15,7 @@ public enum FruitMachinePlatformType
     MPU4Plasma,
     MPU5,
     Impact,
-    M1AB,
+    MaygayM1,
     BLACKBOX,
     SYS83,
     SYS85,

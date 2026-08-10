@@ -14,6 +14,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
     private readonly Func<string?> _mpu5AmberPathProvider;
     private readonly Func<string?> _epochAmberPathProvider;
     private readonly Func<string?> _mpu3AmberPathProvider;
+    private readonly Func<string?> _m1AmberPathProvider;
     private readonly Func<int> _audioBufferLengthMillisecondsProvider;
     private readonly Func<string, IFabricRuntimeLibrary> _runtimeFactory;
     private readonly Func<int, IEmulationAudioSink> _audioSinkFactory;
@@ -29,13 +30,15 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         Action<string>? infoLogger = null,
         Func<string?>? mpu5AmberPathProvider = null,
         Func<string?>? epochAmberPathProvider = null,
-        Func<string?>? mpu3AmberPathProvider = null)
+        Func<string?>? mpu3AmberPathProvider = null,
+        Func<string?>? m1AmberPathProvider = null)
         : this(
             fabricRuntimePathProvider,
             productionAmberPathProvider,
             mpu5AmberPathProvider ?? productionAmberPathProvider,
             epochAmberPathProvider ?? productionAmberPathProvider,
             mpu3AmberPathProvider ?? productionAmberPathProvider,
+            m1AmberPathProvider ?? (() => null),
             audioBufferLengthMillisecondsProvider,
             static path => new FabricRuntimeLibrary(path),
             static bufferLength => new NAudioEmulationAudioSink(bufferLength),
@@ -50,7 +53,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         Func<int>? audioBufferLengthMillisecondsProvider, Func<string, IFabricRuntimeLibrary> runtimeFactory,
         Func<int, IEmulationAudioSink> audioSinkFactory, IFabricClock clock,
         Action<string>? errorLogger, Action<string>? infoLogger = null)
-        : this(fabricRuntimePathProvider, productionAmberPathProvider, productionAmberPathProvider, productionAmberPathProvider, productionAmberPathProvider,
+        : this(fabricRuntimePathProvider, productionAmberPathProvider, productionAmberPathProvider, productionAmberPathProvider, productionAmberPathProvider, () => null,
             audioBufferLengthMillisecondsProvider, runtimeFactory, audioSinkFactory, clock, errorLogger, infoLogger) { }
 
     internal EmulationBackendFactory(
@@ -59,6 +62,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         Func<string?> mpu5AmberPathProvider,
         Func<string?> epochAmberPathProvider,
         Func<string?> mpu3AmberPathProvider,
+        Func<string?> m1AmberPathProvider,
         Func<int>? audioBufferLengthMillisecondsProvider,
         Func<string, IFabricRuntimeLibrary> runtimeFactory,
         Func<int, IEmulationAudioSink> audioSinkFactory,
@@ -71,6 +75,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
         _mpu5AmberPathProvider = mpu5AmberPathProvider ?? throw new ArgumentNullException(nameof(mpu5AmberPathProvider));
         _epochAmberPathProvider = epochAmberPathProvider ?? throw new ArgumentNullException(nameof(epochAmberPathProvider));
         _mpu3AmberPathProvider = mpu3AmberPathProvider ?? throw new ArgumentNullException(nameof(mpu3AmberPathProvider));
+        _m1AmberPathProvider = m1AmberPathProvider ?? throw new ArgumentNullException(nameof(m1AmberPathProvider));
         _audioBufferLengthMillisecondsProvider = audioBufferLengthMillisecondsProvider ?? (() => NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds);
         _runtimeFactory = runtimeFactory ?? throw new ArgumentNullException(nameof(runtimeFactory));
         _audioSinkFactory = audioSinkFactory ?? throw new ArgumentNullException(nameof(audioSinkFactory));
@@ -88,6 +93,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
             FruitMachinePlatformType.MPU5 => CreateFabricBackend(_mpu5AmberPathProvider, "Barcrest MPU5 Amber provider DLL"),
             FruitMachinePlatformType.Epoch => CreateFabricBackend(_epochAmberPathProvider, "Maygay Epoch Amber provider DLL"),
             FruitMachinePlatformType.MPU3 => CreateFabricBackend(_mpu3AmberPathProvider, "Barcrest MPU3 Amber provider DLL"),
+            FruitMachinePlatformType.MaygayM1 => CreateFabricBackend(_m1AmberPathProvider, "Maygay M1 Amber provider DLL"),
             _ => throw new NotSupportedException($"Platform '{platform}' is not supported by Fabric Amber emulation.")
         };
     }

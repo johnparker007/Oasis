@@ -67,20 +67,23 @@ public sealed record EmulationLaunchRequest(
     Mpu5NativeRomSettings? Mpu5Configuration,
     EpochNativeRomSettings? EpochConfiguration,
     Mpu3ProjectSettings? Mpu3Configuration,
+    M1ProjectSettings? M1Configuration,
     IReadOnlyList<int>? ConfiguredLampIds = null,
     IReadOnlyList<int>? ConfiguredSevenSegmentDisplayIds = null)
 {
     public EmulationLaunchRequest(System6NativeRomSettings settings, IReadOnlyList<int>? lamps = null, IReadOnlyList<int>? segments = null)
-        : this(FruitMachinePlatformType.Impact, settings, null, null, null, lamps, segments) { }
+        : this(FruitMachinePlatformType.Impact, settings, null, null, null, null, lamps, segments) { }
 
     public static EmulationLaunchRequest ForMpu5(Mpu5NativeRomSettings settings, IReadOnlyList<int>? lamps = null, IReadOnlyList<int>? segments = null) =>
-        new(FruitMachinePlatformType.MPU5, null, settings, null, null, lamps, segments);
+        new(FruitMachinePlatformType.MPU5, null, settings, null, null, null, lamps, segments);
 
     public static EmulationLaunchRequest ForEpoch(EpochNativeRomSettings settings, IReadOnlyList<int>? lamps = null, IReadOnlyList<int>? segments = null) =>
-        new(FruitMachinePlatformType.Epoch, null, null, settings, null, lamps, segments);
+        new(FruitMachinePlatformType.Epoch, null, null, settings, null, null, lamps, segments);
 
     public static EmulationLaunchRequest ForMpu3(Mpu3ProjectSettings settings, IReadOnlyList<int>? lamps = null, IReadOnlyList<int>? segments = null) =>
-        new(FruitMachinePlatformType.MPU3, null, null, null, settings, lamps, segments);
+        new(FruitMachinePlatformType.MPU3, null, null, null, settings, null, lamps, segments);
+    public static EmulationLaunchRequest ForM1(M1ProjectSettings settings, IReadOnlyList<int>? lamps=null, IReadOnlyList<int>? segments=null) =>
+        new(FruitMachinePlatformType.MaygayM1, null, null, null, null, settings, lamps, segments);
 }
 
 public enum SegmentOutputType

@@ -30,6 +30,7 @@ public sealed class NativeEmulationPreferences
     public string Mpu5AmberLibraryPath { get; init; } = string.Empty;
     public string EpochAmberLibraryPath { get; init; } = string.Empty;
     public string Mpu3AmberLibraryPath { get; init; } = string.Empty;
+    public string M1AmberLibraryPath { get; init; } = string.Empty;
     public int AudioBufferLengthMilliseconds { get; init; } = DefaultAudioBufferLengthMilliseconds;
 }
 
