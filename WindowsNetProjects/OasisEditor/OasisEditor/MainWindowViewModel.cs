@@ -2135,7 +2135,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 LoadedProject?.EpochNativeRoms ?? new EpochNativeRomSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
             FruitMachinePlatformType.MPU3 => EmulationLaunchRequest.ForMpu3(
                 LoadedProject?.Mpu3Settings ?? new Mpu3ProjectSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
-            FruitMachinePlatformType.M1 => EmulationLaunchRequest.ForM1(LoadedProject?.M1Settings ?? new M1ProjectSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
+            FruitMachinePlatformType.MaygayM1 => EmulationLaunchRequest.ForM1(LoadedProject?.M1Settings ?? new M1ProjectSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
             _ => throw new NotSupportedException($"Platform '{SelectedFruitMachinePlatform}' is not supported by Fabric Amber emulation.")
         };
     }

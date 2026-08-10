@@ -83,7 +83,7 @@ public sealed record EmulationLaunchRequest(
     public static EmulationLaunchRequest ForMpu3(Mpu3ProjectSettings settings, IReadOnlyList<int>? lamps = null, IReadOnlyList<int>? segments = null) =>
         new(FruitMachinePlatformType.MPU3, null, null, null, settings, null, lamps, segments);
     public static EmulationLaunchRequest ForM1(M1ProjectSettings settings, IReadOnlyList<int>? lamps=null, IReadOnlyList<int>? segments=null) =>
-        new(FruitMachinePlatformType.M1, null, null, null, null, settings, lamps, segments);
+        new(FruitMachinePlatformType.MaygayM1, null, null, null, null, settings, lamps, segments);
 }
 
 public enum SegmentOutputType

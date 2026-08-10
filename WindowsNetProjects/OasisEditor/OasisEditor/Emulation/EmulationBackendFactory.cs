@@ -93,7 +93,7 @@ public sealed class EmulationBackendFactory : IEmulationBackendFactory
             FruitMachinePlatformType.MPU5 => CreateFabricBackend(_mpu5AmberPathProvider, "Barcrest MPU5 Amber provider DLL"),
             FruitMachinePlatformType.Epoch => CreateFabricBackend(_epochAmberPathProvider, "Maygay Epoch Amber provider DLL"),
             FruitMachinePlatformType.MPU3 => CreateFabricBackend(_mpu3AmberPathProvider, "Barcrest MPU3 Amber provider DLL"),
-            FruitMachinePlatformType.M1 => CreateFabricBackend(_m1AmberPathProvider, "Maygay M1 Amber provider DLL"),
+            FruitMachinePlatformType.MaygayM1 => CreateFabricBackend(_m1AmberPathProvider, "Maygay M1 Amber provider DLL"),
             _ => throw new NotSupportedException($"Platform '{platform}' is not supported by Fabric Amber emulation.")
         };
     }

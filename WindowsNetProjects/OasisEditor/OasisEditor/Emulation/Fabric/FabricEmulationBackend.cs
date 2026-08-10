@@ -118,7 +118,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                     (MaygayEpochMachineIdentifier, BuildRomResources(request.EpochConfiguration), (IFabricBackendConfiguration)FabricAmberEpochConfiguration.FromEpoch(request.EpochConfiguration)),
                 FruitMachinePlatformType.MPU3 when request.Mpu3Configuration is not null =>
                     (BarcrestMpu3MachineIdentifier, BuildRomResources(request.Mpu3Configuration), (IFabricBackendConfiguration)FabricAmberMpu3Configuration.FromMpu3(request.Mpu3Configuration)),
-                FruitMachinePlatformType.M1 when request.M1Configuration is not null =>
+                FruitMachinePlatformType.MaygayM1 when request.M1Configuration is not null =>
                     (MaygayM1MachineIdentifier, BuildRomResources(request.M1Configuration), (IFabricBackendConfiguration)FabricAmberM1Configuration.FromM1(request.M1Configuration)),
                 _ => throw new InvalidOperationException($"Launch settings do not match Fabric platform '{request.Platform}'.")
             };
