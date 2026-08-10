@@ -28,7 +28,7 @@ public sealed class EditorPreferencesSerializationTests
         Assert.Equal(@"C:\Amber\M1.dll", restored.NativeEmulation.M1AmberLibraryPath);
         Assert.Equal(73, restored.NativeEmulation.AudioBufferLengthMilliseconds);
         Assert.DoesNotContain("UseFabric", json, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(6, typeof(NativeEmulationPreferences).GetProperties().Length);
+        Assert.Equal(7, typeof(NativeEmulationPreferences).GetProperties().Length);
         Assert.Equal(7, typeof(EditorPreferences).GetProperties().Length);
     }
 }
