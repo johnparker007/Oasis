@@ -16,6 +16,8 @@ internal static class InternalReelOffsetResolver
             FruitMachinePlatformType.MPU5 when safeStops == 12 => -0.075d,
             FruitMachinePlatformType.MPU5 when safeStops == 16 => -0.22d,
             FruitMachinePlatformType.Epoch when safeStops == 12 => -0.16d,
+            FruitMachinePlatformType.MaygayM1 when safeStops == 12 => -0.045d,
+            FruitMachinePlatformType.MaygayM1 when safeStops == 16 => -0.092d,
             FruitMachinePlatformType.Impact when safeStops == 12 =>
                 ImpactTwelveStopBaseOffset + ImpactTwelveStopBandCorrection,
             FruitMachinePlatformType.Impact when safeStops == 16 =>

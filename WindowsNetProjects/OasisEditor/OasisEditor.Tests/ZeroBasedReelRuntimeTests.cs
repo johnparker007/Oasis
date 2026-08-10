@@ -149,6 +149,43 @@ public sealed class ZeroBasedReelRuntimeTests
         Assert.Equal(panelPosition, facePosition, 6);
     }
 
+    [Theory]
+    [InlineData(12, 10.48d)]
+    [InlineData(16, 5.968d)]
+    public void MaygayM1Correction_UsesSameEffectivePositionPipelineForPanelAndFaceReels(int stops, double expected)
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel"));
+        document.SetPanelElements([new PanelElementModel
+        {
+            ObjectId = "reel-0", Kind = PanelElementKind.Reel, DisplayNumber = 0,
+            Stops = stops, BandOffset = 0.05d
+        }]);
+        var dispatches = new List<Action>();
+        var adapter = new MachineReelRuntimeAdapter(() => [document], () => FruitMachinePlatformType.MaygayM1,
+            () => false, _ => { }, dispatches.Add);
+
+        adapter.ApplyReelState(0, 10, ReelPositionConvention.Oasis);
+        Assert.Single(dispatches)();
+
+        var faceRuntimeState = new MachineRuntimeState
+        {
+            FruitMachinePlatform = FruitMachinePlatformType.MaygayM1
+        };
+        faceRuntimeState.SetReelPositionIfChanged(MachineObjectReference.Reel(0), 10d);
+        var faceReel = new FaceReelDisplayElement
+        {
+            LinkedMachineObjectReference = MachineObjectReference.Reel(0),
+            Stops = stops,
+            BandOffset = 0.05d
+        };
+
+        var panelPosition = document.RuntimeState.GetReelPosition("reel-0");
+        var facePosition = FaceRuntimeStateResolver.Instance.GetReelPosition(faceReel, faceRuntimeState);
+
+        Assert.Equal(expected, panelPosition, 6);
+        Assert.Equal(panelPosition, facePosition, 6);
+    }
+
     [Fact]
     public void AmberAdapter_AllowsEachReelToUseItsConfiguredMotorStepCount()
     {
