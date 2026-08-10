@@ -2,7 +2,7 @@ namespace OasisEditor;
 
 public sealed class EditorProject
 {
-    public const int CurrentSchemaVersion = 6;
+    public const int CurrentSchemaVersion = 7;
     public required string Name { get; init; }
     public required string ProjectFilePath { get; init; }
     public required string ProjectDirectory { get; init; }
@@ -14,7 +14,30 @@ public sealed class EditorProject
     public Mpu5NativeRomSettings Mpu5NativeRoms { get; set; } = new();
     public EpochNativeRomSettings EpochNativeRoms { get; set; } = new();
     public Mpu3ProjectSettings Mpu3Settings { get; set; } = new();
+    public M1ProjectSettings M1Settings { get; set; } = new();
     public List<InputDefinitionModel> InputDefinitions { get; } = [];
+}
+
+public sealed class M1ProjectSettings
+{
+    public List<M1RomSettings> ProgramRoms { get; set; } = Enumerable.Range(0, 4).Select(M1RomSettings.CreateDefault).ToList();
+    public List<M1RomSettings> SoundRoms { get; set; } = Enumerable.Range(0, 4).Select(M1RomSettings.CreateDefault).ToList();
+    public List<M1ReelSettings> Reels { get; set; } = Enumerable.Range(0, 6).Select(M1ReelSettings.CreateDefault).ToList();
+    public List<bool> Dips { get; set; } = Enumerable.Repeat(false, 16).ToList();
+    public int PercentageKey { get; set; }
+    public bool EdcEnabled { get; set; }
+    public List<M1HopperSettings> Hoppers { get; set; } = Enumerable.Range(0, 2).Select(M1HopperSettings.CreateDefault).ToList();
+}
+public sealed class M1RomSettings { public int Slot { get; set; } public string Path { get; set; } = string.Empty; public static M1RomSettings CreateDefault(int slot) => new() { Slot = slot }; }
+public sealed class M1ReelSettings { public int ReelIndex { get; set; } public int Steps { get; set; } = 96; public int OptoStart { get; set; } public int OptoEnd { get; set; } = 4; public bool OptoInvert { get; set; } public static M1ReelSettings CreateDefault(int index) => new() { ReelIndex = index }; }
+public sealed class M1HopperSettings
+{
+    public int HopperIndex { get; set; } public bool Enabled { get; set; } = true; public uint CoinsIn { get; set; } public uint CoinsOut { get; set; }
+    public bool OptoEnable { get; set; } = true; public int OptoReturn { get; set; } public bool MotorEnable { get; set; } = true; public int Coin { get; set; }
+    public uint Level { get; set; } = 100; public uint FullLevel { get; set; } = 250; public bool LoEnable { get; set; } public bool LoInvert { get; set; }
+    public int LoSwitch { get; set; } public uint LoLevel { get; set; } = 10; public bool HiEnable { get; set; } public bool HiInvert { get; set; }
+    public int HiSwitch { get; set; } public uint HiLevel { get; set; } = 225; public bool LoIndicator { get; set; } public bool HiIndicator { get; set; }
+    public uint CoinsRefilled { get; set; } public static M1HopperSettings CreateDefault(int index) => new() { HopperIndex = index };
 }
 
 public sealed class Mpu3ProjectSettings

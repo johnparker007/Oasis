@@ -64,8 +64,11 @@
                     </Style>
                 </ScrollViewer.Style>
                 <Grid>
+                <views:M1FabricSettingsView>
+                    <views:M1FabricSettingsView.Style><Style TargetType="views:M1FabricSettingsView"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding SelectedFruitMachinePlatform}" Value="{x:Static local:FruitMachinePlatformType.M1}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></views:M1FabricSettingsView.Style>
+                </views:M1FabricSettingsView>
                 <views:Mpu3FabricSettingsView>
-                    <views:Mpu3FabricSettingsView.Style><Style TargetType="views:Mpu3FabricSettingsView"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding SelectedFruitMachinePlatform}" Value="{x:Static local:FruitMachinePlatformType.MPU3}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></views:Mpu3FabricSettingsView.Style>
+                    <views:Mpu3FabricSettingsView.Style><Style TargetType="views:Mpu3FabricSettingsView"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding SelectedFruitMachinePlatform}" Value="{x:Static local:FruitMachinePlatformType.M1}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding SelectedFruitMachinePlatform}" Value="{x:Static local:FruitMachinePlatformType.MPU3}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></views:Mpu3FabricSettingsView.Style>
                 </views:Mpu3FabricSettingsView>
                 <views:EpochFabricSettingsView>
                     <views:EpochFabricSettingsView.Style><Style TargetType="views:EpochFabricSettingsView"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding SelectedFruitMachinePlatform}" Value="{x:Static local:FruitMachinePlatformType.Epoch}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></views:EpochFabricSettingsView.Style>

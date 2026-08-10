@@ -6,7 +6,7 @@ namespace OasisEditor.Tests;
 
 public sealed class EpochSupportTests
 {
-    [Fact] public void ProjectSchemaIsSix() => Assert.Equal(6, EditorProject.CurrentSchemaVersion);
+    [Fact] public void ProjectSchemaIsSix() => Assert.Equal(7, EditorProject.CurrentSchemaVersion);
     [Fact] public void DefaultsAreIndependentAndComplete()
     {
         var first=new EpochNativeRomSettings(); var second=new EpochNativeRomSettings();

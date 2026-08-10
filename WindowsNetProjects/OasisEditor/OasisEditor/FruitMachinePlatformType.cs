@@ -25,6 +25,7 @@ public enum FruitMachinePlatformType
     AceSPACE,
     MMM,
     Epoch,
+    M1,
     SRU,
     Sys80,
     MPS2,

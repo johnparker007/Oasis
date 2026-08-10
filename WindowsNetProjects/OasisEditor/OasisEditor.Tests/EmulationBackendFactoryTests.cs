@@ -77,7 +77,7 @@ public sealed class EmulationBackendFactoryTests
     [Fact]
     public void EveryOtherUnsupportedEnumValue_ThrowsNotSupportedException()
     {
-        foreach (var platform in Enum.GetValues<FruitMachinePlatformType>().Where(value => value is not FruitMachinePlatformType.None and not FruitMachinePlatformType.Impact and not FruitMachinePlatformType.MPU3 and not FruitMachinePlatformType.MPU5 and not FruitMachinePlatformType.Epoch))
+        foreach (var platform in Enum.GetValues<FruitMachinePlatformType>().Where(value => value is not FruitMachinePlatformType.None and not FruitMachinePlatformType.Impact and not FruitMachinePlatformType.MPU3 and not FruitMachinePlatformType.MPU5 and not FruitMachinePlatformType.Epoch and not FruitMachinePlatformType.M1))
             Assert.Throws<NotSupportedException>(() => CreateFactory(null, null).CreateBackend(platform));
     }
 
