@@ -12,6 +12,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     internal const string BarcrestMpu3MachineIdentifier = "barcrest-mpu3";
     internal const string MaygayM1MachineIdentifier = "maygay-m1";
     internal const string MaygayEpochMachineIdentifier = "maygay-epoch";
+    internal const string BellfruitScorpion4MachineIdentifier = "bellfruit-scorpion4";
     private const int EmulationPumpHz = 1000;
     private const ulong NanosecondsPerPump = 1_000_000;
     private const int MaxCatchUpSlices = 64;
@@ -120,6 +121,8 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                     (BarcrestMpu3MachineIdentifier, BuildRomResources(request.Mpu3Configuration), (IFabricBackendConfiguration)FabricAmberMpu3Configuration.FromMpu3(request.Mpu3Configuration)),
                 FruitMachinePlatformType.MaygayM1 when request.M1Configuration is not null =>
                     (MaygayM1MachineIdentifier, BuildRomResources(request.M1Configuration), (IFabricBackendConfiguration)FabricAmberM1Configuration.FromM1(request.M1Configuration)),
+                FruitMachinePlatformType.Scorpion4 when request.Scorpion4Configuration is not null =>
+                    (BellfruitScorpion4MachineIdentifier, BuildRomResources(request.Scorpion4Configuration), (IFabricBackendConfiguration)FabricAmberScorpion4Configuration.FromScorpion4(request.Scorpion4Configuration)),
                 _ => throw new InvalidOperationException($"Launch settings do not match Fabric platform '{request.Platform}'.")
             };
             _infoLogger($"Fabric launch: platform={request.Platform} backend={AmberBackendKind} machine={machineIdentifier} AmberDll={_amberPath} programRoms={resources.Count(item => item.Role == FabricRomRole.Program)} soundRoms={resources.Count(item => item.Role == FabricRomRole.Sound)} flashRomMode={(request.EpochConfiguration?.FlashRomMode == true ? 1 : 0)}.");
@@ -353,6 +356,14 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         AddRomRole(resources, settings.SoundRoms.OrderBy(x=>x.Slot).Select(x=>x.Path).ToArray(), FabricRomRole.Sound);
         if (!resources.Any(x=>x.Role==FabricRomRole.Program)) throw new InvalidOperationException("Current project settings are missing required M1 program ROM slot 0.");
         return resources;
+    }
+
+    internal static IReadOnlyList<FabricRomResource> BuildRomResources(Scorpion4ProjectSettings settings)
+    {
+        FabricAmberScorpion4Configuration.Validate(settings); var resources=new List<FabricRomResource>(8);
+        AddRomRole(resources,settings.ProgramRoms.OrderBy(x=>x.Slot).Select(x=>x.Path).ToArray(),FabricRomRole.Program);
+        AddRomRole(resources,settings.SoundRoms.OrderBy(x=>x.Slot).Select(x=>x.Path).ToArray(),FabricRomRole.Sound);
+        if(!resources.Any(x=>x.Role==FabricRomRole.Program)) throw new InvalidOperationException("Current project settings are missing required Scorpion 4 program ROM slot 0."); return resources;
     }
 
     internal static IReadOnlyList<string> BuildCoinConfigurationDiagnostics(FabricAmberSystem6Configuration configuration)

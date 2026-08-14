@@ -2,7 +2,7 @@ namespace OasisEditor;
 
 public sealed class EditorProject
 {
-    public const int CurrentSchemaVersion = 7;
+    public const int CurrentSchemaVersion = 8;
     public required string Name { get; init; }
     public required string ProjectFilePath { get; init; }
     public required string ProjectDirectory { get; init; }
@@ -15,7 +15,33 @@ public sealed class EditorProject
     public EpochNativeRomSettings EpochNativeRoms { get; set; } = new();
     public Mpu3ProjectSettings Mpu3Settings { get; set; } = new();
     public M1ProjectSettings M1Settings { get; set; } = new();
+    public Scorpion4ProjectSettings Scorpion4Settings { get; set; } = new();
     public List<InputDefinitionModel> InputDefinitions { get; } = [];
+}
+
+public sealed class Scorpion4ProjectSettings
+{
+    public List<Scorpion4RomSettings> ProgramRoms { get; set; } = Enumerable.Range(0, 4).Select(Scorpion4RomSettings.CreateDefault).ToList();
+    public List<Scorpion4RomSettings> SoundRoms { get; set; } = Enumerable.Range(0, 4).Select(Scorpion4RomSettings.CreateDefault).ToList();
+    public List<Scorpion4ReelSettings> Reels { get; set; } = Enumerable.Range(0, 6).Select(Scorpion4ReelSettings.CreateDefault).ToList();
+    public List<bool> Dips { get; set; } = Enumerable.Repeat(false, 16).ToList();
+    public int Stake { get; set; }
+    public int Prize { get; set; }
+    public int Percentage { get; set; }
+    public bool EdcEnabled { get; set; }
+    public int HopperType { get; set; }
+    public List<Scorpion4CoinChannelSettings> Coins { get; set; } = Enumerable.Range(0, 6).Select(Scorpion4CoinChannelSettings.CreateDefault).ToList();
+    public List<Scorpion4HopperSettings> Hoppers { get; set; } = Enumerable.Range(0, 2).Select(Scorpion4HopperSettings.CreateDefault).ToList();
+}
+public sealed class Scorpion4RomSettings { public int Slot { get; set; } public string Path { get; set; } = string.Empty; public static Scorpion4RomSettings CreateDefault(int slot) => new() { Slot = slot }; }
+public sealed class Scorpion4ReelSettings { public int ReelIndex { get; set; } public int Steps { get; set; } = 96; public int OptoStart { get; set; } public int OptoEnd { get; set; } public bool OptoInvert { get; set; } public static Scorpion4ReelSettings CreateDefault(int index) => new() { ReelIndex = index }; }
+public sealed class Scorpion4CoinChannelSettings { public int ChannelIndex { get; set; } public bool Enabled { get; set; } = true; public int Value { get; set; } = 0xff; public static Scorpion4CoinChannelSettings CreateDefault(int index) => new() { ChannelIndex = index }; }
+public sealed class Scorpion4HopperSettings
+{
+    public int HopperIndex { get; set; } public bool Enabled { get; set; } public int Coin { get; set; }
+    public uint CoinsIn { get; set; } public uint CoinsOut { get; set; } public uint Level { get; set; } public uint FullLevel { get; set; }
+    public bool LoEnabled { get; set; } public uint LoLevel { get; set; } public bool HiEnabled { get; set; } public uint HiLevel { get; set; }
+    public uint CoinsRefilled { get; set; } public static Scorpion4HopperSettings CreateDefault(int index) => new() { HopperIndex = index };
 }
 
 public sealed class M1ProjectSettings

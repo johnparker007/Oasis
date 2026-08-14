@@ -38,6 +38,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _epochAmberLibraryPath = string.Empty;
     private string _mpu3AmberLibraryPath = string.Empty;
     private string _m1AmberLibraryPath = string.Empty;
+    private string _scorpion4AmberLibraryPath = string.Empty;
     private string _mpu5ProgramRom1Path = string.Empty, _mpu5ProgramRom2Path = string.Empty, _mpu5ProgramRom3Path = string.Empty, _mpu5ProgramRom4Path = string.Empty;
     private string _mpu5SoundRom1Path = string.Empty, _mpu5SoundRom2Path = string.Empty, _mpu5SoundRom3Path = string.Empty, _mpu5SoundRom4Path = string.Empty;
     private string _mpu5NativeRomStatus = "Program ROM 1 is required for Fabric Amber launch.";
@@ -75,6 +76,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private EpochProjectSettingsViewModel? _epochProjectSettings;
     private Mpu3ProjectSettingsViewModel? _mpu3ProjectSettings;
     private M1ProjectSettingsViewModel? _m1ProjectSettings;
+    private Scorpion4ProjectSettingsViewModel? _scorpion4ProjectSettings;
     private bool _isFmlImportInProgress;
     private bool _isEditorProgressVisible;
     private bool _isEditorProgressIndeterminate;
@@ -237,6 +239,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _epochAmberLibraryPath = preferences.NativeEmulation.EpochAmberLibraryPath;
             _mpu3AmberLibraryPath = preferences.NativeEmulation.Mpu3AmberLibraryPath;
             _m1AmberLibraryPath = preferences.NativeEmulation.M1AmberLibraryPath;
+            _scorpion4AmberLibraryPath = preferences.NativeEmulation.Scorpion4AmberLibraryPath;
             _system6AudioBufferLengthMilliseconds = NormalizeSystem6AudioBufferLengthMilliseconds(preferences.NativeEmulation.AudioBufferLengthMilliseconds);
             _oasisPlayerExecutablePath = preferences.Player.ExecutablePath;
             _oasisPlayerFullscreen = preferences.Player.Fullscreen;
@@ -263,6 +266,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 FruitMachinePlatformType.MPU5 => LoadedProject?.Mpu5NativeRoms.Reels.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? System6ReelOptoSettings.DefaultSteps,
                 FruitMachinePlatformType.Epoch => LoadedProject?.EpochNativeRoms.Reels.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? EpochReelSettings.DefaultSteps,
+                FruitMachinePlatformType.Scorpion4 => LoadedProject?.Scorpion4Settings.Reels.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? 96,
                 _ => System6ReelOptos.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? System6ReelOptoSettings.DefaultSteps
             });
         _segmentRuntimeAdapter = new MachineSegmentRuntimeAdapter(
@@ -276,7 +280,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             infoLogger: message => AddOutputEntry(message, OutputLogStatus.Info),
             mpu5AmberPathProvider: () => Mpu5AmberLibraryPath,
             epochAmberPathProvider: () => EpochAmberLibraryPath,
-            mpu3AmberPathProvider: () => Mpu3AmberLibraryPath, m1AmberPathProvider: () => M1AmberLibraryPath);
+            mpu3AmberPathProvider: () => Mpu3AmberLibraryPath, m1AmberPathProvider: () => M1AmberLibraryPath, scorpion4AmberPathProvider: () => Scorpion4AmberLibraryPath);
 
         RecentProjects = new ObservableCollection<string>(_recentProjectsStore.Load());
         OpenDocuments = new ObservableCollection<DocumentTabViewModel>();
@@ -544,6 +548,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string EpochAmberLibraryPath { get => _epochAmberLibraryPath; set { if (SetProperty(ref _epochAmberLibraryPath, value)) SavePreferences(); } }
     public string Mpu3AmberLibraryPath { get => _mpu3AmberLibraryPath; set { if (SetProperty(ref _mpu3AmberLibraryPath, value)) SavePreferences(); } }
     public string M1AmberLibraryPath { get => _m1AmberLibraryPath; set { if (SetProperty(ref _m1AmberLibraryPath, value)) SavePreferences(); } }
+    public string Scorpion4AmberLibraryPath { get => _scorpion4AmberLibraryPath; set { if (SetProperty(ref _scorpion4AmberLibraryPath, value)) SavePreferences(); } }
     public int System6AudioBufferLengthMilliseconds
     {
         get => _system6AudioBufferLengthMilliseconds;
@@ -607,6 +612,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public EpochProjectSettingsViewModel? EpochProjectSettings { get => _epochProjectSettings; private set => SetProperty(ref _epochProjectSettings, value); }
     public Mpu3ProjectSettingsViewModel? Mpu3ProjectSettings { get => _mpu3ProjectSettings; private set => SetProperty(ref _mpu3ProjectSettings, value); }
     public M1ProjectSettingsViewModel? M1ProjectSettings { get => _m1ProjectSettings; private set => SetProperty(ref _m1ProjectSettings, value); }
+    public Scorpion4ProjectSettingsViewModel? Scorpion4ProjectSettings { get => _scorpion4ProjectSettings; private set => SetProperty(ref _scorpion4ProjectSettings, value); }
 
     public bool IsEditorProgressVisible
     {
@@ -671,6 +677,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 Mpu3ProjectSettings = value is null ? null : new Mpu3ProjectSettingsViewModel(value.Mpu3Settings, SaveMpu3ProjectSettings);
                 M1ProjectSettings = value is null ? null : new M1ProjectSettingsViewModel(value.M1Settings, SaveM1ProjectSettings);
+                Scorpion4ProjectSettings = value is null ? null : new Scorpion4ProjectSettingsViewModel(value.Scorpion4Settings, SaveScorpion4ProjectSettings);
                 OnPropertyChanged(nameof(HasLoadedProject));
                 OnPropertyChanged(nameof(InputDefinitions));
                 OnPropertyChanged(nameof(WindowTitle));
@@ -1937,6 +1944,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 EpochAmberLibraryPath = EpochAmberLibraryPath,
                 Mpu3AmberLibraryPath = Mpu3AmberLibraryPath,
                 M1AmberLibraryPath = M1AmberLibraryPath,
+                Scorpion4AmberLibraryPath = Scorpion4AmberLibraryPath,
                 AudioBufferLengthMilliseconds = System6AudioBufferLengthMilliseconds
             },
             Player = new OasisPlayerPreferences
@@ -2136,6 +2144,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             FruitMachinePlatformType.MPU3 => EmulationLaunchRequest.ForMpu3(
                 LoadedProject?.Mpu3Settings ?? new Mpu3ProjectSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
             FruitMachinePlatformType.MaygayM1 => EmulationLaunchRequest.ForM1(LoadedProject?.M1Settings ?? new M1ProjectSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
+            FruitMachinePlatformType.Scorpion4 => EmulationLaunchRequest.ForScorpion4(LoadedProject?.Scorpion4Settings ?? new Scorpion4ProjectSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
             _ => throw new NotSupportedException($"Platform '{SelectedFruitMachinePlatform}' is not supported by Fabric Amber emulation.")
         };
     }
@@ -2635,6 +2644,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var epochNativeRoms = ResolveEpochNativeRomSettings(projectDocument.RootElement);
         var mpu3Settings = ResolveMpu3Settings(projectDocument.RootElement);
         var m1Settings = ResolveM1Settings(projectDocument.RootElement);
+        var scorpion4Settings = ResolveScorpion4Settings(projectDocument.RootElement);
         var inputDefinitions = ResolveInputDefinitions(projectDocument.RootElement);
 
         return new EditorProject
@@ -2650,7 +2660,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             Mpu5NativeRoms = mpu5NativeRoms,
             EpochNativeRoms = epochNativeRoms,
             Mpu3Settings = mpu3Settings,
-            M1Settings = m1Settings
+            M1Settings = m1Settings,
+            Scorpion4Settings = scorpion4Settings
         }.WithInputDefinitions(inputDefinitions);
     }
 
@@ -2831,7 +2842,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                     {
                         wroteProjectSettings = true;
                         writer.WritePropertyName("project_settings");
-                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.System6NativeRoms, LoadedProject.Mpu5NativeRoms, LoadedProject.EpochNativeRoms, LoadedProject.Mpu3Settings, LoadedProject.M1Settings);
+                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.System6NativeRoms, LoadedProject.Mpu5NativeRoms, LoadedProject.EpochNativeRoms, LoadedProject.Mpu3Settings, LoadedProject.M1Settings, LoadedProject.Scorpion4Settings);
                         continue;
                     }
 
@@ -2876,7 +2887,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, System6NativeRomSettings system6NativeRoms, Mpu5NativeRomSettings mpu5NativeRoms, EpochNativeRomSettings epochNativeRoms, Mpu3ProjectSettings mpu3Settings, M1ProjectSettings m1Settings)
+    private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, System6NativeRomSettings system6NativeRoms, Mpu5NativeRomSettings mpu5NativeRoms, EpochNativeRomSettings epochNativeRoms, Mpu3ProjectSettings mpu3Settings, M1ProjectSettings m1Settings, Scorpion4ProjectSettings scorpion4Settings)
     {
         writer.WriteStartObject();
         var wrotePlatform = false;
@@ -2885,6 +2896,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var wroteEpochSettings = false;
         var wroteMpu3Settings = false;
         var wroteM1Settings = false;
+        var wroteScorpion4Settings = false;
         foreach (var property in existingProjectSettings.EnumerateObject())
         {
             if (property.NameEquals("FruitMachine_Platform"))
@@ -2913,6 +2925,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 wroteMpu3Settings = true;
             }
             else if (property.NameEquals("M1Settings")) { WriteM1Settings(writer, m1Settings); wroteM1Settings = true; }
+            else if (property.NameEquals("Scorpion4Settings")) { WriteScorpion4Settings(writer, scorpion4Settings); wroteScorpion4Settings = true; }
             else if (!property.NameEquals("MameRomName") && !property.NameEquals("AutomaticallyDownloadMissingRoms"))
             {
                 property.WriteTo(writer);
@@ -2924,6 +2937,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (!wroteEpochSettings) WriteEpochNativeRomSettings(writer, epochNativeRoms);
         if (!wroteMpu3Settings) WriteMpu3Settings(writer, mpu3Settings);
         if (!wroteM1Settings) WriteM1Settings(writer, m1Settings);
+        if (!wroteScorpion4Settings) WriteScorpion4Settings(writer, scorpion4Settings);
         writer.WriteEndObject();
     }
 
@@ -2941,6 +2955,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SaveLoadedProjectMetadata();
     }
     private void SaveM1ProjectSettings(M1ProjectSettings settings) { if (LoadedProject is null) return; LoadedProject.M1Settings = settings; SaveLoadedProjectMetadata(); }
+    private void SaveScorpion4ProjectSettings(Scorpion4ProjectSettings settings) { if (LoadedProject is null) return; LoadedProject.Scorpion4Settings = settings; SaveLoadedProjectMetadata(); }
 
     private static void WriteEpochNativeRomSettings(Utf8JsonWriter writer, EpochNativeRomSettings settings)
     {
@@ -2952,7 +2967,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (!root.TryGetProperty("project_settings", out var projectSettings)
             || !projectSettings.TryGetProperty("EpochNativeRoms", out var settings))
-            throw new InvalidOperationException("Epoch project settings are missing from schema version 7.");
+            throw new InvalidOperationException("Epoch project settings are missing from schema version 8.");
         return settings.Deserialize<EpochNativeRomSettings>() ?? throw new InvalidOperationException("Epoch project settings are invalid.");
     }
 
@@ -2966,16 +2981,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         if (!root.TryGetProperty("project_settings", out var projectSettings)
             || !projectSettings.TryGetProperty("Mpu3Settings", out var settings))
-            throw new InvalidOperationException("MPU3 project settings are missing from schema version 7.");
+            throw new InvalidOperationException("MPU3 project settings are missing from schema version 8.");
         var result = settings.Deserialize<Mpu3ProjectSettings>() ?? throw new InvalidOperationException("MPU3 project settings are invalid.");
         FabricAmberMpu3Configuration.Validate(result);
         return result;
     }
 
+    private static void WriteScorpion4Settings(Utf8JsonWriter writer, Scorpion4ProjectSettings settings) { writer.WritePropertyName("Scorpion4Settings"); JsonSerializer.Serialize(writer, settings); }
+    private static Scorpion4ProjectSettings ResolveScorpion4Settings(JsonElement root)
+    {
+        if (!root.TryGetProperty("project_settings", out var projectSettings) || !projectSettings.TryGetProperty("Scorpion4Settings", out var settings)) throw new InvalidOperationException("Scorpion 4 project settings are missing from schema version 8.");
+        var result=settings.Deserialize<Scorpion4ProjectSettings>() ?? throw new InvalidOperationException("Scorpion 4 project settings are invalid."); FabricAmberScorpion4Configuration.Validate(result); return result;
+    }
+
     private static void WriteM1Settings(Utf8JsonWriter writer, M1ProjectSettings settings) { writer.WritePropertyName("M1Settings"); JsonSerializer.Serialize(writer, settings); }
     private static M1ProjectSettings ResolveM1Settings(JsonElement root)
     {
-        if (!root.TryGetProperty("project_settings", out var projectSettings) || !projectSettings.TryGetProperty("M1Settings", out var settings)) throw new InvalidOperationException("M1 project settings are missing from schema version 7.");
+        if (!root.TryGetProperty("project_settings", out var projectSettings) || !projectSettings.TryGetProperty("M1Settings", out var settings)) throw new InvalidOperationException("M1 project settings are missing from schema version 8.");
         var result=settings.Deserialize<M1ProjectSettings>() ?? throw new InvalidOperationException("M1 project settings are invalid."); FabricAmberM1Configuration.Validate(result); return result;
     }
 
