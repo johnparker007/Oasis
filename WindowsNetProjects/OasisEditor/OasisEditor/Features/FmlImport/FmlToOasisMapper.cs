@@ -48,8 +48,11 @@ internal sealed class FmlToOasisMapper
                 case SevenSeg or SevenSegBlock:
                     elements.Add(MapSegment(component, index, exportedImages));
                     break;
-                case Alpha or AlphaNew or MatrixAlpha or DotAlpha or BFMAlpha:
+                case Alpha or AlphaNew or BFMAlpha:
                     elements.Add(MapAlpha(component, index, exportedImages));
+                    break;
+                case MatrixAlpha or DotAlpha:
+                    elements.Add(MapDotMatrix(component, index, exportedImages));
                     break;
                 case Label:
                     elements.Add(MapLabel(component, index));
@@ -202,6 +205,7 @@ internal sealed class FmlToOasisMapper
 
     private static PanelElementModel MapSegment(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images) => new() { ObjectId = Guid.NewGuid().ToString("N"), Name = $"7 Segment {Number(c).GetValueOrDefault(c.Number)}", Kind = PanelElementKind.SevenSegment, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), DisplayNumber = Number(c).GetValueOrDefault(c.Number), SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), OnColorHex = Color(c, "OnColour") ?? Color(c, "OnColor"), SourceComponentIndex = index, ImportSource = Source(c, index) };
     private static PanelElementModel MapAlpha(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images) => new() { ObjectId = Guid.NewGuid().ToString("N"), Name = "Alpha", Kind = PanelElementKind.Alpha, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), IsReversed = Bool(c, "Reversed") ?? false, SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), OnColorHex = Color(c, "OnColour") ?? Color(c, "OnColor"), SourceComponentIndex = index, ImportSource = Source(c, index) };
+    private static PanelElementModel MapDotMatrix(BaseComponent c, int index, IReadOnlyDictionary<FmlDecodedImageKey, string> images) => new() { ObjectId = Guid.NewGuid().ToString("N"), Name = "VFD Dot Matrix", Kind = PanelElementKind.VfdDotMatrix, X = c.X, Y = c.Y, Width = Math.Max(1, c.Width), Height = Math.Max(1, c.Height), IsReversed = Bool(c, "Reversed") ?? false, SecondaryAssetPath = FirstRoleImage(images, index, IsOverlay), OnColorHex = Color(c, "OnColour") ?? Color(c, "OnColor"), SourceComponentIndex = index, ImportSource = Source(c, index) };
     private static PanelElementModel MapLabel(BaseComponent c, int index)
     {
         var font = Font(c);

@@ -80,7 +80,7 @@ public sealed class EmulationBackendAbstractionsTests
         var reel = new MachineReelChangedEventArgs(2, 96);
         var segment = new MachineSegmentChangedEventArgs(3, 0x7f, SegmentOutputType.Digit);
         var vfd = new MachineVfdBrightnessChangedEventArgs(4, 0.5d);
-        var dotMatrix = new MachineDotMatrixChangedEventArgs(5, 1);
+        var dotMatrix = new MachineDotMatrixChangedEventArgs(5, 96, 8, [0, 1], 0.75d);
 
         Assert.Equal(1, lamp.LampId);
         Assert.Equal(255, lamp.Value);
@@ -91,7 +91,10 @@ public sealed class EmulationBackendAbstractionsTests
         Assert.Equal(SegmentOutputType.Digit, segment.OutputType);
         Assert.Equal(4, vfd.CellId);
         Assert.Equal(0.5d, vfd.NormalizedBrightness);
-        Assert.Equal(5, dotMatrix.DotIndex);
-        Assert.Equal(1, dotMatrix.Value);
+        Assert.Equal(5, dotMatrix.DisplayId);
+        Assert.Equal(96, dotMatrix.Width);
+        Assert.Equal(8, dotMatrix.Height);
+        Assert.Equal([0, 1], dotMatrix.Dots);
+        Assert.Equal(0.75d, dotMatrix.Brightness);
     }
 }

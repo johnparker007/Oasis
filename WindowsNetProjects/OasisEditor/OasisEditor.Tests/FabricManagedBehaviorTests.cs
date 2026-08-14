@@ -170,6 +170,37 @@ public sealed class FabricManagedBehaviorTests
     }
 
     [Fact]
+    public void Backend_PublishesChangedDotMatrixSnapshotsIndependentlyInRowMajorOrder()
+    {
+        var backend = CreateBackend(new FakeSession(), new FakeAudioSink());
+        var dotChanges = new List<MachineDotMatrixChangedEventArgs>();
+        var segmentChanges = new List<MachineSegmentChangedEventArgs>();
+        backend.DotMatrixChanged += (_, change) => dotChanges.Add(change);
+        backend.SegmentChanged += (_, change) => segmentChanges.Add(change);
+        var dots = new int[96 * 8];
+        dots[2 * 96 + 7] = 1;
+        var snapshot = new FabricMachineSnapshot(1, [], [],
+            [new FabricCharacterDisplay("alpha", [1], [0], 1)], [],
+            [new FabricDotMatrixDisplay("alpha-dot", 96, 8, dots, 0.5f)]);
+
+        backend.PublishSnapshot(snapshot);
+        backend.PublishSnapshot(snapshot with { Sequence = 2 });
+        var changedDots = dots.ToArray();
+        changedDots[2 * 96 + 7] = 0;
+        changedDots[3 * 96 + 9] = 1;
+        backend.PublishSnapshot(snapshot with
+        {
+            Sequence = 3,
+            DotMatrixDisplays = [new FabricDotMatrixDisplay("alpha-dot", 96, 8, changedDots, 0.5f)]
+        });
+
+        Assert.Equal(2, dotChanges.Count);
+        Assert.Equal(1, dotChanges[0].Dots[2 * 96 + 7]);
+        Assert.Equal(1, dotChanges[1].Dots[3 * 96 + 9]);
+        Assert.Single(segmentChanges);
+    }
+
+    [Fact]
     public void ElapsedTime_PreservesFractionalRemainderWithoutDrift()
     {
         var converter = new FabricElapsedTime(3);

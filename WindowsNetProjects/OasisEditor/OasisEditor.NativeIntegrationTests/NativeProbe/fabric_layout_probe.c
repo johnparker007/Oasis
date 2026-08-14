@@ -15,7 +15,8 @@ typedef struct FabricLamp { uint32_t struct_size, struct_version; char identifie
 typedef struct FabricReel { uint32_t struct_size, struct_version; char identifier[ID]; int32_t numerical_index, position; } FabricReel;
 typedef struct FabricCharacterDisplay { uint32_t struct_size, struct_version; char identifier[ID]; uint32_t character_count, character_capacity, characters[CHARS]; uint8_t attributes[CHARS]; float brightness; } FabricCharacterDisplay;
 typedef struct FabricSegmentDisplay { uint32_t struct_size, struct_version; char identifier[ID]; uint32_t digit_count, digit_capacity; uint64_t segment_masks[DIGITS]; } FabricSegmentDisplay;
-typedef struct FabricMachineSnapshot { uint32_t struct_size, struct_version; uint64_t sequence; FabricLamp *lamps; uint32_t lamp_capacity, lamp_count; FabricReel *reels; uint32_t reel_capacity, reel_count; FabricCharacterDisplay *character_displays; uint32_t character_display_capacity, character_display_count; FabricSegmentDisplay *segment_displays; uint32_t segment_display_capacity, segment_display_count; } FabricMachineSnapshot;
+typedef struct FabricDotMatrixDisplay { uint32_t struct_size, struct_version; char identifier[ID]; uint32_t width, height, dot_count, dot_capacity; uint8_t dots[2048]; float brightness; } FabricDotMatrixDisplay;
+typedef struct FabricMachineSnapshot { uint32_t struct_size, struct_version; uint64_t sequence; FabricLamp *lamps; uint32_t lamp_capacity, lamp_count; FabricReel *reels; uint32_t reel_capacity, reel_count; FabricCharacterDisplay *character_displays; uint32_t character_display_capacity, character_display_count; FabricSegmentDisplay *segment_displays; uint32_t segment_display_capacity, segment_display_count; FabricDotMatrixDisplay *dot_matrix_displays; uint32_t dot_matrix_display_capacity, dot_matrix_display_count; } FabricMachineSnapshot;
 typedef struct FabricAudioFormat { uint32_t struct_size, struct_version, sample_rate; uint16_t channel_count, bits_per_sample; uint8_t interleaved, signed_samples, little_endian, reserved; } FabricAudioFormat;
 typedef struct AmberReelConfigV1 { uint32_t reel_index, enabled, steps, opto_start, opto_end, opto_invert; } AmberReelConfigV1;
 typedef struct AmberReelConfigurationV1 { uint32_t struct_size, version, reel_count, apply_mask; AmberReelConfigV1 reels[8]; } AmberReelConfigurationV1;
@@ -35,7 +36,7 @@ typedef struct FabricAmberMpu5ConfigurationV1 { uint32_t magic,struct_size,versi
 int main(void) {
     SIZE(FabricLaunchRequest); SIZE(FabricRomResource); SIZE(FabricCapabilities); SIZE(FabricInput);
     SIZE(FabricLamp); SIZE(FabricReel); SIZE(FabricCharacterDisplay); SIZE(FabricSegmentDisplay);
-    SIZE(FabricMachineSnapshot); SIZE(FabricAudioFormat); SIZE(AmberReelConfigV1);
+    SIZE(FabricDotMatrixDisplay); SIZE(FabricMachineSnapshot); SIZE(FabricAudioFormat); SIZE(AmberReelConfigV1);
     SIZE(AmberReelConfigurationV1); SIZE(AmberCoinChannelConfigV1); SIZE(AmberCoinRouteConfigV1);
     SIZE(AmberCoinConfigurationV1); SIZE(FabricAmberConfigurationV1);
     SIZE(FabricAmberMpu5ReelConfigV1); SIZE(FabricAmberMpu5ReelConfigurationV1); SIZE(FabricAmberMpu5CoinChannelConfigV1); SIZE(FabricAmberMpu5CoinConfigurationV1); SIZE(FabricAmberMpu5OptionsV1); SIZE(FabricAmberMpu5ConfigurationV1);
@@ -43,6 +44,7 @@ int main(void) {
     OFF(FabricLaunchRequest, rom_resources); OFF(FabricRomResource, path);
     OFF(FabricMachineSnapshot, lamps); OFF(FabricMachineSnapshot, reels);
     OFF(FabricMachineSnapshot, character_displays); OFF(FabricMachineSnapshot, segment_displays);
+    OFF(FabricMachineSnapshot, dot_matrix_displays); OFF(FabricMachineSnapshot, dot_matrix_display_capacity); OFF(FabricMachineSnapshot, dot_matrix_display_count);
     OFF(FabricCharacterDisplay, brightness);
     OFF(FabricAmberMpu5ConfigurationV1,reels); OFF(FabricAmberMpu5ConfigurationV1,coins); OFF(FabricAmberMpu5ConfigurationV1,options);
     return 0;

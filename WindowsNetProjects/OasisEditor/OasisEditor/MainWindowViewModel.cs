@@ -99,6 +99,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly IMachineLampRuntimeAdapter _lampRuntimeAdapter;
     private readonly IMachineReelRuntimeAdapter _reelRuntimeAdapter;
     private readonly IMachineSegmentRuntimeAdapter _segmentRuntimeAdapter;
+    private readonly IMachineDotMatrixRuntimeAdapter _dotMatrixRuntimeAdapter;
     private IEmulationBackend? _activeEmulationBackend;
     private EmulationBackendState _emulationState = EmulationBackendState.Stopped;
     private readonly IInputMapDiagnosticsService _inputMapDiagnosticsService = new InputMapDiagnosticsService();
@@ -273,6 +274,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => OpenDocuments,
             DispatchToUiThread,
             () => SelectedFruitMachinePlatform);
+        _dotMatrixRuntimeAdapter = new MachineDotMatrixRuntimeAdapter(
+            () => OpenDocuments, DispatchToUiThread,
+            message => AddOutputEntry(message, OutputLogStatus.Warning));
         _emulationBackendFactory = new EmulationBackendFactory(
             () => FabricRuntimeLibraryPath, () => ProductionAmberLibraryPath,
             () => System6AudioBufferLengthMilliseconds,
@@ -2111,6 +2115,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         backend.ReelChanged += OnActiveBackendReelChanged;
         backend.SegmentChanged += OnActiveBackendSegmentChanged;
         backend.VfdBrightnessChanged += OnActiveBackendVfdBrightnessChanged;
+        backend.DotMatrixChanged += OnActiveBackendDotMatrixChanged;
         try
         {
             await backend.StartAsync(BuildEmulationLaunchRequest(), cancellationToken).ConfigureAwait(false);
@@ -2123,6 +2128,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             backend.ReelChanged -= OnActiveBackendReelChanged;
             backend.SegmentChanged -= OnActiveBackendSegmentChanged;
             backend.VfdBrightnessChanged -= OnActiveBackendVfdBrightnessChanged;
+            backend.DotMatrixChanged -= OnActiveBackendDotMatrixChanged;
             _machineOutputDispatcher?.Detach();
             _machineOutputDispatcher = null;
             await backend.DisposeAsync().ConfigureAwait(false);
@@ -2433,6 +2439,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void OnActiveBackendVfdBrightnessChanged(object? sender, MachineVfdBrightnessChangedEventArgs e) =>
         _machineOutputDispatcher?.EnqueueVfdBrightness(e.CellId, e.NormalizedBrightness);
 
+    private void OnActiveBackendDotMatrixChanged(object? sender, MachineDotMatrixChangedEventArgs e) =>
+        _dotMatrixRuntimeAdapter.ApplyDisplayState(e.DisplayId, e.Width, e.Height, e.Dots, e.Brightness);
+
     private void ApplyMachineOutputBatch(MachineOutputBatch batch)
     {
         foreach (var lamp in batch.Lamps)
@@ -2495,6 +2504,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         backend.ReelChanged -= OnActiveBackendReelChanged;
         backend.SegmentChanged -= OnActiveBackendSegmentChanged;
         backend.VfdBrightnessChanged -= OnActiveBackendVfdBrightnessChanged;
+        backend.DotMatrixChanged -= OnActiveBackendDotMatrixChanged;
         _machineOutputDispatcher?.Detach();
         _machineOutputDispatcher = null;
         await backend.DisposeAsync();

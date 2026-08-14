@@ -10,6 +10,7 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
     private const int MaxReels = 64;
     private const int MaxCharacterDisplays = 64;
     private const int MaxSegmentDisplays = 256;
+    private const int MaxDotMatrixDisplays = 64;
 
     private readonly FabricNativeExports _exports;
     private readonly Action _released;
@@ -17,6 +18,7 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
     private FabricReelNative[] _reels = [];
     private FabricCharacterDisplayNative[] _characters = [];
     private FabricSegmentDisplayNative[] _segments = [];
+    private FabricDotMatrixDisplayNative[] _dotMatrices = [];
     private nint _handle;
     private ushort? _audioChannels;
     private bool _shutdown;
@@ -118,6 +120,7 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
             fixed (FabricReelNative* reels = _reels)
             fixed (FabricCharacterDisplayNative* characters = _characters)
             fixed (FabricSegmentDisplayNative* segments = _segments)
+            fixed (FabricDotMatrixDisplayNative* dotMatrices = _dotMatrices)
             {
                 var native = new FabricMachineSnapshotNative
                 {
@@ -130,7 +133,9 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
                     Characters = (nint)characters,
                     CharacterCapacity = (uint)_characters.Length,
                     Segments = (nint)segments,
-                    SegmentCapacity = (uint)_segments.Length
+                    SegmentCapacity = (uint)_segments.Length,
+                    DotMatrices = (nint)dotMatrices,
+                    DotMatrixCapacity = (uint)_dotMatrices.Length
                 };
                 var result = _exports.GetSnapshotFn(_handle, &native);
                 if (result == FabricResult.BufferTooSmall)
@@ -139,7 +144,7 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
                     continue;
                 }
                 Check(result, "FabricSessionGetSnapshot");
-                ValidateSuccessfulSnapshot(native, (nint)lamps, (nint)reels, (nint)characters, (nint)segments);
+                ValidateSuccessfulSnapshot(native, (nint)lamps, (nint)reels, (nint)characters, (nint)segments, (nint)dotMatrices);
                 return ConvertSnapshot(native);
             }
         }
@@ -196,6 +201,7 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
         _reels = Grow(_reels, snapshot.ReelCount, MaxReels, "reels");
         _characters = Grow(_characters, snapshot.CharacterCount, MaxCharacterDisplays, "character displays");
         _segments = Grow(_segments, snapshot.SegmentCount, MaxSegmentDisplays, "segment displays");
+        _dotMatrices = Grow(_dotMatrices, snapshot.DotMatrixCount, MaxDotMatrixDisplays, "dot-matrix displays");
         for (var index = 0; index < _lamps.Length; index++)
         {
             _lamps[index].Size = (uint)sizeof(FabricLampNative);
@@ -218,6 +224,12 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
             _segments[index].Version = FabricAbi.Version;
             _segments[index].Capacity = FabricAbi.SegmentCapacity;
         }
+        for (var index = 0; index < _dotMatrices.Length; index++)
+        {
+            _dotMatrices[index].Size = (uint)sizeof(FabricDotMatrixDisplayNative);
+            _dotMatrices[index].Version = FabricAbi.Version;
+            _dotMatrices[index].DotCapacity = FabricAbi.DotMatrixMaxDots;
+        }
     }
 
     private static T[] Grow<T>(T[] current, uint required, int maximum, string name)
@@ -235,13 +247,15 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
         nint expectedLamps,
         nint expectedReels,
         nint expectedCharacters,
-        nint expectedSegments)
+        nint expectedSegments,
+        nint expectedDotMatrices)
     {
         ValidateHeader(snapshot.Size, snapshot.Version, (uint)sizeof(FabricMachineSnapshotNative), "snapshot");
         ValidateTopLevel(snapshot.LampCount, snapshot.LampCapacity, snapshot.Lamps, expectedLamps, _lamps.Length, "lamp");
         ValidateTopLevel(snapshot.ReelCount, snapshot.ReelCapacity, snapshot.Reels, expectedReels, _reels.Length, "reel");
         ValidateTopLevel(snapshot.CharacterCount, snapshot.CharacterCapacity, snapshot.Characters, expectedCharacters, _characters.Length, "character display");
         ValidateTopLevel(snapshot.SegmentCount, snapshot.SegmentCapacity, snapshot.Segments, expectedSegments, _segments.Length, "segment display");
+        ValidateTopLevel(snapshot.DotMatrixCount, snapshot.DotMatrixCapacity, snapshot.DotMatrices, expectedDotMatrices, _dotMatrices.Length, "dot-matrix display");
 
         for (var index = 0; index < snapshot.LampCount; index++)
             ValidateHeader(_lamps[index].Size, _lamps[index].Version, (uint)sizeof(FabricLampNative), $"lamp {index}");
@@ -260,6 +274,19 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
             ValidateHeader(display.Size, display.Version, (uint)sizeof(FabricSegmentDisplayNative), $"segment display {index}");
             if (display.Capacity is 0 or > FabricAbi.SegmentCapacity || display.Count > display.Capacity)
                 throw new InvalidDataException($"Fabric segment display {index} returned invalid count/capacity {display.Count}/{display.Capacity}.");
+        }
+        for (var index = 0; index < snapshot.DotMatrixCount; index++)
+        {
+            ref var display = ref _dotMatrices[index];
+            ValidateHeader(display.Size, display.Version, (uint)sizeof(FabricDotMatrixDisplayNative), $"dot-matrix display {index}");
+            if (display.Width == 0 || display.Height == 0
+                || display.Width > FabricAbi.DotMatrixMaxWidth || display.Height > FabricAbi.DotMatrixMaxHeight
+                || display.DotCount != checked(display.Width * display.Height)
+                || display.DotCapacity is 0 or > FabricAbi.DotMatrixMaxDots
+                || display.DotCount > display.DotCapacity)
+                throw new InvalidDataException($"Fabric dot-matrix display {index} returned invalid dimensions/count/capacity {display.Width}x{display.Height}/{display.DotCount}/{display.DotCapacity}.");
+            if (!float.IsFinite(display.Brightness))
+                throw new InvalidDataException($"Fabric dot-matrix display {index} returned non-finite brightness.");
         }
     }
 
@@ -314,7 +341,18 @@ internal sealed unsafe class FabricMachineSession : IFabricMachineSession
             fixed (byte* identifier = display.Identifier)
                 segments.Add(new(ReadIdentifier(identifier), masks));
         }
-        return new(snapshot.Sequence, lamps, reels, characters, segments);
+        var dotMatrices = new List<FabricDotMatrixDisplay>((int)snapshot.DotMatrixCount);
+        for (var index = 0; index < snapshot.DotMatrixCount; index++)
+        {
+            ref var display = ref _dotMatrices[index];
+            var dots = new int[display.DotCount];
+            fixed (byte* source = display.Dots)
+                for (var dot = 0; dot < dots.Length; dot++)
+                    dots[dot] = source[dot] == 0 ? 0 : 1;
+            fixed (byte* identifier = display.Identifier)
+                dotMatrices.Add(new(ReadIdentifier(identifier), checked((int)display.Width), checked((int)display.Height), dots, display.Brightness));
+        }
+        return new(snapshot.Sequence, lamps, reels, characters, segments, dotMatrices);
     }
 
     internal static FabricCharacterDisplay ConvertCharacterDisplay(

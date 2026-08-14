@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace OasisEditor;
 
-internal static class FabricAbi { internal const uint Version = 0x00030000; internal const int IdentifierCapacity=64, PathCapacity=1024, CharacterCapacity=16, SegmentCapacity=16; }
+internal static class FabricAbi { internal const uint Version = 0x00040000; internal const int IdentifierCapacity=64, PathCapacity=1024, CharacterCapacity=16, SegmentCapacity=16, DotMatrixMaxWidth=128, DotMatrixMaxHeight=16, DotMatrixMaxDots=2048; }
 
 public enum FabricInputKind : uint { Digital = 0, Coin = 1 }
 
@@ -14,7 +14,8 @@ public enum FabricInputKind : uint { Digital = 0, Coin = 1 }
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricReelNative { internal uint Size,Version; internal fixed byte Identifier[64]; internal int Index,Position; }
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricCharacterDisplayNative { internal uint Size,Version; internal fixed byte Identifier[64]; internal uint Count,Capacity; internal fixed uint Characters[16]; internal fixed byte Attributes[16]; internal float Brightness; }
 [StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricSegmentDisplayNative { internal uint Size,Version; internal fixed byte Identifier[64]; internal uint Count,Capacity; internal fixed ulong Masks[16]; }
-[StructLayout(LayoutKind.Sequential)] internal struct FabricMachineSnapshotNative { internal uint Size,Version; internal ulong Sequence; internal nint Lamps; internal uint LampCapacity,LampCount; internal nint Reels; internal uint ReelCapacity,ReelCount; internal nint Characters; internal uint CharacterCapacity,CharacterCount; internal nint Segments; internal uint SegmentCapacity,SegmentCount; }
+[StructLayout(LayoutKind.Sequential)] internal unsafe struct FabricDotMatrixDisplayNative { internal uint Size,Version; internal fixed byte Identifier[64]; internal uint Width,Height,DotCount,DotCapacity; internal fixed byte Dots[2048]; internal float Brightness; }
+[StructLayout(LayoutKind.Sequential)] internal struct FabricMachineSnapshotNative { internal uint Size,Version; internal ulong Sequence; internal nint Lamps; internal uint LampCapacity,LampCount; internal nint Reels; internal uint ReelCapacity,ReelCount; internal nint Characters; internal uint CharacterCapacity,CharacterCount; internal nint Segments; internal uint SegmentCapacity,SegmentCount; internal nint DotMatrices; internal uint DotMatrixCapacity,DotMatrixCount; }
 [StructLayout(LayoutKind.Sequential)] internal struct FabricAudioFormatNative { internal uint Size,Version,SampleRate; internal ushort Channels,BitsPerSample; internal byte Interleaved,Signed,LittleEndian,Reserved; }
 
 [StructLayout(LayoutKind.Sequential)] internal struct AmberReelNative { internal uint Index,Enabled,Steps,OptoStart,OptoEnd,OptoInvert; }
