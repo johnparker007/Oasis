@@ -1,7 +1,7 @@
 namespace OasisEditor;
 
 [Flags]
-public enum FabricCapability : ulong { DigitalInput=1, Lamps=2, Reels=4, CharacterDisplays=8, SegmentDisplays=16, Audio=32, CoinInput=1UL << 6 }
+public enum FabricCapability : ulong { DigitalInput=1, Lamps=2, Reels=4, CharacterDisplays=8, SegmentDisplays=16, Audio=32, CoinInput=1UL << 6, DotMatrixDisplays=1UL << 7 }
 public enum FabricRomRole : uint { Other, Program, Sound }
 
 public sealed record FabricRomResource(FabricRomRole Role, uint Slot, string Path);
@@ -14,8 +14,10 @@ public readonly record struct FabricLamp(string Identifier, int NumericalIndex, 
 public readonly record struct FabricReel(string Identifier, int NumericalIndex, int Position);
 public sealed record FabricCharacterDisplay(string Identifier, uint[] Characters, byte[] Attributes, float Brightness);
 public sealed record FabricSegmentDisplay(string Identifier, ulong[] SegmentMasks);
+public sealed record FabricDotMatrixDisplay(string Identifier, int Width, int Height, int[] Dots, float Brightness);
 public sealed record FabricMachineSnapshot(ulong Sequence, IReadOnlyList<FabricLamp> Lamps, IReadOnlyList<FabricReel> Reels,
-    IReadOnlyList<FabricCharacterDisplay> CharacterDisplays, IReadOnlyList<FabricSegmentDisplay> SegmentDisplays);
+    IReadOnlyList<FabricCharacterDisplay> CharacterDisplays, IReadOnlyList<FabricSegmentDisplay> SegmentDisplays,
+    IReadOnlyList<FabricDotMatrixDisplay>? DotMatrixDisplays = null);
 public readonly record struct FabricAudioFormat(uint SampleRate, ushort ChannelCount, ushort BitsPerSample,
     bool Interleaved, bool SignedSamples, bool LittleEndian);
 

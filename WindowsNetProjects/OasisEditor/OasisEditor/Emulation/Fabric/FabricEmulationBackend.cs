@@ -37,6 +37,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private readonly Dictionary<int, int> _reels = [];
     private readonly Dictionary<DisplayOutputIdentity, ulong> _displayOutputs = [];
     private readonly Dictionary<DisplayBrightnessIdentity, float> _displayBrightnessOutputs = [];
+    private readonly Dictionary<int, DotMatrixOutput> _dotMatrixOutputs = [];
     private readonly object _stateGate = new();
 
     private IFabricRuntimeLibrary? _runtime;
@@ -96,7 +97,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     public event EventHandler<MachineReelChangedEventArgs>? ReelChanged;
     public event EventHandler<MachineSegmentChangedEventArgs>? SegmentChanged;
     public event EventHandler<MachineVfdBrightnessChangedEventArgs>? VfdBrightnessChanged;
-    public event EventHandler<MachineDotMatrixChangedEventArgs>? DotMatrixChanged { add { } remove { } }
+    public event EventHandler<MachineDotMatrixChangedEventArgs>? DotMatrixChanged;
 
     public async Task StartAsync(EmulationLaunchRequest request, CancellationToken cancellationToken)
     {
@@ -682,6 +683,28 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                 oasisCellId++;
             }
         }
+        var dotMatrixDisplays = snapshot.DotMatrixDisplays ?? [];
+        for (var displayOrdinal = 0; displayOrdinal < dotMatrixDisplays.Count; displayOrdinal++)
+        {
+            var display = dotMatrixDisplays[displayOrdinal];
+            if (display.Width <= 0 || display.Height <= 0
+                || display.Dots.Length != checked(display.Width * display.Height)
+                || display.Dots.Length > FabricAbi.DotMatrixMaxDots)
+            {
+                _errorLogger($"Ignoring invalid Fabric dot-matrix display {displayOrdinal}: {display.Width}x{display.Height}, {display.Dots.Length} dots.");
+                continue;
+            }
+
+            var normalizedDots = display.Dots.Select(value => value == 0 ? 0 : 1).ToArray();
+            var output = new DotMatrixOutput(display.Identifier, display.Width, display.Height, normalizedDots, display.Brightness);
+            if (_dotMatrixOutputs.TryGetValue(displayOrdinal, out var previous)
+                && previous.Identifier == output.Identifier && previous.Width == output.Width
+                && previous.Height == output.Height && previous.Brightness == output.Brightness
+                && previous.Dots.SequenceEqual(output.Dots))
+                continue;
+            _dotMatrixOutputs[displayOrdinal] = output;
+            DotMatrixChanged?.Invoke(this, new(displayOrdinal, display.Width, display.Height, normalizedDots, display.Brightness));
+        }
     }
 
     private async Task CleanupResourcesAsync()
@@ -862,6 +885,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _lamps.Clear();
         _reels.Clear();
         _displayOutputs.Clear();
+        _dotMatrixOutputs.Clear();
         _displayBrightnessOutputs.Clear();
     }
 
@@ -890,5 +914,6 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private readonly record struct InputCommand(int Index, bool Active);
     private readonly record struct DisplayOutputIdentity(DisplayOutputFamily Family, string Identifier, int DisplayOrdinal, int Position);
     private readonly record struct DisplayBrightnessIdentity(DisplayOutputFamily Family, string Identifier, int DisplayOrdinal);
+    private sealed record DotMatrixOutput(string Identifier, int Width, int Height, int[] Dots, float Brightness);
     private enum DisplayOutputFamily { Character, Segment }
 }

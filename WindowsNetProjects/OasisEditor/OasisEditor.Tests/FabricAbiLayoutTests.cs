@@ -60,7 +60,7 @@ public sealed class FabricAbiLayoutTests
     [Fact]
     public void X64NativeLayoutsMatchPublishedAbi()
     {
-        Assert.Equal(0x00030000u, FabricAbi.Version);
+        Assert.Equal(0x00040000u, FabricAbi.Version);
         if (IntPtr.Size != 8) return;
         Assert.Equal(1208, Marshal.SizeOf<FabricLaunchRequestNative>()); // fixed strings end at 1160; aligned pointers/counts end at 1208.
         Assert.Equal(40, Marshal.SizeOf<FabricRomResourceNative>());
@@ -76,7 +76,12 @@ public sealed class FabricAbiLayoutTests
         Assert.Equal(164, Marshal.SizeOf<FabricCharacterDisplayNative>());
         Assert.Equal(160, Marshal.OffsetOf<FabricCharacterDisplayNative>("Brightness").ToInt32());
         Assert.Equal(208, Marshal.SizeOf<FabricSegmentDisplayNative>());
-        Assert.Equal(80, Marshal.SizeOf<FabricMachineSnapshotNative>());
+        Assert.Equal(2140, Marshal.SizeOf<FabricDotMatrixDisplayNative>());
+        Assert.Equal(72, Marshal.OffsetOf<FabricDotMatrixDisplayNative>(nameof(FabricDotMatrixDisplayNative.Width)).ToInt32());
+        Assert.Equal(88, Marshal.OffsetOf<FabricDotMatrixDisplayNative>(nameof(FabricDotMatrixDisplayNative.Dots)).ToInt32());
+        Assert.Equal(2136, Marshal.OffsetOf<FabricDotMatrixDisplayNative>(nameof(FabricDotMatrixDisplayNative.Brightness)).ToInt32());
+        Assert.Equal(96, Marshal.SizeOf<FabricMachineSnapshotNative>());
+        Assert.Equal(80, Marshal.OffsetOf<FabricMachineSnapshotNative>(nameof(FabricMachineSnapshotNative.DotMatrices)).ToInt32());
         Assert.Equal(20, Marshal.SizeOf<FabricAudioFormatNative>());
         Assert.Equal(24, Marshal.SizeOf<AmberReelNative>());
         Assert.Equal(208, Marshal.SizeOf<AmberReelsNative>());
@@ -104,6 +109,7 @@ public sealed class FabricAbiLayoutTests
         Assert.Equal(16, Marshal.OffsetOf<FabricRomResourceNative>("Path").ToInt32());
         Assert.Equal(24, Marshal.OffsetOf<FabricRomResourceNative>(nameof(FabricRomResourceNative.Reserved)).ToInt32());
         Assert.Equal(1UL << 6, (ulong)FabricCapability.CoinInput);
+        Assert.Equal(1UL << 7, (ulong)FabricCapability.DotMatrixDisplays);
         Assert.Equal(9, (int)FabricResult.InputRejected);
     }
 

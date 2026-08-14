@@ -157,12 +157,18 @@ public sealed class MachineVfdBrightnessChangedEventArgs : EventArgs
 
 public sealed class MachineDotMatrixChangedEventArgs : EventArgs
 {
-    public MachineDotMatrixChangedEventArgs(int dotIndex, int value)
+    public MachineDotMatrixChangedEventArgs(int displayId, int width, int height, IReadOnlyList<int> dots, double brightness)
     {
-        DotIndex = dotIndex;
-        Value = value;
+        DisplayId = displayId;
+        Width = width;
+        Height = height;
+        Dots = dots ?? throw new ArgumentNullException(nameof(dots));
+        Brightness = brightness;
     }
 
-    public int DotIndex { get; }
-    public int Value { get; }
+    public int DisplayId { get; }
+    public int Width { get; }
+    public int Height { get; }
+    public IReadOnlyList<int> Dots { get; }
+    public double Brightness { get; }
 }

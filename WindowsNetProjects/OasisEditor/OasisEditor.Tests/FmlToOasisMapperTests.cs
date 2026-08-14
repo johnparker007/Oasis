@@ -9,6 +9,45 @@ namespace OasisEditor.Tests;
 public sealed class FmlToOasisMapperTests
 {
     [Fact]
+    public void Map_AlphaFamiliesUseSegmentedAndDotMatrixKindsWithoutSubtypeSemantics()
+    {
+        BaseComponent[] components =
+        [
+            new Alpha(), new AlphaNew(), new BFMAlpha(), new MatrixAlpha(), new DotAlpha()
+        ];
+        for (var index = 0; index < components.Length; index++)
+        {
+            components[index].X = (uint)(10 + index);
+            components[index].Y = 20;
+            components[index].Width = 96;
+            components[index].Height = 8;
+            components[index].Colours["OnColour"] = "#00AA00FF";
+        }
+        var images = new Dictionary<FmlDecodedImageKey, string>
+        {
+            [new(3, "overlay")] = "matrix-overlay.png",
+            [new(4, "overlay")] = "dot-overlay.png"
+        };
+
+        var elements = new FmlToOasisMapper().Map(new Layout(components), images).Elements;
+
+        Assert.Equal([PanelElementKind.Alpha, PanelElementKind.Alpha, PanelElementKind.Alpha,
+            PanelElementKind.VfdDotMatrix, PanelElementKind.VfdDotMatrix], elements.Select(element => element.Kind));
+        Assert.All(elements, element =>
+        {
+            Assert.Equal(96, element.Width);
+            Assert.Equal(8, element.Height);
+            Assert.Equal("#FF00AA00", element.OnColorHex);
+            Assert.Equal("FML", element.ImportSource?.Format);
+        });
+        Assert.Equal("matrix-overlay.png", elements[3].SecondaryAssetPath);
+        Assert.Equal("dot-overlay.png", elements[4].SecondaryAssetPath);
+        Assert.Equal(elements[3].Name, elements[4].Name);
+        Assert.Equal(3, elements[3].SourceComponentIndex);
+        Assert.Equal(4, elements[4].SourceComponentIndex);
+    }
+
+    [Fact]
     public void Map_WithFourMfmeReels_PreservesZeroBasedMachineIdentifiers()
     {
         var reels = Enumerable.Range(0, 4)
