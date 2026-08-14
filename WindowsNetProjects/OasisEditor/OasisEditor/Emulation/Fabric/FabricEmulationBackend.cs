@@ -688,10 +688,10 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         {
             var display = dotMatrixDisplays[displayOrdinal];
             if (display.Width <= 0 || display.Height <= 0
-                || display.Dots.Count != checked(display.Width * display.Height)
-                || display.Dots.Count > FabricAbi.DotMatrixMaxDots)
+                || display.Dots.Length != checked(display.Width * display.Height)
+                || display.Dots.Length > FabricAbi.DotMatrixMaxDots)
             {
-                _errorLogger($"Ignoring invalid Fabric dot-matrix display {displayOrdinal}: {display.Width}x{display.Height}, {display.Dots.Count} dots.");
+                _errorLogger($"Ignoring invalid Fabric dot-matrix display {displayOrdinal}: {display.Width}x{display.Height}, {display.Dots.Length} dots.");
                 continue;
             }
 
