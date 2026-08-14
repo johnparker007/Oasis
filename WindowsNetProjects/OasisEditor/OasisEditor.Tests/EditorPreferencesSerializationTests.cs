@@ -17,6 +17,7 @@ public sealed class EditorPreferencesSerializationTests
                 EpochAmberLibraryPath = @"C:\Amber\Epoch.dll",
                 Mpu3AmberLibraryPath = @"C:\Amber\Mpu3.dll",
                 M1AmberLibraryPath = @"C:\Amber\M1.dll",
+                Scorpion4AmberLibraryPath = @"C:\Amber\Scorpion4.dll",
                 AudioBufferLengthMilliseconds = 73
             }
         });
@@ -26,9 +27,10 @@ public sealed class EditorPreferencesSerializationTests
         Assert.Equal(@"C:\Amber\Epoch.dll", restored.NativeEmulation.EpochAmberLibraryPath);
         Assert.Equal(@"C:\Amber\Mpu3.dll", restored.NativeEmulation.Mpu3AmberLibraryPath);
         Assert.Equal(@"C:\Amber\M1.dll", restored.NativeEmulation.M1AmberLibraryPath);
+        Assert.Equal(@"C:\Amber\Scorpion4.dll", restored.NativeEmulation.Scorpion4AmberLibraryPath);
         Assert.Equal(73, restored.NativeEmulation.AudioBufferLengthMilliseconds);
         Assert.DoesNotContain("UseFabric", json, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(7, typeof(NativeEmulationPreferences).GetProperties().Length);
+        Assert.Equal(8, typeof(NativeEmulationPreferences).GetProperties().Length);
         Assert.Equal(7, typeof(EditorPreferences).GetProperties().Length);
     }
 }

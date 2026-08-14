@@ -70,7 +70,7 @@ public sealed class Mpu3ProjectSettingsViewModelTests
         var restored = JsonSerializer.Deserialize<Mpu3ProjectSettings>(JsonSerializer.Serialize(model))!;
         Assert.Equal("fourth.rom", restored.ProgramRoms[3].Path);
         Assert.True(restored.Dips[15]);
-        Assert.Equal(7, EditorProject.CurrentSchemaVersion);
+        Assert.Equal(8, EditorProject.CurrentSchemaVersion);
         Assert.Null(typeof(Mpu3ProgramRomSettingsViewModel).GetProperty("LoadAddress"));
     }
 

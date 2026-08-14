@@ -64,7 +64,8 @@ public sealed class ProjectScaffolder
                 Mpu5NativeRoms = new Mpu5NativeRomSettings(),
                 EpochNativeRoms = new EpochNativeRomSettings(),
                 Mpu3Settings = new Mpu3ProjectSettings()
-                ,M1Settings = new M1ProjectSettings()
+                ,M1Settings = new M1ProjectSettings(),
+                Scorpion4Settings = new Scorpion4ProjectSettings()
             },
             input_definitions = Array.Empty<object>()
         };

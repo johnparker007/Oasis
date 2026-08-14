@@ -102,6 +102,8 @@
                 <TextBox Text="{Binding Mpu3AmberLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                 <TextBlock Margin="0,8,0,4" Text="Maygay M1 Amber provider DLL path" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <TextBox Text="{Binding M1AmberLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                <TextBlock Margin="0,8,0,4" Text="Bell-Fruit Scorpion 4 Amber provider DLL path" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBox Text="{Binding Scorpion4AmberLibraryPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                 <TextBlock Margin="0,16,0,4" Text="Audio Buffer Length (ms)" Foreground="{DynamicResource TextSecondaryBrush}" />
                 <TextBox Width="120"
                          HorizontalAlignment="Left"
