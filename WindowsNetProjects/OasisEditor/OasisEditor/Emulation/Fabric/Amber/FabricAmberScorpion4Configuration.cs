@@ -13,7 +13,7 @@ public sealed record FabricAmberScorpion4Configuration(Scorpion4ProjectSettings 
         Indexed(settings.ProgramRoms.Select(x => x.Slot), 4, "program ROMs"); Indexed(settings.SoundRoms.Select(x => x.Slot), 4, "sound ROMs");
         Indexed(settings.Reels.Select(x => x.ReelIndex), ReelCount, "reels"); Indexed(settings.Coins.Select(x => x.ChannelIndex), CoinChannelCount, "coin channels"); Indexed(settings.Hoppers.Select(x => x.HopperIndex), HopperCount, "hoppers");
         if (settings.Dips.Count != DipCount) throw new ArgumentException("Scorpion 4 requires exactly 16 DIP switches.");
-        if (settings.Stake is < 0 or > 7 || settings.Prize is < 0 or > 15 || settings.Percentage is < 0 or > 31 || settings.HopperType is < 0 or > 3) throw new ArgumentOutOfRangeException(nameof(settings), "Scorpion 4 selector is out of range.");
+        if (settings.Stake is < 0 or > 7 || settings.Prize is < 0 or > 15 || settings.Percentage is < 0 or > 15 || settings.HopperType is < 0 or > 3) throw new ArgumentOutOfRangeException(nameof(settings), "Scorpion 4 selector is out of range.");
         foreach (var r in settings.Reels) if (r.Steps is < 1 or > 255 || r.OptoStart is < 0 or > 255 || r.OptoEnd is < 0 or > 255) throw new ArgumentOutOfRangeException(nameof(settings.Reels));
         foreach (var c in settings.Coins) if (c.Value is not (>= 0 and <= 5) and not 0xff) throw new ArgumentOutOfRangeException(nameof(settings.Coins), "Coin value must be 0..5 or 255.");
         foreach (var h in settings.Hoppers) if (h.Coin is < 0 or > 5) throw new ArgumentOutOfRangeException(nameof(settings.Hoppers));
