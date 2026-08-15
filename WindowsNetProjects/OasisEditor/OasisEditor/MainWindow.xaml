@@ -155,6 +155,7 @@
                 <MenuItem Header="_Start" Command="{Binding StartEmulationCommand}" />
                 <MenuItem Header="_Stop" Command="{Binding StopEmulationCommand}" />
                 <MenuItem Header="_Pause" Command="{Binding TogglePauseEmulationCommand}" IsCheckable="True" IsChecked="{Binding IsPauseEmulationChecked, Mode=OneWay}" />
+                <MenuItem Header="_Unthrottled" Command="{Binding ToggleUnthrottledEmulationCommand}" IsCheckable="True" IsChecked="{Binding IsUnthrottledEmulationChecked, Mode=OneWay}" />
                 <Separator />
                 <MenuItem Header="_Reset" Command="{Binding ResetEmulationCommand}" />
             </MenuItem>

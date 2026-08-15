@@ -8,6 +8,8 @@ public interface IEmulationBackend : IAsyncDisposable
 
     EmulationBackendCapabilities Capabilities { get; }
 
+    bool IsThrottleEnabled { get; }
+
     event EventHandler<EmulationBackendState>? StateChanged;
 
     event EventHandler<MachineLampChangedEventArgs>? LampChanged;
@@ -21,6 +23,8 @@ public interface IEmulationBackend : IAsyncDisposable
 
     Task PauseAsync(CancellationToken cancellationToken);
     Task ResumeAsync(CancellationToken cancellationToken);
+
+    Task SetThrottleEnabledAsync(bool enabled, CancellationToken cancellationToken);
 
     Task ResetAsync(CancellationToken cancellationToken);
 

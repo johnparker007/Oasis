@@ -190,6 +190,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         StartEmulationCommand = new RelayCommand(StartEmulation, CanStartEmulation);
         StopEmulationCommand = new RelayCommand(StopEmulation, CanStopEmulation);
         TogglePauseEmulationCommand = new RelayCommand(TogglePauseEmulation, CanTogglePauseEmulation);
+        ToggleUnthrottledEmulationCommand = new RelayCommand(ToggleUnthrottledEmulation, CanToggleUnthrottledEmulation);
         ResetEmulationCommand = new RelayCommand(ResetEmulation, CanResetEmulation);
 
         _outputLog = new OutputLogViewModel();
@@ -431,6 +432,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand StartEmulationCommand { get; }
     public ICommand StopEmulationCommand { get; }
     public ICommand TogglePauseEmulationCommand { get; }
+    public ICommand ToggleUnthrottledEmulationCommand { get; }
     public ICommand ResetEmulationCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
@@ -700,12 +702,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SetProperty(ref _emulationState, value))
             {
                 OnPropertyChanged(nameof(IsPauseEmulationChecked));
+                OnPropertyChanged(nameof(IsUnthrottledEmulationChecked));
                 NotifyEmulationCommands();
             }
         }
     }
 
     public bool IsPauseEmulationChecked => EmulationState == EmulationBackendState.Paused;
+    public bool IsUnthrottledEmulationChecked => _activeEmulationBackend is { IsThrottleEnabled: false };
 
     public string ProjectFilePath
     {
@@ -2524,6 +2528,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(IsPauseEmulationChecked));
     }
 
+    private bool CanToggleUnthrottledEmulation() =>
+        _activeEmulationBackend?.Capabilities.SupportsThrottle == true
+        && EmulationState is EmulationBackendState.Running or EmulationBackendState.Paused;
+
+    private async void ToggleUnthrottledEmulation()
+    {
+        if (_activeEmulationBackend is null)
+            return;
+        var enableThrottle = !_activeEmulationBackend.IsThrottleEnabled;
+        await SendEmulationCommandAsync(CanToggleUnthrottledEmulation,
+            enableThrottle ? "Normal-speed emulation requested." : "Unthrottled emulation requested.",
+            "Emulation failed to change throttle mode",
+            cancellationToken => _activeEmulationBackend.SetThrottleEnabledAsync(enableThrottle, cancellationToken));
+        OnPropertyChanged(nameof(IsUnthrottledEmulationChecked));
+    }
+
     private bool CanResetEmulation()
     {
         return _activeEmulationBackend?.Capabilities.SupportsReset == true
@@ -3448,6 +3468,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseEmulationCommandCanExecuteChanged(StartEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(StopEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(TogglePauseEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(ToggleUnthrottledEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(ResetEmulationCommand);
     }
 

@@ -14,6 +14,15 @@ public sealed class FabricManagedBehaviorTests
     }
 
     [Fact]
+    public void Backend_ReportsThrottleSupportAndDefaultsToThrottled()
+    {
+        var backend = CreateBackend(new FakeSession(), new FakeAudioSink());
+
+        Assert.True(backend.Capabilities.SupportsThrottle);
+        Assert.True(backend.IsThrottleEnabled);
+    }
+
+    [Fact]
     public unsafe void NativeCharacterDisplayConversionPreservesBrightnessAndRejectsNonFiniteValues()
     {
         var native = new FabricCharacterDisplayNative { Brightness = 0.625f };
@@ -599,6 +608,53 @@ public sealed class FabricManagedBehaviorTests
         Assert.Equal(48 * 2 * sizeof(short), audio.LastPcmBytes);
     }
 
+    [Fact]
+    public async Task Backend_UnthrottledRunsFixedSlicesWithoutAudioCapacityOrPcmPlayback()
+    {
+        var session = new FakeSession { FramesToWrite = 48 };
+        var audio = new FakeAudioSink { WritableFrames = 0 };
+        var backend = CreateBackend(session, audio);
+
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        await backend.SetThrottleEnabledAsync(false, CancellationToken.None);
+        await WaitForAdvanceCountAsync(session, 100);
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.All(session.Advances, value => Assert.Equal(1_000_000UL, value));
+        Assert.True(session.AudioReadCount >= 100);
+        Assert.Equal(0, audio.PcmPushCount);
+        Assert.True(audio.ClearCount >= 1);
+        Assert.True(backend.IsThrottleEnabled);
+    }
+
+    [Fact]
+    public async Task Backend_UnthrottledSnapshotsAreWallClockLimitedAndPauseResetRemainResponsive()
+    {
+        var session = new FakeSession();
+        var backend = CreateBackend(session, new FakeAudioSink { WritableFrames = 0 });
+
+        await backend.StartAsync(CreateRequest(), CancellationToken.None);
+        await backend.SetThrottleEnabledAsync(false, CancellationToken.None);
+        await WaitForAdvanceCountAsync(session, 200);
+        await backend.PauseAsync(CancellationToken.None);
+        var pausedCount = session.Advances.Count;
+        await Task.Delay(20);
+        Assert.InRange(session.Advances.Count, pausedCount, pausedCount + 1);
+        Assert.False(backend.IsThrottleEnabled);
+
+        await backend.ResetAsync(CancellationToken.None);
+        await backend.ResumeAsync(CancellationToken.None);
+        await WaitForAdvanceCountAsync(session, pausedCount + 50);
+        await backend.SetThrottleEnabledAsync(true, CancellationToken.None);
+        var switchedCount = session.Advances.Count;
+        await Task.Delay(20);
+        await backend.StopAsync(CancellationToken.None);
+
+        Assert.Equal(1, session.ResetCount);
+        Assert.True(session.SnapshotCount < session.Advances.Count / 16);
+        Assert.InRange(session.Advances.Count - switchedCount, 0, 64);
+    }
+
     [Theory]
     [InlineData(48000, 2, 16, false, true, true)]
     [InlineData(48000, 2, 16, true, false, true)]
@@ -637,6 +693,14 @@ public sealed class FabricManagedBehaviorTests
         Assert.Equal(state, backend.State);
     }
 
+    private static async Task WaitForAdvanceCountAsync(FakeSession session, int count)
+    {
+        var timeout = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+        while (session.Advances.Count < count && DateTime.UtcNow < timeout)
+            await Task.Delay(1);
+        Assert.True(session.Advances.Count >= count, $"Expected at least {count} advances, got {session.Advances.Count}.");
+    }
+
     private sealed class FakeClock : IFabricClock
     {
         private long _timestamp;
@@ -673,15 +737,21 @@ public sealed class FabricManagedBehaviorTests
         public int ShutdownCount { get; private set; }
         public int DisposeCount { get; private set; }
         public int FramesToWrite { get; init; }
+        public int AudioReadCount { get; private set; }
+        public int SnapshotCount { get; private set; }
         public List<ulong> Advances { get; } = [];
         public FabricCapabilities Capabilities { get; init; } = new((ulong)(FabricCapability.DigitalInput | FabricCapability.Audio));
         public void Initialise() => Invoke(() => { if (InitialiseFailure is not null) throw InitialiseFailure; });
         public void Reset() => Invoke(() => ResetCount++);
         public void Advance(ulong elapsedNanoseconds) => Invoke(() => { Advances.Add(elapsedNanoseconds); FirstAdvance.TrySetResult(); if (AdvanceFailure is not null) throw AdvanceFailure; });
         public FabricResult SubmitInput(FabricInput input) => Invoke(() => FabricResult.Ok);
-        public FabricMachineSnapshot GetSnapshot() => Invoke(() => SnapshotFailure is null
-            ? new FabricMachineSnapshot(1, [], [], [], [])
-            : throw SnapshotFailure);
+        public FabricMachineSnapshot GetSnapshot() => Invoke(() =>
+        {
+            SnapshotCount++;
+            return SnapshotFailure is null
+                ? new FabricMachineSnapshot(1, [], [], [], [])
+                : throw SnapshotFailure;
+        });
         public FabricAudioFormat GetAudioFormat() => Invoke(() => GetAudioFormatFailure is null ? AudioFormat : throw GetAudioFormatFailure);
         public int ReadAudio(Span<short> samples, int frameCapacity)
         {
@@ -690,6 +760,7 @@ public sealed class FabricManagedBehaviorTests
             {
                 LastFrameCapacity = frameCapacity;
                 LastSampleCapacity = sampleCapacity;
+                AudioReadCount++;
                 FirstAudioRead.TrySetResult();
                 if (AudioFailure is not null) throw AudioFailure;
                 return Math.Min(FramesToWrite, frameCapacity);
@@ -718,11 +789,13 @@ public sealed class FabricManagedBehaviorTests
         public int StopCount { get; private set; }
         public EmulationAudioFormat? StartedFormat { get; private set; }
         public int LastPcmBytes { get; private set; }
+        public int PcmPushCount { get; private set; }
+        public int ClearCount { get; private set; }
         public EmulationAudioPlaybackStatistics Statistics { get; init; } = new(10, 0, 8, 0, 0, 2, 4, 2400, 1800, 38, 25, true);
         public void Start(EmulationAudioFormat format) { StartedFormat = format; StartCount++; }
-        public void PushPcm(ReadOnlySpan<byte> pcmBytes) => LastPcmBytes = pcmBytes.Length;
+        public void PushPcm(ReadOnlySpan<byte> pcmBytes) { LastPcmBytes = pcmBytes.Length; PcmPushCount++; }
         public void Stop() => StopCount++;
-        public void Clear() { }
+        public void Clear() => ClearCount++;
         public EmulationAudioPlaybackStatistics GetStatistics() => Statistics;
         public int WritableFrames { get; init; } = int.MaxValue;
         public int CapacityFrames { get; init; } = int.MaxValue;
