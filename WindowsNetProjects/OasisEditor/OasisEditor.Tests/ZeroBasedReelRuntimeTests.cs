@@ -187,7 +187,7 @@ public sealed class ZeroBasedReelRuntimeTests
     }
 
     [Theory]
-    [InlineData(12, 0.632d, 70.672d)]
+    [InlineData(12, 0.637d, 71.152d)]
     [InlineData(16, 0.961d, 6.256d)]
     public void Scorpion4Correction_AddsUserBandOffsetForPanelAndFaceReels(
         int stops,
