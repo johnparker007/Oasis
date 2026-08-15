@@ -98,7 +98,8 @@
                         </layout:LayoutAnchorablePane>
                     </layout:LayoutPanel>
 
-                    <layout:LayoutAnchorablePane DockHeight="160">
+                    <layout:LayoutAnchorablePane x:Name="BottomToolPane"
+                                                 DockHeight="160">
                         <layout:LayoutAnchorable Title="Assets"
                                                  ContentId="Assets"
                                                  CanClose="False">
