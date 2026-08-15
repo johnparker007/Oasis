@@ -18,6 +18,7 @@ public sealed class Scorpion4ProjectSettingsViewModel
     public ObservableCollection<Scorpion4CoinSettingsViewModel> Coins { get; } public ObservableCollection<Scorpion4HopperSettingsViewModel> Hoppers { get; }
     public IReadOnlyList<string> StakeChoices { get; }=["None","5p","10p","20p","25p","30p","50p","£1"];
     public IReadOnlyList<string> PrizeChoices { get; }=["None","£3","£4","£6 cash","£6 token","£8 cash","£8 token","£10 cash","£5 cash","£15 cash","£25 cash","£25 LBO","£35","£70","£75","reserved"];
+    public IReadOnlyList<string> PercentageChoices { get; }=["None","70%","72%","74%","76%","78%","80%","82%","84%","86%","88%","90%","92%","94%","96%","98%"];
     public IReadOnlyList<string> HopperTypeChoices { get; }=["Compact","Universal","Empire Twin","Serial / ccTalk"];
     public int Stake {get=>_stake;set=>Set(ref _stake,value);} public int Prize {get=>_prize;set=>Set(ref _prize,value);} public int Percentage {get=>_percentage;set=>Set(ref _percentage,value);} public bool EdcEnabled {get=>_edcEnabled;set=>Set(ref _edcEnabled,value);} public int HopperType {get=>_hopperType;set=>Set(ref _hopperType,value);}
     private void Set<T>(ref T field,T value){if(EqualityComparer<T>.Default.Equals(field,value))return;field=value;Save();}
