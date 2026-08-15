@@ -186,6 +186,49 @@ public sealed class ZeroBasedReelRuntimeTests
         Assert.Equal(panelPosition, facePosition, 6);
     }
 
+    [Theory]
+    [InlineData(12, 0.632d, 70.672d)]
+    [InlineData(16, 0.961d, 6.256d)]
+    public void Scorpion4Correction_AddsUserBandOffsetForPanelAndFaceReels(
+        int stops,
+        double expectedNormalizedOffset,
+        double expectedPosition)
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreateFromFile("panel.panel2d", "panel", "panel"));
+        document.SetPanelElements([new PanelElementModel
+        {
+            ObjectId = "reel-0", Kind = PanelElementKind.Reel, DisplayNumber = 0,
+            Stops = stops, BandOffset = 0.05d
+        }]);
+        var dispatches = new List<Action>();
+        var adapter = new MachineReelRuntimeAdapter(() => [document], () => FruitMachinePlatformType.Scorpion4,
+            () => false, _ => { }, dispatches.Add);
+
+        adapter.ApplyReelState(0, 10, ReelPositionConvention.Oasis);
+        Assert.Single(dispatches)();
+
+        var faceRuntimeState = new MachineRuntimeState
+        {
+            FruitMachinePlatform = FruitMachinePlatformType.Scorpion4
+        };
+        faceRuntimeState.SetReelPositionIfChanged(MachineObjectReference.Reel(0), 10d);
+        var faceReel = new FaceReelDisplayElement
+        {
+            LinkedMachineObjectReference = MachineObjectReference.Reel(0),
+            Stops = stops,
+            BandOffset = 0.05d
+        };
+
+        var panelPosition = document.RuntimeState.GetReelPosition("reel-0");
+        var facePosition = FaceRuntimeStateResolver.Instance.GetReelPosition(faceReel, faceRuntimeState);
+
+        var effectiveNormalizedOffset = MachineReelRuntimeAdapter.ResolvePlatformBandOffsetNormalized(
+            FruitMachinePlatformType.Scorpion4, stops) + 0.05d;
+        Assert.Equal(expectedNormalizedOffset, effectiveNormalizedOffset, 6);
+        Assert.Equal(expectedPosition, panelPosition, 6);
+        Assert.Equal(panelPosition, facePosition, 6);
+    }
+
     [Fact]
     public void AmberAdapter_AllowsEachReelToUseItsConfiguredMotorStepCount()
     {
