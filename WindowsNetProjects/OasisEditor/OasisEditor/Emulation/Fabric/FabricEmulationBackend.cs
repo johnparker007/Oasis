@@ -21,7 +21,13 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     private const long NanosecondsPerMillisecond = 1_000_000;
     private static readonly TimeSpan PumpInterval = TimeSpan.FromMilliseconds(1);
     private static readonly EmulationBackendCapabilities BackendCapabilities =
-        new(true, true, true, true, false, false, false);
+        new(
+            SupportsPause: true,
+            SupportsResume: true,
+            SupportsReset: true,
+            SupportsSaveState: false,
+            SupportsLoadState: false,
+            SupportsThrottle: false);
 
     private readonly string _runtimePath;
     private readonly string _amberPath;
@@ -227,7 +233,7 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         return Task.CompletedTask;
     }
 
-    public async Task ResetAsync(EmulationResetKind resetKind, CancellationToken cancellationToken)
+    public async Task ResetAsync(CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
         EnsureAcceptingOperations();

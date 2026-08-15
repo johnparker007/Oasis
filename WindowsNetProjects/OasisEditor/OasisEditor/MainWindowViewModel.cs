@@ -190,8 +190,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         StartEmulationCommand = new RelayCommand(StartEmulation, CanStartEmulation);
         StopEmulationCommand = new RelayCommand(StopEmulation, CanStopEmulation);
         TogglePauseEmulationCommand = new RelayCommand(TogglePauseEmulation, CanTogglePauseEmulation);
-        SoftResetEmulationCommand = new RelayCommand(SoftResetEmulation, CanResetEmulation);
-        HardResetEmulationCommand = new RelayCommand(HardResetEmulation, CanResetEmulation);
+        ResetEmulationCommand = new RelayCommand(ResetEmulation, CanResetEmulation);
 
         _outputLog = new OutputLogViewModel();
         _outputLog.PropertyChanged += OnOutputLogPropertyChanged;
@@ -432,8 +431,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand StartEmulationCommand { get; }
     public ICommand StopEmulationCommand { get; }
     public ICommand TogglePauseEmulationCommand { get; }
-    public ICommand SoftResetEmulationCommand { get; }
-    public ICommand HardResetEmulationCommand { get; }
+    public ICommand ResetEmulationCommand { get; }
     public ObservableCollection<string> RecentProjects { get; }
     public ObservableCollection<DocumentTabViewModel> OpenDocuments { get; }
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
@@ -2528,21 +2526,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool CanResetEmulation()
     {
-        return _activeEmulationBackend is not null && EmulationState is EmulationBackendState.Running or EmulationBackendState.Paused;
+        return _activeEmulationBackend?.Capabilities.SupportsReset == true
+            && EmulationState is EmulationBackendState.Running or EmulationBackendState.Paused;
     }
 
-    private async void SoftResetEmulation()
+    private async void ResetEmulation()
     {
-        await SendEmulationCommandAsync(CanResetEmulation, "Emulation soft reset requested.",
-            "Emulation failed to soft reset", cancellationToken =>
-                _activeEmulationBackend!.ResetAsync(EmulationResetKind.Soft, cancellationToken));
-    }
-
-    private async void HardResetEmulation()
-    {
-        await SendEmulationCommandAsync(CanResetEmulation, "Emulation hard reset requested.",
-            "Emulation failed to hard reset", cancellationToken =>
-                _activeEmulationBackend!.ResetAsync(EmulationResetKind.Hard, cancellationToken));
+        await SendEmulationCommandAsync(CanResetEmulation, "Emulation reset requested.",
+            "Emulation failed to reset", cancellationToken =>
+                _activeEmulationBackend!.ResetAsync(cancellationToken));
     }
 
     private async Task<bool> SendEmulationCommandAsync(
@@ -3456,8 +3448,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaiseEmulationCommandCanExecuteChanged(StartEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(StopEmulationCommand);
         RaiseEmulationCommandCanExecuteChanged(TogglePauseEmulationCommand);
-        RaiseEmulationCommandCanExecuteChanged(SoftResetEmulationCommand);
-        RaiseEmulationCommandCanExecuteChanged(HardResetEmulationCommand);
+        RaiseEmulationCommandCanExecuteChanged(ResetEmulationCommand);
     }
 
     private static void RaiseEmulationCommandCanExecuteChanged(ICommand command)
