@@ -485,6 +485,9 @@ public sealed class FabricEmulationBackend : IEmulationBackend
                             var session = RequireSession();
                             session.Advance(NanosecondsPerPump);
                             ProcessInputs(session);
+                            // Fabric/Amber still generates accelerated audio, so drain it to prevent
+                            // accumulation, but do not feed a real-time sink: that would throttle or
+                            // backlog the runner. Normal playback resumes in throttled mode.
                             ReadAudio(session, pushToSink: false);
                         }
                         finally
