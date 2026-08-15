@@ -156,8 +156,7 @@
                 <MenuItem Header="_Stop" Command="{Binding StopEmulationCommand}" />
                 <MenuItem Header="_Pause" Command="{Binding TogglePauseEmulationCommand}" IsCheckable="True" IsChecked="{Binding IsPauseEmulationChecked, Mode=OneWay}" />
                 <Separator />
-                <MenuItem Header="Soft _Reset" Command="{Binding SoftResetEmulationCommand}" />
-                <MenuItem Header="_Hard Reset" Command="{Binding HardResetEmulationCommand}" />
+                <MenuItem Header="_Reset" Command="{Binding ResetEmulationCommand}" />
             </MenuItem>
         </Menu>
 

@@ -22,7 +22,7 @@ public interface IEmulationBackend : IAsyncDisposable
     Task PauseAsync(CancellationToken cancellationToken);
     Task ResumeAsync(CancellationToken cancellationToken);
 
-    Task ResetAsync(EmulationResetKind resetKind, CancellationToken cancellationToken);
+    Task ResetAsync(CancellationToken cancellationToken);
 
     Task SetInputStateAsync(InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken);
     Task<CoinInputResult> InsertCoinAsync(InputDefinitionModel inputDefinition, CancellationToken cancellationToken);
@@ -46,17 +46,10 @@ public enum EmulationBackendState
     Failed
 }
 
-public enum EmulationResetKind
-{
-    Soft,
-    Hard
-}
-
 public sealed record EmulationBackendCapabilities(
     bool SupportsPause,
     bool SupportsResume,
-    bool SupportsSoftReset,
-    bool SupportsHardReset,
+    bool SupportsReset,
     bool SupportsSaveState,
     bool SupportsLoadState,
     bool SupportsThrottle);

@@ -79,7 +79,7 @@ public sealed class PlayViewInputRouterTests
         public List<(string, bool)> Inputs { get; } = [];
         public EmulationBackendKind BackendKind => EmulationBackendKind.Fabric;
         public EmulationBackendState State => EmulationBackendState.Running;
-        public EmulationBackendCapabilities Capabilities { get; } = new(true, true, true, true, false, false, false);
+        public EmulationBackendCapabilities Capabilities { get; } = new(true, true, true, false, false, false);
         public event EventHandler<EmulationBackendState>? StateChanged { add { } remove { } }
         public event EventHandler<MachineLampChangedEventArgs>? LampChanged { add { } remove { } }
         public event EventHandler<MachineReelChangedEventArgs>? ReelChanged { add { } remove { } }
@@ -90,7 +90,7 @@ public sealed class PlayViewInputRouterTests
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task PauseAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task ResumeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task ResetAsync(EmulationResetKind resetKind, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task ResetAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task SetInputStateAsync(InputDefinitionModel inputDefinition, bool isPressed, CancellationToken cancellationToken) { Inputs.Add((inputDefinition.Id, isPressed)); return Task.CompletedTask; }
         public Task<CoinInputResult> InsertCoinAsync(InputDefinitionModel inputDefinition, CancellationToken cancellationToken) { Inputs.Add((inputDefinition.Id, true)); return Task.FromResult(CoinInputResult.Accepted); }
         public Task ReleaseCoinAsync(InputDefinitionModel inputDefinition, CancellationToken cancellationToken) { Inputs.Add((inputDefinition.Id, false)); return Task.CompletedTask; }

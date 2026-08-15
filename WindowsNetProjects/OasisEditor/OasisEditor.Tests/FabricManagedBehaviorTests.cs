@@ -6,6 +6,14 @@ namespace OasisEditor.Tests;
 public sealed class FabricManagedBehaviorTests
 {
     [Fact]
+    public void Backend_ReportsResetSupport()
+    {
+        var backend = CreateBackend(new FakeSession(), new FakeAudioSink());
+
+        Assert.True(backend.Capabilities.SupportsReset);
+    }
+
+    [Fact]
     public unsafe void NativeCharacterDisplayConversionPreservesBrightnessAndRejectsNonFiniteValues()
     {
         var native = new FabricCharacterDisplayNative { Brightness = 0.625f };
@@ -145,7 +153,7 @@ public sealed class FabricManagedBehaviorTests
 
         await backend.StartAsync(CreateRequest(), CancellationToken.None);
         backend.PublishSnapshot(snapshot);
-        await backend.ResetAsync(EmulationResetKind.Soft, CancellationToken.None);
+        await backend.ResetAsync(CancellationToken.None);
         backend.PublishSnapshot(snapshot);
         await backend.StopAsync(CancellationToken.None);
 
@@ -312,7 +320,7 @@ public sealed class FabricManagedBehaviorTests
 
         await backend.StartAsync(request, CancellationToken.None);
         await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
-        await backend.ResetAsync(EmulationResetKind.Soft, CancellationToken.None);
+        await backend.ResetAsync(CancellationToken.None);
         await backend.StopAsync(CancellationToken.None);
 
         Assert.Equal("C:/fabric/FabricRuntime.dll", runtimePath);

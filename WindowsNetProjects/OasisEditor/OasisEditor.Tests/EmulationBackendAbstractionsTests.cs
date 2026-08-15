@@ -11,16 +11,14 @@ public sealed class EmulationBackendAbstractionsTests
         var capabilities = new EmulationBackendCapabilities(
             SupportsPause: true,
             SupportsResume: true,
-            SupportsSoftReset: true,
-            SupportsHardReset: true,
+            SupportsReset: true,
             SupportsSaveState: true,
             SupportsLoadState: true,
             SupportsThrottle: true);
 
         Assert.True(capabilities.SupportsPause);
         Assert.True(capabilities.SupportsResume);
-        Assert.True(capabilities.SupportsSoftReset);
-        Assert.True(capabilities.SupportsHardReset);
+        Assert.True(capabilities.SupportsReset);
         Assert.True(capabilities.SupportsSaveState);
         Assert.True(capabilities.SupportsLoadState);
         Assert.True(capabilities.SupportsThrottle);
