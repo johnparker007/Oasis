@@ -22,8 +22,8 @@ internal static class InternalReelOffsetResolver
                 ImpactTwelveStopBaseOffset + ImpactTwelveStopBandCorrection,
             FruitMachinePlatformType.Impact when safeStops == 16 =>
                 ImpactSixteenStopBaseOffset + ImpactSixteenStopBandCorrection,
-            FruitMachinePlatformType.Scorpion4 when safeStops == 12 => 0.2d,
-            FruitMachinePlatformType.Scorpion4 when safeStops == 16 => 0.671d,
+            FruitMachinePlatformType.Scorpion4 when safeStops == 12 => 0.021d,
+            FruitMachinePlatformType.Scorpion4 when safeStops == 16 => 0.911d,
             _ => 0d
         };
     }

@@ -23,8 +23,9 @@ public sealed class InternalReelOffsetResolverTests
     [InlineData(FruitMachinePlatformType.MaygayM1, 24, 0d)]
     [InlineData(FruitMachinePlatformType.Impact, 12, 0.025d)]
     [InlineData(FruitMachinePlatformType.Impact, 16, -0.018d)]
-    [InlineData(FruitMachinePlatformType.Scorpion4, 12, 0.2d)]
-    [InlineData(FruitMachinePlatformType.Scorpion4, 16, 0.671d)]
+    [InlineData(FruitMachinePlatformType.Scorpion4, 12, 0.021d)]
+    [InlineData(FruitMachinePlatformType.Scorpion4, 16, 0.911d)]
+    [InlineData(FruitMachinePlatformType.Scorpion4, 24, 0d)]
     [InlineData(FruitMachinePlatformType.None, 16, 0d)]
     [InlineData(FruitMachinePlatformType.MPU4, 12, 0d)]
     public void ResolveNormalizedOffset_ReturnsPlatformSpecificOffsetOrDefault(
