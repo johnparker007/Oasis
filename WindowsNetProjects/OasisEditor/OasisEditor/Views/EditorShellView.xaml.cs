@@ -1,13 +1,17 @@
 using AvalonDock.Controls;
 using AvalonDock.Layout;
 using System.ComponentModel;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 
 namespace OasisEditor.Views;
 
 public partial class EditorShellView : UserControl
 {
+    private const double InitialBottomToolPaneHeightRatio = 0.25;
     private readonly HashSet<EditorToolWindowId> _hideOnCloseConfigured = [];
+    private bool _initialBottomToolPaneHeightScheduled;
 
     public EditorShellView()
     {
@@ -82,6 +86,7 @@ public partial class EditorShellView : UserControl
 
     private void OnLoaded(object sender, System.Windows.RoutedEventArgs e)
     {
+        ScheduleInitialBottomToolPaneHeight();
         ConfigureHideOnClose(EditorToolWindowId.Preferences);
         ConfigureHideOnClose(EditorToolWindowId.ProjectSettings);
         ConfigureHideOnClose(EditorToolWindowId.InputMap);
@@ -101,6 +106,28 @@ public partial class EditorShellView : UserControl
                 ActivateSelectedDocument(viewModel.SelectedDocument);
             }
         };
+    }
+
+    private void ScheduleInitialBottomToolPaneHeight()
+    {
+        if (_initialBottomToolPaneHeightScheduled)
+        {
+            return;
+        }
+
+        _initialBottomToolPaneHeightScheduled = true;
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Render,
+            new Action(() =>
+            {
+                var availableHeight = DockingManager.ActualHeight;
+                if (availableHeight > 0)
+                {
+                    BottomToolPane.DockHeight = new GridLength(
+                        availableHeight * InitialBottomToolPaneHeightRatio,
+                        GridUnitType.Pixel);
+                }
+            }));
     }
 
     private void ConfigureHideOnClose(EditorToolWindowId toolWindowId)

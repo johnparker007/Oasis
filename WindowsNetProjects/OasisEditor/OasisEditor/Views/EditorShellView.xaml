@@ -29,8 +29,7 @@
             </avalonDock:DockingManager.Theme>
             <layout:LayoutRoot>
                 <layout:LayoutPanel Orientation="Vertical">
-                    <layout:LayoutPanel Orientation="Horizontal"
-                                        DockHeight="3*">
+                    <layout:LayoutPanel Orientation="Horizontal">
                         <layout:LayoutAnchorablePane DockWidth="240">
                             <layout:LayoutAnchorable Title="Hierarchy"
                                                      ContentId="Hierarchy"
@@ -99,7 +98,8 @@
                         </layout:LayoutAnchorablePane>
                     </layout:LayoutPanel>
 
-                    <layout:LayoutAnchorablePane DockHeight="*">
+                    <layout:LayoutAnchorablePane x:Name="BottomToolPane"
+                                                 DockHeight="160">
                         <layout:LayoutAnchorable Title="Assets"
                                                  ContentId="Assets"
                                                  CanClose="False">
