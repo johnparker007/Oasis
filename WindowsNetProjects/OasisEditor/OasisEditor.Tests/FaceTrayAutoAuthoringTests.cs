@@ -9,6 +9,16 @@ public sealed class FaceTrayAutoAuthoringTests
 {
 
     [Fact]
+    public void AutoAuthor_PreservesLogicalLampIdZero()
+    {
+        var result = new FaceTrayAutoAuthoringService().AutoAuthor(CreateFaceWithLampWindows(("lamp-zero", 0, 0, 0, 10, 10)));
+
+        var emitter = Assert.Single(result.Emitters);
+        Assert.Equal(0, emitter.LampId);
+        Assert.Equal("lamp:0", emitter.LinkedMachineObjectReference?.ToString());
+    }
+
+    [Fact]
     public void AutoAuthor_PrefersMatchingMaskContributionBounds()
     {
         var document = CreateFaceWithLampAndContribution();

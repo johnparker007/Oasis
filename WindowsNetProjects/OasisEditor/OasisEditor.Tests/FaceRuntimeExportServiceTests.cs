@@ -123,7 +123,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
 
         using var manifestJson = JsonDocument.Parse(File.ReadAllText(result.ManifestPath));
         var root = manifestJson.RootElement;
-        Assert.Equal(6, root.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(FaceRuntimeExportService.RuntimeManifestSchemaVersion, root.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("face-runtime", root.GetProperty("faceId").GetString());
         Assert.Equal("artwork.png", root.GetProperty("artwork").GetString());
         Assert.Equal("mask.png", root.GetProperty("mask").GetString());
@@ -217,7 +217,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         using var lampIds0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampIds0.png"));
         using var lampWeights0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights0.png"));
         Assert.Equal(1, trayId.GetPixel(0, 0).Red);
-        Assert.Equal(24, lampIds0.GetPixel(0, 0).Red);
+        Assert.Equal(25, lampIds0.GetPixel(0, 0).Red);
         Assert.True(lampWeights0.GetPixel(0, 0).Red > 0);
         Assert.Equal(0, trayId.GetPixel(3, 3).Red);
         Assert.Equal(0, lampIds0.GetPixel(3, 3).Red);
@@ -261,8 +261,8 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         using var lampIds0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampIds0.png"));
         using var lampWeights0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights0.png"));
         Assert.Equal(1, trayId.GetPixel(0, 0).Red);
-        Assert.Equal(11, lampIds0.GetPixel(0, 0).Red);
-        Assert.Equal(12, lampIds0.GetPixel(0, 0).Green);
+        Assert.Equal(12, lampIds0.GetPixel(0, 0).Red);
+        Assert.Equal(13, lampIds0.GetPixel(0, 0).Green);
         Assert.True(lampWeights0.GetPixel(0, 0).Red > lampWeights0.GetPixel(0, 0).Green);
         Assert.True(lampWeights0.GetPixel(0, 0).Red + lampWeights0.GetPixel(0, 0).Green + lampWeights0.GetPixel(0, 0).Blue <= 255);
     }
@@ -322,7 +322,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
 
         Assert.Equal(0, trayId.GetPixel(0, 0).Red);
         Assert.Equal(1, trayId.GetPixel(1, 1).Red);
-        Assert.Equal(24, lampIds0.GetPixel(1, 1).Red);
+        Assert.Equal(25, lampIds0.GetPixel(1, 1).Red);
         Assert.Equal(0, lampIds0.GetPixel(1, 1).Green);
         Assert.True(lampWeights0.GetPixel(1, 1).Red > 0);
         Assert.Equal(0, lampWeights0.GetPixel(0, 0).Red);
@@ -439,9 +439,9 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         using var lampIds0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampIds0.png"));
 
         Assert.Equal(1, trayId.GetPixel(1, 1).Red);
-        Assert.Equal(1, lampIds0.GetPixel(1, 1).Red);
+        Assert.Equal(2, lampIds0.GetPixel(1, 1).Red);
         Assert.Equal(2, trayId.GetPixel(2, 2).Red);
-        Assert.Equal(2, lampIds0.GetPixel(2, 2).Red);
+        Assert.Equal(3, lampIds0.GetPixel(2, 2).Red);
     }
 
     [Fact]
@@ -451,7 +451,38 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             new FaceLampWindowElement { ObjectId = "bad", Name = "Bad", X = 0, Y = 0, Width = 1, Height = 1 });
 
         var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeTextureGenerator().CreatePlan(document, 4, 4));
-        Assert.Contains("invalid lamp ID", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("invalid logical lamp ID", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Generate_EncodesZeroBasedLogicalLampIdsAndLeavesUnusedChannelZero()
+    {
+        var outputDirectory = Path.Combine(_generatedDirectory, "zero-based-lamp-id-test");
+        var document = CreateDocumentWithAuthoredTrayAndEmitters(
+            new FaceSourceRegionModel { X = 0, Y = 0, Width = 1, Height = 1 },
+            new TestEmitter("a-lamp-zero", 0, 0.5, 0.5),
+            new TestEmitter("b-lamp-one", 1, 0.5, 0.5));
+
+        new FaceRuntimeTextureGenerator().Generate(document, 1, 1, outputDirectory);
+
+        using var lampIds0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampIds0.png"));
+        var pixel = lampIds0.GetPixel(0, 0);
+        Assert.Equal(1, pixel.Red);
+        Assert.Equal(2, pixel.Green);
+        Assert.Equal(0, pixel.Blue);
+        Assert.Equal(0, FaceLampIdTextureEncoding.Decode(pixel.Red));
+        Assert.Equal(1, FaceLampIdTextureEncoding.Decode(pixel.Green));
+        Assert.Null(FaceLampIdTextureEncoding.Decode(pixel.Blue));
+    }
+
+    [Fact]
+    public void LampIdTextureEncoding_UsesFullSupportedByteRangeAndRejectsLogical255()
+    {
+        Assert.Equal(255, FaceLampIdTextureEncoding.Encode(254));
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeTextureGenerator().CreatePlan(
+            CreateDocumentWithAuthoredTrayAndEmitter(new FaceSourceRegionModel { X = 0, Y = 0, Width = 1, Height = 1 }, 1, 255), 1, 1));
+        Assert.Contains("logical IDs 0 to 254", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("encoded byte 0", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
 
@@ -638,7 +669,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(4, lampWeights0.Width);
         Assert.Equal(4, lampWeights0.Height);
         Assert.Equal(5, trayId.GetPixel(1, 1).Red);
-        Assert.Equal(77, lampIds0.GetPixel(1, 1).Red);
+        Assert.Equal(78, lampIds0.GetPixel(1, 1).Red);
         Assert.True(lampWeights0.GetPixel(1, 1).Red > 0);
         Assert.Equal(0, lampIds0.GetPixel(1, 1).Green);
         Assert.Equal(0, lampWeights0.GetPixel(1, 1).Green);
@@ -670,7 +701,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var nearCenter = firstWeights.GetPixel(2, 2);
         var trayEdge = firstWeights.GetPixel(0, 0);
 
-        Assert.Equal(new SKColor(19, 0, 0, 255), firstIds.GetPixel(2, 2));
+        Assert.Equal(new SKColor(20, 0, 0, 255), firstIds.GetPixel(2, 2));
         Assert.True(nearCenter.Red > 160);
         Assert.True(trayEdge.Red > 0);
         Assert.True(trayEdge.Red < nearCenter.Red);
@@ -697,7 +728,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         using var lampWeights0 = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights0.png"));
         using var weightDebug = SKBitmap.Decode(Path.Combine(outputDirectory, "lampWeights_debug.png"));
 
-        Assert.Equal(new SKColor(11, 12, 0, 255), lampIds0.GetPixel(0, 0));
+        Assert.Equal(new SKColor(12, 13, 0, 255), lampIds0.GetPixel(0, 0));
         var nearLeft = lampWeights0.GetPixel(0, 0);
         var middle = lampWeights0.GetPixel(4, 0);
         var nearRight = lampWeights0.GetPixel(9, 0);
@@ -738,7 +769,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
 
         Assert.Equal(firstIds.GetPixel(1, 0), secondIds.GetPixel(1, 0));
         Assert.Equal(firstWeights.GetPixel(1, 0), secondWeights.GetPixel(1, 0));
-        Assert.Equal(new SKColor(21, 22, 0, 255), firstIds.GetPixel(1, 0));
+        Assert.Equal(new SKColor(22, 23, 0, 255), firstIds.GetPixel(1, 0));
         Assert.Equal(new SKColor(255, 255, 0, 255), firstWeights.GetPixel(1, 0));
     }
 

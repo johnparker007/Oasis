@@ -229,6 +229,44 @@ public sealed class FaceGenerationServiceTests
 
         var artwork = Assert.IsType<FaceArtworkElement>(Assert.Single(result.Document.Elements.OfType<FaceArtworkElement>()));
         Assert.True(artwork.IsTransformLocked);
+        var authoredArtwork = Assert.IsType<FaceArtworkModel>(result.Document.Artwork);
+        Assert.Equal(FaceArtworkSourceKind.Panel2DFaceSourceShape, authoredArtwork.Source.Kind);
+        Assert.Equal("panel-doc-1", authoredArtwork.Source.Panel2DDocumentId);
+        Assert.Equal("shape-1", authoredArtwork.Source.FaceSourceShapeId);
+        Assert.Empty(authoredArtwork.ProcessingPipeline.Operations);
+        Assert.Equal((int)artwork.Width, authoredArtwork.OutputWidth);
+        Assert.Equal((int)artwork.Height, authoredArtwork.OutputHeight);
+    }
+
+    [Fact]
+    public void Regenerate_PreservesFaceOwnedArtworkRecipeAndStableId()
+    {
+        var existingFace = new FaceDocumentModel
+        {
+            Id = "face-1",
+            Title = "Face",
+            SourcePanel2DDocumentId = "panel-doc-1",
+            SourceFaceShapeId = "shape-1",
+            SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
+            Artwork = new FaceArtworkModel
+            {
+                Id = "stable-artwork",
+                Source = new FaceArtworkSourceModel { Kind = FaceArtworkSourceKind.Panel2DFaceSourceShape, Panel2DDocumentId = "panel-doc-1", FaceSourceShapeId = "shape-1" },
+                ProcessingPipeline = new ImageProcessingPipelineModel
+                {
+                    Operations = [new ImageProcessingOperationModel { Id = "operation-1", Kind = "future-test", Enabled = false }]
+                },
+                OutputWidth = 100,
+                OutputHeight = 100
+            }
+        };
+
+        var result = new FaceRegenerationService().Regenerate(existingFace, CreatePanelWithFaceSourceShape(), documentPath: "Assets/Faces/Face/asset.face");
+
+        var artwork = Assert.IsType<FaceArtworkModel>(result.Document.Artwork);
+        Assert.Equal("stable-artwork", artwork.Id);
+        Assert.Equal("operation-1", Assert.Single(artwork.ProcessingPipeline.Operations).Id);
+        Assert.Equal(FaceArtworkSourceKind.Panel2DFaceSourceShape, artwork.Source.Kind);
     }
 
     [Fact]

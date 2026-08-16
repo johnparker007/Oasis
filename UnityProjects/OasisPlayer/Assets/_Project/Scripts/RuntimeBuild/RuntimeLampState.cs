@@ -5,7 +5,7 @@ namespace OasisPlayer.RuntimeBuild
 {
     public sealed class RuntimeLampState
     {
-        public const int MinimumLampNumber = 1;
+        public const int MinimumLampNumber = 0;
         public const int MaximumLampNumber = 255;
         private readonly float[] _brightness = new float[MaximumLampNumber + 1];
         private int _version;
@@ -52,7 +52,6 @@ namespace OasisPlayer.RuntimeBuild
         {
             var normalized = NormalizeBrightness(brightness);
             var changed = false;
-            _brightness[0] = 0f;
             for (var i = MinimumLampNumber; i <= MaximumLampNumber; i++)
             {
                 if (Mathf.Abs(_brightness[i] - normalized) < 0.0001f) continue;
@@ -131,14 +130,14 @@ namespace OasisPlayer.RuntimeBuild
 
     public static class RuntimeFaceLampLookupDecoder
     {
-        public const int InvalidLampId = 0;
+        public const int InvalidLampId = -1;
         public const int ChannelCount = 3;
         public static float DecodeByteWeight(int value) { return Mathf.Clamp(value, 0, 255) / 255f; }
-        public static int ResolveLampStateIndex(int trayId, int lampId) { return lampId >= 1 && lampId <= 255 ? lampId : InvalidLampId; }
+        public static int ResolveLampStateIndex(int trayId, int encodedLampId) { return encodedLampId >= 1 && encodedLampId <= 255 ? encodedLampId - 1 : InvalidLampId; }
         public static float Accumulate(float[] lampBrightness, int[] lampIds, int[] weights)
         {
             var total = 0f;
-            for (var i = 0; i < ChannelCount; i++) { var id = lampIds[i]; if (id > 0 && id < lampBrightness.Length) total += lampBrightness[id] * DecodeByteWeight(weights[i]); }
+            for (var i = 0; i < ChannelCount; i++) { var id = ResolveLampStateIndex(0, lampIds[i]); if (id >= 0 && id < lampBrightness.Length) total += lampBrightness[id] * DecodeByteWeight(weights[i]); }
             return total;
         }
     }

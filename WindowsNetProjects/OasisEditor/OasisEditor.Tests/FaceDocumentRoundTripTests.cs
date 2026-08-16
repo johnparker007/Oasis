@@ -14,6 +14,25 @@ public sealed class FaceDocumentRoundTripTests
             Id = "face-1",
             Title = "Front Face",
             Summary = "Physical face summary",
+            Artwork = new FaceArtworkModel
+            {
+                Id = "artwork-state-1",
+                Source = new FaceArtworkSourceModel
+                {
+                    Kind = FaceArtworkSourceKind.Panel2DFaceSourceShape,
+                    AssetPath = "Assets/Panel2D/Glass/source.png",
+                    Panel2DDocumentId = "panel-doc-1",
+                    Panel2DDocumentPath = "Assets/Panel2D/Glass/asset.panel2d",
+                    FaceSourceShapeId = "shape-1"
+                },
+                ProcessingPipeline = new ImageProcessingPipelineModel
+                {
+                    Operations = [new ImageProcessingOperationModel { Id = "operation-1", Kind = "test-operation", Enabled = false }]
+                },
+                GeneratedAssetPath = "Assets/Faces/Front Face/generated/artwork.png",
+                OutputWidth = 320,
+                OutputHeight = 240
+            },
             MaskLayer = new FaceMaskLayerModel
             {
                 Id = "face-mask-layer",
@@ -122,6 +141,11 @@ public sealed class FaceDocumentRoundTripTests
         Assert.Equal("face-1", savedDocument.Id);
         Assert.Equal("Front Face", savedDocument.Title);
         Assert.Equal("Physical face summary", savedDocument.Summary);
+        Assert.Equal("artwork-state-1", savedDocument.Artwork!.Id);
+        Assert.Equal(FaceArtworkSourceKind.Panel2DFaceSourceShape, savedDocument.Artwork.Source.Kind);
+        Assert.Equal("shape-1", savedDocument.Artwork.Source.FaceSourceShapeId);
+        Assert.Equal("Assets/Faces/Front Face/generated/artwork.png", savedDocument.Artwork.GeneratedAssetPath);
+        Assert.Equal("operation-1", Assert.Single(savedDocument.Artwork.ProcessingPipeline.Operations).Id);
         Assert.Equal("Generated/Faces/face-1-mask.png", savedDocument.MaskLayer!.AssetPath);
         Assert.Equal(24, savedDocument.MaskLayer.ExtractionThreshold);
         Assert.Equal(320, savedDocument.MaskLayer.Width);

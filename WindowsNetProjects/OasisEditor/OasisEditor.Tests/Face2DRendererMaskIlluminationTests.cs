@@ -194,7 +194,7 @@ public sealed class Face2DRendererMaskIlluminationTests : IDisposable
         WriteSolidPng(Path.Combine(_testDirectory, "artwork.png"), 1, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng(Path.Combine(_testDirectory, "runtime-mask.png"), 1, 1, SKColors.White);
         WriteSolidPng(Path.Combine(_testDirectory, "trayId.png"), 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng(Path.Combine(_testDirectory, "lampIds0.png"), 1, 1, new SKColor(214, 215, 0, 255));
+        WriteSolidPng(Path.Combine(_testDirectory, "lampIds0.png"), 1, 1, new SKColor(215, 216, 0, 255));
         WriteSolidPng(Path.Combine(_testDirectory, "lampWeights0.png"), 1, 1, new SKColor(128, 127, 0, 255));
         var renderer = new Face2DRenderer(FaceRuntimeStateResolver.Instance, ResolveTestAssetPath);
         var runtimeState = new MachineRuntimeState();

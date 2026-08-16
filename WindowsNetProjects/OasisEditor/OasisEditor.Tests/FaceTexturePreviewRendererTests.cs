@@ -31,7 +31,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 2, 2, new SKColor(100, 80, 60, 255));
         WriteSolidPng("mask.png", 3, 2, SKColors.White);
         WriteSolidPng("trayId.png", 2, 2, SKColors.Black);
-        WriteSolidPng("lampIds0.png", 2, 2, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 2, 2, new SKColor(8, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 2, 2, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
 
@@ -47,7 +47,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 192));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(8, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
         var runtimeState = new MachineRuntimeState();
@@ -65,12 +65,29 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
     }
 
     [Fact]
+    public void Render_EncodedOneLooksUpLogicalLampZero()
+    {
+        WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
+        WriteSolidPng("mask.png", 1, 1, SKColors.White);
+        WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(1, 0, 0, 255));
+        WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
+        var runtimeState = new MachineRuntimeState();
+        runtimeState.SetLampIntensityIfChanged(MachineObjectReference.Lamp(0), 1d);
+
+        using var result = CreateRenderer().Render(CreateDocument(width: 1, height: 1), runtimeState);
+
+        Assert.True(result.Rendered);
+        Assert.True(result.Bitmap!.GetPixel(0, 0).Red > 100);
+    }
+
+    [Fact]
     public void Render_LitRedArtwork_RemainsRecognisablyRedAndBrighter()
     {
         WriteSolidPng("artwork.png", 1, 1, new SKColor(120, 0, 0, 255));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(8, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
         var runtimeState = new MachineRuntimeState();
@@ -91,7 +108,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 1, 1, new SKColor(0, 0, 120, 255));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(8, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
         var runtimeState = new MachineRuntimeState();
@@ -112,7 +129,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(8, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
 
@@ -134,7 +151,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(8, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
         var renderer = new FaceTexturePreviewRenderer(path => string.IsNullOrWhiteSpace(path) ? null : Path.Combine(_testDirectory, path));
 
@@ -157,7 +174,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WritePixel("artwork.png", 1, 0, 2, 1, new SKColor(100, 100, 100, 127));
         WriteSolidPng("mask.png", 2, 1, SKColors.White);
         WriteSolidPng("trayId.png", 2, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 2, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 2, 1, new SKColor(8, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 2, 1, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
         var runtimeState = new MachineRuntimeState();
@@ -178,7 +195,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(8, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
         var runtimeState = new MachineRuntimeState();
@@ -198,7 +215,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork-other.png", 1, 1, new SKColor(200, 80, 40, 255));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(8, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
 
@@ -217,7 +234,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 2, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng("mask.png", 2, 1, SKColors.White);
         WriteSolidPng("trayId.png", 2, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 2, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 2, 1, new SKColor(8, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 2, 1, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
 
@@ -235,7 +252,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 8, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(8, 9, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(128, 128, 0, 255));
         var renderer = new FaceTexturePreviewRenderer(
             path => string.IsNullOrWhiteSpace(path) ? null : Path.Combine(_testDirectory, path),
@@ -262,7 +279,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(214, 215, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(215, 216, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(128, 127, 0, 255));
         var renderer = new FaceTexturePreviewRenderer(path => string.IsNullOrWhiteSpace(path) ? null : Path.Combine(_testDirectory, path));
         var runtimeState = new MachineRuntimeState();
@@ -281,7 +298,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(214, 215, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(215, 216, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(128, 127, 0, 255));
         var renderer = new FaceTexturePreviewRenderer(path => string.IsNullOrWhiteSpace(path) ? null : Path.Combine(_testDirectory, path));
         var runtimeState = new MachineRuntimeState();
@@ -305,7 +322,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 2, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng("mask.png", 2, 1, SKColors.White);
         WriteSolidPng("trayId.png", 2, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 2, 1, new SKColor(214, 215, 0, 255));
+        WriteSolidPng("lampIds0.png", 2, 1, new SKColor(215, 216, 0, 255));
         WriteSolidPng("lampWeights0.png", 2, 1, new SKColor(128, 127, 0, 255));
         WritePixel("lampWeights0.png", 1, 0, 2, 1, new SKColor(64, 64, 0, 255));
         var renderer = new FaceTexturePreviewRenderer(path => string.IsNullOrWhiteSpace(path) ? null : Path.Combine(_testDirectory, path));
@@ -327,7 +344,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(8, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
         var runtimeState = new MachineRuntimeState();
@@ -346,7 +363,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(8, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
         var runtimeState = new MachineRuntimeState();
@@ -372,7 +389,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(8, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
         var runtimeState = new MachineRuntimeState();
@@ -395,9 +412,9 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 3, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng("mask.png", 3, 1, SKColors.White);
         WriteSolidPng("trayId.png", 3, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 3, 1, new SKColor(7, 0, 0, 255));
-        WritePixel("lampIds0.png", 1, 0, 3, 1, new SKColor(8, 0, 0, 255));
-        WritePixel("lampIds0.png", 2, 0, 3, 1, new SKColor(9, 0, 0, 255));
+        WriteSolidPng("lampIds0.png", 3, 1, new SKColor(8, 0, 0, 255));
+        WritePixel("lampIds0.png", 1, 0, 3, 1, new SKColor(9, 0, 0, 255));
+        WritePixel("lampIds0.png", 2, 0, 3, 1, new SKColor(10, 0, 0, 255));
         WriteSolidPng("lampWeights0.png", 3, 1, new SKColor(255, 0, 0, 255));
         var renderer = CreateRenderer();
         var runtimeState = new MachineRuntimeState();
@@ -421,7 +438,7 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
         WriteSolidPng("artwork.png", 1, 1, new SKColor(100, 40, 20, 255));
         WriteSolidPng("mask.png", 1, 1, SKColors.White);
         WriteSolidPng("trayId.png", 1, 1, new SKColor(1, 0, 0, 255));
-        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(7, 8, 0, 255));
+        WriteSolidPng("lampIds0.png", 1, 1, new SKColor(8, 9, 0, 255));
         WriteSolidPng("lampWeights0.png", 1, 1, new SKColor(128, 127, 0, 255));
         var renderer = new FaceTexturePreviewRenderer(
             path => string.IsNullOrWhiteSpace(path) ? null : Path.Combine(_testDirectory, path),

@@ -74,7 +74,7 @@ public sealed class RuntimeReelRenderingTests
     }
 
     [Test]
-    public void LampSentinelAndInvalidZeroRemainOffForOneBasedLampState()
+    public void NegativeLampSentinelRemainsOffAndLogicalZeroIsSupported()
     {
         var reel = Reel();
         reel.reelLamps = new[]
@@ -90,14 +90,15 @@ public sealed class RuntimeReelRenderingTests
         {
             var binding = new RuntimeReelRenderBinding(go, material, renderer, reel);
             var lampState = new RuntimeLampState();
-            Assert.IsFalse(lampState.IsValidLampNumber(0));
+            Assert.IsTrue(lampState.IsValidLampNumber(0));
+            lampState.SetBrightness(0, 0.25f);
             lampState.SetBrightness(1, 0.5f);
             Assert.IsTrue(binding.ApplyLampState(lampState));
             var block = new MaterialPropertyBlock();
             renderer.GetPropertyBlock(block);
             var brightness = block.GetVector(RuntimeFaceShaderProperties.ReelLampBrightness);
             Assert.AreEqual(0f, brightness.x, 0.0001f);
-            Assert.AreEqual(0f, brightness.y, 0.0001f);
+            Assert.AreEqual(0.25f, brightness.y, 0.0001f);
             Assert.AreEqual(0.5f, brightness.z, 0.0001f);
             binding.Dispose();
         }

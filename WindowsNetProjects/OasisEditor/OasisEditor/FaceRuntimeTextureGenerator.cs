@@ -376,9 +376,9 @@ public sealed class FaceRuntimeTextureGenerator
     {
         foreach (var emitter in emitters)
         {
-            if (emitter.LampId is not int lampId || lampId <= 0 || lampId > byte.MaxValue)
+            if (emitter.LampId is not int lampId || !FaceLampIdTextureEncoding.IsSupportedLogicalId(lampId))
             {
-                throw new InvalidOperationException($"Face lamp emitter '{emitter.ObjectId}' has invalid lamp ID '{emitter.LampId?.ToString() ?? "<missing>"}'. Phase 3a lamp ID textures require IDs from 1 to 255.");
+                throw new InvalidOperationException($"Face lamp emitter '{emitter.ObjectId}' has invalid logical lamp ID '{emitter.LampId?.ToString() ?? "<missing>"}'. Phase 3a lamp ID textures support logical IDs 0 to 254, encoded as byte values 1 to 255; encoded byte 0 is reserved for an unused channel.");
             }
         }
     }
@@ -590,7 +590,7 @@ public sealed class LampInfluenceTextureGenerator
             ? emitterRadius
             : fallbackRadius;
         return new LampInfluence(
-            (byte)emitter.LampId!.Value,
+            FaceLampIdTextureEncoding.Encode(emitter.LampId!.Value),
             emitter.CenterX,
             emitter.CenterY,
             Math.Max(MinimumRadius, radius),
@@ -658,6 +658,22 @@ public sealed class LampInfluenceTextureGenerator
         using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
         data.SaveTo(stream);
     }
+}
+
+public static class FaceLampIdTextureEncoding
+{
+    public const int MinimumLogicalId = 0;
+    public const int MaximumLogicalId = 254;
+
+    public static bool IsSupportedLogicalId(int logicalLampId) => logicalLampId is >= MinimumLogicalId and <= MaximumLogicalId;
+
+    public static byte Encode(int logicalLampId)
+    {
+        if (!IsSupportedLogicalId(logicalLampId)) throw new ArgumentOutOfRangeException(nameof(logicalLampId), logicalLampId, $"Logical lamp IDs must be from {MinimumLogicalId} to {MaximumLogicalId} for the byte texture format.");
+        return checked((byte)(logicalLampId + 1));
+    }
+
+    public static int? Decode(byte encodedValue) => encodedValue == 0 ? null : encodedValue - 1;
 }
 
 public enum FaceRuntimeTextureExportSource

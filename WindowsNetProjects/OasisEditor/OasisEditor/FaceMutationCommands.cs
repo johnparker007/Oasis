@@ -67,6 +67,7 @@ internal static class FaceMutationCommands
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,
+            Artwork = faceDocument.Artwork,
             RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
             MaskLayer = faceDocument.MaskLayer,
             Trays = faceDocument.Trays,

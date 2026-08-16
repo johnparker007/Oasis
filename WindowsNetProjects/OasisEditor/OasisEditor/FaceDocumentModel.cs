@@ -13,12 +13,51 @@ public sealed class FaceDocumentModel
     public FaceSourceRegionModel? SourceRegion { get; init; }
     public DateTime? LastRegeneratedAtUtc { get; init; }
     public FaceGenerationSettingsModel GenerationSettings { get; init; } = FaceGenerationSettingsModel.Default;
+    public FaceArtworkModel? Artwork { get; init; }
     public FaceRuntimeRenderAssetsModel? RuntimeRenderAssets { get; init; }
     public FaceMaskLayerModel? MaskLayer { get; init; }
     public IReadOnlyList<FaceTrayModel> Trays { get; init; } = [];
     public IReadOnlyList<FaceLampEmitterElement> LampEmitters { get; init; } = [];
     public IReadOnlyList<FaceLayerModel> Layers { get; init; } = [];
     public IReadOnlyList<FaceElementModel> Elements { get; init; } = [];
+}
+
+public enum FaceArtworkSourceKind
+{
+    Panel2DFaceSourceShape,
+    IndependentImage
+}
+
+/// <summary>Authored artwork state owned by the Face. GeneratedAssetPath is rebuildable output.</summary>
+public sealed class FaceArtworkModel
+{
+    public string Id { get; init; } = Guid.NewGuid().ToString("N");
+    public FaceArtworkSourceModel Source { get; init; } = new();
+    public ImageProcessingPipelineModel ProcessingPipeline { get; init; } = new();
+    public string? GeneratedAssetPath { get; init; }
+    public int OutputWidth { get; init; }
+    public int OutputHeight { get; init; }
+}
+
+public sealed class FaceArtworkSourceModel
+{
+    public FaceArtworkSourceKind Kind { get; init; } = FaceArtworkSourceKind.Panel2DFaceSourceShape;
+    public string? AssetPath { get; init; }
+    public string? Panel2DDocumentId { get; init; }
+    public string? Panel2DDocumentPath { get; init; }
+    public string? FaceSourceShapeId { get; init; }
+}
+
+public sealed class ImageProcessingPipelineModel
+{
+    public IReadOnlyList<ImageProcessingOperationModel> Operations { get; init; } = [];
+}
+
+public sealed class ImageProcessingOperationModel
+{
+    public string Id { get; init; } = Guid.NewGuid().ToString("N");
+    public string Kind { get; init; } = string.Empty;
+    public bool Enabled { get; init; } = true;
 }
 
 

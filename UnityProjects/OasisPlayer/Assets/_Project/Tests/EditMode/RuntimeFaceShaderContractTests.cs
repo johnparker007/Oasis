@@ -53,9 +53,8 @@ namespace OasisPlayer.Tests
         public void LampLookupUsesZeroAsSentinelAndSupportsBoundaryIds()
         {
             var brightness = new float[256];
-            brightness[0] = 1f;
-            brightness[1] = 0.25f;
-            brightness[255] = 0.75f;
+            brightness[0] = 0.25f;
+            brightness[254] = 0.75f;
 
             Assert.AreEqual(0f, RuntimeFaceLampLookupDecoder.Accumulate(brightness, new[] { 0, 0, 0 }, new[] { 255, 255, 255 }));
             Assert.AreEqual(0.25f, RuntimeFaceLampLookupDecoder.Accumulate(brightness, new[] { 1, 0, 0 }, new[] { 255, 255, 255 }));
@@ -66,9 +65,9 @@ namespace OasisPlayer.Tests
         public void ThreeChannelWeightedAccumulationUsesByteWeights()
         {
             var brightness = new float[256];
-            brightness[1] = 0.2f;
-            brightness[127] = 0.4f;
-            brightness[255] = 0.6f;
+            brightness[0] = 0.2f;
+            brightness[126] = 0.4f;
+            brightness[254] = 0.6f;
 
             var actual = RuntimeFaceLampLookupDecoder.Accumulate(brightness, new[] { 1, 127, 255 }, new[] { 255, 128, 64 });
             var expected = 0.2f + 0.4f * (128f / 255f) + 0.6f * (64f / 255f);

@@ -63,8 +63,18 @@ public sealed class DocumentSaveService : IDocumentSaveService
         {
             progress.Report(0.15, "Exporting Face runtime assets...");
             var faceWithAuthoredAssets = EnsureFaceAuthoredPackageAssets(current.GetFaceDocument(), project, savePath);
-            var exportResult = _faceRuntimeExportService.Export(faceWithAuthoredAssets, project, savePath, progress.CreateChild(0.15, 0.75));
-            faceDocumentJson = FaceDocumentStorage.Serialize(exportResult.Document);
+            try
+            {
+                var exportResult = _faceRuntimeExportService.Export(faceWithAuthoredAssets, project, savePath, progress.CreateChild(0.15, 0.75));
+                faceDocumentJson = FaceDocumentStorage.Serialize(exportResult.Document);
+            }
+            catch (Exception exception)
+            {
+                // Runtime preview textures are disposable generated output. Failure to refresh
+                // them must not prevent the authored Face package from being saved.
+                progress.Report(0.75, $"Face runtime preview assets were not generated: {exception.Message}");
+                faceDocumentJson = FaceDocumentStorage.Serialize(faceWithAuthoredAssets);
+            }
             contentSource = new DocumentTabViewModel(
                 current.Document,
                 current.PanelLayoutJson,
@@ -188,12 +198,31 @@ public sealed class DocumentSaveService : IDocumentSaveService
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,
+            Artwork = WithGeneratedArtworkPath(faceDocument.Artwork, artworkRelative, faceDocument),
             RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
             MaskLayer = maskLayer,
             Trays = faceDocument.Trays,
             LampEmitters = faceDocument.LampEmitters,
             Layers = faceDocument.Layers,
             Elements = elements
+        };
+    }
+
+    private static FaceArtworkModel? WithGeneratedArtworkPath(FaceArtworkModel? artwork, string generatedAssetPath, FaceDocumentModel faceDocument)
+    {
+        if (artwork is null)
+        {
+            return null;
+        }
+
+        return new FaceArtworkModel
+        {
+            Id = artwork.Id,
+            Source = artwork.Source,
+            ProcessingPipeline = artwork.ProcessingPipeline,
+            GeneratedAssetPath = generatedAssetPath,
+            OutputWidth = artwork.OutputWidth > 0 ? artwork.OutputWidth : Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Width ?? 1)),
+            OutputHeight = artwork.OutputHeight > 0 ? artwork.OutputHeight : Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Height ?? 1))
         };
     }
 

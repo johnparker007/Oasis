@@ -1577,8 +1577,14 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         if (selectedElement is FaceArtworkElement artwork)
         {
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Asset Path", "Artwork", artwork.AssetPath ?? string.Empty));
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Panel2D Document", "Artwork", artwork.SourcePanel2DDocumentId ?? string.Empty));
+            var authoredArtwork = selectedDocument.GetFaceDocument().Artwork;
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Type", "Artwork", authoredArtwork?.Source.Kind.ToString() ?? "Unknown"));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Asset Path", "Artwork", authoredArtwork?.Source.AssetPath ?? string.Empty));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Generated Artwork Path", "Artwork", authoredArtwork?.GeneratedAssetPath ?? artwork.AssetPath ?? string.Empty));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Output Dimensions", "Artwork", authoredArtwork is null ? $"{artwork.Width:0} × {artwork.Height:0}" : $"{authoredArtwork.OutputWidth} × {authoredArtwork.OutputHeight}"));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Processing Operations", "Artwork", authoredArtwork?.ProcessingPipeline.Operations.Count.ToString() ?? "0"));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Panel2D Document", "Artwork", authoredArtwork?.Source.Panel2DDocumentId ?? artwork.SourcePanel2DDocumentId ?? string.Empty));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Face Shape", "Artwork", authoredArtwork?.Source.FaceSourceShapeId ?? string.Empty));
             if (artwork.SourceRegion is not null)
             {
                 _propertyRows.Add(new InspectorInfoPropertyViewModel("Face Source Shape Output Bounds", "Artwork", FormatSourceRegion(artwork.SourceRegion)));

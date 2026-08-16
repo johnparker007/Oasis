@@ -64,6 +64,8 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         {
             Title = "Temporary Face",
             SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 2, Height = 2 },
+            Trays = [new FaceTrayModel { ObjectId = "tray-zero", Bounds = new FaceSourceRegionModel { X = 0, Y = 0, Width = 2, Height = 2 } }],
+            LampEmitters = [new FaceLampEmitterElement { ObjectId = "emitter-zero", TrayObjectId = "tray-zero", TrayId = 1, LampId = 0, CenterX = 1, CenterY = 1 }],
             Elements =
             [
                 new FaceArtworkElement { ObjectId = "art", Name = "Artwork", Width = 2, Height = 2 }
@@ -79,8 +81,32 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         Assert.Equal("Saved Face", saved.Title);
         Assert.False(saved.Document.IsUntitled);
         Assert.True(File.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "asset.face")));
-        Assert.True(File.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "artwork.png")));
+        Assert.True(File.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "generated", "artwork.png")));
         Assert.True(File.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "mask.png")));
+        var savedFace = saved.GetFaceDocument();
+        Assert.Equal(0, Assert.Single(savedFace.LampEmitters).LampId);
+    }
+
+    [Fact]
+    public void SaveDocument_WhenDisposableRuntimePreviewExportFails_StillWritesAuthoredFace()
+    {
+        var project = CreateProject();
+        var faceDocument = new FaceDocumentModel
+        {
+            Title = "Face With Unsupported Preview Lamp",
+            SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 2, Height = 2 },
+            Trays = [new FaceTrayModel { ObjectId = "tray", Bounds = new FaceSourceRegionModel { X = 0, Y = 0, Width = 2, Height = 2 } }],
+            LampEmitters = [new FaceLampEmitterElement { ObjectId = "emitter", TrayObjectId = "tray", TrayId = 1, LampId = 255 }],
+            Elements = [new FaceArtworkElement { ObjectId = "art", Name = "Artwork", Width = 2, Height = 2 }]
+        };
+        var current = new DocumentTabViewModel(EditorDocument.CreateFaceStub(faceDocument.Title).MarkDirty(), faceDocumentJson: FaceDocumentStorage.Serialize(faceDocument));
+        var savePath = Path.Combine(project.AssetsDirectory, "Faces", "Saved Despite Preview Failure", "asset.face");
+
+        var saved = new DocumentSaveService().SaveDocument(current, savePath, project);
+
+        Assert.True(File.Exists(savePath));
+        Assert.Equal(255, Assert.Single(saved.GetFaceDocument().LampEmitters).LampId);
+        Assert.Null(saved.GetFaceDocument().RuntimeRenderAssets);
     }
 
 
