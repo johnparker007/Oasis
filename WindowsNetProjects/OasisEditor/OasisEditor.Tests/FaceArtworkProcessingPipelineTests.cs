@@ -106,6 +106,9 @@ public sealed class FaceArtworkProcessingPipelineTests
             Assert.True(document.CommandService.TryRedo());
             Assert.Equal(applied, File.ReadAllBytes(generatedPath));
             Assert.Equal(originalBytes, File.ReadAllBytes(originalPath));
+            document.CommandService.Execute(FaceMutationCommands.CreateApplyArtworkProcessingCommand(document.DocumentId, document));
+            Assert.Equal(applied, File.ReadAllBytes(generatedPath));
+            Assert.Equal(originalBytes, File.ReadAllBytes(originalPath));
         }
         finally { Directory.Delete(directory, recursive: true); }
     }

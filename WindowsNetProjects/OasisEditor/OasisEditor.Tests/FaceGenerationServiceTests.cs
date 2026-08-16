@@ -29,8 +29,10 @@ public sealed class FaceGenerationServiceTests
                 panel, CreateSourceShape(), "Test Face", projectDirectory: directory, faceAssetDirectory: faceDirectory);
 
             var generatedPath = Path.Combine(directory, result.Document.Artwork!.GeneratedAssetPath!.Replace('/', Path.DirectorySeparatorChar));
+            Assert.Equal(Path.Combine(directory, "Generated", "Faces", "Test Face", "Artwork", "artwork.png"), generatedPath);
             Assert.True(File.Exists(generatedPath));
             Assert.True(File.Exists(FaceArtworkRebuildService.GetOriginalArtworkPath(generatedPath)));
+            Assert.False(Directory.Exists(Path.Combine(faceDirectory, "generated")));
         }
         finally { Directory.Delete(directory, recursive: true); }
     }
@@ -295,6 +297,65 @@ public sealed class FaceGenerationServiceTests
         Assert.Equal("stable-artwork", artwork.Id);
         Assert.Equal("operation-1", Assert.Single(artwork.ProcessingPipeline.Operations).Id);
         Assert.Equal(FaceArtworkSourceKind.Panel2DFaceSourceShape, artwork.Source.Kind);
+    }
+
+    [Fact]
+    public void Regenerate_RecreatesCanonicalAndProcessesItWithPreservedCalibrationRecipe()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-face-regeneration-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var backgroundPath = Path.Combine(directory, "background.png");
+            using (var bitmap = new SkiaSharp.SKBitmap(100, 100))
+            {
+                bitmap.Erase(new SkiaSharp.SKColor(80, 80, 80));
+                using var image = SkiaSharp.SKImage.FromBitmap(bitmap);
+                using var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+                using var stream = File.Create(backgroundPath);
+                data.SaveTo(stream);
+            }
+            var panel = new Panel2DDocumentModel
+            {
+                FaceSourceShapes = [CreateSourceShape()],
+                Elements = [new PanelElementModel { Kind = PanelElementKind.Background, AssetPath = backgroundPath, Width = 100, Height = 100 }]
+            };
+            var sample = new CalibrationSampleModel { Id = "sample-1", X = .25, Y = .75, SamplingMode = CalibrationSamplingMode.Area, RadiusNormalized = .05 };
+            var operation = new ArtworkCalibrationOperationModel
+            {
+                Id = "calibration-1",
+                CorrectSpatialBrightness = false,
+                CorrectSpatialColor = false,
+                NeutralizeWhite = false,
+                BlackReference = new CalibrationReferenceModel { ManualEnabled = true, ManualColor = "#FF202020", Samples = [sample] },
+                WhiteReference = new CalibrationReferenceModel { ManualEnabled = true, ManualColor = "#FF707070" },
+                SameColorGroups = [new SameColorCalibrationGroupModel { Id = "group-1", Name = "Grey", Samples = [sample] }]
+            };
+            var existingFace = new FaceDocumentModel
+            {
+                Id = "face-1", Title = "Face", SourcePanel2DDocumentId = "panel-doc-1", SourceFaceShapeId = "shape-1",
+                SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
+                Artwork = new FaceArtworkModel { Id = "stable-artwork", ProcessingPipeline = new ImageProcessingPipelineModel { Operations = [operation] } }
+            };
+            var documentPath = Path.Combine(directory, "Assets", "Faces", "Face", "asset.face");
+
+            var result = new FaceRegenerationService().Regenerate(existingFace, panel, directory, Path.Combine(directory, "Generated"), documentPath: documentPath);
+
+            var artwork = Assert.IsType<FaceArtworkModel>(result.Document.Artwork);
+            var savedOperation = Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(artwork.ProcessingPipeline.Operations));
+            Assert.Equal("calibration-1", savedOperation.Id);
+            Assert.Equal("sample-1", Assert.Single(savedOperation.BlackReference.Samples).Id);
+            Assert.Equal("group-1", Assert.Single(savedOperation.SameColorGroups).Id);
+            var processedPath = Path.Combine(directory, artwork.GeneratedAssetPath!.Replace('/', Path.DirectorySeparatorChar));
+            var originalPath = FaceArtworkRebuildService.GetOriginalArtworkPath(processedPath);
+            Assert.True(File.Exists(originalPath));
+            using var original = SkiaSharp.SKBitmap.Decode(originalPath);
+            using var processed = SkiaSharp.SKBitmap.Decode(processedPath);
+            Assert.NotNull(original);
+            Assert.NotNull(processed);
+            Assert.NotEqual(original.GetPixel(50, 50), processed.GetPixel(50, 50));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
     }
 
     [Fact]

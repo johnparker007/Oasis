@@ -135,6 +135,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
         Directory.CreateDirectory(Path.GetDirectoryName(artworkPath)!);
 
         CopyOrCreatePng(project, faceDocument.Elements.OfType<FaceArtworkElement>().FirstOrDefault()?.AssetPath, artworkPath, faceDocument);
+        EnsureCanonicalArtwork(project, faceDocument.Artwork, artworkPath);
         CopyOrCreatePng(project, faceDocument.MaskLayer?.AssetPath, maskPath, faceDocument);
 
         var artworkRelative = pathService.ToProjectRelativePath(project, artworkPath);
@@ -246,6 +247,29 @@ public sealed class DocumentSaveService : IDocumentSaveService
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         using var stream = File.Create(destinationPath);
         data.SaveTo(stream);
+    }
+
+    private static void EnsureCanonicalArtwork(EditorProject project, FaceArtworkModel? artwork, string processedArtworkPath)
+    {
+        var destinationOriginal = FaceArtworkRebuildService.GetOriginalArtworkPath(processedArtworkPath);
+        var sourceProcessed = ResolveExistingProjectPath(project, artwork?.GeneratedAssetPath);
+        var sourceOriginal = string.IsNullOrWhiteSpace(sourceProcessed) ? null : FaceArtworkRebuildService.GetOriginalArtworkPath(sourceProcessed);
+        if (!string.IsNullOrWhiteSpace(sourceOriginal) && File.Exists(sourceOriginal))
+        {
+            if (!string.Equals(Path.GetFullPath(sourceOriginal), Path.GetFullPath(destinationOriginal), StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(sourceOriginal, destinationOriginal, overwrite: true);
+            }
+            return;
+        }
+
+        if (artwork is not null)
+        {
+            throw new InvalidOperationException("Face canonical original artwork is missing. Regenerate the Face before saving it.");
+        }
+
+        // Empty Face stubs have no source recipe; their newly-created transparent image is canonical.
+        File.Copy(processedArtworkPath, destinationOriginal, overwrite: true);
     }
 
     private static string? ResolveExistingProjectPath(EditorProject project, string? assetPath)

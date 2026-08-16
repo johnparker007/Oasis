@@ -377,15 +377,13 @@ internal sealed class FaceGenerationService
             return null;
         }
 
-        if (!string.IsNullOrWhiteSpace(faceAssetDirectory))
-        {
-            return string.Equals(fileName, ProjectAssetPathService.FaceArtworkFileName, StringComparison.OrdinalIgnoreCase)
-                ? System.IO.Path.Combine(faceAssetDirectory, ProjectAssetPathService.FaceGeneratedDirectoryName, fileName)
-                : System.IO.Path.Combine(faceAssetDirectory, fileName);
-        }
-
         var pathService = new ProjectAssetPathService();
         var project = CreatePathProject(projectDirectory, generatedDirectory);
+        if (!string.IsNullOrWhiteSpace(faceAssetDirectory)
+            && !string.Equals(fileName, ProjectAssetPathService.FaceArtworkFileName, StringComparison.OrdinalIgnoreCase))
+        {
+            return System.IO.Path.Combine(faceAssetDirectory, fileName);
+        }
         return string.Equals(fileName, ProjectAssetPathService.FaceMaskFileName, StringComparison.OrdinalIgnoreCase)
             ? pathService.GetFaceMaskPath(project, faceAssetName)
             : pathService.GetFaceArtworkPath(project, faceAssetName);

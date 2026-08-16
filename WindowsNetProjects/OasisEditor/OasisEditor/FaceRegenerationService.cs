@@ -94,6 +94,16 @@ internal sealed class FaceRegenerationService
             cabinetDocument: cabinetDocument);
 
         var artwork = PreserveArtwork(existingFace.Artwork, generated.Document.Artwork);
+        if (artwork is not null
+            && !string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)
+            && !string.IsNullOrWhiteSpace(projectDirectory))
+        {
+            var processingResult = new FaceArtworkRebuildService().ApplyProcessing(artwork, projectDirectory);
+            if (!processingResult.Succeeded)
+            {
+                throw new InvalidOperationException($"Regenerated Face artwork could not be processed with its preserved recipe: {processingResult.ErrorMessage}");
+            }
+        }
 
         progress.Report(0.45, "Correlating regenerated elements...");
         var existingGeneratedByKey = existingFace.Elements

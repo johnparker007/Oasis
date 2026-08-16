@@ -90,5 +90,5 @@ internal sealed class FaceArtworkRebuildService
     }
 
     internal static string GetOriginalArtworkPath(string generatedArtworkPath) =>
-        Path.Combine(Path.GetDirectoryName(generatedArtworkPath) ?? string.Empty, $"{Path.GetFileNameWithoutExtension(generatedArtworkPath)}.original{Path.GetExtension(generatedArtworkPath)}");
+        Path.Combine(Path.GetDirectoryName(generatedArtworkPath) ?? string.Empty, $"original{Path.GetExtension(generatedArtworkPath)}");
 }
