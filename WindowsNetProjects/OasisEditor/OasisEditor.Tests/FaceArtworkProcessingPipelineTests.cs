@@ -57,16 +57,18 @@ public sealed class FaceArtworkProcessingPipelineTests
     public void Evaluate_CanReturnIntermediatePipelineResultsInAuthoredOrder()
     {
         using var input = Gradient();
-        var first = Levels("first", true, 100, [new() { X = 0, Y = 0 }], [new() { X = .65, Y = 0 }]);
-        var second = Levels("second", true, 100, [new() { X = .35, Y = 0 }], [new() { X = 1, Y = 0 }]);
+        // Partial strengths avoid both operations saturating the synthetic gradient to the
+        // same endpoints, while still proving that each operation consumes its predecessor.
+        var first = Levels("first", true, 40, [new() { X = 0, Y = 0 }], [new() { X = .65, Y = 0 }]);
+        var second = Levels("second", true, 75, [new() { X = .35, Y = 0 }], [new() { X = 1, Y = 0 }]);
         var pipeline = new ImageProcessingPipelineModel { Operations = [first, second] };
         var evaluator = new FaceArtworkProcessingPipeline();
         using var afterFirst = evaluator.Evaluate(input, pipeline, 1);
         using var final = evaluator.Evaluate(input, pipeline);
         using var reverse = evaluator.Evaluate(input, new ImageProcessingPipelineModel { Operations = [second, first] });
 
-        Assert.NotEqual(afterFirst.GetPixel(4, 4), final.GetPixel(4, 4));
-        Assert.NotEqual(reverse.GetPixel(4, 4), final.GetPixel(4, 4));
+        AssertBitmapsDiffer(afterFirst, final);
+        AssertBitmapsDiffer(reverse, final);
     }
 
     [Fact]
@@ -105,5 +107,14 @@ public sealed class FaceArtworkProcessingPipelineTests
         Assert.Equal(expected.Width, actual.Width);
         Assert.Equal(expected.Height, actual.Height);
         for (var y = 0; y < expected.Height; y++) for (var x = 0; x < expected.Width; x++) Assert.Equal(expected.GetPixel(x, y), actual.GetPixel(x, y));
+    }
+
+    private static void AssertBitmapsDiffer(SKBitmap expected, SKBitmap actual)
+    {
+        Assert.Equal(expected.Width, actual.Width);
+        Assert.Equal(expected.Height, actual.Height);
+        Assert.Contains(
+            Enumerable.Range(0, expected.Width * expected.Height),
+            index => expected.GetPixel(index % expected.Width, index / expected.Width) != actual.GetPixel(index % actual.Width, index / actual.Width));
     }
 }
