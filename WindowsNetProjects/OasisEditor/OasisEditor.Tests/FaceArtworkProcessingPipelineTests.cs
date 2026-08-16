@@ -69,14 +69,18 @@ public sealed class FaceArtworkProcessingPipelineTests
             WriteBitmap(generatedPath, new SKColor(10, 20, 30));
             var face = new FaceDocumentModel { Artwork = CalibratedArtwork(generatedPath) };
             var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"), faceDocumentJson: FaceDocumentStorage.Serialize(face));
-            document.SetProjectAccessor(() => new EditorProject { ProjectDirectory = directory });
+            document.SetProjectAccessor(() => new EditorProject
+            {
+                ProjectFilePath = Path.Combine(directory, "test.oasisproj"),
+                ProjectDirectory = directory
+            });
             var command = FaceMutationCommands.CreateApplyArtworkProcessingCommand(document.DocumentId, document);
 
             document.CommandService.Execute(command);
 
             Assert.False(Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command).WasExecuted);
             Assert.Contains("Canonical original artwork was not found", Assert.IsAssignableFrom<Commands.IExecutionFailureDiagnostic>(command).ExecutionFailureMessage);
-            Assert.Empty(document.CommandService.History);
+            Assert.Equal(0, document.CommandService.History.Count);
         }
         finally { Directory.Delete(directory, recursive: true); }
     }
@@ -95,7 +99,11 @@ public sealed class FaceArtworkProcessingPipelineTests
             var previousProcessed = File.ReadAllBytes(generatedPath);
             var face = new FaceDocumentModel { Artwork = CalibratedArtwork(generatedPath) };
             var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"), faceDocumentJson: FaceDocumentStorage.Serialize(face));
-            document.SetProjectAccessor(() => new EditorProject { ProjectDirectory = directory });
+            document.SetProjectAccessor(() => new EditorProject
+            {
+                ProjectFilePath = Path.Combine(directory, "test.oasisproj"),
+                ProjectDirectory = directory
+            });
 
             document.CommandService.Execute(FaceMutationCommands.CreateApplyArtworkProcessingCommand(document.DocumentId, document));
             var applied = File.ReadAllBytes(generatedPath);
