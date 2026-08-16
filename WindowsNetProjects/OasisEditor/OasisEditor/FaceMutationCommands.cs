@@ -11,12 +11,12 @@ internal static class FaceMutationCommands
         return new SetProcessingPipelineMutationCommand(documentId, document, pipeline, description);
     }
 
-    public static Commands.ICommand CreateAddBlackWhiteLevelsCommand(Guid documentId, DocumentTabViewModel document)
+    public static Commands.ICommand CreateAddArtworkCalibrationCommand(Guid documentId, DocumentTabViewModel document)
     {
         var operations = document.GetFaceDocument().Artwork?.ProcessingPipeline.Operations ?? [];
         return CreateSetProcessingPipelineCommand(documentId, document,
-            new ImageProcessingPipelineModel { Operations = operations.Append(new BlackWhiteLevelsOperationModel()).ToArray() },
-            "Add Black / White Normalisation");
+            new ImageProcessingPipelineModel { Operations = operations.Append(new ArtworkCalibrationOperationModel()).ToArray() },
+            "Add Artwork Calibration");
     }
 
     public static Commands.ICommand CreateApplyArtworkProcessingCommand(Guid documentId, DocumentTabViewModel document) =>
@@ -168,13 +168,11 @@ internal static class FaceMutationCommands
 
     private static bool RequiresInspectorRebuild(ImageProcessingPipelineModel left, ImageProcessingPipelineModel right)
     {
-        if (!left.Operations.Select(operation => operation.Id).SequenceEqual(right.Operations.Select(operation => operation.Id))) return true;
-        for (var index = 0; index < left.Operations.Count; index++)
-        {
-            if (left.Operations[index] is BlackWhiteLevelsOperationModel a && right.Operations[index] is BlackWhiteLevelsOperationModel b
-                && (a.BlackManualEnabled != b.BlackManualEnabled || a.WhiteManualEnabled != b.WhiteManualEnabled
-                    || a.BlackSamples.Count != b.BlackSamples.Count || a.WhiteSamples.Count != b.WhiteSamples.Count)) return true;
-        }
+        if (!left.Operations.Select(o=>o.Id).SequenceEqual(right.Operations.Select(o=>o.Id))) return true;
+        for(var i=0;i<left.Operations.Count;i++) if(left.Operations[i] is ArtworkCalibrationOperationModel a && right.Operations[i] is ArtworkCalibrationOperationModel b)
+            if(a.BlackReference.ManualEnabled!=b.BlackReference.ManualEnabled || a.WhiteReference.ManualEnabled!=b.WhiteReference.ManualEnabled ||
+               !a.BlackReference.Samples.Select(x=>x.Id).SequenceEqual(b.BlackReference.Samples.Select(x=>x.Id)) || !a.WhiteReference.Samples.Select(x=>x.Id).SequenceEqual(b.WhiteReference.Samples.Select(x=>x.Id)) ||
+               !a.SameColorGroups.Select(g=>(g.Id,g.Name,g.Samples.Count)).SequenceEqual(b.SameColorGroups.Select(g=>(g.Id,g.Name,g.Samples.Count)))) return true;
         return false;
     }
 
@@ -212,17 +210,8 @@ internal static class FaceMutationCommands
 
     private static bool PipelinesEquivalent(ImageProcessingPipelineModel left, ImageProcessingPipelineModel right)
     {
-        if (left.Operations.Count != right.Operations.Count) return false;
-        for (var index = 0; index < left.Operations.Count; index++)
-        {
-            if (left.Operations[index] is not BlackWhiteLevelsOperationModel a || right.Operations[index] is not BlackWhiteLevelsOperationModel b
-                || a.Id != b.Id || a.Enabled != b.Enabled || a.Strength != b.Strength
-                || a.BlackManualEnabled != b.BlackManualEnabled || a.BlackManualColor != b.BlackManualColor
-                || a.WhiteManualEnabled != b.WhiteManualEnabled || a.WhiteManualColor != b.WhiteManualColor
-                || !a.BlackSamples.Select(p => (p.X, p.Y)).SequenceEqual(b.BlackSamples.Select(p => (p.X, p.Y)))
-                || !a.WhiteSamples.Select(p => (p.X, p.Y)).SequenceEqual(b.WhiteSamples.Select(p => (p.X, p.Y)))) return false;
-        }
-        return true;
+        return System.Text.Json.JsonSerializer.Serialize(left.Operations, left.Operations.GetType()) ==
+               System.Text.Json.JsonSerializer.Serialize(right.Operations, right.Operations.GetType());
     }
 
     private sealed class AddFaceElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand

@@ -1,11 +1,15 @@
 namespace OasisEditor;
 
-public enum FaceArtworkSampleMode
+public enum CalibrationSamplingMode
 {
-    None,
-    AddBlack,
-    AddWhite
+    Pixel,
+    Area
 }
+
+public enum CalibrationPlacementTargetKind { BlackReference, WhiteReference, SameColorGroup }
+
+public sealed record CalibrationPlacementState(string OperationId, CalibrationPlacementTargetKind TargetKind,
+    string TargetId, CalibrationSamplingMode SamplingMode, double RadiusNormalized);
 
 public sealed class FaceDocumentModel
 {
@@ -69,36 +73,61 @@ public abstract class ImageProcessingOperationModel
 
 public enum ImageProcessingOperationKind
 {
-    BlackWhiteLevels
+    ArtworkCalibration
 }
 
-public sealed class BlackWhiteLevelsOperationModel : ImageProcessingOperationModel
+public sealed class CalibrationSampleModel
+{
+    public string Id { get; init; } = Guid.NewGuid().ToString("N");
+    public double X { get; init; }
+    public double Y { get; init; }
+    public CalibrationSamplingMode SamplingMode { get; init; }
+    public double RadiusNormalized { get; init; } = .01d;
+    public CalibrationSampleModel Normalize() => new() { Id = string.IsNullOrWhiteSpace(Id) ? Guid.NewGuid().ToString("N") : Id.Trim(), X = double.IsFinite(X) ? Math.Clamp(X, 0, 1) : 0, Y = double.IsFinite(Y) ? Math.Clamp(Y, 0, 1) : 0, SamplingMode = SamplingMode, RadiusNormalized = double.IsFinite(RadiusNormalized) ? Math.Clamp(RadiusNormalized, 0, .5) : .01d };
+    public double RadiusPixels(int width, int height) => RadiusNormalized * Math.Min(width, height);
+    public CalibrationSampleModel WithRadiusPixels(double pixels, int width, int height) => new() { Id = Id, X = X, Y = Y, SamplingMode = SamplingMode, RadiusNormalized = Math.Max(0, pixels) / Math.Max(1, Math.Min(width, height)) };
+}
+
+public sealed class CalibrationReferenceModel
+{
+    public IReadOnlyList<CalibrationSampleModel> Samples { get; init; } = [];
+    public bool ManualEnabled { get; init; }
+    public string ManualColor { get; init; } = "#FFFFFFFF";
+}
+
+public sealed class SameColorCalibrationGroupModel
+{
+    public string Id { get; init; } = Guid.NewGuid().ToString("N");
+    public string Name { get; init; } = "Colour Group";
+    public IReadOnlyList<CalibrationSampleModel> Samples { get; init; } = [];
+}
+
+public sealed class ArtworkCalibrationOperationModel : ImageProcessingOperationModel
 {
     public const double DefaultStrength = 100d;
-    public const string DefaultBlackManualColor = "#FF000000";
-    public const string DefaultWhiteManualColor = "#FFFFFFFF";
 
-    public override ImageProcessingOperationKind Kind => ImageProcessingOperationKind.BlackWhiteLevels;
+    public override ImageProcessingOperationKind Kind => ImageProcessingOperationKind.ArtworkCalibration;
     public double Strength { get; init; } = DefaultStrength;
-    public IReadOnlyList<NormalizedFacePointModel> BlackSamples { get; init; } = [];
-    public IReadOnlyList<NormalizedFacePointModel> WhiteSamples { get; init; } = [];
-    public bool BlackManualEnabled { get; init; }
-    public string BlackManualColor { get; init; } = DefaultBlackManualColor;
-    public bool WhiteManualEnabled { get; init; }
-    public string WhiteManualColor { get; init; } = DefaultWhiteManualColor;
+    public CalibrationReferenceModel BlackReference { get; init; } = new() { ManualColor = "#FF000000" };
+    public CalibrationReferenceModel WhiteReference { get; init; } = new();
+    public IReadOnlyList<SameColorCalibrationGroupModel> SameColorGroups { get; init; } = [];
+    public bool CorrectSpatialBrightness { get; init; } = true;
+    public bool CorrectSpatialColor { get; init; } = true;
+    public bool NormalizeBlackWhite { get; init; } = true;
+    public bool NeutralizeWhite { get; init; } = true;
 
-    public BlackWhiteLevelsOperationModel Normalize() => new()
+    public ArtworkCalibrationOperationModel Normalize() => new()
     {
         Id = string.IsNullOrWhiteSpace(Id) ? Guid.NewGuid().ToString("N") : Id.Trim(),
         Enabled = Enabled,
         Strength = double.IsFinite(Strength) ? Math.Clamp(Strength, 0d, 100d) : DefaultStrength,
-        BlackSamples = BlackSamples.Select(point => point.Normalize()).ToArray(),
-        WhiteSamples = WhiteSamples.Select(point => point.Normalize()).ToArray(),
-        BlackManualEnabled = BlackManualEnabled,
-        BlackManualColor = NormalizeColor(BlackManualColor, DefaultBlackManualColor),
-        WhiteManualEnabled = WhiteManualEnabled,
-        WhiteManualColor = NormalizeColor(WhiteManualColor, DefaultWhiteManualColor)
+        BlackReference = NormalizeReference(BlackReference, "#FF000000"), WhiteReference = NormalizeReference(WhiteReference, "#FFFFFFFF"),
+        SameColorGroups = SameColorGroups.Select(g => new SameColorCalibrationGroupModel { Id = string.IsNullOrWhiteSpace(g.Id) ? Guid.NewGuid().ToString("N") : g.Id.Trim(), Name = string.IsNullOrWhiteSpace(g.Name) ? "Colour Group" : g.Name.Trim(), Samples = g.Samples.Select(s => s.Normalize()).ToArray() }).ToArray(),
+        CorrectSpatialBrightness = CorrectSpatialBrightness, CorrectSpatialColor = CorrectSpatialColor,
+        NormalizeBlackWhite = NormalizeBlackWhite, NeutralizeWhite = NeutralizeWhite
     };
+
+    private static CalibrationReferenceModel NormalizeReference(CalibrationReferenceModel value, string fallback) => new() { Samples = value.Samples.Select(s => s.Normalize()).ToArray(), ManualEnabled = value.ManualEnabled, ManualColor = NormalizeColor(value.ManualColor, fallback) };
 
     private static string NormalizeColor(string? value, string fallback)
     {

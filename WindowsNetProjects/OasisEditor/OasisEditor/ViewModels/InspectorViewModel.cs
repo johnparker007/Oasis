@@ -1594,56 +1594,48 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Output Dimensions", "Artwork", authoredArtwork is null ? $"{artwork.Width:0} × {artwork.Height:0}" : $"{authoredArtwork.OutputWidth} × {authoredArtwork.OutputHeight}"));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Processing Operations", "Artwork", authoredArtwork?.ProcessingPipeline.Operations.Count.ToString() ?? "0"));
             _propertyRows.Add(new InspectorBoolPropertyViewModel("Preview Original", "Artwork", selectedDocument.FaceArtworkShowOriginal, commit: showOriginal => { selectedDocument.FaceArtworkShowOriginal = showOriginal; return null; }));
-            _propertyRows.Add(new InspectorActionPropertyViewModel("+ Add Black / White Normalisation", "Processing Stack", new RelayCommand(() =>
-                _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateAddBlackWhiteLevelsCommand(selectedDocument.DocumentId, selectedDocument)))));
+            _propertyRows.Add(new InspectorActionPropertyViewModel("+ Add Artwork Calibration", "Processing Stack", new RelayCommand(() =>
+                _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateAddArtworkCalibrationCommand(selectedDocument.DocumentId, selectedDocument)))));
             if (authoredArtwork is not null)
+            for (var index = 0; index < authoredArtwork.ProcessingPipeline.Operations.Count; index++)
             {
-                for (var index = 0; index < authoredArtwork.ProcessingPipeline.Operations.Count; index++)
+                if (authoredArtwork.ProcessingPipeline.Operations[index] is not ArtworkCalibrationOperationModel calibration) continue;
+                var operationIndex=index; var group=$"Processing Stack · {index+1}. Artwork Calibration";
+                _propertyRows.Add(new InspectorBoolPropertyViewModel("Enabled",group,calibration.Enabled,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Enable artwork calibration",c=>CopyCalibration(c,enabled:v))));
+                _propertyRows.Add(new InspectorDoublePropertyViewModel("Strength (%)",group,calibration.Strength,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Change calibration strength",c=>CopyCalibration(c,strength:Math.Clamp(v,0,100)),true)));
+                _propertyRows.Add(new InspectorBoolPropertyViewModel("Correct Brightness",group,calibration.CorrectSpatialBrightness,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Toggle spatial brightness",c=>CopyCalibration(c,correctBrightness:v))));
+                _propertyRows.Add(new InspectorBoolPropertyViewModel("Correct Colour Cast",group,calibration.CorrectSpatialColor,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Toggle spatial colour",c=>CopyCalibration(c,correctColor:v))));
+                _propertyRows.Add(new InspectorBoolPropertyViewModel("Normalize Black / White",group,calibration.NormalizeBlackWhite,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Toggle tonal normalization",c=>CopyCalibration(c,normalize:v))));
+                _propertyRows.Add(new InspectorBoolPropertyViewModel("Neutralize White",group,calibration.NeutralizeWhite,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Toggle white neutralization",c=>CopyCalibration(c,neutralize:v))));
+                selectedDocument.TryGetArtworkReferenceColors(calibration,out var black,out var white);
+                AddReference("Black",calibration.BlackReference,black,CalibrationPlacementTargetKind.BlackReference);
+                AddReference("White",calibration.WhiteReference,white,CalibrationPlacementTargetKind.WhiteReference);
+                foreach(var colourGroup in calibration.SameColorGroups)
                 {
-                    if (authoredArtwork.ProcessingPipeline.Operations[index] is not BlackWhiteLevelsOperationModel levels) continue;
-                    var operationIndex = index;
-                    var group = $"Processing Stack · {index + 1}. Black / White Normalisation";
-                    _propertyRows.Add(new InspectorBoolPropertyViewModel("Enabled", group, levels.Enabled, commit: enabled =>
-                        TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Enable artwork processing operation", current => CopyBlackWhiteLevels(current, enabled: enabled))));
-                    _propertyRows.Add(new InspectorDoublePropertyViewModel("Strength (%)", group, levels.Strength, commit: strength =>
-                        TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Change artwork processing strength", current => CopyBlackWhiteLevels(current, strength: Math.Clamp(strength, 0d, 100d)), suppressInspectorRefresh: true)));
-                    _propertyRows.Add(new InspectorInfoPropertyViewModel("Reference Samples", group, $"{levels.BlackSamples.Count} black · {levels.WhiteSamples.Count} white"));
-                    selectedDocument.TryGetArtworkReferenceColors(levels, out var derivedBlack, out var derivedWhite);
-                    _propertyRows.Add(new InspectorBoolPropertyViewModel("Black Manual", group, levels.BlackManualEnabled, commit: enabled =>
-                        TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Toggle manual black reference", current => CopyBlackWhiteLevels(current, blackManualEnabled: enabled))));
-                    _propertyRows.Add(new InspectorColorPropertyViewModel("Black Reference", group, levels.BlackManualEnabled ? levels.BlackManualColor : derivedBlack, isReadOnly: !levels.BlackManualEnabled, allowEmpty: false, commit: color =>
-                        TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Change manual black reference", current => CopyBlackWhiteLevels(current, blackManualColor: color), suppressInspectorRefresh: true), commitMode: InspectorColorCommitMode.Deferred));
-                    _propertyRows.Add(new InspectorBoolPropertyViewModel("White Manual", group, levels.WhiteManualEnabled, commit: enabled =>
-                        TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Toggle manual white reference", current => CopyBlackWhiteLevels(current, whiteManualEnabled: enabled))));
-                    _propertyRows.Add(new InspectorColorPropertyViewModel("White Reference", group, levels.WhiteManualEnabled ? levels.WhiteManualColor : derivedWhite, isReadOnly: !levels.WhiteManualEnabled, allowEmpty: false, commit: color =>
-                        TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Change manual white reference", current => CopyBlackWhiteLevels(current, whiteManualColor: color), suppressInspectorRefresh: true), commitMode: InspectorColorCommitMode.Deferred));
-                    _propertyRows.Add(new InspectorActionPropertyViewModel("Add Black Marker", group, new RelayCommand(() => { selectedDocument.FaceArtworkSampleOperationId = levels.Id; selectedDocument.FaceArtworkSampleMode = FaceArtworkSampleMode.AddBlack; })));
-                    _propertyRows.Add(new InspectorActionPropertyViewModel("Add White Marker", group, new RelayCommand(() => { selectedDocument.FaceArtworkSampleOperationId = levels.Id; selectedDocument.FaceArtworkSampleMode = FaceArtworkSampleMode.AddWhite; })));
-                    _propertyRows.Add(new InspectorActionPropertyViewModel("Apply Changes", group, new RelayCommand(() =>
-                    {
-                        CommitDeferredColors(group);
-                        _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateApplyArtworkProcessingCommand(selectedDocument.DocumentId, selectedDocument));
-                    })));
-                    if (levels.BlackSamples.Count > 0) _propertyRows.Add(new InspectorActionPropertyViewModel("Clear Black References", group, new RelayCommand(() =>
-                        TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Clear black references", current => CopyBlackWhiteLevels(current, blackSamples: [])))));
-                    if (levels.WhiteSamples.Count > 0) _propertyRows.Add(new InspectorActionPropertyViewModel("Clear White References", group, new RelayCommand(() =>
-                        TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Clear white references", current => CopyBlackWhiteLevels(current, whiteSamples: [])))));
-                    for (var sampleIndex = 0; sampleIndex < levels.BlackSamples.Count; sampleIndex++)
-                    {
-                        var removeIndex = sampleIndex;
-                        _propertyRows.Add(new InspectorActionPropertyViewModel($"Remove Black Reference {sampleIndex + 1}", group, new RelayCommand(() =>
-                            TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Remove black reference", current => CopyBlackWhiteLevels(current, blackSamples: current.BlackSamples.Where((_, i) => i != removeIndex).ToArray())))));
-                    }
-                    for (var sampleIndex = 0; sampleIndex < levels.WhiteSamples.Count; sampleIndex++)
-                    {
-                        var removeIndex = sampleIndex;
-                        _propertyRows.Add(new InspectorActionPropertyViewModel($"Remove White Reference {sampleIndex + 1}", group, new RelayCommand(() =>
-                            TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Remove white reference", current => CopyBlackWhiteLevels(current, whiteSamples: current.WhiteSamples.Where((_, i) => i != removeIndex).ToArray())))));
-                    }
-                    if (operationIndex > 0) _propertyRows.Add(new InspectorActionPropertyViewModel("Move Up", group, new RelayCommand(() => _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateMoveProcessingOperationCommand(selectedDocument.DocumentId, selectedDocument, levels.Id, -1)))));
-                    if (operationIndex + 1 < authoredArtwork.ProcessingPipeline.Operations.Count) _propertyRows.Add(new InspectorActionPropertyViewModel("Move Down", group, new RelayCommand(() => _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateMoveProcessingOperationCommand(selectedDocument.DocumentId, selectedDocument, levels.Id, 1)))));
-                    _propertyRows.Add(new InspectorActionPropertyViewModel("Remove", group, new RelayCommand(() => _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateRemoveProcessingOperationCommand(selectedDocument.DocumentId, selectedDocument, levels.Id)))));
+                    _propertyRows.Add(new InspectorTextPropertyViewModel("Group Name",group,colourGroup.Name,commit:name=>TryUpdateCalibration(selectedDocument,calibration.Id,"Rename colour group",c=>CopyCalibration(c,groups:c.SameColorGroups.Select(g=>g.Id==colourGroup.Id?new SameColorCalibrationGroupModel{Id=g.Id,Name=name,Samples=g.Samples}:g).ToArray()))));
+                    AddSamples(colourGroup.Samples,CalibrationPlacementTargetKind.SameColorGroup,colourGroup.Id,colourGroup.Name);
+                    _propertyRows.Add(new InspectorActionPropertyViewModel($"Add {colourGroup.Name} Sample",group,new RelayCommand(()=>selectedDocument.CalibrationPlacement=new(calibration.Id,CalibrationPlacementTargetKind.SameColorGroup,colourGroup.Id,CalibrationSamplingMode.Pixel,.01))));
+                    _propertyRows.Add(new InspectorActionPropertyViewModel($"Remove {colourGroup.Name}",group,new RelayCommand(()=>TryUpdateCalibration(selectedDocument,calibration.Id,"Remove colour group",c=>CopyCalibration(c,groups:c.SameColorGroups.Where(g=>g.Id!=colourGroup.Id).ToArray())))));
                 }
+                _propertyRows.Add(new InspectorActionPropertyViewModel("+ Add Colour Group",group,new RelayCommand(()=>TryUpdateCalibration(selectedDocument,calibration.Id,"Add colour group",c=>CopyCalibration(c,groups:c.SameColorGroups.Append(new SameColorCalibrationGroupModel{Name=$"Colour Group {c.SameColorGroups.Count+1}"}).ToArray())))));
+                _propertyRows.Add(new InspectorActionPropertyViewModel("Apply Changes",group,new RelayCommand(()=>{CommitDeferredColors(group);_executeCanvasCommand(selectedDocument.DocumentId,FaceMutationCommands.CreateApplyArtworkProcessingCommand(selectedDocument.DocumentId,selectedDocument));})));
+                if(operationIndex>0)_propertyRows.Add(new InspectorActionPropertyViewModel("Move Up",group,new RelayCommand(()=>_executeCanvasCommand(selectedDocument.DocumentId,FaceMutationCommands.CreateMoveProcessingOperationCommand(selectedDocument.DocumentId,selectedDocument,calibration.Id,-1)))));
+                if(operationIndex+1<authoredArtwork.ProcessingPipeline.Operations.Count)_propertyRows.Add(new InspectorActionPropertyViewModel("Move Down",group,new RelayCommand(()=>_executeCanvasCommand(selectedDocument.DocumentId,FaceMutationCommands.CreateMoveProcessingOperationCommand(selectedDocument.DocumentId,selectedDocument,calibration.Id,1)))));
+                _propertyRows.Add(new InspectorActionPropertyViewModel("Remove Calibration",group,new RelayCommand(()=>_executeCanvasCommand(selectedDocument.DocumentId,FaceMutationCommands.CreateRemoveProcessingOperationCommand(selectedDocument.DocumentId,selectedDocument,calibration.Id)))));
+
+                void AddReference(string name,CalibrationReferenceModel reference,string? derived,CalibrationPlacementTargetKind kind)
+                {
+                    _propertyRows.Add(new InspectorBoolPropertyViewModel($"{name} Manual",group,reference.ManualEnabled,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,$"Toggle manual {name}",c=>CopyCalibration(c,black:kind==CalibrationPlacementTargetKind.BlackReference?CopyReference(c.BlackReference,enabled:v):null,white:kind==CalibrationPlacementTargetKind.WhiteReference?CopyReference(c.WhiteReference,enabled:v):null))));
+                    _propertyRows.Add(new InspectorColorPropertyViewModel($"{name} Reference",group,reference.ManualEnabled?reference.ManualColor:derived,isReadOnly:!reference.ManualEnabled,allowEmpty:false,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,$"Change manual {name}",c=>CopyCalibration(c,black:kind==CalibrationPlacementTargetKind.BlackReference?CopyReference(c.BlackReference,color:v):null,white:kind==CalibrationPlacementTargetKind.WhiteReference?CopyReference(c.WhiteReference,color:v):null),true),commitMode:InspectorColorCommitMode.Deferred));
+                    AddSamples(reference.Samples,kind,string.Empty,name);
+                    _propertyRows.Add(new InspectorActionPropertyViewModel($"Add {name} Sample",group,new RelayCommand(()=>selectedDocument.CalibrationPlacement=new(calibration.Id,kind,string.Empty,CalibrationSamplingMode.Pixel,.01))));
+                }
+                void AddSamples(IReadOnlyList<CalibrationSampleModel> samples,CalibrationPlacementTargetKind kind,string target,string label)
+                { for(var i=0;i<samples.Count;i++){var sample=samples[i];var title=$"{label} Sample {i+1}";
+                    _propertyRows.Add(new InspectorColorPropertyViewModel(title,group,selectedDocument.GetArtworkSampleColor(calibration,sample),isReadOnly:true,allowEmpty:true,commit:_=>null));
+                    _propertyRows.Add(new InspectorChoicePropertyViewModel($"{title} Type",group,["Pixel","Area"],sample.SamplingMode.ToString(),commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Change sample type",c=>ReplaceSample(c,kind,target,sample.Id,s=>new CalibrationSampleModel{Id=s.Id,X=s.X,Y=s.Y,SamplingMode=v=="Area"?CalibrationSamplingMode.Area:CalibrationSamplingMode.Pixel,RadiusNormalized=s.RadiusNormalized}))));
+                    if(sample.SamplingMode==CalibrationSamplingMode.Area)_propertyRows.Add(new InspectorDoublePropertyViewModel($"{title} Radius (px)",group,sample.RadiusPixels(authoredArtwork.OutputWidth,authoredArtwork.OutputHeight),commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Change sample radius",c=>ReplaceSample(c,kind,target,sample.Id,s=>s.WithRadiusPixels(v,authoredArtwork.OutputWidth,authoredArtwork.OutputHeight)),true)));
+                    _propertyRows.Add(new InspectorActionPropertyViewModel($"Delete {title}",group,new RelayCommand(()=>TryUpdateCalibration(selectedDocument,calibration.Id,"Delete calibration sample",c=>RemoveSample(c,kind,target,sample.Id)))));}}
             }
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Panel2D Document", "Artwork", authoredArtwork?.Source.Panel2DDocumentId ?? artwork.SourcePanel2DDocumentId ?? string.Empty));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Face Shape", "Artwork", authoredArtwork?.Source.FaceSourceShapeId ?? string.Empty));
@@ -1666,37 +1658,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorPropertyRows));
     }
 
-    private static BlackWhiteLevelsOperationModel CopyBlackWhiteLevels(BlackWhiteLevelsOperationModel source, bool? enabled = null, double? strength = null, IReadOnlyList<NormalizedFacePointModel>? blackSamples = null, IReadOnlyList<NormalizedFacePointModel>? whiteSamples = null, bool? blackManualEnabled = null, string? blackManualColor = null, bool? whiteManualEnabled = null, string? whiteManualColor = null) => new()
-    {
-        Id = source.Id,
-        Enabled = enabled ?? source.Enabled,
-        Strength = strength ?? source.Strength,
-        BlackSamples = blackSamples ?? source.BlackSamples,
-        WhiteSamples = whiteSamples ?? source.WhiteSamples,
-        BlackManualEnabled = blackManualEnabled ?? source.BlackManualEnabled,
-        BlackManualColor = blackManualColor ?? source.BlackManualColor,
-        WhiteManualEnabled = whiteManualEnabled ?? source.WhiteManualEnabled,
-        WhiteManualColor = whiteManualColor ?? source.WhiteManualColor
-    };
-
-    private string? TryUpdateBlackWhiteLevels(
-        DocumentTabViewModel document,
-        string operationId,
-        string description,
-        Func<BlackWhiteLevelsOperationModel, BlackWhiteLevelsOperationModel> update,
-        bool suppressInspectorRefresh = false)
-    {
-        var current = document.GetFaceDocument().Artwork?.ProcessingPipeline.Operations
-            .OfType<BlackWhiteLevelsOperationModel>()
-            .FirstOrDefault(operation => string.Equals(operation.Id, operationId, StringComparison.Ordinal));
-        if (current is null) return "Artwork processing operation no longer exists.";
-        if (suppressInspectorRefresh) _suppressPropertyRowRefreshUntilUtc = DateTime.UtcNow.AddSeconds(1);
-        var executed = _executeCanvasCommand(document.DocumentId,
-            FaceMutationCommands.CreateUpdateProcessingOperationCommand(document.DocumentId, document, update(current), description));
-        if (executed) return null;
-        if (suppressInspectorRefresh) _suppressPropertyRowRefreshUntilUtc = DateTime.MinValue;
-        return "Unable to update artwork processing operation.";
-    }
+    private static CalibrationReferenceModel CopyReference(CalibrationReferenceModel s,bool? enabled=null,string? color=null,IReadOnlyList<CalibrationSampleModel>? samples=null)=>new(){ManualEnabled=enabled??s.ManualEnabled,ManualColor=color??s.ManualColor,Samples=samples??s.Samples};
+    private static ArtworkCalibrationOperationModel CopyCalibration(ArtworkCalibrationOperationModel s,bool? enabled=null,double? strength=null,CalibrationReferenceModel? black=null,CalibrationReferenceModel? white=null,IReadOnlyList<SameColorCalibrationGroupModel>? groups=null,bool? correctBrightness=null,bool? correctColor=null,bool? normalize=null,bool? neutralize=null)=>new(){Id=s.Id,Enabled=enabled??s.Enabled,Strength=strength??s.Strength,BlackReference=black??s.BlackReference,WhiteReference=white??s.WhiteReference,SameColorGroups=groups??s.SameColorGroups,CorrectSpatialBrightness=correctBrightness??s.CorrectSpatialBrightness,CorrectSpatialColor=correctColor??s.CorrectSpatialColor,NormalizeBlackWhite=normalize??s.NormalizeBlackWhite,NeutralizeWhite=neutralize??s.NeutralizeWhite};
+    private static ArtworkCalibrationOperationModel ReplaceSample(ArtworkCalibrationOperationModel c,CalibrationPlacementTargetKind kind,string target,string id,Func<CalibrationSampleModel,CalibrationSampleModel> replace)=>kind switch{CalibrationPlacementTargetKind.BlackReference=>CopyCalibration(c,black:CopyReference(c.BlackReference,samples:c.BlackReference.Samples.Select(s=>s.Id==id?replace(s):s).ToArray())),CalibrationPlacementTargetKind.WhiteReference=>CopyCalibration(c,white:CopyReference(c.WhiteReference,samples:c.WhiteReference.Samples.Select(s=>s.Id==id?replace(s):s).ToArray())),_=>CopyCalibration(c,groups:c.SameColorGroups.Select(g=>g.Id==target?new SameColorCalibrationGroupModel{Id=g.Id,Name=g.Name,Samples=g.Samples.Select(s=>s.Id==id?replace(s):s).ToArray()}:g).ToArray())};
+    private static ArtworkCalibrationOperationModel RemoveSample(ArtworkCalibrationOperationModel c,CalibrationPlacementTargetKind kind,string target,string id)=>kind switch{CalibrationPlacementTargetKind.BlackReference=>CopyCalibration(c,black:CopyReference(c.BlackReference,samples:c.BlackReference.Samples.Where(s=>s.Id!=id).ToArray())),CalibrationPlacementTargetKind.WhiteReference=>CopyCalibration(c,white:CopyReference(c.WhiteReference,samples:c.WhiteReference.Samples.Where(s=>s.Id!=id).ToArray())),_=>CopyCalibration(c,groups:c.SameColorGroups.Select(g=>g.Id==target?new SameColorCalibrationGroupModel{Id=g.Id,Name=g.Name,Samples=g.Samples.Where(s=>s.Id!=id).ToArray()}:g).ToArray())};
+    private string? TryUpdateCalibration(DocumentTabViewModel document,string id,string description,Func<ArtworkCalibrationOperationModel,ArtworkCalibrationOperationModel> update,bool suppressInspectorRefresh=false){var current=document.GetFaceDocument().Artwork?.ProcessingPipeline.Operations.OfType<ArtworkCalibrationOperationModel>().FirstOrDefault(o=>o.Id==id);if(current is null)return "Artwork calibration no longer exists.";if(suppressInspectorRefresh)_suppressPropertyRowRefreshUntilUtc=DateTime.UtcNow.AddSeconds(1);return _executeCanvasCommand(document.DocumentId,FaceMutationCommands.CreateUpdateProcessingOperationCommand(document.DocumentId,document,update(current),description))?null:"Unable to update artwork calibration.";}
 
     private void CommitDeferredColors(string groupName)
     {
@@ -1985,8 +1951,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         var operations = document.GetFaceDocument().Artwork?.ProcessingPipeline.Operations ?? [];
         for (var index = 0; index < operations.Count; index++)
         {
-            if (operations[index] is not BlackWhiteLevelsOperationModel levels) continue;
-            var group = $"Processing Stack · {index + 1}. Black / White Normalisation";
+            if (operations[index] is not ArtworkCalibrationOperationModel levels) continue;
+            var group = $"Processing Stack · {index + 1}. Artwork Calibration";
             document.TryGetArtworkReferenceColors(levels, out var derivedBlack, out var derivedWhite);
             foreach (var row in _propertyRows.Where(row => string.Equals(row.GroupName, group, StringComparison.Ordinal)))
             {
@@ -1994,10 +1960,10 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 {
                     case "Enabled" when row is InspectorBoolPropertyViewModel enabled: enabled.SetCommittedValue(levels.Enabled); break;
                     case "Strength (%)" when row is InspectorDoublePropertyViewModel strength: strength.SetCommittedValue(levels.Strength); break;
-                    case "Black Manual" when row is InspectorBoolPropertyViewModel blackManual: blackManual.SetCommittedValue(levels.BlackManualEnabled); break;
-                    case "Black Reference" when row is InspectorColorPropertyViewModel black: black.SetCommittedValue(levels.BlackManualEnabled ? levels.BlackManualColor : derivedBlack); break;
-                    case "White Manual" when row is InspectorBoolPropertyViewModel whiteManual: whiteManual.SetCommittedValue(levels.WhiteManualEnabled); break;
-                    case "White Reference" when row is InspectorColorPropertyViewModel white: white.SetCommittedValue(levels.WhiteManualEnabled ? levels.WhiteManualColor : derivedWhite); break;
+                    case "Black Manual" when row is InspectorBoolPropertyViewModel blackManual: blackManual.SetCommittedValue(levels.BlackReference.ManualEnabled); break;
+                    case "Black Reference" when row is InspectorColorPropertyViewModel black: black.SetCommittedValue(levels.BlackReference.ManualEnabled ? levels.BlackReference.ManualColor : derivedBlack); break;
+                    case "White Manual" when row is InspectorBoolPropertyViewModel whiteManual: whiteManual.SetCommittedValue(levels.WhiteReference.ManualEnabled); break;
+                    case "White Reference" when row is InspectorColorPropertyViewModel white: white.SetCommittedValue(levels.WhiteReference.ManualEnabled ? levels.WhiteReference.ManualColor : derivedWhite); break;
                 }
             }
         }

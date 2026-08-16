@@ -27,7 +27,7 @@ public sealed class FaceDocumentRoundTripTests
                 },
                 ProcessingPipeline = new ImageProcessingPipelineModel
                 {
-                    Operations = [new BlackWhiteLevelsOperationModel { Id = "operation-1", Enabled = false }]
+                    Operations = [new ArtworkCalibrationOperationModel { Id = "operation-1", Enabled = false }]
                 },
                 GeneratedAssetPath = "Assets/Faces/Front Face/generated/artwork.png",
                 OutputWidth = 320,
