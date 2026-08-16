@@ -7,6 +7,33 @@ namespace OasisEditor.Tests;
 public sealed class FaceEditViewModelTests
 {
     [Fact]
+    public void ArtworkPrimarySelection_SuppressesOnlyLampWindowsFromViewportPresentation()
+    {
+        var artwork = new FaceArtworkElement { ObjectId = "art", Name = "Artwork", Width = 100, Height = 100, IsVisible = true };
+        var lamp = new FaceLampWindowElement { ObjectId = "lamp", Name = "Lamp", Width = 20, Height = 20, IsVisible = true };
+        var reel = new FaceReelDisplayElement { ObjectId = "reel", Name = "Reel", Width = 20, Height = 30, IsVisible = true };
+        var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"));
+        document.SetFaceElements([artwork, lamp, reel]);
+        var faceBefore = document.GetFaceDocument();
+
+        document.SelectionState.Replace(new EditorSelectionItem(EditorSelectionDomain.FaceElement, artwork.ObjectId));
+        var artworkViewport = FaceArtworkEditingPresentation.GetViewportElements(document).ToArray();
+
+        Assert.True(FaceArtworkEditingPresentation.IsArtworkPrimarySelection(document));
+        Assert.Contains(artwork, artworkViewport);
+        Assert.Contains(reel, artworkViewport);
+        Assert.DoesNotContain(lamp, artworkViewport);
+        Assert.True(lamp.IsVisible);
+        Assert.Same(faceBefore, document.GetFaceDocument());
+        Assert.Equal(["art", "lamp", "reel"], document.GetFaceDocument().Elements.Select(element => element.ObjectId));
+
+        document.SelectionState.Replace(new EditorSelectionItem(EditorSelectionDomain.FaceElement, lamp.ObjectId));
+        Assert.False(FaceArtworkEditingPresentation.IsArtworkPrimarySelection(document));
+        Assert.Contains(lamp, FaceArtworkEditingPresentation.GetViewportElements(document));
+        Assert.Equal(lamp.ObjectId, document.SelectionState.PrimaryItem?.ObjectId);
+    }
+
+    [Fact]
     public void AddLampWindowCommand_AddsSelectsAndPersistsFaceElement()
     {
         var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"));

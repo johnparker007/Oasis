@@ -1,9 +1,11 @@
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using OasisEditor.Commands;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
 using OasisEditor.Features.CabinetEditor.ViewModels;
+using SkiaSharp;
 
 namespace OasisEditor;
 
@@ -29,6 +31,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private double _facePanY;
     private double _panelPanX;
     private double _panelPanY;
+    private FaceArtworkSampleMode _faceArtworkSampleMode;
+    private string? _faceArtworkSampleOperationId;
+    private bool _faceArtworkShowOriginal;
     private Dictionary<string, object>? _lastVisualStateByObjectId;
     private readonly MachineRuntimeState _runtimeState;
     private CabinetModelDocumentViewModel? _cabinetViewer;
@@ -110,6 +115,21 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public string FilePath => Document.FilePath;
     public string ContentSummary => Document.ContentSummary;
     public bool IsDirty => Document.IsDirty;
+    public FaceArtworkSampleMode FaceArtworkSampleMode
+    {
+        get => _faceArtworkSampleMode;
+        set { if (_faceArtworkSampleMode == value) return; _faceArtworkSampleMode = value; PropertyChanged?.Invoke(this, new(nameof(FaceArtworkSampleMode))); }
+    }
+    public string? FaceArtworkSampleOperationId
+    {
+        get => _faceArtworkSampleOperationId;
+        set { if (_faceArtworkSampleOperationId == value) return; _faceArtworkSampleOperationId = value; PropertyChanged?.Invoke(this, new(nameof(FaceArtworkSampleOperationId))); }
+    }
+    public bool FaceArtworkShowOriginal
+    {
+        get => _faceArtworkShowOriginal;
+        set { if (_faceArtworkShowOriginal == value) return; _faceArtworkShowOriginal = value; PropertyChanged?.Invoke(this, new(nameof(FaceArtworkShowOriginal))); }
+    }
     public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && !string.IsNullOrWhiteSpace(_cabinetDocumentModel.Model.Path);
     public CabinetModelDocumentViewModel? ExistingCabinetViewer => _cabinetViewer;
     public CabinetModelDocumentViewModel? CabinetViewer => HasCabinetViewer ? GetOrCreateCabinetViewer() : null;
@@ -241,6 +261,68 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public FaceDocumentModel GetFaceDocument()
     {
         return _faceDocumentModel;
+    }
+
+    internal bool TryRebuildFaceArtwork()
+    {
+        var artwork = _faceDocumentModel.Artwork;
+        var project = _projectAccessor?.Invoke();
+        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)) return false;
+        var rebuilt = new FaceArtworkRebuildService().ApplyProcessing(artwork, project.ProjectDirectory);
+        if (rebuilt)
+        {
+            NotifyGeneratedArtworkChanged(artwork);
+        }
+        return rebuilt;
+    }
+
+    internal bool TryReadGeneratedArtwork(out byte[] bytes)
+    {
+        bytes = [];
+        if (!TryGetGeneratedArtworkPath(out var path) || !File.Exists(path)) return false;
+        bytes = File.ReadAllBytes(path);
+        return true;
+    }
+
+    internal bool TryRestoreGeneratedArtwork(byte[] bytes)
+    {
+        ArgumentNullException.ThrowIfNull(bytes);
+        if (bytes.Length == 0 || _faceDocumentModel.Artwork is not { } artwork || !TryGetGeneratedArtworkPath(out var path)) return false;
+        File.WriteAllBytes(path, bytes);
+        NotifyGeneratedArtworkChanged(artwork);
+        return true;
+    }
+
+    private bool TryGetGeneratedArtworkPath(out string path)
+    {
+        path = string.Empty;
+        var artworkPath = _faceDocumentModel.Artwork?.GeneratedAssetPath;
+        var project = _projectAccessor?.Invoke();
+        if (project is null || string.IsNullOrWhiteSpace(artworkPath)) return false;
+        path = Path.IsPathRooted(artworkPath) ? artworkPath : Path.Combine(project.ProjectDirectory, artworkPath.Replace('/', Path.DirectorySeparatorChar));
+        return true;
+    }
+
+    private void NotifyGeneratedArtworkChanged(FaceArtworkModel artwork)
+    {
+        Views.SkiaFaceEditView.InvalidateArtworkImage(artwork.GeneratedAssetPath);
+        PanelChanged?.Invoke(new PanelChangeEvent(DocumentId, artwork.Id, PanelChangeProperties.Metadata, AffectsCanvas: true, AffectsHierarchy: false, AffectsInspectorRows: false, AffectsPersistence: false));
+    }
+
+    internal bool TryGetArtworkReferenceColors(BlackWhiteLevelsOperationModel operation, out string? blackColor, out string? whiteColor)
+    {
+        blackColor = operation.BlackManualEnabled ? operation.BlackManualColor : null;
+        whiteColor = operation.WhiteManualEnabled ? operation.WhiteManualColor : null;
+        var artwork = _faceDocumentModel.Artwork;
+        var project = _projectAccessor?.Invoke();
+        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)) return false;
+        var generatedPath = Path.IsPathRooted(artwork.GeneratedAssetPath)
+            ? artwork.GeneratedAssetPath
+            : Path.Combine(project.ProjectDirectory, artwork.GeneratedAssetPath.Replace('/', Path.DirectorySeparatorChar));
+        var originalPath = FaceArtworkRebuildService.GetOriginalArtworkPath(generatedPath);
+        if (!File.Exists(originalPath)) return false;
+        using var original = SKBitmap.Decode(originalPath);
+        return original is not null && FaceArtworkProcessingPipeline.TryResolveReferenceColors(original, operation, out blackColor, out whiteColor);
     }
 
     public string GetFaceDocumentJson()

@@ -7,6 +7,39 @@ namespace OasisEditor.Tests;
 
 public sealed class InspectorColorTests
 {
+    [Fact]
+    public void InspectorColorProperty_ReadOnlyRetainsDisplayButRejectsPickerChanges()
+    {
+        var commits = new List<string?>();
+        var row = new InspectorColorPropertyViewModel("Reference", "Processing", "#1A2B3C", isReadOnly: true, commit: value => { commits.Add(value); return null; });
+
+        row.SelectedColor = Color.FromRgb(0xAA, 0xBB, 0xCC);
+
+        Assert.False(row.IsEditable);
+        Assert.Equal("#1A2B3C", row.HexValue);
+        Assert.Equal(Color.FromRgb(0x1A, 0x2B, 0x3C), row.SelectedColor);
+        Assert.Empty(commits);
+    }
+
+    [Fact]
+    public void InspectorColorProperty_DeferredModeUpdatesLocallyAndCommitsFinalColorOnce()
+    {
+        var commits = new List<string?>();
+        var row = new InspectorColorPropertyViewModel("Reference", "Processing", "#112233", commit: value => { commits.Add(value); return null; }, commitMode: InspectorColorCommitMode.Deferred);
+
+        row.SelectedColor = Colors.Red;
+        Assert.Equal("#FF0000", row.HexValue);
+        row.SelectedColor = Colors.Green;
+        Assert.Equal("#008000", row.HexValue);
+        row.SelectedColor = Colors.Blue;
+        Assert.Equal("#0000FF", row.HexValue);
+        Assert.Empty(commits);
+
+        row.Commit();
+
+        Assert.Equal(["#0000FF"], commits);
+    }
+
     [Theory]
     [InlineData("#112233", 255, 0x11, 0x22, 0x33)]
     [InlineData("112233", 255, 0x11, 0x22, 0x33)]

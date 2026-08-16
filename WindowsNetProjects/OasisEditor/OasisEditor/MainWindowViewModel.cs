@@ -1676,6 +1676,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private async void SaveSelectedDocument()
     {
+        _inspector.CommitDeferredColorEdits();
         if (SelectedDocument is null)
         {
             return;

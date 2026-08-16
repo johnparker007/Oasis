@@ -1,5 +1,12 @@
 namespace OasisEditor;
 
+public enum FaceArtworkSampleMode
+{
+    None,
+    AddBlack,
+    AddWhite
+}
+
 public sealed class FaceDocumentModel
 {
     public string Id { get; init; } = Guid.NewGuid().ToString("N");
@@ -53,13 +60,66 @@ public sealed class ImageProcessingPipelineModel
     public IReadOnlyList<ImageProcessingOperationModel> Operations { get; init; } = [];
 }
 
-public sealed class ImageProcessingOperationModel
+public abstract class ImageProcessingOperationModel
 {
     public string Id { get; init; } = Guid.NewGuid().ToString("N");
-    public string Kind { get; init; } = string.Empty;
+    public abstract ImageProcessingOperationKind Kind { get; }
     public bool Enabled { get; init; } = true;
 }
 
+public enum ImageProcessingOperationKind
+{
+    BlackWhiteLevels
+}
+
+public sealed class BlackWhiteLevelsOperationModel : ImageProcessingOperationModel
+{
+    public const double DefaultStrength = 100d;
+    public const string DefaultBlackManualColor = "#FF000000";
+    public const string DefaultWhiteManualColor = "#FFFFFFFF";
+
+    public override ImageProcessingOperationKind Kind => ImageProcessingOperationKind.BlackWhiteLevels;
+    public double Strength { get; init; } = DefaultStrength;
+    public IReadOnlyList<NormalizedFacePointModel> BlackSamples { get; init; } = [];
+    public IReadOnlyList<NormalizedFacePointModel> WhiteSamples { get; init; } = [];
+    public bool BlackManualEnabled { get; init; }
+    public string BlackManualColor { get; init; } = DefaultBlackManualColor;
+    public bool WhiteManualEnabled { get; init; }
+    public string WhiteManualColor { get; init; } = DefaultWhiteManualColor;
+
+    public BlackWhiteLevelsOperationModel Normalize() => new()
+    {
+        Id = string.IsNullOrWhiteSpace(Id) ? Guid.NewGuid().ToString("N") : Id.Trim(),
+        Enabled = Enabled,
+        Strength = double.IsFinite(Strength) ? Math.Clamp(Strength, 0d, 100d) : DefaultStrength,
+        BlackSamples = BlackSamples.Select(point => point.Normalize()).ToArray(),
+        WhiteSamples = WhiteSamples.Select(point => point.Normalize()).ToArray(),
+        BlackManualEnabled = BlackManualEnabled,
+        BlackManualColor = NormalizeColor(BlackManualColor, DefaultBlackManualColor),
+        WhiteManualEnabled = WhiteManualEnabled,
+        WhiteManualColor = NormalizeColor(WhiteManualColor, DefaultWhiteManualColor)
+    };
+
+    private static string NormalizeColor(string? value, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return fallback;
+        var text = value.Trim();
+        if (text.StartsWith('#')) text = text[1..];
+        return text.Length is 6 or 8 && text.All(Uri.IsHexDigit) ? $"#{text.ToUpperInvariant()}" : fallback;
+    }
+}
+
+public sealed class NormalizedFacePointModel
+{
+    public double X { get; init; }
+    public double Y { get; init; }
+
+    public NormalizedFacePointModel Normalize() => new()
+    {
+        X = double.IsFinite(X) ? Math.Clamp(X, 0d, 1d) : 0d,
+        Y = double.IsFinite(Y) ? Math.Clamp(Y, 0d, 1d) : 0d
+    };
+}
 
 public sealed class FaceGenerationSettingsModel
 {

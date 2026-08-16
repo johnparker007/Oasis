@@ -254,7 +254,7 @@ public sealed class FaceGenerationServiceTests
                 Source = new FaceArtworkSourceModel { Kind = FaceArtworkSourceKind.Panel2DFaceSourceShape, Panel2DDocumentId = "panel-doc-1", FaceSourceShapeId = "shape-1" },
                 ProcessingPipeline = new ImageProcessingPipelineModel
                 {
-                    Operations = [new ImageProcessingOperationModel { Id = "operation-1", Kind = "future-test", Enabled = false }]
+                    Operations = [new BlackWhiteLevelsOperationModel { Id = "operation-1", Enabled = false }]
                 },
                 OutputWidth = 100,
                 OutputHeight = 100

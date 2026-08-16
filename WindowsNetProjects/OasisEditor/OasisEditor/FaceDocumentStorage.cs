@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 10;
+    public const int CurrentSchemaVersion = 12;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -236,12 +236,7 @@ public static class FaceDocumentStorage
             },
             ProcessingPipeline = new ImageProcessingPipelineModel
             {
-                Operations = file.ProcessingPipeline.Operations.Select(operation => new ImageProcessingOperationModel
-                {
-                    Id = operation.Id,
-                    Kind = operation.Kind,
-                    Enabled = operation.Enabled
-                }).ToArray()
+                Operations = file.ProcessingPipeline.Operations.Select(ToModel).ToArray()
             },
             GeneratedAssetPath = NormalizeOptional(file.GeneratedAssetPath),
             OutputWidth = file.OutputWidth,
@@ -265,18 +260,56 @@ public static class FaceDocumentStorage
             },
             ProcessingPipeline = new ImageProcessingPipelineFile
             {
-                Operations = model.ProcessingPipeline.Operations.Select(operation => new ImageProcessingOperationFile
-                {
-                    Id = operation.Id,
-                    Kind = operation.Kind,
-                    Enabled = operation.Enabled
-                }).ToArray()
+                Operations = model.ProcessingPipeline.Operations.Select(ToFile).ToArray()
             },
             GeneratedAssetPath = model.GeneratedAssetPath,
             OutputWidth = model.OutputWidth,
             OutputHeight = model.OutputHeight
         };
     }
+
+    private static ImageProcessingOperationModel ToModel(ImageProcessingOperationFile file)
+    {
+        return file.Kind switch
+        {
+            ImageProcessingOperationKind.BlackWhiteLevels => new BlackWhiteLevelsOperationModel
+            {
+                Id = file.Id,
+                Enabled = file.Enabled,
+                Strength = file.Strength,
+                BlackSamples = file.BlackSamples.Select(point => new NormalizedFacePointModel { X = point.X, Y = point.Y }).ToArray(),
+                WhiteSamples = file.WhiteSamples.Select(point => new NormalizedFacePointModel { X = point.X, Y = point.Y }).ToArray(),
+                BlackManualEnabled = file.BlackManualEnabled,
+                BlackManualColor = file.BlackManualColor,
+                WhiteManualEnabled = file.WhiteManualEnabled,
+                WhiteManualColor = file.WhiteManualColor
+            }.Normalize(),
+            _ => throw new InvalidOperationException($"Unsupported image processing operation '{file.Kind}'.")
+        };
+    }
+
+    private static ImageProcessingOperationFile ToFile(ImageProcessingOperationModel model)
+    {
+        return model switch
+        {
+            BlackWhiteLevelsOperationModel levels => ToFile(levels.Normalize()),
+            _ => throw new InvalidOperationException($"Unsupported image processing operation '{model.GetType().Name}'.")
+        };
+    }
+
+    private static ImageProcessingOperationFile ToFile(BlackWhiteLevelsOperationModel model) => new()
+    {
+        Id = model.Id,
+        Kind = model.Kind,
+        Enabled = model.Enabled,
+        Strength = model.Strength,
+        BlackSamples = model.BlackSamples.Select(point => new NormalizedFacePointFile { X = point.X, Y = point.Y }).ToArray(),
+        WhiteSamples = model.WhiteSamples.Select(point => new NormalizedFacePointFile { X = point.X, Y = point.Y }).ToArray(),
+        BlackManualEnabled = model.BlackManualEnabled,
+        BlackManualColor = model.BlackManualColor,
+        WhiteManualEnabled = model.WhiteManualEnabled,
+        WhiteManualColor = model.WhiteManualColor
+    };
 
 
     private static FaceGenerationSettingsModel ToModel(FaceGenerationSettingsFile? file)
@@ -885,8 +918,21 @@ public sealed record ImageProcessingPipelineFile
 public sealed record ImageProcessingOperationFile
 {
     public string Id { get; init; } = string.Empty;
-    public string Kind { get; init; } = string.Empty;
+    public ImageProcessingOperationKind Kind { get; init; }
     public bool Enabled { get; init; } = true;
+    public double Strength { get; init; } = BlackWhiteLevelsOperationModel.DefaultStrength;
+    public IReadOnlyList<NormalizedFacePointFile> BlackSamples { get; init; } = [];
+    public IReadOnlyList<NormalizedFacePointFile> WhiteSamples { get; init; } = [];
+    public bool BlackManualEnabled { get; init; }
+    public string BlackManualColor { get; init; } = BlackWhiteLevelsOperationModel.DefaultBlackManualColor;
+    public bool WhiteManualEnabled { get; init; }
+    public string WhiteManualColor { get; init; } = BlackWhiteLevelsOperationModel.DefaultWhiteManualColor;
+}
+
+public sealed record NormalizedFacePointFile
+{
+    public double X { get; init; }
+    public double Y { get; init; }
 }
 
 
