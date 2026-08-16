@@ -7,6 +7,20 @@ namespace OasisEditor.Tests;
 
 public sealed class InspectorColorTests
 {
+    [Fact]
+    public void InspectorColorProperty_ReadOnlyRetainsDisplayButRejectsPickerChanges()
+    {
+        var commits = new List<string?>();
+        var row = new InspectorColorPropertyViewModel("Reference", "Processing", "#1A2B3C", isReadOnly: true, commit: value => { commits.Add(value); return null; });
+
+        row.SelectedColor = Color.FromRgb(0xAA, 0xBB, 0xCC);
+
+        Assert.False(row.IsEditable);
+        Assert.Equal("#1A2B3C", row.HexValue);
+        Assert.Equal(Color.FromRgb(0x1A, 0x2B, 0x3C), row.SelectedColor);
+        Assert.Empty(commits);
+    }
+
     [Theory]
     [InlineData("#112233", 255, 0x11, 0x22, 0x33)]
     [InlineData("112233", 255, 0x11, 0x22, 0x33)]

@@ -271,10 +271,42 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var rebuilt = new FaceArtworkRebuildService().ApplyProcessing(artwork, project.ProjectDirectory);
         if (rebuilt)
         {
-            Views.SkiaFaceEditView.InvalidateArtworkImage(artwork.GeneratedAssetPath);
-            Views.SkiaFaceEditView.InvalidateArtworkImage(FaceArtworkRebuildService.GetOriginalArtworkPath(artwork.GeneratedAssetPath));
+            NotifyGeneratedArtworkChanged(artwork);
         }
         return rebuilt;
+    }
+
+    internal bool TryReadGeneratedArtwork(out byte[] bytes)
+    {
+        bytes = [];
+        if (!TryGetGeneratedArtworkPath(out var path) || !File.Exists(path)) return false;
+        bytes = File.ReadAllBytes(path);
+        return true;
+    }
+
+    internal bool TryRestoreGeneratedArtwork(byte[] bytes)
+    {
+        ArgumentNullException.ThrowIfNull(bytes);
+        if (bytes.Length == 0 || _faceDocumentModel.Artwork is not { } artwork || !TryGetGeneratedArtworkPath(out var path)) return false;
+        File.WriteAllBytes(path, bytes);
+        NotifyGeneratedArtworkChanged(artwork);
+        return true;
+    }
+
+    private bool TryGetGeneratedArtworkPath(out string path)
+    {
+        path = string.Empty;
+        var artworkPath = _faceDocumentModel.Artwork?.GeneratedAssetPath;
+        var project = _projectAccessor?.Invoke();
+        if (project is null || string.IsNullOrWhiteSpace(artworkPath)) return false;
+        path = Path.IsPathRooted(artworkPath) ? artworkPath : Path.Combine(project.ProjectDirectory, artworkPath.Replace('/', Path.DirectorySeparatorChar));
+        return true;
+    }
+
+    private void NotifyGeneratedArtworkChanged(FaceArtworkModel artwork)
+    {
+        Views.SkiaFaceEditView.InvalidateArtworkImage(artwork.GeneratedAssetPath);
+        PanelChanged?.Invoke(new PanelChangeEvent(DocumentId, artwork.Id, PanelChangeProperties.Metadata, AffectsCanvas: true, AffectsHierarchy: false, AffectsInspectorRows: false, AffectsPersistence: false));
     }
 
     internal bool TryGetArtworkReferenceColors(BlackWhiteLevelsOperationModel operation, out string? blackColor, out string? whiteColor)

@@ -19,6 +19,9 @@ internal static class FaceMutationCommands
             "Add Black / White Normalisation");
     }
 
+    public static Commands.ICommand CreateApplyArtworkProcessingCommand(Guid documentId, DocumentTabViewModel document) =>
+        new ApplyArtworkProcessingCommand(documentId, document);
+
     public static Commands.ICommand CreateRemoveProcessingOperationCommand(Guid documentId, DocumentTabViewModel document, string operationId) =>
         TransformPipeline(documentId, document, operationId, "Remove artwork processing operation", (operations, index) => { operations.RemoveAt(index); });
 
@@ -146,14 +149,63 @@ internal static class FaceMutationCommands
             WasExecuted = false; var current = _document.GetFaceDocument(); if (current.Artwork is null) return;
             _previous ??= current.Artwork.ProcessingPipeline;
             if (PipelinesEquivalent(_previous, _next)) return;
-            _document.SetFaceDocument(WithPipeline(current, _next), CreateChange(_document, current.Artwork.Id, PanelChangeProperties.Metadata));
+            var properties = RequiresInspectorRebuild(_previous, _next)
+                ? PanelChangeProperties.Metadata | PanelChangeProperties.Structure | PanelChangeProperties.Ordering
+                : PanelChangeProperties.Metadata;
+            _document.SetFaceDocument(WithPipeline(current, _next), CreateChange(_document, null, properties, structure: properties.HasFlag(PanelChangeProperties.Structure)));
             _document.MarkDirty(); WasExecuted = true;
         }
         public void Undo()
         {
             if (_previous is null) return; var current = _document.GetFaceDocument();
-            _document.SetFaceDocument(WithPipeline(current, _previous), CreateChange(_document, current.Artwork?.Id, PanelChangeProperties.Metadata));
+            var properties = RequiresInspectorRebuild(current.Artwork?.ProcessingPipeline ?? new(), _previous)
+                ? PanelChangeProperties.Metadata | PanelChangeProperties.Structure | PanelChangeProperties.Ordering
+                : PanelChangeProperties.Metadata;
+            _document.SetFaceDocument(WithPipeline(current, _previous), CreateChange(_document, null, properties, structure: properties.HasFlag(PanelChangeProperties.Structure)));
             _document.MarkDirty();
+        }
+    }
+
+    private static bool RequiresInspectorRebuild(ImageProcessingPipelineModel left, ImageProcessingPipelineModel right)
+    {
+        if (!left.Operations.Select(operation => operation.Id).SequenceEqual(right.Operations.Select(operation => operation.Id))) return true;
+        for (var index = 0; index < left.Operations.Count; index++)
+        {
+            if (left.Operations[index] is BlackWhiteLevelsOperationModel a && right.Operations[index] is BlackWhiteLevelsOperationModel b
+                && (a.BlackManualEnabled != b.BlackManualEnabled || a.WhiteManualEnabled != b.WhiteManualEnabled)) return true;
+        }
+        return false;
+    }
+
+    private sealed class ApplyArtworkProcessingCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _documentId;
+        private readonly DocumentTabViewModel _document;
+        private byte[]? _before;
+        private byte[]? _after;
+
+        public ApplyArtworkProcessingCommand(Guid documentId, DocumentTabViewModel document) { _documentId = documentId; _document = document; }
+        public Guid DocumentId => _documentId;
+        public string Description => "Apply Face Artwork Processing";
+        public bool WasExecuted { get; private set; }
+
+        public void Execute()
+        {
+            WasExecuted = false;
+            if (_after is not null)
+            {
+                WasExecuted = _document.TryRestoreGeneratedArtwork(_after);
+                return;
+            }
+            if (!_document.TryReadGeneratedArtwork(out var before) || !_document.TryRebuildFaceArtwork() || !_document.TryReadGeneratedArtwork(out var after)) return;
+            _before = before;
+            _after = after;
+            WasExecuted = true;
+        }
+
+        public void Undo()
+        {
+            if (_before is not null) _document.TryRestoreGeneratedArtwork(_before);
         }
     }
 

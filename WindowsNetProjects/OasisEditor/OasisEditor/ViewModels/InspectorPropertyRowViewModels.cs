@@ -25,6 +25,7 @@ public abstract class InspectorPropertyRowViewModel : INotifyPropertyChanged
     public string GroupName { get; }
 
     public bool IsReadOnly { get; }
+    public bool IsEditable => !IsReadOnly;
 
     public string ErrorText
     {

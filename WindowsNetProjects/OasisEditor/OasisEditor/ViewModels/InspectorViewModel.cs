@@ -1627,7 +1627,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     }));
                     _propertyRows.Add(new InspectorActionPropertyViewModel("Add Black Marker", group, new RelayCommand(() => { selectedDocument.FaceArtworkSampleOperationId = levels.Id; selectedDocument.FaceArtworkSampleMode = FaceArtworkSampleMode.AddBlack; })));
                     _propertyRows.Add(new InspectorActionPropertyViewModel("Add White Marker", group, new RelayCommand(() => { selectedDocument.FaceArtworkSampleOperationId = levels.Id; selectedDocument.FaceArtworkSampleMode = FaceArtworkSampleMode.AddWhite; })));
-                    _propertyRows.Add(new InspectorActionPropertyViewModel("Apply Changes", group, new RelayCommand(() => selectedDocument.TryRebuildFaceArtwork())));
+                    _propertyRows.Add(new InspectorActionPropertyViewModel("Apply Changes", group, new RelayCommand(() =>
+                        _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateApplyArtworkProcessingCommand(selectedDocument.DocumentId, selectedDocument)))));
                     if (levels.BlackSamples.Count > 0) _propertyRows.Add(new InspectorActionPropertyViewModel("Clear Black References", group, new RelayCommand(() =>
                         _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateUpdateProcessingOperationCommand(selectedDocument.DocumentId, selectedDocument, CopyBlackWhiteLevels(levels, blackSamples: []), "Clear black references")))));
                     if (levels.WhiteSamples.Count > 0) _propertyRows.Add(new InspectorActionPropertyViewModel("Clear White References", group, new RelayCommand(() =>

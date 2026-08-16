@@ -175,6 +175,74 @@ public sealed class FaceArtworkProcessingPipelineTests
         }
     }
 
+    [Fact]
+    public void ApplyProcessingCommand_UndoRedoRestoresOnlyProcessedArtwork()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-face-apply-command-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var generatedPath = Path.Combine(directory, "artwork.png");
+            var originalPath = FaceArtworkRebuildService.GetOriginalArtworkPath(generatedPath);
+            using (var original = Gradient())
+            using (var image = SKImage.FromBitmap(original))
+            using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
+            using (var stream = File.Create(originalPath)) data.SaveTo(stream);
+            File.Copy(originalPath, generatedPath);
+            var originalBytes = File.ReadAllBytes(originalPath);
+            var previousProcessed = File.ReadAllBytes(generatedPath);
+            var operation = new BlackWhiteLevelsOperationModel
+            {
+                Id = "levels", Strength = 50,
+                BlackManualEnabled = true, BlackManualColor = "#FF404040",
+                WhiteManualEnabled = true, WhiteManualColor = "#FFA0A0A0"
+            };
+            var face = DocumentWithPipeline([operation]);
+            face = new FaceDocumentModel
+            {
+                Artwork = new FaceArtworkModel
+                {
+                    GeneratedAssetPath = generatedPath,
+                    ProcessingPipeline = face.Artwork!.ProcessingPipeline
+                }
+            };
+            var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"), faceDocumentJson: FaceDocumentStorage.Serialize(face));
+            document.SetProjectAccessor(() => CreateProject(directory));
+            var updated = new BlackWhiteLevelsOperationModel
+            {
+                Id = operation.Id, Strength = 100,
+                BlackManualEnabled = operation.BlackManualEnabled, BlackManualColor = operation.BlackManualColor,
+                WhiteManualEnabled = operation.WhiteManualEnabled, WhiteManualColor = operation.WhiteManualColor
+            };
+            document.CommandService.Execute(FaceMutationCommands.CreateUpdateProcessingOperationCommand(document.DocumentId, document, updated, "Change strength"));
+            document.CommandService.Execute(FaceMutationCommands.CreateApplyArtworkProcessingCommand(document.DocumentId, document));
+            var applied = File.ReadAllBytes(generatedPath);
+
+            Assert.False(previousProcessed.SequenceEqual(applied));
+            Assert.Equal(100, Assert.IsType<BlackWhiteLevelsOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations)).Strength);
+            Assert.True(document.CommandService.TryUndo());
+            Assert.Equal(previousProcessed, File.ReadAllBytes(generatedPath));
+            Assert.Equal(originalBytes, File.ReadAllBytes(originalPath));
+            Assert.Equal(100, Assert.IsType<BlackWhiteLevelsOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations)).Strength);
+            Assert.True(document.CommandService.TryUndo());
+            Assert.Equal(50, Assert.IsType<BlackWhiteLevelsOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations)).Strength);
+            Assert.True(document.CommandService.TryRedo());
+            Assert.True(document.CommandService.TryRedo());
+            Assert.Equal(applied, File.ReadAllBytes(generatedPath));
+            Assert.Equal(originalBytes, File.ReadAllBytes(originalPath));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static EditorProject CreateProject(string directory) => new()
+    {
+        Name = "Test", ProjectFilePath = Path.Combine(directory, "test.oasis"), ProjectDirectory = directory,
+        AssetsDirectory = directory, MachinesDirectory = directory, GeneratedDirectory = directory
+    };
+
     private static BlackWhiteLevelsOperationModel Levels(string id, bool enabled, double strength, IReadOnlyList<NormalizedFacePointModel> black, IReadOnlyList<NormalizedFacePointModel> white) =>
         new() { Id = id, Enabled = enabled, Strength = strength, BlackSamples = black, WhiteSamples = white };
 

@@ -9,6 +9,32 @@ namespace OasisEditor.Tests;
 public sealed class InspectorViewModelTests
 {
     [Fact]
+    public void FaceArtworkProcessingStack_AddAndRemoveRefreshInspectorWithoutReselection()
+    {
+        var face = new FaceDocumentModel
+        {
+            Artwork = new FaceArtworkModel(),
+            Elements = [new FaceArtworkElement { ObjectId = "art", Name = "Artwork", Width = 100, Height = 100 }]
+        };
+        var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"), faceDocumentJson: FaceDocumentStorage.Serialize(face));
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(document);
+        context.SetPanelSelection(document.DocumentId, new PanelSelectionInfo("art", "artwork", 0, 0, 100, 100));
+        bool Execute(Guid _, EditorCommands.ICommand command) { document.CommandService.Execute(command); return true; }
+        var viewModel = CreateInspectorViewModel(document, context, Execute);
+        document.PanelChanged += viewModel.NotifyPanelChanged;
+        viewModel.NotifyContextChanged();
+
+        Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.DisplayName == "Strength (%)");
+        Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName.StartsWith("+ Add Black", StringComparison.Ordinal))).Command.Execute(null);
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Strength (%)");
+
+        Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Remove")).Command.Execute(null);
+        Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.DisplayName == "Strength (%)");
+        Assert.Equal("art", context.ActivePanelSelection?.ObjectId);
+    }
+
+    [Fact]
     public void InspectorSummary_SelectedLamp_IncludesLampNumber()
     {
         var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
