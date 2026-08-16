@@ -1,6 +1,7 @@
-namespace OasisEditor;
-
+using System.IO;
 using SkiaSharp;
+
+namespace OasisEditor;
 
 /// <summary>Builds the disposable flattened texture from Face-owned artwork authoring state.</summary>
 internal sealed class FaceArtworkRebuildService

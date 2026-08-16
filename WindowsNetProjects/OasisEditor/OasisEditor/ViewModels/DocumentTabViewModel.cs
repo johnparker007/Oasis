@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using OasisEditor.Commands;
 using OasisEditor.Features.CabinetEditor.Models;
@@ -262,7 +263,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)) return false;
         var sourceDocument = _openDocumentsAccessor?.Invoke().FirstOrDefault(candidate =>
             candidate.Document.DocumentType == EditorDocumentType.Panel2D
-            && (string.Equals(candidate.GetPanelDocument().Id, artwork.Source.Panel2DDocumentId, StringComparison.Ordinal)
+            && (string.Equals(candidate.DocumentId.ToString("N"), artwork.Source.Panel2DDocumentId, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(candidate.DocumentId.ToString("D"), artwork.Source.Panel2DDocumentId, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(candidate.Document.FilePath, artwork.Source.Panel2DDocumentPath, StringComparison.OrdinalIgnoreCase)));
         if (sourceDocument is null || string.IsNullOrWhiteSpace(artwork.Source.FaceSourceShapeId)
             || !sourceDocument.TryGetPanelFaceSourceShape(artwork.Source.FaceSourceShapeId, out var shape)) return false;
