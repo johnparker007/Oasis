@@ -147,14 +147,12 @@ internal static class FaceMutationCommands
             _previous ??= current.Artwork.ProcessingPipeline;
             if (PipelinesEquivalent(_previous, _next)) return;
             _document.SetFaceDocument(WithPipeline(current, _next), CreateChange(_document, current.Artwork.Id, PanelChangeProperties.Metadata));
-            _document.TryRebuildFaceArtwork();
             _document.MarkDirty(); WasExecuted = true;
         }
         public void Undo()
         {
             if (_previous is null) return; var current = _document.GetFaceDocument();
             _document.SetFaceDocument(WithPipeline(current, _previous), CreateChange(_document, current.Artwork?.Id, PanelChangeProperties.Metadata));
-            _document.TryRebuildFaceArtwork();
             _document.MarkDirty();
         }
     }
@@ -166,6 +164,8 @@ internal static class FaceMutationCommands
         {
             if (left.Operations[index] is not BlackWhiteLevelsOperationModel a || right.Operations[index] is not BlackWhiteLevelsOperationModel b
                 || a.Id != b.Id || a.Enabled != b.Enabled || a.Strength != b.Strength
+                || a.BlackManualEnabled != b.BlackManualEnabled || a.BlackManualColor != b.BlackManualColor
+                || a.WhiteManualEnabled != b.WhiteManualEnabled || a.WhiteManualColor != b.WhiteManualColor
                 || !a.BlackSamples.Select(p => (p.X, p.Y)).SequenceEqual(b.BlackSamples.Select(p => (p.X, p.Y)))
                 || !a.WhiteSamples.Select(p => (p.X, p.Y)).SequenceEqual(b.WhiteSamples.Select(p => (p.X, p.Y)))) return false;
         }

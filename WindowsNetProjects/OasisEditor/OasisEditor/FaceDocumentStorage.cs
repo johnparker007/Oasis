@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 11;
+    public const int CurrentSchemaVersion = 12;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -278,7 +278,11 @@ public static class FaceDocumentStorage
                 Enabled = file.Enabled,
                 Strength = file.Strength,
                 BlackSamples = file.BlackSamples.Select(point => new NormalizedFacePointModel { X = point.X, Y = point.Y }).ToArray(),
-                WhiteSamples = file.WhiteSamples.Select(point => new NormalizedFacePointModel { X = point.X, Y = point.Y }).ToArray()
+                WhiteSamples = file.WhiteSamples.Select(point => new NormalizedFacePointModel { X = point.X, Y = point.Y }).ToArray(),
+                BlackManualEnabled = file.BlackManualEnabled,
+                BlackManualColor = file.BlackManualColor,
+                WhiteManualEnabled = file.WhiteManualEnabled,
+                WhiteManualColor = file.WhiteManualColor
             }.Normalize(),
             _ => throw new InvalidOperationException($"Unsupported image processing operation '{file.Kind}'.")
         };
@@ -300,7 +304,11 @@ public static class FaceDocumentStorage
         Enabled = model.Enabled,
         Strength = model.Strength,
         BlackSamples = model.BlackSamples.Select(point => new NormalizedFacePointFile { X = point.X, Y = point.Y }).ToArray(),
-        WhiteSamples = model.WhiteSamples.Select(point => new NormalizedFacePointFile { X = point.X, Y = point.Y }).ToArray()
+        WhiteSamples = model.WhiteSamples.Select(point => new NormalizedFacePointFile { X = point.X, Y = point.Y }).ToArray(),
+        BlackManualEnabled = model.BlackManualEnabled,
+        BlackManualColor = model.BlackManualColor,
+        WhiteManualEnabled = model.WhiteManualEnabled,
+        WhiteManualColor = model.WhiteManualColor
     };
 
 
@@ -915,6 +923,10 @@ public sealed record ImageProcessingOperationFile
     public double Strength { get; init; } = BlackWhiteLevelsOperationModel.DefaultStrength;
     public IReadOnlyList<NormalizedFacePointFile> BlackSamples { get; init; } = [];
     public IReadOnlyList<NormalizedFacePointFile> WhiteSamples { get; init; } = [];
+    public bool BlackManualEnabled { get; init; }
+    public string BlackManualColor { get; init; } = BlackWhiteLevelsOperationModel.DefaultBlackManualColor;
+    public bool WhiteManualEnabled { get; init; }
+    public string WhiteManualColor { get; init; } = BlackWhiteLevelsOperationModel.DefaultWhiteManualColor;
 }
 
 public sealed record NormalizedFacePointFile

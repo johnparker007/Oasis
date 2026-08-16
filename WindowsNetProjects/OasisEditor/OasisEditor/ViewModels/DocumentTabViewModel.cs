@@ -5,6 +5,7 @@ using OasisEditor.Commands;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
 using OasisEditor.Features.CabinetEditor.ViewModels;
+using SkiaSharp;
 
 namespace OasisEditor;
 
@@ -32,6 +33,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private double _panelPanY;
     private FaceArtworkSampleMode _faceArtworkSampleMode;
     private string? _faceArtworkSampleOperationId;
+    private bool _faceArtworkShowOriginal;
     private Dictionary<string, object>? _lastVisualStateByObjectId;
     private readonly MachineRuntimeState _runtimeState;
     private CabinetModelDocumentViewModel? _cabinetViewer;
@@ -122,6 +124,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         get => _faceArtworkSampleOperationId;
         set { if (_faceArtworkSampleOperationId == value) return; _faceArtworkSampleOperationId = value; PropertyChanged?.Invoke(this, new(nameof(FaceArtworkSampleOperationId))); }
+    }
+    public bool FaceArtworkShowOriginal
+    {
+        get => _faceArtworkShowOriginal;
+        set { if (_faceArtworkShowOriginal == value) return; _faceArtworkShowOriginal = value; PropertyChanged?.Invoke(this, new(nameof(FaceArtworkShowOriginal))); }
     }
     public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && !string.IsNullOrWhiteSpace(_cabinetDocumentModel.Model.Path);
     public CabinetModelDocumentViewModel? ExistingCabinetViewer => _cabinetViewer;
@@ -261,19 +268,29 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var artwork = _faceDocumentModel.Artwork;
         var project = _projectAccessor?.Invoke();
         if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)) return false;
-        var sourceDocument = _openDocumentsAccessor?.Invoke().FirstOrDefault(candidate =>
-            candidate.Document.DocumentType == EditorDocumentType.Panel2D
-            && (string.Equals(candidate.DocumentId.ToString("N"), artwork.Source.Panel2DDocumentId, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(candidate.DocumentId.ToString("D"), artwork.Source.Panel2DDocumentId, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(candidate.Document.FilePath, artwork.Source.Panel2DDocumentPath, StringComparison.OrdinalIgnoreCase)));
-        if (sourceDocument is null || string.IsNullOrWhiteSpace(artwork.Source.FaceSourceShapeId)
-            || !sourceDocument.TryGetPanelFaceSourceShape(artwork.Source.FaceSourceShapeId, out var shape)) return false;
-        var outputPath = Path.IsPathRooted(artwork.GeneratedAssetPath)
+        var rebuilt = new FaceArtworkRebuildService().ApplyProcessing(artwork, project.ProjectDirectory);
+        if (rebuilt)
+        {
+            Views.SkiaFaceEditView.InvalidateArtworkImage(artwork.GeneratedAssetPath);
+            Views.SkiaFaceEditView.InvalidateArtworkImage(FaceArtworkRebuildService.GetOriginalArtworkPath(artwork.GeneratedAssetPath));
+        }
+        return rebuilt;
+    }
+
+    internal bool TryGetArtworkReferenceColors(BlackWhiteLevelsOperationModel operation, out string? blackColor, out string? whiteColor)
+    {
+        blackColor = operation.BlackManualEnabled ? operation.BlackManualColor : null;
+        whiteColor = operation.WhiteManualEnabled ? operation.WhiteManualColor : null;
+        var artwork = _faceDocumentModel.Artwork;
+        var project = _projectAccessor?.Invoke();
+        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)) return false;
+        var generatedPath = Path.IsPathRooted(artwork.GeneratedAssetPath)
             ? artwork.GeneratedAssetPath
             : Path.Combine(project.ProjectDirectory, artwork.GeneratedAssetPath.Replace('/', Path.DirectorySeparatorChar));
-        var rebuilt = new FaceArtworkRebuildService().Rebuild(artwork, sourceDocument.GetPanelDocument(), shape, project.ProjectDirectory, outputPath) is not null;
-        if (rebuilt) Views.SkiaFaceEditView.InvalidateArtworkImage(artwork.GeneratedAssetPath);
-        return rebuilt;
+        var originalPath = FaceArtworkRebuildService.GetOriginalArtworkPath(generatedPath);
+        if (!File.Exists(originalPath)) return false;
+        using var original = SKBitmap.Decode(originalPath);
+        return original is not null && FaceArtworkProcessingPipeline.TryResolveReferenceColors(original, operation, out blackColor, out whiteColor);
     }
 
     public string GetFaceDocumentJson()

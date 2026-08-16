@@ -32,12 +32,15 @@ internal sealed class FaceArtworkProcessingPipeline
     private static SKBitmap ApplyBlackWhiteLevels(SKBitmap input, BlackWhiteLevelsOperationModel operation)
     {
         if (operation.Strength <= 0d
-            || !TryReferenceLuminance(input, operation.BlackSamples, out var black)
-            || !TryReferenceLuminance(input, operation.WhiteSamples, out var white)
-            || white - black < MinimumReferenceRange)
+            || !TryResolveReferenceColor(input, operation.BlackManualEnabled, operation.BlackManualColor, operation.BlackSamples, out var blackColor)
+            || !TryResolveReferenceColor(input, operation.WhiteManualEnabled, operation.WhiteManualColor, operation.WhiteSamples, out var whiteColor)
+            || (whiteColor.Luminance - blackColor.Luminance) < MinimumReferenceRange)
         {
             return input.Copy();
         }
+
+        var black = blackColor.Luminance;
+        var white = whiteColor.Luminance;
 
         var blend = operation.Strength / 100d;
         var output = new SKBitmap(input.Width, input.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
@@ -63,36 +66,49 @@ internal sealed class FaceArtworkProcessingPipeline
         return output;
     }
 
-    private static bool TryReferenceLuminance(SKBitmap image, IReadOnlyList<NormalizedFacePointModel> samples, out double value)
+    internal static bool TryResolveReferenceColors(SKBitmap image, BlackWhiteLevelsOperationModel operation, out string? blackColor, out string? whiteColor)
     {
-        value = 0d;
+        var blackResolved = TryResolveReferenceColor(image, operation.BlackManualEnabled, operation.BlackManualColor, operation.BlackSamples, out var black);
+        var whiteResolved = TryResolveReferenceColor(image, operation.WhiteManualEnabled, operation.WhiteManualColor, operation.WhiteSamples, out var white);
+        blackColor = blackResolved ? black.ToHex() : null;
+        whiteColor = whiteResolved ? white.ToHex() : null;
+        return blackResolved && whiteResolved;
+    }
+
+    private static bool TryResolveReferenceColor(SKBitmap image, bool manualEnabled, string manualColor, IReadOnlyList<NormalizedFacePointModel> samples, out LinearColor value)
+    {
+        if (manualEnabled) return TryParseColor(manualColor, out value);
+        value = default;
         if (samples.Count == 0 || image.Width == 0 || image.Height == 0) return false;
-        var representatives = new List<double>(samples.Count);
+        var red = 0d;
+        var green = 0d;
+        var blue = 0d;
+        var count = 0;
         foreach (var sample in samples)
         {
             if (!double.IsFinite(sample.X) || !double.IsFinite(sample.Y) || sample.X < 0d || sample.X > 1d || sample.Y < 0d || sample.Y > 1d) continue;
-            var centerX = (int)Math.Round(sample.X * (image.Width - 1));
-            var centerY = (int)Math.Round(sample.Y * (image.Height - 1));
-            var neighbourhood = new List<double>(25);
-            for (var y = Math.Max(0, centerY - 2); y <= Math.Min(image.Height - 1, centerY + 2); y++)
-            for (var x = Math.Max(0, centerX - 2); x <= Math.Min(image.Width - 1, centerX + 2); x++)
-            {
-                var pixel = image.GetPixel(x, y);
-                if (pixel.Alpha == 0) continue;
-                neighbourhood.Add(Luminance(SrgbToLinear(pixel.Red / 255d), SrgbToLinear(pixel.Green / 255d), SrgbToLinear(pixel.Blue / 255d)));
-            }
-            if (neighbourhood.Count > 0) representatives.Add(Median(neighbourhood));
+            var x = Math.Clamp((int)Math.Round(sample.X * (image.Width - 1)), 0, image.Width - 1);
+            var y = Math.Clamp((int)Math.Round(sample.Y * (image.Height - 1)), 0, image.Height - 1);
+            var pixel = image.GetPixel(x, y);
+            if (pixel.Alpha == 0) continue;
+            red += SrgbToLinear(pixel.Red / 255d);
+            green += SrgbToLinear(pixel.Green / 255d);
+            blue += SrgbToLinear(pixel.Blue / 255d);
+            count++;
         }
-        if (representatives.Count == 0) return false;
-        value = Median(representatives);
+        if (count == 0) return false;
+        value = new LinearColor(red / count, green / count, blue / count);
         return true;
     }
 
-    private static double Median(List<double> values)
+    private static bool TryParseColor(string? text, out LinearColor color)
     {
-        values.Sort();
-        var middle = values.Count / 2;
-        return values.Count % 2 == 0 ? (values[middle - 1] + values[middle]) / 2d : values[middle];
+        color = default;
+        var value = text?.Trim().TrimStart('#');
+        if (value?.Length == 8) value = value[2..];
+        if (value?.Length != 6 || !uint.TryParse(value, System.Globalization.NumberStyles.HexNumber, null, out var rgb)) return false;
+        color = new LinearColor(SrgbToLinear(((rgb >> 16) & 255) / 255d), SrgbToLinear(((rgb >> 8) & 255) / 255d), SrgbToLinear((rgb & 255) / 255d));
+        return true;
     }
 
     private static double Luminance(double r, double g, double b) => 0.2126d * r + 0.7152d * g + 0.0722d * b;
@@ -100,4 +116,10 @@ internal sealed class FaceArtworkProcessingPipeline
     private static byte ToByte(double value) => (byte)Math.Round(Math.Clamp(value, 0d, 1d) * 255d);
     private static double SrgbToLinear(double value) => value <= 0.04045d ? value / 12.92d : Math.Pow((value + 0.055d) / 1.055d, 2.4d);
     private static double LinearToSrgb(double value) => value <= 0.0031308d ? value * 12.92d : 1.055d * Math.Pow(value, 1d / 2.4d) - 0.055d;
+
+    private readonly record struct LinearColor(double Red, double Green, double Blue)
+    {
+        public double Luminance => FaceArtworkProcessingPipeline.Luminance(Red, Green, Blue);
+        public string ToHex() => $"#FF{ToByte(LinearToSrgb(Red)):X2}{ToByte(LinearToSrgb(Green)):X2}{ToByte(LinearToSrgb(Blue)):X2}";
+    }
 }

@@ -10,7 +10,13 @@ public sealed class FaceArtworkProcessingPipelineTests
     {
         var model = DocumentWithPipeline([
             Levels("first", false, 120, [new() { X = -1, Y = .25 }], [new() { X = .8, Y = 2 }]),
-            Levels("second", true, 40, [new() { X = .1, Y = .2 }], [new() { X = .9, Y = .8 }])]);
+            new BlackWhiteLevelsOperationModel
+            {
+                Id = "second", Enabled = true, Strength = 40,
+                BlackSamples = [new() { X = .1, Y = .2 }], WhiteSamples = [new() { X = .9, Y = .8 }],
+                BlackManualEnabled = true, BlackManualColor = "#FF123456",
+                WhiteManualEnabled = true, WhiteManualColor = "#FFABCDEF"
+            }]);
 
         Assert.True(FaceDocumentStorage.TryRead(FaceDocumentStorage.Serialize(model), out var file));
         var operations = FaceDocumentStorage.ToModel(file).Artwork!.ProcessingPipeline.Operations.Cast<BlackWhiteLevelsOperationModel>().ToArray();
@@ -20,6 +26,10 @@ public sealed class FaceArtworkProcessingPipelineTests
         Assert.Equal(100, operations[0].Strength);
         Assert.Equal(0, operations[0].BlackSamples[0].X);
         Assert.Equal(1, operations[0].WhiteSamples[0].Y);
+        Assert.True(operations[1].BlackManualEnabled);
+        Assert.Equal("#FF123456", operations[1].BlackManualColor);
+        Assert.True(operations[1].WhiteManualEnabled);
+        Assert.Equal("#FFABCDEF", operations[1].WhiteManualColor);
     }
 
     [Fact]
@@ -72,15 +82,97 @@ public sealed class FaceArtworkProcessingPipelineTests
     }
 
     [Fact]
-    public void MultipleSamples_UseMedianSoSingleOutlierDoesNotControlReference()
+    public void ReferenceColors_SampleExactPixelsAndAverageMultipleMarkersInLinearLight()
+    {
+        using var input = new SKBitmap(3, 1);
+        input.SetPixel(0, 0, SKColors.Red);
+        input.SetPixel(1, 0, SKColors.Lime); // A deliberately different immediate neighbour.
+        input.SetPixel(2, 0, SKColors.Blue);
+        var operation = Levels("exact", true, 100,
+            [new() { X = 0, Y = 0 }, new() { X = 1, Y = 0 }],
+            [new() { X = .5, Y = 0 }]);
+
+        Assert.True(FaceArtworkProcessingPipeline.TryResolveReferenceColors(input, operation, out var black, out var white));
+        Assert.Equal("#FFBC00BC", black);
+        Assert.Equal("#FF00FF00", white);
+    }
+
+    [Fact]
+    public void ReferenceColors_OneMarkerUsesOnlyThatExactEdgePixel()
+    {
+        using var input = new SKBitmap(2, 2);
+        input.Erase(SKColors.Magenta);
+        input.SetPixel(0, 0, new SKColor(12, 34, 56));
+        input.SetPixel(1, 1, new SKColor(210, 220, 230));
+        var operation = Levels("edges", true, 100, [new() { X = 0, Y = 0 }], [new() { X = 1, Y = 1 }]);
+
+        Assert.True(FaceArtworkProcessingPipeline.TryResolveReferenceColors(input, operation, out var black, out var white));
+        Assert.Equal("#FF0C2238", black);
+        Assert.Equal("#FFD2DCE6", white);
+    }
+
+    [Fact]
+    public void ReferenceColors_ManualOverridesAreIndependentAndTakePrecedence()
     {
         using var input = Gradient();
-        var normal = Levels("normal", true, 100, [new() { X = .1, Y = .5 }, new() { X = .1, Y = .5 }], [new() { X = .9, Y = .5 }, new() { X = .9, Y = .5 }]);
-        var outlier = Levels("outlier", true, 100, [.. normal.BlackSamples, new() { X = .9, Y = .5 }], [.. normal.WhiteSamples, new() { X = .1, Y = .5 }]);
-        var evaluator = new FaceArtworkProcessingPipeline();
-        using var expected = evaluator.Evaluate(input, new() { Operations = [normal] });
-        using var actual = evaluator.Evaluate(input, new() { Operations = [outlier] });
-        AssertPixelsEqual(expected, actual);
+        var operation = new BlackWhiteLevelsOperationModel
+        {
+            BlackSamples = [new() { X = 0, Y = 0 }], WhiteSamples = [new() { X = 1, Y = 1 }],
+            BlackManualEnabled = true, BlackManualColor = "#FF112233",
+            WhiteManualEnabled = false, WhiteManualColor = "#FF445566"
+        };
+
+        Assert.True(FaceArtworkProcessingPipeline.TryResolveReferenceColors(input, operation, out var black, out var white));
+        Assert.Equal("#FF112233", black);
+        Assert.Equal("#FFC8C8C8", white);
+
+        operation = new BlackWhiteLevelsOperationModel
+        {
+            BlackSamples = operation.BlackSamples, WhiteSamples = operation.WhiteSamples,
+            BlackManualEnabled = false, BlackManualColor = operation.BlackManualColor,
+            WhiteManualEnabled = true, WhiteManualColor = "#FF445566"
+        };
+        Assert.True(FaceArtworkProcessingPipeline.TryResolveReferenceColors(input, operation, out black, out white));
+        Assert.Equal("#FF282828", black);
+        Assert.Equal("#FF445566", white);
+    }
+
+    [Fact]
+    public void ApplyProcessing_UsesStoredRectifiedOriginalOnlyWhenExplicitlyRequested()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-face-processing-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var generatedPath = Path.Combine(directory, "artwork.png");
+            var originalPath = FaceArtworkRebuildService.GetOriginalArtworkPath(generatedPath);
+            using (var original = Gradient())
+            using (var image = SKImage.FromBitmap(original))
+            using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
+            using (var stream = File.Create(originalPath)) data.SaveTo(stream);
+            File.Copy(originalPath, generatedPath);
+            var before = File.ReadAllBytes(generatedPath);
+            var artwork = new FaceArtworkModel
+            {
+                GeneratedAssetPath = generatedPath,
+                ProcessingPipeline = new ImageProcessingPipelineModel
+                {
+                    Operations = [new BlackWhiteLevelsOperationModel
+                    {
+                        BlackManualEnabled = true, BlackManualColor = "#FF404040",
+                        WhiteManualEnabled = true, WhiteManualColor = "#FFA0A0A0"
+                    }]
+                }
+            };
+
+            Assert.Equal(before, File.ReadAllBytes(generatedPath));
+            Assert.True(new FaceArtworkRebuildService().ApplyProcessing(artwork, directory));
+            Assert.False(before.SequenceEqual(File.ReadAllBytes(generatedPath)));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 
     private static BlackWhiteLevelsOperationModel Levels(string id, bool enabled, double strength, IReadOnlyList<NormalizedFacePointModel> black, IReadOnlyList<NormalizedFacePointModel> white) =>
