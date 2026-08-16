@@ -234,7 +234,7 @@ namespace OasisPlayer.RuntimeBuild
             {
                 var lamp = lamps[i];
                 // RuntimeLampState is one-based (1..255), so both the -1 unassigned sentinel and manifest value 0 stay off.
-                _lampIds[i] = lampsEnabled && lamp != null && lamp.lampId > 0 ? lamp.lampId : -1;
+                _lampIds[i] = lampsEnabled && lamp != null && lamp.lampId >= 0 ? lamp.lampId : -1;
                 var radius = RuntimeReelLampGeometry.ResolveRadius(lamp != null ? lamp.radius : 0f, reel != null ? reel.stops : 12);
                 var intensity = lamp != null ? lamp.intensity : 1f;
                 if (i == 0) { radii.x = radius; intensities.x = intensity; }
@@ -276,9 +276,9 @@ namespace OasisPlayer.RuntimeBuild
         private Vector4 ReadBrightness(RuntimeLampState lampState)
         {
             return new Vector4(
-                _lampIds[0] > 0 ? lampState.GetBrightness(_lampIds[0]) : 0f,
-                _lampIds[1] > 0 ? lampState.GetBrightness(_lampIds[1]) : 0f,
-                _lampIds[2] > 0 ? lampState.GetBrightness(_lampIds[2]) : 0f,
+                _lampIds[0] >= 0 ? lampState.GetBrightness(_lampIds[0]) : 0f,
+                _lampIds[1] >= 0 ? lampState.GetBrightness(_lampIds[1]) : 0f,
+                _lampIds[2] >= 0 ? lampState.GetBrightness(_lampIds[2]) : 0f,
                 0f);
         }
 
@@ -395,7 +395,7 @@ namespace OasisPlayer.RuntimeBuild
         {
             var lamps = reel != null && reel.reelLamps != null ? reel.reelLamps : Array.Empty<FaceRuntimeReelLampManifestEntry>();
             var count = 0;
-            for (var i = 0; i < lamps.Length && i < 3; i++) if (lamps[i].lampId > 0) count++;
+            for (var i = 0; i < lamps.Length && i < 3; i++) if (lamps[i].lampId >= 0) count++;
             return count;
         }
 

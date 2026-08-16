@@ -19,7 +19,8 @@ float DecodeLampBrightness(float lampId)
 {
     float decoded = floor(saturate(lampId) * 255.0 + 0.5);
     if (decoded < 1.0 || decoded > 255.0) return 0.0;
-    float u = (decoded + 0.5) / 256.0;
+    float logicalLampId = decoded - 1.0;
+    float u = (logicalLampId + 0.5) / 256.0;
     return SAMPLE_TEXTURE2D(_OasisLampStateTex, sampler_OasisLampStateTex, float2(u, 0.5)).r;
 }
 

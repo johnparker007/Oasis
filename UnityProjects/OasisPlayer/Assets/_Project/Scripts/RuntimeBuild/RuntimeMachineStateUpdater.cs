@@ -177,20 +177,21 @@ namespace OasisPlayer.RuntimeBuild
                 if (assigned) summary.AssignedPixels++;
             }
 
-            if (summary.MinimumLampId > RuntimeLampState.MaximumLampNumber) summary.MinimumLampId = 0;
+            if (summary.MinimumLampId > RuntimeLampState.MaximumLampNumber) summary.MinimumLampId = -1;
             return summary;
         }
 
         public static string BuildSummary(RuntimeFace face, int faceIndex)
         {
             var summary = Analyze(face);
-            var range = summary.MinimumLampId > 0 ? $"{summary.MinimumLampId}–{summary.MaximumLampId}" : "none";
+            var range = summary.MinimumLampId >= 0 ? $"{summary.MinimumLampId}–{summary.MaximumLampId}" : "none";
             return $"Face {faceIndex} lamp lookup:\nID data: {FormatBool(summary.HasLampIdData)}\nWeight data: {FormatBool(summary.HasLampWeightData)}\nassigned pixels: {summary.AssignedPixels}\nlamp range: {range}\ninvalid IDs: {summary.InvalidIdCount}\nnon-zero weights: {FormatBool(summary.HasNonZeroWeights)}";
         }
 
-        private static void AnalyzeChannel(byte lampId, byte weight, ref RuntimeFaceLookupDiagnosticSummary summary, ref bool assigned)
+        private static void AnalyzeChannel(byte encodedLampId, byte weight, ref RuntimeFaceLookupDiagnosticSummary summary, ref bool assigned)
         {
-            if (lampId == 0) return;
+            var lampId = RuntimeFaceLampLookupDecoder.ResolveLampStateIndex(0, encodedLampId);
+            if (lampId < 0) return;
             assigned = true;
             if (lampId < RuntimeLampState.MinimumLampNumber || lampId > RuntimeLampState.MaximumLampNumber)
             {

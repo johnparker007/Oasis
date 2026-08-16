@@ -23,6 +23,8 @@ namespace OasisPlayer.Tests
         public void InvalidAndUnchangedLampValuesDoNotDirtyState()
         {
             var state = new RuntimeLampState();
+            Assert.True(state.SetBrightness(0, 1f));
+            state.MarkClean();
             Assert.False(state.SetBrightness(0, 1f));
             Assert.False(state.SetBrightness(256, 1f));
             Assert.False(state.IsDirty);
@@ -49,16 +51,16 @@ namespace OasisPlayer.Tests
         }
 
         [Test]
-        public void LookupDecoderUsesOneBasedLampIdsAndThreeRgbContributions()
+        public void LookupDecoderDecodesOneBasedTextureValuesToZeroBasedLogicalLampIds()
         {
             var brightness = new float[256];
-            brightness[1] = 1f;
-            brightness[2] = 0.5f;
-            brightness[3] = 0.25f;
+            brightness[0] = 1f;
+            brightness[1] = 0.5f;
             var value = RuntimeFaceLampLookupDecoder.Accumulate(brightness, new[] { 1, 2, 0 }, new[] { 255, 128, 255 });
             Assert.AreEqual(1.25098f, value, 0.0002f);
-            Assert.AreEqual(0, RuntimeFaceLampLookupDecoder.ResolveLampStateIndex(1, 0));
-            Assert.AreEqual(7, RuntimeFaceLampLookupDecoder.ResolveLampStateIndex(99, 7));
+            Assert.AreEqual(-1, RuntimeFaceLampLookupDecoder.ResolveLampStateIndex(1, 0));
+            Assert.AreEqual(0, RuntimeFaceLampLookupDecoder.ResolveLampStateIndex(1, 1));
+            Assert.AreEqual(6, RuntimeFaceLampLookupDecoder.ResolveLampStateIndex(99, 7));
         }
 
         [Test]
@@ -66,7 +68,7 @@ namespace OasisPlayer.Tests
         {
             var state = new RuntimeLampState();
             Assert.True(state.SetAllBrightness(1f));
-            Assert.AreEqual(0f, state.GetBrightness(0));
+            Assert.AreEqual(1f, state.GetBrightness(0));
             Assert.AreEqual(1f, state.GetBrightness(1));
             Assert.AreEqual(1f, state.GetBrightness(255));
             state.MarkClean();
@@ -84,13 +86,13 @@ namespace OasisPlayer.Tests
             var sequence = new RuntimeLampDiagnosticSequence(RuntimeLampDiagnosticSettings.DefaultAutomatic());
             Assert.True(sequence.Start(state));
             var expected = new[] { 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, .2f, .4f, .6f, .8f, 1f };
-            for (var i = 0; i < expected.Length; i++) Assert.AreEqual(expected[i], state.GetBrightness(i + 1), .0001f);
-            Assert.AreEqual(0f, state.GetBrightness(17));
-            Assert.AreEqual(.2f, state.GetBrightness(28));
-            Assert.AreEqual(.8f, state.GetBrightness(RuntimeLampState.MaximumLampNumber));
+            for (var i = 0; i < expected.Length; i++) Assert.AreEqual(expected[i], state.GetBrightness(i), .0001f);
+            Assert.AreEqual(0f, state.GetBrightness(16));
+            Assert.AreEqual(.2f, state.GetBrightness(27));
+            Assert.AreEqual(1f, state.GetBrightness(RuntimeLampState.MaximumLampNumber));
             Assert.AreEqual(1, sequence.Advance(state, .5f));
-            Assert.AreEqual(1f, state.GetBrightness(17));
-            Assert.AreEqual(.8f, state.GetBrightness(16));
+            Assert.AreEqual(1f, state.GetBrightness(16));
+            Assert.AreEqual(.8f, state.GetBrightness(15));
         }
 
         [Test]
@@ -145,8 +147,8 @@ namespace OasisPlayer.Tests
                 var validFace = CreateLookupFace(validIds, validWeights);
                 var valid = RuntimeFaceLookupDiagnostic.Analyze(validFace);
                 Assert.AreEqual(2, valid.AssignedPixels);
-                Assert.AreEqual(3, valid.MinimumLampId);
-                Assert.AreEqual(217, valid.MaximumLampId);
+                Assert.AreEqual(2, valid.MinimumLampId);
+                Assert.AreEqual(216, valid.MaximumLampId);
                 Assert.AreEqual(0, valid.InvalidIdCount);
                 Assert.True(valid.HasNonZeroWeights);
             }

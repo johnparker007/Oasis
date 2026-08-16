@@ -63,8 +63,18 @@ public sealed class DocumentSaveService : IDocumentSaveService
         {
             progress.Report(0.15, "Exporting Face runtime assets...");
             var faceWithAuthoredAssets = EnsureFaceAuthoredPackageAssets(current.GetFaceDocument(), project, savePath);
-            var exportResult = _faceRuntimeExportService.Export(faceWithAuthoredAssets, project, savePath, progress.CreateChild(0.15, 0.75));
-            faceDocumentJson = FaceDocumentStorage.Serialize(exportResult.Document);
+            try
+            {
+                var exportResult = _faceRuntimeExportService.Export(faceWithAuthoredAssets, project, savePath, progress.CreateChild(0.15, 0.75));
+                faceDocumentJson = FaceDocumentStorage.Serialize(exportResult.Document);
+            }
+            catch (Exception exception)
+            {
+                // Runtime preview textures are disposable generated output. Failure to refresh
+                // them must not prevent the authored Face package from being saved.
+                progress.Report(0.75, $"Face runtime preview assets were not generated: {exception.Message}");
+                faceDocumentJson = FaceDocumentStorage.Serialize(faceWithAuthoredAssets);
+            }
             contentSource = new DocumentTabViewModel(
                 current.Document,
                 current.PanelLayoutJson,
