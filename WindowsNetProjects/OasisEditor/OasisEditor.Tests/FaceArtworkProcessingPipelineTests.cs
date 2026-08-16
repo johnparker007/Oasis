@@ -63,6 +63,58 @@ public sealed class FaceArtworkProcessingPipelineTests
         Assert.Equal(input.GetPixel(4, 4).Alpha, output.GetPixel(4, 4).Alpha);
     }
 
+    [Theory]
+    [InlineData(100, 40, 5)]   // orange
+    [InlineData(5, 15, 100)]   // blue
+    [InlineData(70, 5, 90)]    // purple
+    public void Evaluate_BrighteningPreservesSaturatedLinearChromaticity(byte red, byte green, byte blue)
+    {
+        using var input = new SKBitmap(1, 1);
+        input.SetPixel(0, 0, new SKColor(red, green, blue, 173));
+        using var output = EvaluateWithManualNeutralReferences(input, 100);
+        var sourceChromaticity = LinearChromaticity(input.GetPixel(0, 0));
+        var outputChromaticity = LinearChromaticity(output.GetPixel(0, 0));
+
+        Assert.True(output.GetPixel(0, 0).Red > red || output.GetPixel(0, 0).Green > green || output.GetPixel(0, 0).Blue > blue);
+        Assert.InRange(Math.Abs(sourceChromaticity.R - outputChromaticity.R), 0d, .015d);
+        Assert.InRange(Math.Abs(sourceChromaticity.G - outputChromaticity.G), 0d, .015d);
+        Assert.InRange(Math.Abs(sourceChromaticity.B - outputChromaticity.B), 0d, .015d);
+        Assert.Equal(173, output.GetPixel(0, 0).Alpha);
+    }
+
+    [Fact]
+    public void Evaluate_NeutralAndIntermediateStrengthRemainNeutralAndChromaticityPreserving()
+    {
+        using var neutral = new SKBitmap(1, 1);
+        neutral.SetPixel(0, 0, new SKColor(70, 70, 70));
+        using var correctedNeutral = EvaluateWithManualNeutralReferences(neutral, 100);
+        Assert.Equal(correctedNeutral.GetPixel(0, 0).Red, correctedNeutral.GetPixel(0, 0).Green);
+        Assert.Equal(correctedNeutral.GetPixel(0, 0).Green, correctedNeutral.GetPixel(0, 0).Blue);
+
+        using var colour = new SKBitmap(1, 1);
+        colour.SetPixel(0, 0, new SKColor(70, 5, 90));
+        using var intermediate = EvaluateWithManualNeutralReferences(colour, 50);
+        var sourceChromaticity = LinearChromaticity(colour.GetPixel(0, 0));
+        var outputChromaticity = LinearChromaticity(intermediate.GetPixel(0, 0));
+        Assert.InRange(Math.Abs(sourceChromaticity.R - outputChromaticity.R), 0d, .02d);
+        Assert.InRange(Math.Abs(sourceChromaticity.B - outputChromaticity.B), 0d, .02d);
+    }
+
+    [Fact]
+    public void Evaluate_BlackNearBlackAndOutOfGamutScalingAreSafe()
+    {
+        using var input = new SKBitmap(3, 1);
+        input.SetPixel(0, 0, SKColors.Black);
+        input.SetPixel(1, 0, new SKColor(1, 0, 1));
+        input.SetPixel(2, 0, new SKColor(220, 20, 5));
+        using var output = EvaluateWithManualNeutralReferences(input, 100);
+
+        Assert.Equal(SKColors.Black, output.GetPixel(0, 0));
+        Assert.True(output.GetPixel(1, 0).Red >= input.GetPixel(1, 0).Red);
+        Assert.Equal(byte.MaxValue, output.GetPixel(2, 0).Red);
+        Assert.True(output.GetPixel(2, 0).Green < output.GetPixel(2, 0).Red);
+    }
+
     [Fact]
     public void Evaluate_CanReturnIntermediatePipelineResultsInAuthoredOrder()
     {
@@ -242,6 +294,35 @@ public sealed class FaceArtworkProcessingPipelineTests
         Name = "Test", ProjectFilePath = Path.Combine(directory, "test.oasis"), ProjectDirectory = directory,
         AssetsDirectory = directory, MachinesDirectory = directory, GeneratedDirectory = directory
     };
+
+    private static SKBitmap EvaluateWithManualNeutralReferences(SKBitmap input, double strength)
+    {
+        return new FaceArtworkProcessingPipeline().Evaluate(input, new ImageProcessingPipelineModel
+        {
+            Operations = [new BlackWhiteLevelsOperationModel
+            {
+                Strength = strength,
+                BlackManualEnabled = true,
+                BlackManualColor = "#FF000000",
+                WhiteManualEnabled = true,
+                WhiteManualColor = "#FFB0B0B0"
+            }]
+        });
+    }
+
+    private static (double R, double G, double B) LinearChromaticity(SKColor color)
+    {
+        static double Linear(byte value)
+        {
+            var srgb = value / 255d;
+            return srgb <= .04045d ? srgb / 12.92d : Math.Pow((srgb + .055d) / 1.055d, 2.4d);
+        }
+        var red = Linear(color.Red);
+        var green = Linear(color.Green);
+        var blue = Linear(color.Blue);
+        var sum = red + green + blue;
+        return sum <= 0d ? (0d, 0d, 0d) : (red / sum, green / sum, blue / sum);
+    }
 
     private static BlackWhiteLevelsOperationModel Levels(string id, bool enabled, double strength, IReadOnlyList<NormalizedFacePointModel> black, IReadOnlyList<NormalizedFacePointModel> white) =>
         new() { Id = id, Enabled = enabled, Strength = strength, BlackSamples = black, WhiteSamples = white };

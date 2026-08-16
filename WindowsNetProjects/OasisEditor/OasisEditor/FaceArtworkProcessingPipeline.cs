@@ -6,6 +6,7 @@ namespace OasisEditor;
 internal sealed class FaceArtworkProcessingPipeline
 {
     private const double MinimumReferenceRange = 1d / 255d;
+    private const double MinimumScalableLuminance = 1e-8d;
 
     public SKBitmap Evaluate(SKBitmap input, ImageProcessingPipelineModel pipeline, int? operationCount = null)
     {
@@ -53,10 +54,13 @@ internal sealed class FaceArtworkProcessingPipeline
             var b = SrgbToLinear(source.Blue / 255d);
             var luminance = Luminance(r, g, b);
             var mappedLuminance = Math.Clamp((luminance - black) / (white - black), 0d, 1d);
-            var delta = mappedLuminance - luminance;
-            var correctedR = Math.Clamp(r + delta, 0d, 1d);
-            var correctedG = Math.Clamp(g + delta, 0d, 1d);
-            var correctedB = Math.Clamp(b + delta, 0d, 1d);
+            // A common linear-light scale preserves RGB ratios (and therefore chromaticity)
+            // until gamut clipping is required. Adding a neutral delta here would wash colour
+            // toward white whenever the operation brightens it.
+            var scale = luminance > MinimumScalableLuminance ? mappedLuminance / luminance : 0d;
+            var correctedR = Math.Clamp(r * scale, 0d, 1d);
+            var correctedG = Math.Clamp(g * scale, 0d, 1d);
+            var correctedB = Math.Clamp(b * scale, 0d, 1d);
             output.SetPixel(x, y, new SKColor(
                 ToByte(LinearToSrgb(Lerp(r, correctedR, blend))),
                 ToByte(LinearToSrgb(Lerp(g, correctedG, blend))),
