@@ -58,13 +58,27 @@ public sealed class InspectorViewModelTests
         var rows = viewModel.InspectorPropertyRows;
         var black = Assert.IsType<InspectorColorPropertyViewModel>(rows.Single(row => row.DisplayName == "Black Reference"));
         var white = Assert.IsType<InspectorColorPropertyViewModel>(rows.Single(row => row.DisplayName == "White Reference"));
+        var blackSelectedColorNotifications = 0;
+        var whiteSelectedColorNotifications = 0;
+        black.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(InspectorColorPropertyViewModel.SelectedColor)) blackSelectedColorNotifications++;
+        };
+        white.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(InspectorColorPropertyViewModel.SelectedColor)) whiteSelectedColorNotifications++;
+        };
 
         black.SelectedColor = Colors.Red;
         Assert.Equal("#FF0000", black.HexValue);
+        Assert.Equal(1, blackSelectedColorNotifications);
         black.SelectedColor = Colors.Green;
         Assert.Equal("#008000", black.HexValue);
+        Assert.Equal(2, blackSelectedColorNotifications);
         black.SelectedColor = Colors.Blue;
+        Assert.Equal(3, blackSelectedColorNotifications);
         white.SelectedColor = Color.FromRgb(0xAB, 0xCD, 0xEF);
+        Assert.Equal(1, whiteSelectedColorNotifications);
 
         Assert.Same(rows, viewModel.InspectorPropertyRows);
         Assert.Same(black, viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Black Reference"));

@@ -431,6 +431,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             return;
         }
 
+        // Live colour/scalar edits originate in the existing row, which already contains the
+        // authoritative value. Do not synchronously push the committed model value back into
+        // that row while PortableColorPicker is still handling its mouse interaction.
+        if (ShouldSuppressPropertyRowRefresh())
+        {
+            OnPropertyChanged(nameof(InspectorSummary));
+            return;
+        }
+
         if (selectedDocument.Document.DocumentType == EditorDocumentType.Face)
         {
             if (!selectedDocument.TryGetFaceElement(panelSelection, out var selectedFaceElement))
