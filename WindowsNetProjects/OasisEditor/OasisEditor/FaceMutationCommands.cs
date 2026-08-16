@@ -172,7 +172,8 @@ internal static class FaceMutationCommands
         for (var index = 0; index < left.Operations.Count; index++)
         {
             if (left.Operations[index] is BlackWhiteLevelsOperationModel a && right.Operations[index] is BlackWhiteLevelsOperationModel b
-                && (a.BlackManualEnabled != b.BlackManualEnabled || a.WhiteManualEnabled != b.WhiteManualEnabled)) return true;
+                && (a.BlackManualEnabled != b.BlackManualEnabled || a.WhiteManualEnabled != b.WhiteManualEnabled
+                    || a.BlackSamples.Count != b.BlackSamples.Count || a.WhiteSamples.Count != b.WhiteSamples.Count)) return true;
         }
         return false;
     }

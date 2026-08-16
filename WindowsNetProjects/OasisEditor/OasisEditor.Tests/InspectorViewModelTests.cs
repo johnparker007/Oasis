@@ -35,6 +35,53 @@ public sealed class InspectorViewModelTests
     }
 
     [Fact]
+    public void FaceManualColors_CommitLiveWithoutReplacingRowsOrLosingCurrentOperationState()
+    {
+        var operation = new BlackWhiteLevelsOperationModel
+        {
+            Id = "levels", Strength = 25, BlackManualEnabled = true, BlackManualColor = "#123456",
+            WhiteManualEnabled = true, WhiteManualColor = "#654321"
+        };
+        var face = new FaceDocumentModel
+        {
+            Artwork = new FaceArtworkModel { ProcessingPipeline = new ImageProcessingPipelineModel { Operations = [operation] } },
+            Elements = [new FaceArtworkElement { ObjectId = "art", Name = "Artwork", Width = 100, Height = 100 }]
+        };
+        var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"), faceDocumentJson: FaceDocumentStorage.Serialize(face));
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(document);
+        context.SetPanelSelection(document.DocumentId, new PanelSelectionInfo("art", "artwork", 0, 0, 100, 100));
+        bool Execute(Guid _, EditorCommands.ICommand command) { document.CommandService.Execute(command); return true; }
+        var viewModel = CreateInspectorViewModel(document, context, Execute);
+        document.PanelChanged += viewModel.NotifyPanelChanged;
+        viewModel.NotifyContextChanged();
+        var rows = viewModel.InspectorPropertyRows;
+        var black = Assert.IsType<InspectorColorPropertyViewModel>(rows.Single(row => row.DisplayName == "Black Reference"));
+        var white = Assert.IsType<InspectorColorPropertyViewModel>(rows.Single(row => row.DisplayName == "White Reference"));
+
+        black.SelectedColor = Colors.Red;
+        Assert.Equal("#FF0000", black.HexValue);
+        black.SelectedColor = Colors.Green;
+        Assert.Equal("#008000", black.HexValue);
+        black.SelectedColor = Colors.Blue;
+        white.SelectedColor = Color.FromRgb(0xAB, 0xCD, 0xEF);
+
+        Assert.Same(rows, viewModel.InspectorPropertyRows);
+        Assert.Same(black, viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Black Reference"));
+        Assert.Same(white, viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "White Reference"));
+        var saved = Assert.IsType<BlackWhiteLevelsOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations));
+        Assert.Equal("#0000FF", saved.BlackManualColor);
+        Assert.Equal("#ABCDEF", saved.WhiteManualColor);
+        Assert.Equal(25, saved.Strength);
+
+        Assert.IsType<InspectorBoolPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Black Manual")).Value = false;
+        Assert.IsType<InspectorBoolPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Black Manual")).Value = true;
+        saved = Assert.IsType<BlackWhiteLevelsOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations));
+        Assert.Equal("#0000FF", saved.BlackManualColor);
+        Assert.True(saved.BlackManualEnabled);
+    }
+
+    [Fact]
     public void InspectorSummary_SelectedLamp_IncludesLampNumber()
     {
         var selectedDocument = new DocumentTabViewModel(EditorDocument.CreatePanel2DStub("Panel"));
