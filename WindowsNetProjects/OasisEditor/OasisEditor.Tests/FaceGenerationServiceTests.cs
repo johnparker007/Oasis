@@ -1,3 +1,4 @@
+using OasisEditor;
 using System.Windows;
 using OasisEditor.Features.CabinetEditor.Models;
 using Xunit;

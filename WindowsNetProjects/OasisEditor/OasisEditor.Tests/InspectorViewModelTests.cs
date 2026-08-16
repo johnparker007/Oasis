@@ -1,3 +1,4 @@
+using OasisEditor;
 using System.Linq;
 using System.Windows.Media;
 using OasisEditor.Features.CabinetEditor.Models;

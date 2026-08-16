@@ -1,4 +1,5 @@
 using SkiaSharp;
+using OasisEditor;
 using Xunit;
 namespace OasisEditor.Tests;
 public sealed class FaceArtworkProcessingPipelineTests

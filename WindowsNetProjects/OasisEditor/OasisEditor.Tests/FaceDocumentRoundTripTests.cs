@@ -1,3 +1,4 @@
+using OasisEditor;
 using OasisEditor.Automation;
 using Xunit;
 

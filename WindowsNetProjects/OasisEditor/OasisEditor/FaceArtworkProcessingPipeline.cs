@@ -40,7 +40,8 @@ internal sealed class FaceArtworkProcessingPipeline
         for (var y = 0; y < input.Height; y++) for (var x = 0; x < input.Width; x++)
         {
             var p = input.GetPixel(x, y); var linear = new[] { ToLinear(p.Red), ToLinear(p.Green), ToLinear(p.Blue) };
-            var fx = input.Width <= 1 ? 0 : (double)x / (input.Width - 1), fy = input.Height <= 1 ? 0 : (double)y / (input.Height - 1);
+            var fx = input.Width <= 1 ? 0 : (double)x / (input.Width - 1);
+            var fy = input.Height <= 1 ? 0 : (double)y / (input.Height - 1);
             var evaluated = fields.Select(f => EvaluateField(f!, fx, fy)).ToArray();
             if (!operation.CorrectSpatialColor) { var mean = evaluated.Average(); evaluated = [mean, mean, mean]; }
             if (!operation.CorrectSpatialBrightness) { var mean = evaluated.Average(); evaluated = evaluated.Select(v => v - mean).ToArray(); }
@@ -79,14 +80,17 @@ internal sealed class FaceArtworkProcessingPipeline
     private static SKBitmap ApplyTonalNormalization(SKBitmap input, ArtworkCalibrationOperationModel operation)
     {
         if (!TryResolveReference(input, operation.BlackReference, out var black)||!TryResolveReference(input,operation.WhiteReference,out var white))return input.Copy();
-        var lo=Luminance(black[0],black[1],black[2]), hi=Luminance(white[0],white[1],white[2]); if(hi-lo<MinimumReferenceRange)return input.Copy();
+        var lo=Luminance(black[0],black[1],black[2]);
+        var hi=Luminance(white[0],white[1],white[2]);
+        if(hi-lo<MinimumReferenceRange)return input.Copy();
         return Transform(input,(c,ch,all)=>{var l=Luminance(all[0],all[1],all[2]);var desired=Math.Clamp((l-lo)/(hi-lo),0,1);return l>Epsilon?c*desired/l:0;});
     }
 
     internal static bool TryMeasureSample(SKBitmap image, CalibrationSampleModel sample, out double[] color)
     {
         color=[]; if(image.Width==0||image.Height==0||sample.X<0||sample.X>1||sample.Y<0||sample.Y>1)return false;
-        var cx=(int)Math.Round(sample.X*(image.Width-1)), cy=(int)Math.Round(sample.Y*(image.Height-1));
+        var cx=(int)Math.Round(sample.X*(image.Width-1));
+        var cy=(int)Math.Round(sample.Y*(image.Height-1));
         if(sample.SamplingMode==CalibrationSamplingMode.Pixel){var p=image.GetPixel(cx,cy);if(p.Alpha==0)return false;color=[ToLinear(p.Red),ToLinear(p.Green),ToLinear(p.Blue)];return true;}
         var radius=Math.Max(0,sample.RadiusPixels(image.Width,image.Height)); var values=new[]{new List<double>(),new List<double>(),new List<double>()}; var r=(int)Math.Ceiling(radius);
         for(var y=Math.Max(0,cy-r);y<=Math.Min(image.Height-1,cy+r);y++)for(var x=Math.Max(0,cx-r);x<=Math.Min(image.Width-1,cx+r);x++){if((x-cx)*(x-cx)+(y-cy)*(y-cy)>radius*radius)continue;var p=image.GetPixel(x,y);if(p.Alpha==0)continue;values[0].Add(ToLinear(p.Red));values[1].Add(ToLinear(p.Green));values[2].Add(ToLinear(p.Blue));}
