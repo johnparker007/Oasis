@@ -465,6 +465,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     private void RebuildPropertyRows()
     {
+        CommitDeferredColorEdits();
         _propertyRows.Clear();
 
         var selectedDocument = _selectedDocumentAccessor();
@@ -1611,15 +1612,18 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     _propertyRows.Add(new InspectorBoolPropertyViewModel("Black Manual", group, levels.BlackManualEnabled, commit: enabled =>
                         TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Toggle manual black reference", current => CopyBlackWhiteLevels(current, blackManualEnabled: enabled))));
                     _propertyRows.Add(new InspectorColorPropertyViewModel("Black Reference", group, levels.BlackManualEnabled ? levels.BlackManualColor : derivedBlack, isReadOnly: !levels.BlackManualEnabled, allowEmpty: false, commit: color =>
-                        TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Change manual black reference", current => CopyBlackWhiteLevels(current, blackManualColor: color), suppressInspectorRefresh: true)));
+                        TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Change manual black reference", current => CopyBlackWhiteLevels(current, blackManualColor: color), suppressInspectorRefresh: true), commitMode: InspectorColorCommitMode.Deferred));
                     _propertyRows.Add(new InspectorBoolPropertyViewModel("White Manual", group, levels.WhiteManualEnabled, commit: enabled =>
                         TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Toggle manual white reference", current => CopyBlackWhiteLevels(current, whiteManualEnabled: enabled))));
                     _propertyRows.Add(new InspectorColorPropertyViewModel("White Reference", group, levels.WhiteManualEnabled ? levels.WhiteManualColor : derivedWhite, isReadOnly: !levels.WhiteManualEnabled, allowEmpty: false, commit: color =>
-                        TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Change manual white reference", current => CopyBlackWhiteLevels(current, whiteManualColor: color), suppressInspectorRefresh: true)));
+                        TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Change manual white reference", current => CopyBlackWhiteLevels(current, whiteManualColor: color), suppressInspectorRefresh: true), commitMode: InspectorColorCommitMode.Deferred));
                     _propertyRows.Add(new InspectorActionPropertyViewModel("Add Black Marker", group, new RelayCommand(() => { selectedDocument.FaceArtworkSampleOperationId = levels.Id; selectedDocument.FaceArtworkSampleMode = FaceArtworkSampleMode.AddBlack; })));
                     _propertyRows.Add(new InspectorActionPropertyViewModel("Add White Marker", group, new RelayCommand(() => { selectedDocument.FaceArtworkSampleOperationId = levels.Id; selectedDocument.FaceArtworkSampleMode = FaceArtworkSampleMode.AddWhite; })));
                     _propertyRows.Add(new InspectorActionPropertyViewModel("Apply Changes", group, new RelayCommand(() =>
-                        _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateApplyArtworkProcessingCommand(selectedDocument.DocumentId, selectedDocument)))));
+                    {
+                        CommitDeferredColors(group);
+                        _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateApplyArtworkProcessingCommand(selectedDocument.DocumentId, selectedDocument));
+                    })));
                     if (levels.BlackSamples.Count > 0) _propertyRows.Add(new InspectorActionPropertyViewModel("Clear Black References", group, new RelayCommand(() =>
                         TryUpdateBlackWhiteLevels(selectedDocument, levels.Id, "Clear black references", current => CopyBlackWhiteLevels(current, blackSamples: [])))));
                     if (levels.WhiteSamples.Count > 0) _propertyRows.Add(new InspectorActionPropertyViewModel("Clear White References", group, new RelayCommand(() =>
@@ -1692,6 +1696,24 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         if (executed) return null;
         if (suppressInspectorRefresh) _suppressPropertyRowRefreshUntilUtc = DateTime.MinValue;
         return "Unable to update artwork processing operation.";
+    }
+
+    private void CommitDeferredColors(string groupName)
+    {
+        foreach (var row in _propertyRows.OfType<InspectorColorPropertyViewModel>()
+                     .Where(row => row.CommitMode == InspectorColorCommitMode.Deferred && string.Equals(row.GroupName, groupName, StringComparison.Ordinal)))
+        {
+            row.Commit();
+        }
+    }
+
+    public void CommitDeferredColorEdits()
+    {
+        foreach (var row in _propertyRows.OfType<InspectorColorPropertyViewModel>()
+                     .Where(row => row.CommitMode == InspectorColorCommitMode.Deferred))
+        {
+            row.Commit();
+        }
     }
 
 

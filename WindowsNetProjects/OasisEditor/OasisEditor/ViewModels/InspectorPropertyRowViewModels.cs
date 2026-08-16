@@ -66,6 +66,12 @@ public interface IInspectorAggregatePropertyRow
     bool IsMixed { get; }
 }
 
+public enum InspectorColorCommitMode
+{
+    Immediate,
+    Deferred
+}
+
 public sealed class InspectorTextPropertyViewModel : InspectorEditablePropertyRowViewModel, IInspectorAggregatePropertyRow
 {
     private string _value;
@@ -319,12 +325,14 @@ public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyR
     private readonly Func<string?, string?>? _commit;
     private readonly bool _allowEmpty;
     private bool _isMixed;
+    private readonly InspectorColorCommitMode _commitMode;
 
-    public InspectorColorPropertyViewModel(string displayName, string groupName, string? value, bool isReadOnly = false, bool allowEmpty = true, Func<string?, string?>? commit = null)
+    public InspectorColorPropertyViewModel(string displayName, string groupName, string? value, bool isReadOnly = false, bool allowEmpty = true, Func<string?, string?>? commit = null, InspectorColorCommitMode commitMode = InspectorColorCommitMode.Immediate)
         : base(displayName, groupName, isReadOnly)
     {
         _allowEmpty = allowEmpty;
         _commit = commit;
+        _commitMode = commitMode;
 
         if (InspectorColorHex.TryParse(value, out var parsedColor))
         {
@@ -354,9 +362,11 @@ public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyR
 
             _hexValue = InspectorColorHex.Format(value);
             RaisePropertyChanged(nameof(HexValue));
-            Commit();
+            if (_commitMode == InspectorColorCommitMode.Immediate) Commit();
         }
     }
+
+    public InspectorColorCommitMode CommitMode => _commitMode;
 
     public string HexValue
     {

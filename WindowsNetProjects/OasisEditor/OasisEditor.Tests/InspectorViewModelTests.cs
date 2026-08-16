@@ -83,10 +83,17 @@ public sealed class InspectorViewModelTests
         Assert.Same(rows, viewModel.InspectorPropertyRows);
         Assert.Same(black, viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Black Reference"));
         Assert.Same(white, viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "White Reference"));
+        Assert.Equal(InspectorColorCommitMode.Deferred, black.CommitMode);
+        Assert.Equal(InspectorColorCommitMode.Deferred, white.CommitMode);
+        Assert.Equal("#123456", Assert.IsType<BlackWhiteLevelsOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations)).BlackManualColor);
+        Assert.Equal(0, document.CommandService.History.Count);
+        black.Commit();
+        white.Commit();
         var saved = Assert.IsType<BlackWhiteLevelsOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations));
         Assert.Equal("#0000FF", saved.BlackManualColor);
         Assert.Equal("#ABCDEF", saved.WhiteManualColor);
         Assert.Equal(25, saved.Strength);
+        Assert.Equal(2, document.CommandService.History.Count);
 
         Assert.IsType<InspectorBoolPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Black Manual")).Value = false;
         Assert.IsType<InspectorBoolPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Black Manual")).Value = true;
