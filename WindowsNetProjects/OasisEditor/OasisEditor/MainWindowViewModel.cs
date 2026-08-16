@@ -1160,6 +1160,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = (settings ?? FaceGenerationSettingsModel.Default).Normalize(),
+            Artwork = faceDocument.Artwork,
             RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
             MaskLayer = faceDocument.MaskLayer,
             Trays = faceDocument.Trays,

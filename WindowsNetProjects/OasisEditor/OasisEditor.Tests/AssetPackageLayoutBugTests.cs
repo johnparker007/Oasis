@@ -79,7 +79,7 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         Assert.Equal("Saved Face", saved.Title);
         Assert.False(saved.Document.IsUntitled);
         Assert.True(File.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "asset.face")));
-        Assert.True(File.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "artwork.png")));
+        Assert.True(File.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "generated", "artwork.png")));
         Assert.True(File.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "mask.png")));
     }
 

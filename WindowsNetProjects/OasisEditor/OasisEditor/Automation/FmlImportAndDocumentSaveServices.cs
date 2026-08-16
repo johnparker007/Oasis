@@ -188,12 +188,31 @@ public sealed class DocumentSaveService : IDocumentSaveService
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,
+            Artwork = WithGeneratedArtworkPath(faceDocument.Artwork, artworkRelative, faceDocument),
             RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
             MaskLayer = maskLayer,
             Trays = faceDocument.Trays,
             LampEmitters = faceDocument.LampEmitters,
             Layers = faceDocument.Layers,
             Elements = elements
+        };
+    }
+
+    private static FaceArtworkModel? WithGeneratedArtworkPath(FaceArtworkModel? artwork, string generatedAssetPath, FaceDocumentModel faceDocument)
+    {
+        if (artwork is null)
+        {
+            return null;
+        }
+
+        return new FaceArtworkModel
+        {
+            Id = artwork.Id,
+            Source = artwork.Source,
+            ProcessingPipeline = artwork.ProcessingPipeline,
+            GeneratedAssetPath = generatedAssetPath,
+            OutputWidth = artwork.OutputWidth > 0 ? artwork.OutputWidth : Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Width ?? 1)),
+            OutputHeight = artwork.OutputHeight > 0 ? artwork.OutputHeight : Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Height ?? 1))
         };
     }
 
