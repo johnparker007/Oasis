@@ -158,8 +158,9 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
 
         var artwork = Assert.IsType<FaceArtworkElement>(Assert.Single(result.Document.Elements.OfType<FaceArtworkElement>()));
         var artworkPath = Path.Combine(project.ProjectDirectory, artwork.AssetPath!.Replace('/', Path.DirectorySeparatorChar));
-        Assert.StartsWith("Generated/Faces/_unsaved/pending-face/", artwork.AssetPath);
+        Assert.Equal("Generated/Faces/Unsaved Face/Artwork/artwork.png", artwork.AssetPath);
         Assert.True(File.Exists(artworkPath));
+        Assert.True(File.Exists(FaceArtworkRebuildService.GetOriginalArtworkPath(artworkPath)));
         using var bitmap = SKBitmap.Decode(artworkPath);
         Assert.NotNull(bitmap);
         Assert.Equal(SKColors.Red, bitmap.GetPixel(1, 1));
