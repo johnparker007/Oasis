@@ -123,7 +123,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
 
         using var manifestJson = JsonDocument.Parse(File.ReadAllText(result.ManifestPath));
         var root = manifestJson.RootElement;
-        Assert.Equal(6, root.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(FaceRuntimeExportService.RuntimeManifestSchemaVersion, root.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("face-runtime", root.GetProperty("faceId").GetString());
         Assert.Equal("artwork.png", root.GetProperty("artwork").GetString());
         Assert.Equal("mask.png", root.GetProperty("mask").GetString());
@@ -460,8 +460,8 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var outputDirectory = Path.Combine(_generatedDirectory, "zero-based-lamp-id-test");
         var document = CreateDocumentWithAuthoredTrayAndEmitters(
             new FaceSourceRegionModel { X = 0, Y = 0, Width = 1, Height = 1 },
-            new TestEmitter("lamp-zero", 0, 0.5, 0.5),
-            new TestEmitter("lamp-one", 1, 0.5, 0.5));
+            new TestEmitter("a-lamp-zero", 0, 0.5, 0.5),
+            new TestEmitter("b-lamp-one", 1, 0.5, 0.5));
 
         new FaceRuntimeTextureGenerator().Generate(document, 1, 1, outputDirectory);
 
