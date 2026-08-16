@@ -113,7 +113,31 @@ internal sealed class FaceGenerationService
         var resolvedFaceAssetName = pathService.SanitizePathSegment(string.IsNullOrWhiteSpace(faceAssetName) ? title : faceAssetName);
         var faceArtworkPath = ResolveFaceAuthoredAssetPath(projectDirectory, generatedDirectory, faceAssetDirectory, resolvedFaceAssetName, ProjectAssetPathService.FaceArtworkFileName);
         var region = FaceSourceRegionModel.FromRect(new Rect(0, 0, output.Width, output.Height));
-        var assetPath = FaceSourceShapeTransformService.TryGenerateBackground(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, faceArtworkPath);
+        var sourceBackground = sourcePanel.Elements.FirstOrDefault(element => element.Kind == PanelElementKind.Background);
+        var artworkState = new FaceArtworkModel
+        {
+            Source = new FaceArtworkSourceModel
+            {
+                Kind = FaceArtworkSourceKind.Panel2DFaceSourceShape,
+                AssetPath = sourceBackground?.AssetPath,
+                Panel2DDocumentId = NormalizeOptional(sourcePanel2DDocumentId),
+                Panel2DDocumentPath = NormalizeOptional(sourcePanel2DDocumentPath),
+                FaceSourceShapeId = NormalizeOptional(sourceShape.Id)
+            },
+            ProcessingPipeline = new ImageProcessingPipelineModel(),
+            OutputWidth = output.Width,
+            OutputHeight = output.Height
+        };
+        var assetPath = new FaceArtworkRebuildService().Rebuild(artworkState, sourcePanel, sourceShape, projectDirectory, faceArtworkPath);
+        artworkState = new FaceArtworkModel
+        {
+            Id = artworkState.Id,
+            Source = artworkState.Source,
+            ProcessingPipeline = artworkState.ProcessingPipeline,
+            GeneratedAssetPath = assetPath,
+            OutputWidth = artworkState.OutputWidth,
+            OutputHeight = artworkState.OutputHeight
+        };
         var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
         var faceDocumentId = Guid.NewGuid().ToString("N");
         progress?.Report(0.2, "Converting source-shape semantic components...");
@@ -162,6 +186,7 @@ internal sealed class FaceGenerationService
             SourceRegion = region,
             LastRegeneratedAtUtc = DateTime.UtcNow,
             GenerationSettings = settings,
+            Artwork = artworkState,
             MaskLayer = maskLayer,
             Trays = autoAuthored.Trays,
             LampEmitters = autoAuthored.Emitters,
@@ -354,7 +379,9 @@ internal sealed class FaceGenerationService
 
         if (!string.IsNullOrWhiteSpace(faceAssetDirectory))
         {
-            return System.IO.Path.Combine(faceAssetDirectory, fileName);
+            return string.Equals(fileName, ProjectAssetPathService.FaceArtworkFileName, StringComparison.OrdinalIgnoreCase)
+                ? System.IO.Path.Combine(faceAssetDirectory, ProjectAssetPathService.FaceGeneratedDirectoryName, fileName)
+                : System.IO.Path.Combine(faceAssetDirectory, fileName);
         }
 
         var pathService = new ProjectAssetPathService();

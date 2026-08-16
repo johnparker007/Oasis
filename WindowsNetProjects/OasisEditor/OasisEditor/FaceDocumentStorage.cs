@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 9;
+    public const int CurrentSchemaVersion = 10;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -101,7 +101,7 @@ public static class FaceDocumentStorage
                 return false;
             }
 
-            if (parsed.SchemaVersion > CurrentSchemaVersion)
+            if (parsed.SchemaVersion != CurrentSchemaVersion)
             {
                 return false;
             }
@@ -134,7 +134,7 @@ public static class FaceDocumentStorage
                 return false;
             }
 
-            if (parsed.SchemaVersion > CurrentSchemaVersion)
+            if (parsed.SchemaVersion != CurrentSchemaVersion)
             {
                 errorMessage = $"Unsupported face schema version '{parsed.SchemaVersion}'. This editor supports only version {CurrentSchemaVersion}.";
                 return false;
@@ -166,6 +166,7 @@ public static class FaceDocumentStorage
             SourceRegion = ToModel(file.SourceRegion),
             LastRegeneratedAtUtc = file.LastRegeneratedAtUtc,
             GenerationSettings = ToModel(file.GenerationSettings),
+            Artwork = ToModel(file.Artwork),
             RuntimeRenderAssets = ToModel(file.RuntimeRenderAssets),
             MaskLayer = ToModel(file.MaskLayer),
             Trays = (file.Trays ?? []).Select(ToModel).ToArray(),
@@ -202,6 +203,7 @@ public static class FaceDocumentStorage
             SourceRegion = ToFile(model.SourceRegion),
             LastRegeneratedAtUtc = model.LastRegeneratedAtUtc,
             GenerationSettings = ToFile(model.GenerationSettings),
+            Artwork = ToFile(model.Artwork),
             RuntimeRenderAssets = ToFile(model.RuntimeRenderAssets),
             MaskLayer = ToFile(model.MaskLayer),
             Trays = model.Trays.Select(ToFile).ToArray(),
@@ -215,6 +217,64 @@ public static class FaceDocumentStorage
                 LockTransform = layer.IsTransformLocked
             }).ToArray(),
             Elements = model.Elements.Select(ToFile).ToArray()
+        };
+    }
+
+    private static FaceArtworkModel? ToModel(FaceArtworkFile? file)
+    {
+        if (file is null) return null;
+        return new FaceArtworkModel
+        {
+            Id = string.IsNullOrWhiteSpace(file.Id) ? Guid.NewGuid().ToString("N") : file.Id.Trim(),
+            Source = new FaceArtworkSourceModel
+            {
+                Kind = file.Source.Kind,
+                AssetPath = NormalizeOptional(file.Source.AssetPath),
+                Panel2DDocumentId = NormalizeOptional(file.Source.Panel2DDocumentId),
+                Panel2DDocumentPath = NormalizeOptional(file.Source.Panel2DDocumentPath),
+                FaceSourceShapeId = NormalizeOptional(file.Source.FaceSourceShapeId)
+            },
+            ProcessingPipeline = new ImageProcessingPipelineModel
+            {
+                Operations = file.ProcessingPipeline.Operations.Select(operation => new ImageProcessingOperationModel
+                {
+                    Id = operation.Id,
+                    Kind = operation.Kind,
+                    Enabled = operation.Enabled
+                }).ToArray()
+            },
+            GeneratedAssetPath = NormalizeOptional(file.GeneratedAssetPath),
+            OutputWidth = file.OutputWidth,
+            OutputHeight = file.OutputHeight
+        };
+    }
+
+    private static FaceArtworkFile? ToFile(FaceArtworkModel? model)
+    {
+        if (model is null) return null;
+        return new FaceArtworkFile
+        {
+            Id = model.Id,
+            Source = new FaceArtworkSourceFile
+            {
+                Kind = model.Source.Kind,
+                AssetPath = model.Source.AssetPath,
+                Panel2DDocumentId = model.Source.Panel2DDocumentId,
+                Panel2DDocumentPath = model.Source.Panel2DDocumentPath,
+                FaceSourceShapeId = model.Source.FaceSourceShapeId
+            },
+            ProcessingPipeline = new ImageProcessingPipelineFile
+            {
+                Operations = model.ProcessingPipeline.Operations.Select(operation => new ImageProcessingOperationFile
+                {
+                    Id = operation.Id,
+                    Kind = operation.Kind,
+                    Enabled = operation.Enabled
+                }).ToArray()
+            },
+            GeneratedAssetPath = model.GeneratedAssetPath,
+            OutputWidth = model.OutputWidth,
+            OutputHeight = model.OutputHeight
         };
     }
 
@@ -776,7 +836,7 @@ public static class FaceDocumentStorage
 
 public sealed record FaceDocumentFile
 {
-    public int SchemaVersion { get; init; } = FaceDocumentStorage.CurrentSchemaVersion;
+    public int SchemaVersion { get; init; }
     public string? Id { get; init; }
     public string? Title { get; init; }
     public string? Summary { get; init; }
@@ -788,6 +848,7 @@ public sealed record FaceDocumentFile
     public FaceSourceRegionFile? SourceRegion { get; init; }
     public DateTime? LastRegeneratedAtUtc { get; init; }
     public FaceGenerationSettingsFile? GenerationSettings { get; init; }
+    public FaceArtworkFile? Artwork { get; init; }
     public FaceRuntimeRenderAssetsFile? RuntimeRenderAssets { get; init; }
     public FaceMaskLayerFile? MaskLayer { get; init; }
     public IReadOnlyList<FaceTrayFile>? Trays { get; init; } = [];
@@ -795,6 +856,37 @@ public sealed record FaceDocumentFile
     public DateTime SavedAtUtc { get; init; }
     public IReadOnlyList<FaceLayerFile>? Layers { get; init; } = [];
     public IReadOnlyList<FaceElementFile>? Elements { get; init; } = [];
+}
+
+public sealed record FaceArtworkFile
+{
+    public string Id { get; init; } = string.Empty;
+    public FaceArtworkSourceFile Source { get; init; } = new();
+    public ImageProcessingPipelineFile ProcessingPipeline { get; init; } = new();
+    public string? GeneratedAssetPath { get; init; }
+    public int OutputWidth { get; init; }
+    public int OutputHeight { get; init; }
+}
+
+public sealed record FaceArtworkSourceFile
+{
+    public FaceArtworkSourceKind Kind { get; init; }
+    public string? AssetPath { get; init; }
+    public string? Panel2DDocumentId { get; init; }
+    public string? Panel2DDocumentPath { get; init; }
+    public string? FaceSourceShapeId { get; init; }
+}
+
+public sealed record ImageProcessingPipelineFile
+{
+    public IReadOnlyList<ImageProcessingOperationFile> Operations { get; init; } = [];
+}
+
+public sealed record ImageProcessingOperationFile
+{
+    public string Id { get; init; } = string.Empty;
+    public string Kind { get; init; } = string.Empty;
+    public bool Enabled { get; init; } = true;
 }
 
 

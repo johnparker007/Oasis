@@ -15,6 +15,7 @@ public sealed class ProjectAssetPathService
     public const string FaceManifestFileName = "asset.face";
     public const string Cabinet3DManifestFileName = "asset.cabinet3d";
     public const string FaceArtworkFileName = "artwork.png";
+    public const string FaceGeneratedDirectoryName = "generated";
     public const string FaceMaskFileName = "mask.png";
 
     public string SanitizePathSegment(string name)
@@ -47,7 +48,7 @@ public sealed class ProjectAssetPathService
     public string GetPanel2DManifestPath(EditorProject project, string assetName) => GetAssetManifestPath(project, EditorAssetType.Panel2D, assetName);
     public string GetFaceManifestPath(EditorProject project, string assetName) => GetAssetManifestPath(project, EditorAssetType.Face, assetName);
     public string GetCabinet3DManifestPath(EditorProject project, string assetName) => GetAssetManifestPath(project, EditorAssetType.Cabinet3D, assetName);
-    public string GetFaceArtworkPath(EditorProject project, string assetName) => Path.Combine(GetAssetPackageDirectory(project, EditorAssetType.Face, assetName), FaceArtworkFileName);
+    public string GetFaceArtworkPath(EditorProject project, string assetName) => Path.Combine(GetAssetPackageDirectory(project, EditorAssetType.Face, assetName), FaceGeneratedDirectoryName, FaceArtworkFileName);
     public string GetFaceMaskPath(EditorProject project, string assetName) => Path.Combine(GetAssetPackageDirectory(project, EditorAssetType.Face, assetName), FaceMaskFileName);
     public string GetFaceRuntimeDirectory(EditorProject project, string assetName) => Path.Combine(project.GeneratedDirectory, "Faces", SanitizePathSegment(assetName), FaceRuntimeExportService.RuntimeDirectoryName);
 

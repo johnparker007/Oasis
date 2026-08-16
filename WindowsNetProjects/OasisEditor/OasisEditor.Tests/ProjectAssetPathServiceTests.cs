@@ -22,7 +22,7 @@ public sealed class ProjectAssetPathServiceTests
 
         Assert.Equal(Path.Combine(root, "Assets", "Panel2D", "Main Panel", "asset.panel2d"), service.GetPanel2DManifestPath(project, "Main Panel"));
         Assert.Equal(Path.Combine(root, "Assets", "Faces", "Top Glass", "asset.face"), service.GetFaceManifestPath(project, "Top Glass"));
-        Assert.Equal(Path.Combine(root, "Assets", "Faces", "Top Glass", "artwork.png"), service.GetFaceArtworkPath(project, "Top Glass"));
+        Assert.Equal(Path.Combine(root, "Assets", "Faces", "Top Glass", "generated", "artwork.png"), service.GetFaceArtworkPath(project, "Top Glass"));
         Assert.Equal(Path.Combine(root, "Assets", "Faces", "Top Glass", "mask.png"), service.GetFaceMaskPath(project, "Top Glass"));
         Assert.Equal(Path.Combine(root, "Assets", "Cabinet3D", "Vogue", "asset.cabinet3d"), service.GetCabinet3DManifestPath(project, "Vogue"));
         Assert.Equal(Path.Combine(root, "Generated", "Faces", "Top Glass", "runtime"), service.GetFaceRuntimeDirectory(project, "Top Glass"));

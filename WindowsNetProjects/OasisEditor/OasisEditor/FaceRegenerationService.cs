@@ -93,6 +93,8 @@ internal sealed class FaceRegenerationService
             sourcePanel2DDocumentPath: existingFace.SourcePanel2DDocumentPath,
             cabinetDocument: cabinetDocument);
 
+        var artwork = PreserveArtwork(existingFace.Artwork, generated.Document.Artwork);
+
         progress.Report(0.45, "Correlating regenerated elements...");
         var existingGeneratedByKey = existingFace.Elements
             .Select(element => new KeyValuePair<string, FaceElementModel>(CreateRegenerationKey(element), element))
@@ -122,6 +124,16 @@ internal sealed class FaceRegenerationService
 
             mergedElements.Add(regeneratedElement);
             addedElementCount++;
+        }
+
+        if (existingFace.Artwork?.Source.Kind == FaceArtworkSourceKind.IndependentImage)
+        {
+            var existingArtworkElement = existingFace.Elements.OfType<FaceArtworkElement>().FirstOrDefault();
+            if (existingArtworkElement is not null)
+            {
+                mergedElements.RemoveAll(element => element is FaceArtworkElement);
+                mergedElements.Insert(0, existingArtworkElement);
+            }
         }
 
         progress.Report(0.7, "Preserving manual elements/runtime identity...");
@@ -159,6 +171,7 @@ internal sealed class FaceRegenerationService
             SourceRegion = generated.Document.SourceRegion ?? sourceRegion,
             LastRegeneratedAtUtc = DateTime.UtcNow,
             GenerationSettings = settings,
+            Artwork = artwork,
             MaskLayer = generated.Document.MaskLayer,
             Trays = autoAuthored.Trays,
             LampEmitters = autoAuthored.Emitters,
@@ -174,6 +187,29 @@ internal sealed class FaceRegenerationService
             removedGeneratedElementCount,
             preservedManualElements.Count,
             generated);
+    }
+
+    private static FaceArtworkModel? PreserveArtwork(FaceArtworkModel? existing, FaceArtworkModel? generated)
+    {
+        if (existing is null) return generated;
+        if (generated is null || existing.Source.Kind == FaceArtworkSourceKind.IndependentImage) return existing;
+
+        return new FaceArtworkModel
+        {
+            Id = existing.Id,
+            Source = new FaceArtworkSourceModel
+            {
+                Kind = existing.Source.Kind,
+                AssetPath = generated.Source.AssetPath,
+                Panel2DDocumentId = generated.Source.Panel2DDocumentId,
+                Panel2DDocumentPath = generated.Source.Panel2DDocumentPath,
+                FaceSourceShapeId = generated.Source.FaceSourceShapeId
+            },
+            ProcessingPipeline = existing.ProcessingPipeline,
+            GeneratedAssetPath = generated.GeneratedAssetPath,
+            OutputWidth = generated.OutputWidth,
+            OutputHeight = generated.OutputHeight
+        };
     }
 
 
