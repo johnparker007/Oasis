@@ -71,8 +71,12 @@ public sealed class FaceArtworkProcessingPipelineTests
             var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"), faceDocumentJson: FaceDocumentStorage.Serialize(face));
             document.SetProjectAccessor(() => new EditorProject
             {
+                Name = "Test",
                 ProjectFilePath = Path.Combine(directory, "test.oasisproj"),
-                ProjectDirectory = directory
+                ProjectDirectory = directory,
+                AssetsDirectory = Path.Combine(directory, "Assets"),
+                MachinesDirectory = Path.Combine(directory, "Machines"),
+                GeneratedDirectory = Path.Combine(directory, "Generated")
             });
             var command = FaceMutationCommands.CreateApplyArtworkProcessingCommand(document.DocumentId, document);
 
@@ -101,8 +105,12 @@ public sealed class FaceArtworkProcessingPipelineTests
             var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"), faceDocumentJson: FaceDocumentStorage.Serialize(face));
             document.SetProjectAccessor(() => new EditorProject
             {
+                Name = "Test",
                 ProjectFilePath = Path.Combine(directory, "test.oasisproj"),
-                ProjectDirectory = directory
+                ProjectDirectory = directory,
+                AssetsDirectory = Path.Combine(directory, "Assets"),
+                MachinesDirectory = Path.Combine(directory, "Machines"),
+                GeneratedDirectory = Path.Combine(directory, "Generated")
             });
 
             document.CommandService.Execute(FaceMutationCommands.CreateApplyArtworkProcessingCommand(document.DocumentId, document));
