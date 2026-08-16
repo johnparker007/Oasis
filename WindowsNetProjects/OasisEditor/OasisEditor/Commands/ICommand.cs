@@ -37,3 +37,9 @@ public interface IExecutionTrackedCommand : ICommand
 {
     bool WasExecuted { get; }
 }
+
+/// <summary>Supplies a specific user-facing reason when an execution-tracked command cannot run.</summary>
+public interface IExecutionFailureDiagnostic
+{
+    string? ExecutionFailureMessage { get; }
+}

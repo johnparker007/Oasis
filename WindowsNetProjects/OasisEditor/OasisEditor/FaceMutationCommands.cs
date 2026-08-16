@@ -11,12 +11,12 @@ internal static class FaceMutationCommands
         return new SetProcessingPipelineMutationCommand(documentId, document, pipeline, description);
     }
 
-    public static Commands.ICommand CreateAddBlackWhiteLevelsCommand(Guid documentId, DocumentTabViewModel document)
+    public static Commands.ICommand CreateAddArtworkCalibrationCommand(Guid documentId, DocumentTabViewModel document)
     {
         var operations = document.GetFaceDocument().Artwork?.ProcessingPipeline.Operations ?? [];
         return CreateSetProcessingPipelineCommand(documentId, document,
-            new ImageProcessingPipelineModel { Operations = operations.Append(new BlackWhiteLevelsOperationModel()).ToArray() },
-            "Add Black / White Normalisation");
+            new ImageProcessingPipelineModel { Operations = operations.Append(new ArtworkCalibrationOperationModel()).ToArray() },
+            "Add Artwork Calibration");
     }
 
     public static Commands.ICommand CreateApplyArtworkProcessingCommand(Guid documentId, DocumentTabViewModel document) =>
@@ -168,17 +168,15 @@ internal static class FaceMutationCommands
 
     private static bool RequiresInspectorRebuild(ImageProcessingPipelineModel left, ImageProcessingPipelineModel right)
     {
-        if (!left.Operations.Select(operation => operation.Id).SequenceEqual(right.Operations.Select(operation => operation.Id))) return true;
-        for (var index = 0; index < left.Operations.Count; index++)
-        {
-            if (left.Operations[index] is BlackWhiteLevelsOperationModel a && right.Operations[index] is BlackWhiteLevelsOperationModel b
-                && (a.BlackManualEnabled != b.BlackManualEnabled || a.WhiteManualEnabled != b.WhiteManualEnabled
-                    || a.BlackSamples.Count != b.BlackSamples.Count || a.WhiteSamples.Count != b.WhiteSamples.Count)) return true;
-        }
+        if (!left.Operations.Select(o=>o.Id).SequenceEqual(right.Operations.Select(o=>o.Id))) return true;
+        for(var i=0;i<left.Operations.Count;i++) if(left.Operations[i] is ArtworkCalibrationOperationModel a && right.Operations[i] is ArtworkCalibrationOperationModel b)
+            if(a.BlackReference.ManualEnabled!=b.BlackReference.ManualEnabled || a.WhiteReference.ManualEnabled!=b.WhiteReference.ManualEnabled ||
+               !a.BlackReference.Samples.Select(x=>x.Id).SequenceEqual(b.BlackReference.Samples.Select(x=>x.Id)) || !a.WhiteReference.Samples.Select(x=>x.Id).SequenceEqual(b.WhiteReference.Samples.Select(x=>x.Id)) ||
+               !a.SameColorGroups.Select(g=>(g.Id,g.Name,g.Samples.Count)).SequenceEqual(b.SameColorGroups.Select(g=>(g.Id,g.Name,g.Samples.Count)))) return true;
         return false;
     }
 
-    private sealed class ApplyArtworkProcessingCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    private sealed class ApplyArtworkProcessingCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand, Commands.IExecutionFailureDiagnostic
     {
         private readonly Guid _documentId;
         private readonly DocumentTabViewModel _document;
@@ -189,16 +187,33 @@ internal static class FaceMutationCommands
         public Guid DocumentId => _documentId;
         public string Description => "Apply Face Artwork Processing";
         public bool WasExecuted { get; private set; }
+        public string? ExecutionFailureMessage { get; private set; }
 
         public void Execute()
         {
             WasExecuted = false;
+            ExecutionFailureMessage = null;
             if (_after is not null)
             {
                 WasExecuted = _document.TryRestoreGeneratedArtwork(_after);
+                if (!WasExecuted) ExecutionFailureMessage = "The previously applied artwork could not be restored during redo.";
                 return;
             }
-            if (!_document.TryReadGeneratedArtwork(out var before) || !_document.TryRebuildFaceArtwork() || !_document.TryReadGeneratedArtwork(out var after)) return;
+            if (!_document.TryReadGeneratedArtwork(out var before, out var readBeforeError))
+            {
+                ExecutionFailureMessage = readBeforeError;
+                return;
+            }
+            if (!_document.TryRebuildFaceArtwork(out var processingError))
+            {
+                ExecutionFailureMessage = processingError;
+                return;
+            }
+            if (!_document.TryReadGeneratedArtwork(out var after, out var readAfterError))
+            {
+                ExecutionFailureMessage = readAfterError ?? "Processed artwork could not be read back after Apply.";
+                return;
+            }
             _before = before;
             _after = after;
             WasExecuted = true;
@@ -215,15 +230,46 @@ internal static class FaceMutationCommands
         if (left.Operations.Count != right.Operations.Count) return false;
         for (var index = 0; index < left.Operations.Count; index++)
         {
-            if (left.Operations[index] is not BlackWhiteLevelsOperationModel a || right.Operations[index] is not BlackWhiteLevelsOperationModel b
-                || a.Id != b.Id || a.Enabled != b.Enabled || a.Strength != b.Strength
-                || a.BlackManualEnabled != b.BlackManualEnabled || a.BlackManualColor != b.BlackManualColor
-                || a.WhiteManualEnabled != b.WhiteManualEnabled || a.WhiteManualColor != b.WhiteManualColor
-                || !a.BlackSamples.Select(p => (p.X, p.Y)).SequenceEqual(b.BlackSamples.Select(p => (p.X, p.Y)))
-                || !a.WhiteSamples.Select(p => (p.X, p.Y)).SequenceEqual(b.WhiteSamples.Select(p => (p.X, p.Y)))) return false;
+            if (left.Operations[index] is not ArtworkCalibrationOperationModel a
+                || right.Operations[index] is not ArtworkCalibrationOperationModel b
+                || a.Id != b.Id
+                || a.Enabled != b.Enabled
+                || a.Strength != b.Strength
+                || a.CorrectSpatialBrightness != b.CorrectSpatialBrightness
+                || a.CorrectSpatialColor != b.CorrectSpatialColor
+                || a.NormalizeBlackWhite != b.NormalizeBlackWhite
+                || a.NeutralizeWhite != b.NeutralizeWhite
+                || !ReferencesEquivalent(a.BlackReference, b.BlackReference)
+                || !ReferencesEquivalent(a.WhiteReference, b.WhiteReference)
+                || a.SameColorGroups.Count != b.SameColorGroups.Count)
+            {
+                return false;
+            }
+
+            for (var groupIndex = 0; groupIndex < a.SameColorGroups.Count; groupIndex++)
+            {
+                var leftGroup = a.SameColorGroups[groupIndex];
+                var rightGroup = b.SameColorGroups[groupIndex];
+                if (leftGroup.Id != rightGroup.Id
+                    || leftGroup.Name != rightGroup.Name
+                    || !SamplesEquivalent(leftGroup.Samples, rightGroup.Samples))
+                {
+                    return false;
+                }
+            }
         }
+
         return true;
     }
+
+    private static bool ReferencesEquivalent(CalibrationReferenceModel left, CalibrationReferenceModel right) =>
+        left.ManualEnabled == right.ManualEnabled
+        && left.ManualColor == right.ManualColor
+        && SamplesEquivalent(left.Samples, right.Samples);
+
+    private static bool SamplesEquivalent(IReadOnlyList<CalibrationSampleModel> left, IReadOnlyList<CalibrationSampleModel> right) =>
+        left.Select(sample => (sample.Id, sample.X, sample.Y, sample.SamplingMode, sample.RadiusNormalized))
+            .SequenceEqual(right.Select(sample => (sample.Id, sample.X, sample.Y, sample.SamplingMode, sample.RadiusNormalized)));
 
     private sealed class AddFaceElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {

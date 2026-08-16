@@ -31,8 +31,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private double _facePanY;
     private double _panelPanX;
     private double _panelPanY;
-    private FaceArtworkSampleMode _faceArtworkSampleMode;
-    private string? _faceArtworkSampleOperationId;
+    private CalibrationPlacementState? _calibrationPlacement;
     private bool _faceArtworkShowOriginal;
     private Dictionary<string, object>? _lastVisualStateByObjectId;
     private readonly MachineRuntimeState _runtimeState;
@@ -115,15 +114,10 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public string FilePath => Document.FilePath;
     public string ContentSummary => Document.ContentSummary;
     public bool IsDirty => Document.IsDirty;
-    public FaceArtworkSampleMode FaceArtworkSampleMode
+    public CalibrationPlacementState? CalibrationPlacement
     {
-        get => _faceArtworkSampleMode;
-        set { if (_faceArtworkSampleMode == value) return; _faceArtworkSampleMode = value; PropertyChanged?.Invoke(this, new(nameof(FaceArtworkSampleMode))); }
-    }
-    public string? FaceArtworkSampleOperationId
-    {
-        get => _faceArtworkSampleOperationId;
-        set { if (_faceArtworkSampleOperationId == value) return; _faceArtworkSampleOperationId = value; PropertyChanged?.Invoke(this, new(nameof(FaceArtworkSampleOperationId))); }
+        get => _calibrationPlacement;
+        set { if (_calibrationPlacement == value) return; _calibrationPlacement = value; PropertyChanged?.Invoke(this, new(nameof(CalibrationPlacement))); }
     }
     public bool FaceArtworkShowOriginal
     {
@@ -263,25 +257,52 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         return _faceDocumentModel;
     }
 
-    internal bool TryRebuildFaceArtwork()
+    internal bool TryRebuildFaceArtwork(out string? errorMessage)
     {
+        errorMessage = null;
         var artwork = _faceDocumentModel.Artwork;
         var project = _projectAccessor?.Invoke();
-        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)) return false;
-        var rebuilt = new FaceArtworkRebuildService().ApplyProcessing(artwork, project.ProjectDirectory);
-        if (rebuilt)
+        if (artwork is null)
         {
-            NotifyGeneratedArtworkChanged(artwork);
+            errorMessage = "The Face has no authored artwork state.";
+            return false;
         }
-        return rebuilt;
+        if (project is null)
+        {
+            errorMessage = "The Face is not associated with an open project, so generated artwork paths cannot be resolved.";
+            return false;
+        }
+        var result = new FaceArtworkRebuildService().ApplyProcessing(artwork, project.ProjectDirectory);
+        errorMessage = result.ErrorMessage;
+        if (!result.Succeeded) return false;
+        NotifyGeneratedArtworkChanged(artwork);
+        return true;
     }
 
-    internal bool TryReadGeneratedArtwork(out byte[] bytes)
+    internal bool TryReadGeneratedArtwork(out byte[] bytes, out string? errorMessage)
     {
         bytes = [];
-        if (!TryGetGeneratedArtworkPath(out var path) || !File.Exists(path)) return false;
-        bytes = File.ReadAllBytes(path);
-        return true;
+        errorMessage = null;
+        if (!TryGetGeneratedArtworkPath(out var path))
+        {
+            errorMessage = "The generated artwork path is missing or cannot be resolved because no project is open.";
+            return false;
+        }
+        if (!File.Exists(path))
+        {
+            errorMessage = $"Generated artwork was not found at '{path}'. Regenerate the Face before applying artwork processing.";
+            return false;
+        }
+        try
+        {
+            bytes = File.ReadAllBytes(path);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            errorMessage = $"Generated artwork could not be read from '{path}': {exception.Message}";
+            return false;
+        }
     }
 
     internal bool TryRestoreGeneratedArtwork(byte[] bytes)
@@ -309,10 +330,10 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         PanelChanged?.Invoke(new PanelChangeEvent(DocumentId, artwork.Id, PanelChangeProperties.Metadata, AffectsCanvas: true, AffectsHierarchy: false, AffectsInspectorRows: false, AffectsPersistence: false));
     }
 
-    internal bool TryGetArtworkReferenceColors(BlackWhiteLevelsOperationModel operation, out string? blackColor, out string? whiteColor)
+    internal bool TryGetArtworkReferenceColors(ArtworkCalibrationOperationModel operation, out string? blackColor, out string? whiteColor)
     {
-        blackColor = operation.BlackManualEnabled ? operation.BlackManualColor : null;
-        whiteColor = operation.WhiteManualEnabled ? operation.WhiteManualColor : null;
+        blackColor = operation.BlackReference.ManualEnabled ? operation.BlackReference.ManualColor : null;
+        whiteColor = operation.WhiteReference.ManualEnabled ? operation.WhiteReference.ManualColor : null;
         var artwork = _faceDocumentModel.Artwork;
         var project = _projectAccessor?.Invoke();
         if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)) return false;
@@ -322,7 +343,24 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var originalPath = FaceArtworkRebuildService.GetOriginalArtworkPath(generatedPath);
         if (!File.Exists(originalPath)) return false;
         using var original = SKBitmap.Decode(originalPath);
-        return original is not null && FaceArtworkProcessingPipeline.TryResolveReferenceColors(original, operation, out blackColor, out whiteColor);
+        if (original is null) return false;
+        var index = artwork.ProcessingPipeline.Operations.ToList().FindIndex(o => o.Id == operation.Id);
+        using var input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, Math.Max(0, index));
+        return FaceArtworkProcessingPipeline.TryResolveReferenceColors(input, operation, out blackColor, out whiteColor);
+    }
+
+    internal string? GetArtworkSampleColor(ArtworkCalibrationOperationModel operation, CalibrationSampleModel sample)
+    {
+        var artwork = _faceDocumentModel.Artwork;
+        var project = _projectAccessor?.Invoke();
+        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)) return null;
+        var generated = Path.IsPathRooted(artwork.GeneratedAssetPath) ? artwork.GeneratedAssetPath : Path.Combine(project.ProjectDirectory, artwork.GeneratedAssetPath.Replace('/', Path.DirectorySeparatorChar));
+        var originalPath = FaceArtworkRebuildService.GetOriginalArtworkPath(generated);
+        using var original = File.Exists(originalPath) ? SKBitmap.Decode(originalPath) : null;
+        if (original is null) return null;
+        var index = artwork.ProcessingPipeline.Operations.ToList().FindIndex(o => o.Id == operation.Id);
+        using var input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, Math.Max(0, index));
+        return FaceArtworkProcessingPipeline.MeasureSampleHex(input, sample);
     }
 
     public string GetFaceDocumentJson()

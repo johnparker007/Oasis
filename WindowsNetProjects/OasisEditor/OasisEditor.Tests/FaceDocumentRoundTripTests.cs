@@ -1,3 +1,4 @@
+using OasisEditor;
 using OasisEditor.Automation;
 using Xunit;
 
@@ -27,9 +28,9 @@ public sealed class FaceDocumentRoundTripTests
                 },
                 ProcessingPipeline = new ImageProcessingPipelineModel
                 {
-                    Operations = [new BlackWhiteLevelsOperationModel { Id = "operation-1", Enabled = false }]
+                    Operations = [new ArtworkCalibrationOperationModel { Id = "operation-1", Enabled = false }]
                 },
-                GeneratedAssetPath = "Assets/Faces/Front Face/generated/artwork.png",
+                GeneratedAssetPath = "Generated/Faces/Front Face/Artwork/artwork.png",
                 OutputWidth = 320,
                 OutputHeight = 240
             },
@@ -144,7 +145,7 @@ public sealed class FaceDocumentRoundTripTests
         Assert.Equal("artwork-state-1", savedDocument.Artwork!.Id);
         Assert.Equal(FaceArtworkSourceKind.Panel2DFaceSourceShape, savedDocument.Artwork.Source.Kind);
         Assert.Equal("shape-1", savedDocument.Artwork.Source.FaceSourceShapeId);
-        Assert.Equal("Assets/Faces/Front Face/generated/artwork.png", savedDocument.Artwork.GeneratedAssetPath);
+        Assert.Equal("Generated/Faces/Front Face/Artwork/artwork.png", savedDocument.Artwork.GeneratedAssetPath);
         Assert.Equal("operation-1", Assert.Single(savedDocument.Artwork.ProcessingPipeline.Operations).Id);
         Assert.Equal("Generated/Faces/face-1-mask.png", savedDocument.MaskLayer!.AssetPath);
         Assert.Equal(24, savedDocument.MaskLayer.ExtractionThreshold);

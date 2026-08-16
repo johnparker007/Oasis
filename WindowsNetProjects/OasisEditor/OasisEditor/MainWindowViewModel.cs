@@ -2720,7 +2720,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             }
             else
             {
-                AddOutputEntry($"Command '{command.Description}' was not executed for document '{documentId:N}'.", OutputLogStatus.Warning);
+                var reason = (command as EditorCommands.IExecutionFailureDiagnostic)?.ExecutionFailureMessage;
+                AddOutputEntry(string.IsNullOrWhiteSpace(reason)
+                    ? $"Command '{command.Description}' was not executed for document '{documentId:N}'."
+                    : $"Command '{command.Description}' was not executed: {reason}", OutputLogStatus.Warning);
             }
 
             return executed;

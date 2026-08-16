@@ -81,7 +81,10 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         Assert.Equal("Saved Face", saved.Title);
         Assert.False(saved.Document.IsUntitled);
         Assert.True(File.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "asset.face")));
-        Assert.True(File.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "generated", "artwork.png")));
+        var artworkPath = Path.Combine(project.GeneratedDirectory, "Faces", "Saved Face", "Artwork", "artwork.png");
+        Assert.True(File.Exists(artworkPath));
+        Assert.True(File.Exists(FaceArtworkRebuildService.GetOriginalArtworkPath(artworkPath)));
+        Assert.False(Directory.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "generated")));
         Assert.True(File.Exists(Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "mask.png")));
         var savedFace = saved.GetFaceDocument();
         Assert.Equal(0, Assert.Single(savedFace.LampEmitters).LampId);
@@ -155,8 +158,9 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
 
         var artwork = Assert.IsType<FaceArtworkElement>(Assert.Single(result.Document.Elements.OfType<FaceArtworkElement>()));
         var artworkPath = Path.Combine(project.ProjectDirectory, artwork.AssetPath!.Replace('/', Path.DirectorySeparatorChar));
-        Assert.StartsWith("Generated/Faces/_unsaved/pending-face/", artwork.AssetPath);
+        Assert.Equal("Generated/Faces/Unsaved Face/Artwork/artwork.png", artwork.AssetPath);
         Assert.True(File.Exists(artworkPath));
+        Assert.True(File.Exists(FaceArtworkRebuildService.GetOriginalArtworkPath(artworkPath)));
         using var bitmap = SKBitmap.Decode(artworkPath);
         Assert.NotNull(bitmap);
         Assert.Equal(SKColors.Red, bitmap.GetPixel(1, 1));

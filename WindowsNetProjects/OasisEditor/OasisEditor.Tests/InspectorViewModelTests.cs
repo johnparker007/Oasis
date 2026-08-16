@@ -1,3 +1,4 @@
+using OasisEditor;
 using System.Linq;
 using System.Windows.Media;
 using OasisEditor.Features.CabinetEditor.Models;
@@ -26,10 +27,10 @@ public sealed class InspectorViewModelTests
         viewModel.NotifyContextChanged();
 
         Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.DisplayName == "Strength (%)");
-        Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName.StartsWith("+ Add Black", StringComparison.Ordinal))).Command.Execute(null);
+        Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "+ Add Artwork Calibration")).Command.Execute(null);
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Strength (%)");
 
-        Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Remove")).Command.Execute(null);
+        Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Remove Calibration")).Command.Execute(null);
         Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.DisplayName == "Strength (%)");
         Assert.Equal("art", context.ActivePanelSelection?.ObjectId);
     }
@@ -37,10 +38,10 @@ public sealed class InspectorViewModelTests
     [Fact]
     public void FaceManualColors_CommitLiveWithoutReplacingRowsOrLosingCurrentOperationState()
     {
-        var operation = new BlackWhiteLevelsOperationModel
+        var operation = new ArtworkCalibrationOperationModel
         {
-            Id = "levels", Strength = 25, BlackManualEnabled = true, BlackManualColor = "#123456",
-            WhiteManualEnabled = true, WhiteManualColor = "#654321"
+            Id = "levels", Strength = 25, BlackReference = new() { ManualEnabled = true, ManualColor = "#123456" },
+            WhiteReference = new() { ManualEnabled = true, ManualColor = "#654321" }
         };
         var face = new FaceDocumentModel
         {
@@ -85,21 +86,21 @@ public sealed class InspectorViewModelTests
         Assert.Same(white, viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "White Reference"));
         Assert.Equal(InspectorColorCommitMode.Deferred, black.CommitMode);
         Assert.Equal(InspectorColorCommitMode.Deferred, white.CommitMode);
-        Assert.Equal("#123456", Assert.IsType<BlackWhiteLevelsOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations)).BlackManualColor);
+        Assert.Equal("#123456", Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations)).BlackReference.ManualColor);
         Assert.Equal(0, document.CommandService.History.Count);
         black.Commit();
         white.Commit();
-        var saved = Assert.IsType<BlackWhiteLevelsOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations));
-        Assert.Equal("#0000FF", saved.BlackManualColor);
-        Assert.Equal("#ABCDEF", saved.WhiteManualColor);
+        var saved = Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations));
+        Assert.Equal("#0000FF", saved.BlackReference.ManualColor);
+        Assert.Equal("#ABCDEF", saved.WhiteReference.ManualColor);
         Assert.Equal(25, saved.Strength);
         Assert.Equal(2, document.CommandService.History.Count);
 
         Assert.IsType<InspectorBoolPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Black Manual")).Value = false;
         Assert.IsType<InspectorBoolPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Black Manual")).Value = true;
-        saved = Assert.IsType<BlackWhiteLevelsOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations));
-        Assert.Equal("#0000FF", saved.BlackManualColor);
-        Assert.True(saved.BlackManualEnabled);
+        saved = Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations));
+        Assert.Equal("#0000FF", saved.BlackReference.ManualColor);
+        Assert.True(saved.BlackReference.ManualEnabled);
     }
 
     [Fact]

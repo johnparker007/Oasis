@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 12;
+    public const int CurrentSchemaVersion = 13;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -268,48 +268,30 @@ public static class FaceDocumentStorage
         };
     }
 
-    private static ImageProcessingOperationModel ToModel(ImageProcessingOperationFile file)
+    private static ImageProcessingOperationModel ToModel(ImageProcessingOperationFile file) => file.Kind switch
     {
-        return file.Kind switch
+        ImageProcessingOperationKind.ArtworkCalibration => new ArtworkCalibrationOperationModel
         {
-            ImageProcessingOperationKind.BlackWhiteLevels => new BlackWhiteLevelsOperationModel
-            {
-                Id = file.Id,
-                Enabled = file.Enabled,
-                Strength = file.Strength,
-                BlackSamples = file.BlackSamples.Select(point => new NormalizedFacePointModel { X = point.X, Y = point.Y }).ToArray(),
-                WhiteSamples = file.WhiteSamples.Select(point => new NormalizedFacePointModel { X = point.X, Y = point.Y }).ToArray(),
-                BlackManualEnabled = file.BlackManualEnabled,
-                BlackManualColor = file.BlackManualColor,
-                WhiteManualEnabled = file.WhiteManualEnabled,
-                WhiteManualColor = file.WhiteManualColor
-            }.Normalize(),
-            _ => throw new InvalidOperationException($"Unsupported image processing operation '{file.Kind}'.")
-        };
-    }
+            Id=file.Id, Enabled=file.Enabled, Strength=file.Strength,
+            BlackReference=ToModel(file.BlackReference), WhiteReference=ToModel(file.WhiteReference),
+            SameColorGroups=file.SameColorGroups.Select(g=>new SameColorCalibrationGroupModel { Id=g.Id, Name=g.Name, Samples=g.Samples.Select(ToModel).ToArray() }).ToArray(),
+            CorrectSpatialBrightness=file.CorrectSpatialBrightness, CorrectSpatialColor=file.CorrectSpatialColor,
+            NormalizeBlackWhite=file.NormalizeBlackWhite, NeutralizeWhite=file.NeutralizeWhite
+        }.Normalize(),
+        _ => throw new InvalidOperationException($"Unsupported image processing operation '{file.Kind}'.")
+    };
 
     private static ImageProcessingOperationFile ToFile(ImageProcessingOperationModel model)
     {
-        return model switch
-        {
-            BlackWhiteLevelsOperationModel levels => ToFile(levels.Normalize()),
-            _ => throw new InvalidOperationException($"Unsupported image processing operation '{model.GetType().Name}'.")
-        };
+        if (model is not ArtworkCalibrationOperationModel value) throw new InvalidOperationException($"Unsupported image processing operation '{model.GetType().Name}'.");
+        var c=value.Normalize(); return new ImageProcessingOperationFile { Id=c.Id,Kind=c.Kind,Enabled=c.Enabled,Strength=c.Strength,
+            BlackReference=ToFile(c.BlackReference),WhiteReference=ToFile(c.WhiteReference), SameColorGroups=c.SameColorGroups.Select(g=>new SameColorCalibrationGroupFile {Id=g.Id,Name=g.Name,Samples=g.Samples.Select(ToFile).ToArray()}).ToArray(),
+            CorrectSpatialBrightness=c.CorrectSpatialBrightness,CorrectSpatialColor=c.CorrectSpatialColor,NormalizeBlackWhite=c.NormalizeBlackWhite,NeutralizeWhite=c.NeutralizeWhite };
     }
-
-    private static ImageProcessingOperationFile ToFile(BlackWhiteLevelsOperationModel model) => new()
-    {
-        Id = model.Id,
-        Kind = model.Kind,
-        Enabled = model.Enabled,
-        Strength = model.Strength,
-        BlackSamples = model.BlackSamples.Select(point => new NormalizedFacePointFile { X = point.X, Y = point.Y }).ToArray(),
-        WhiteSamples = model.WhiteSamples.Select(point => new NormalizedFacePointFile { X = point.X, Y = point.Y }).ToArray(),
-        BlackManualEnabled = model.BlackManualEnabled,
-        BlackManualColor = model.BlackManualColor,
-        WhiteManualEnabled = model.WhiteManualEnabled,
-        WhiteManualColor = model.WhiteManualColor
-    };
+    private static CalibrationSampleModel ToModel(CalibrationSampleFile s)=>new(){Id=s.Id,X=s.X,Y=s.Y,SamplingMode=s.SamplingMode,RadiusNormalized=s.RadiusNormalized};
+    private static CalibrationSampleFile ToFile(CalibrationSampleModel s)=>new(){Id=s.Id,X=s.X,Y=s.Y,SamplingMode=s.SamplingMode,RadiusNormalized=s.RadiusNormalized};
+    private static CalibrationReferenceModel ToModel(CalibrationReferenceFile r)=>new(){Samples=r.Samples.Select(ToModel).ToArray(),ManualEnabled=r.ManualEnabled,ManualColor=r.ManualColor};
+    private static CalibrationReferenceFile ToFile(CalibrationReferenceModel r)=>new(){Samples=r.Samples.Select(ToFile).ToArray(),ManualEnabled=r.ManualEnabled,ManualColor=r.ManualColor};
 
 
     private static FaceGenerationSettingsModel ToModel(FaceGenerationSettingsFile? file)
@@ -920,20 +902,18 @@ public sealed record ImageProcessingOperationFile
     public string Id { get; init; } = string.Empty;
     public ImageProcessingOperationKind Kind { get; init; }
     public bool Enabled { get; init; } = true;
-    public double Strength { get; init; } = BlackWhiteLevelsOperationModel.DefaultStrength;
-    public IReadOnlyList<NormalizedFacePointFile> BlackSamples { get; init; } = [];
-    public IReadOnlyList<NormalizedFacePointFile> WhiteSamples { get; init; } = [];
-    public bool BlackManualEnabled { get; init; }
-    public string BlackManualColor { get; init; } = BlackWhiteLevelsOperationModel.DefaultBlackManualColor;
-    public bool WhiteManualEnabled { get; init; }
-    public string WhiteManualColor { get; init; } = BlackWhiteLevelsOperationModel.DefaultWhiteManualColor;
+    public double Strength { get; init; } = ArtworkCalibrationOperationModel.DefaultStrength;
+    public CalibrationReferenceFile BlackReference { get; init; } = new() { ManualColor="#FF000000" };
+    public CalibrationReferenceFile WhiteReference { get; init; } = new();
+    public IReadOnlyList<SameColorCalibrationGroupFile> SameColorGroups { get; init; }=[];
+    public bool CorrectSpatialBrightness { get; init; }=true;
+    public bool CorrectSpatialColor { get; init; }=true;
+    public bool NormalizeBlackWhite { get; init; }=true;
+    public bool NeutralizeWhite { get; init; }=true;
 }
-
-public sealed record NormalizedFacePointFile
-{
-    public double X { get; init; }
-    public double Y { get; init; }
-}
+public sealed record CalibrationReferenceFile { public IReadOnlyList<CalibrationSampleFile> Samples {get;init;}=[]; public bool ManualEnabled {get;init;} public string ManualColor {get;init;}="#FFFFFFFF"; }
+public sealed record CalibrationSampleFile { public string Id {get;init;}=string.Empty; public double X {get;init;} public double Y {get;init;} public CalibrationSamplingMode SamplingMode {get;init;} public double RadiusNormalized {get;init;}=.01; }
+public sealed record SameColorCalibrationGroupFile { public string Id {get;init;}=string.Empty; public string Name {get;init;}=string.Empty; public IReadOnlyList<CalibrationSampleFile> Samples {get;init;}=[]; }
 
 
 public sealed record FaceGenerationSettingsFile
