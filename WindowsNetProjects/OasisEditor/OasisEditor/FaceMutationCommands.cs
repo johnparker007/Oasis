@@ -210,9 +210,49 @@ internal static class FaceMutationCommands
 
     private static bool PipelinesEquivalent(ImageProcessingPipelineModel left, ImageProcessingPipelineModel right)
     {
-        return System.Text.Json.JsonSerializer.Serialize(left.Operations, left.Operations.GetType()) ==
-               System.Text.Json.JsonSerializer.Serialize(right.Operations, right.Operations.GetType());
+        if (left.Operations.Count != right.Operations.Count) return false;
+        for (var index = 0; index < left.Operations.Count; index++)
+        {
+            if (left.Operations[index] is not ArtworkCalibrationOperationModel a
+                || right.Operations[index] is not ArtworkCalibrationOperationModel b
+                || a.Id != b.Id
+                || a.Enabled != b.Enabled
+                || a.Strength != b.Strength
+                || a.CorrectSpatialBrightness != b.CorrectSpatialBrightness
+                || a.CorrectSpatialColor != b.CorrectSpatialColor
+                || a.NormalizeBlackWhite != b.NormalizeBlackWhite
+                || a.NeutralizeWhite != b.NeutralizeWhite
+                || !ReferencesEquivalent(a.BlackReference, b.BlackReference)
+                || !ReferencesEquivalent(a.WhiteReference, b.WhiteReference)
+                || a.SameColorGroups.Count != b.SameColorGroups.Count)
+            {
+                return false;
+            }
+
+            for (var groupIndex = 0; groupIndex < a.SameColorGroups.Count; groupIndex++)
+            {
+                var leftGroup = a.SameColorGroups[groupIndex];
+                var rightGroup = b.SameColorGroups[groupIndex];
+                if (leftGroup.Id != rightGroup.Id
+                    || leftGroup.Name != rightGroup.Name
+                    || !SamplesEquivalent(leftGroup.Samples, rightGroup.Samples))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
+
+    private static bool ReferencesEquivalent(CalibrationReferenceModel left, CalibrationReferenceModel right) =>
+        left.ManualEnabled == right.ManualEnabled
+        && left.ManualColor == right.ManualColor
+        && SamplesEquivalent(left.Samples, right.Samples);
+
+    private static bool SamplesEquivalent(IReadOnlyList<CalibrationSampleModel> left, IReadOnlyList<CalibrationSampleModel> right) =>
+        left.Select(sample => (sample.Id, sample.X, sample.Y, sample.SamplingMode, sample.RadiusNormalized))
+            .SequenceEqual(right.Select(sample => (sample.Id, sample.X, sample.Y, sample.SamplingMode, sample.RadiusNormalized)));
 
     private sealed class AddFaceElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
