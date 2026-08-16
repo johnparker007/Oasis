@@ -29,6 +29,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private double _facePanY;
     private double _panelPanX;
     private double _panelPanY;
+    private FaceArtworkSampleMode _faceArtworkSampleMode;
+    private string? _faceArtworkSampleOperationId;
     private Dictionary<string, object>? _lastVisualStateByObjectId;
     private readonly MachineRuntimeState _runtimeState;
     private CabinetModelDocumentViewModel? _cabinetViewer;
@@ -110,6 +112,16 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public string FilePath => Document.FilePath;
     public string ContentSummary => Document.ContentSummary;
     public bool IsDirty => Document.IsDirty;
+    public FaceArtworkSampleMode FaceArtworkSampleMode
+    {
+        get => _faceArtworkSampleMode;
+        set { if (_faceArtworkSampleMode == value) return; _faceArtworkSampleMode = value; PropertyChanged?.Invoke(this, new(nameof(FaceArtworkSampleMode))); }
+    }
+    public string? FaceArtworkSampleOperationId
+    {
+        get => _faceArtworkSampleOperationId;
+        set { if (_faceArtworkSampleOperationId == value) return; _faceArtworkSampleOperationId = value; PropertyChanged?.Invoke(this, new(nameof(FaceArtworkSampleOperationId))); }
+    }
     public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && !string.IsNullOrWhiteSpace(_cabinetDocumentModel.Model.Path);
     public CabinetModelDocumentViewModel? ExistingCabinetViewer => _cabinetViewer;
     public CabinetModelDocumentViewModel? CabinetViewer => HasCabinetViewer ? GetOrCreateCabinetViewer() : null;
@@ -241,6 +253,25 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public FaceDocumentModel GetFaceDocument()
     {
         return _faceDocumentModel;
+    }
+
+    internal bool TryRebuildFaceArtwork()
+    {
+        var artwork = _faceDocumentModel.Artwork;
+        var project = _projectAccessor?.Invoke();
+        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)) return false;
+        var sourceDocument = _openDocumentsAccessor?.Invoke().FirstOrDefault(candidate =>
+            candidate.Document.DocumentType == EditorDocumentType.Panel2D
+            && (string.Equals(candidate.GetPanelDocument().Id, artwork.Source.Panel2DDocumentId, StringComparison.Ordinal)
+                || string.Equals(candidate.Document.FilePath, artwork.Source.Panel2DDocumentPath, StringComparison.OrdinalIgnoreCase)));
+        if (sourceDocument is null || string.IsNullOrWhiteSpace(artwork.Source.FaceSourceShapeId)
+            || !sourceDocument.TryGetPanelFaceSourceShape(artwork.Source.FaceSourceShapeId, out var shape)) return false;
+        var outputPath = Path.IsPathRooted(artwork.GeneratedAssetPath)
+            ? artwork.GeneratedAssetPath
+            : Path.Combine(project.ProjectDirectory, artwork.GeneratedAssetPath.Replace('/', Path.DirectorySeparatorChar));
+        var rebuilt = new FaceArtworkRebuildService().Rebuild(artwork, sourceDocument.GetPanelDocument(), shape, project.ProjectDirectory, outputPath) is not null;
+        if (rebuilt) Views.SkiaFaceEditView.InvalidateArtworkImage(artwork.GeneratedAssetPath);
+        return rebuilt;
     }
 
     public string GetFaceDocumentJson()

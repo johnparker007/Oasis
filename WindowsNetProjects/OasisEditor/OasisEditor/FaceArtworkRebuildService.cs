@@ -1,5 +1,7 @@
 namespace OasisEditor;
 
+using SkiaSharp;
+
 /// <summary>Builds the disposable flattened texture from Face-owned artwork authoring state.</summary>
 internal sealed class FaceArtworkRebuildService
 {
@@ -19,14 +21,18 @@ internal sealed class FaceArtworkRebuildService
             throw new NotSupportedException("Independent artwork sources are authored state but are not rebuildable yet.");
         }
 
-        // The initial pipeline is deliberately empty. Operations are serialized now so later
-        // processors can be applied here, rather than in the viewport or Player.
-        if (artwork.ProcessingPipeline.Operations.Any(operation => operation.Enabled))
-        {
-            throw new NotSupportedException("Face artwork processing operations are not implemented yet.");
-        }
-
-        return FaceSourceShapeTransformService.TryGenerateBackground(
+        var generatedPath = FaceSourceShapeTransformService.TryGenerateBackground(
             panel, shape, artwork.OutputWidth, artwork.OutputHeight, projectDirectory, outputPath);
+        if (generatedPath is null || string.IsNullOrWhiteSpace(projectDirectory)) return generatedPath;
+
+        var absolutePath = Path.IsPathRooted(generatedPath) ? generatedPath : Path.Combine(projectDirectory, generatedPath);
+        using var rectified = SKBitmap.Decode(absolutePath);
+        if (rectified is null) return generatedPath;
+        using var processed = new FaceArtworkProcessingPipeline().Evaluate(rectified, artwork.ProcessingPipeline);
+        using var image = SKImage.FromBitmap(processed);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = File.Create(absolutePath);
+        data.SaveTo(stream);
+        return generatedPath;
     }
 }

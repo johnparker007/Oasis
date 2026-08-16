@@ -1583,6 +1583,50 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Generated Artwork Path", "Artwork", authoredArtwork?.GeneratedAssetPath ?? artwork.AssetPath ?? string.Empty));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Output Dimensions", "Artwork", authoredArtwork is null ? $"{artwork.Width:0} × {artwork.Height:0}" : $"{authoredArtwork.OutputWidth} × {authoredArtwork.OutputHeight}"));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Processing Operations", "Artwork", authoredArtwork?.ProcessingPipeline.Operations.Count.ToString() ?? "0"));
+            _propertyRows.Add(new InspectorActionPropertyViewModel("+ Add Black / White Normalisation", "Processing Stack", new RelayCommand(() =>
+                _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateAddBlackWhiteLevelsCommand(selectedDocument.DocumentId, selectedDocument)))));
+            if (authoredArtwork is not null)
+            {
+                for (var index = 0; index < authoredArtwork.ProcessingPipeline.Operations.Count; index++)
+                {
+                    if (authoredArtwork.ProcessingPipeline.Operations[index] is not BlackWhiteLevelsOperationModel levels) continue;
+                    var operationIndex = index;
+                    var group = $"Processing Stack · {index + 1}. Black / White Normalisation";
+                    _propertyRows.Add(new InspectorBoolPropertyViewModel("Enabled", group, levels.Enabled, commit: enabled =>
+                    {
+                        var updated = CopyBlackWhiteLevels(levels, enabled: enabled);
+                        return _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateUpdateProcessingOperationCommand(selectedDocument.DocumentId, selectedDocument, updated, "Enable artwork processing operation")) ? null : "Unable to update operation.";
+                    }));
+                    _propertyRows.Add(new InspectorDoublePropertyViewModel("Strength (%)", group, levels.Strength, commit: strength =>
+                    {
+                        var updated = CopyBlackWhiteLevels(levels, strength: Math.Clamp(strength, 0d, 100d));
+                        return _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateUpdateProcessingOperationCommand(selectedDocument.DocumentId, selectedDocument, updated, "Change artwork processing strength")) ? null : "Unable to update strength.";
+                    }));
+                    _propertyRows.Add(new InspectorInfoPropertyViewModel("Reference Samples", group, $"{levels.BlackSamples.Count} black · {levels.WhiteSamples.Count} white"));
+                    _propertyRows.Add(new InspectorActionPropertyViewModel("Add Black Reference", group, new RelayCommand(() => { selectedDocument.FaceArtworkSampleOperationId = levels.Id; selectedDocument.FaceArtworkSampleMode = FaceArtworkSampleMode.AddBlack; })));
+                    _propertyRows.Add(new InspectorActionPropertyViewModel("Add White Reference", group, new RelayCommand(() => { selectedDocument.FaceArtworkSampleOperationId = levels.Id; selectedDocument.FaceArtworkSampleMode = FaceArtworkSampleMode.AddWhite; })));
+                    _propertyRows.Add(new InspectorActionPropertyViewModel("Done Adding References", group, new RelayCommand(() => selectedDocument.FaceArtworkSampleMode = FaceArtworkSampleMode.None)));
+                    if (levels.BlackSamples.Count > 0) _propertyRows.Add(new InspectorActionPropertyViewModel("Clear Black References", group, new RelayCommand(() =>
+                        _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateUpdateProcessingOperationCommand(selectedDocument.DocumentId, selectedDocument, CopyBlackWhiteLevels(levels, blackSamples: []), "Clear black references")))));
+                    if (levels.WhiteSamples.Count > 0) _propertyRows.Add(new InspectorActionPropertyViewModel("Clear White References", group, new RelayCommand(() =>
+                        _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateUpdateProcessingOperationCommand(selectedDocument.DocumentId, selectedDocument, CopyBlackWhiteLevels(levels, whiteSamples: []), "Clear white references")))));
+                    for (var sampleIndex = 0; sampleIndex < levels.BlackSamples.Count; sampleIndex++)
+                    {
+                        var removeIndex = sampleIndex;
+                        _propertyRows.Add(new InspectorActionPropertyViewModel($"Remove Black Reference {sampleIndex + 1}", group, new RelayCommand(() =>
+                            _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateUpdateProcessingOperationCommand(selectedDocument.DocumentId, selectedDocument, CopyBlackWhiteLevels(levels, blackSamples: levels.BlackSamples.Where((_, i) => i != removeIndex).ToArray()), "Remove black reference")))));
+                    }
+                    for (var sampleIndex = 0; sampleIndex < levels.WhiteSamples.Count; sampleIndex++)
+                    {
+                        var removeIndex = sampleIndex;
+                        _propertyRows.Add(new InspectorActionPropertyViewModel($"Remove White Reference {sampleIndex + 1}", group, new RelayCommand(() =>
+                            _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateUpdateProcessingOperationCommand(selectedDocument.DocumentId, selectedDocument, CopyBlackWhiteLevels(levels, whiteSamples: levels.WhiteSamples.Where((_, i) => i != removeIndex).ToArray()), "Remove white reference")))));
+                    }
+                    if (operationIndex > 0) _propertyRows.Add(new InspectorActionPropertyViewModel("Move Up", group, new RelayCommand(() => _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateMoveProcessingOperationCommand(selectedDocument.DocumentId, selectedDocument, levels.Id, -1)))));
+                    if (operationIndex + 1 < authoredArtwork.ProcessingPipeline.Operations.Count) _propertyRows.Add(new InspectorActionPropertyViewModel("Move Down", group, new RelayCommand(() => _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateMoveProcessingOperationCommand(selectedDocument.DocumentId, selectedDocument, levels.Id, 1)))));
+                    _propertyRows.Add(new InspectorActionPropertyViewModel("Remove", group, new RelayCommand(() => _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateRemoveProcessingOperationCommand(selectedDocument.DocumentId, selectedDocument, levels.Id)))));
+                }
+            }
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Panel2D Document", "Artwork", authoredArtwork?.Source.Panel2DDocumentId ?? artwork.SourcePanel2DDocumentId ?? string.Empty));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Face Shape", "Artwork", authoredArtwork?.Source.FaceSourceShapeId ?? string.Empty));
             if (artwork.SourceRegion is not null)
@@ -1603,6 +1647,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         _lastInspectorFaceSelectionKind = FaceSelectionService.GetKindToken(selectedElement);
         OnPropertyChanged(nameof(InspectorPropertyRows));
     }
+
+    private static BlackWhiteLevelsOperationModel CopyBlackWhiteLevels(BlackWhiteLevelsOperationModel source, bool? enabled = null, double? strength = null, IReadOnlyList<NormalizedFacePointModel>? blackSamples = null, IReadOnlyList<NormalizedFacePointModel>? whiteSamples = null) => new()
+    {
+        Id = source.Id,
+        Enabled = enabled ?? source.Enabled,
+        Strength = strength ?? source.Strength,
+        BlackSamples = blackSamples ?? source.BlackSamples,
+        WhiteSamples = whiteSamples ?? source.WhiteSamples
+    };
 
 
 

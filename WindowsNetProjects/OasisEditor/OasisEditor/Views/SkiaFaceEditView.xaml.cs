@@ -35,6 +35,12 @@ public partial class SkiaFaceEditView : UserControl
     private readonly Stopwatch _renderStopwatch = Stopwatch.StartNew();
     private readonly DispatcherTimer _renderThrottleTimer;
 
+    internal static void InvalidateArtworkImage(string? assetPath)
+    {
+        if (string.IsNullOrWhiteSpace(assetPath) || !ProjectAssetPathResolver.TryResolveAssetPath(assetPath, out var resolvedPath)) return;
+        if (CachedArtworkImages.TryRemove(resolvedPath, out var image)) image?.Dispose();
+    }
+
     public SkiaFaceEditView()
     {
         InitializeComponent();
@@ -169,9 +175,32 @@ public partial class SkiaFaceEditView : UserControl
         canvas.Translate((float)viewport.PanX, (float)viewport.PanY);
         canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
         DrawFaceElements(canvas, document, viewport);
+        DrawArtworkSamples(canvas, document, viewport);
         DrawSelectionOutline(canvas, document, viewport);
         DrawDragSelectionRect(canvas, viewport);
         canvas.Restore();
+    }
+
+    private static void DrawArtworkSamples(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)
+    {
+        var artworkElement = document.GetFaceElements().OfType<FaceArtworkElement>().FirstOrDefault();
+        var operation = document.GetFaceDocument().Artwork?.ProcessingPipeline.Operations
+            .OfType<BlackWhiteLevelsOperationModel>().FirstOrDefault(item => item.Id == document.FaceArtworkSampleOperationId);
+        if (artworkElement is null || operation is null) return;
+        Draw(operation.BlackSamples, new SKColor(0x20, 0x20, 0x20), new SKColor(0xFF, 0xFF, 0xFF));
+        Draw(operation.WhiteSamples, new SKColor(0xFF, 0xFF, 0xFF), new SKColor(0x20, 0x20, 0x20));
+        void Draw(IReadOnlyList<NormalizedFacePointModel> samples, SKColor fill, SKColor stroke)
+        {
+            using var fillPaint = new SKPaint { Style = SKPaintStyle.Fill, Color = fill, IsAntialias = true };
+            using var strokePaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = stroke, StrokeWidth = (float)(2d / viewport.NormalizedZoom), IsAntialias = true };
+            foreach (var sample in samples)
+            {
+                var x = artworkElement.X + sample.X * artworkElement.Width;
+                var y = artworkElement.Y + sample.Y * artworkElement.Height;
+                canvas.DrawCircle((float)x, (float)y, (float)(6d / viewport.NormalizedZoom), fillPaint);
+                canvas.DrawCircle((float)x, (float)y, (float)(6d / viewport.NormalizedZoom), strokePaint);
+            }
+        }
     }
 
     private static void DrawFaceElements(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)
@@ -405,6 +434,11 @@ public partial class SkiaFaceEditView : UserControl
         if (eventArgs.ChangedButton == MouseButton.Left)
         {
             var pointer = eventArgs.GetPosition(FaceSkiaSurface);
+            if (TryAddArtworkSample(document, pointer))
+            {
+                eventArgs.Handled = true;
+                return;
+            }
             if (TryGetSelectedElementAtPoint(document, pointer, out var selectedElement)
                 && FaceSelectionInteractionService.CanStartGroupMoveFrom(selectedElement, document.SelectionState))
             {
@@ -441,6 +475,28 @@ public partial class SkiaFaceEditView : UserControl
         FaceSkiaSurface.Cursor = Cursors.SizeAll;
         FaceSkiaSurface.CaptureMouse();
         eventArgs.Handled = true;
+    }
+
+    private static bool TryAddArtworkSample(DocumentTabViewModel document, Point pointer)
+    {
+        if (document.FaceArtworkSampleMode == FaceArtworkSampleMode.None) return false;
+        var artworkElement = document.GetFaceElements().OfType<FaceArtworkElement>().FirstOrDefault();
+        var operation = document.GetFaceDocument().Artwork?.ProcessingPipeline.Operations
+            .OfType<BlackWhiteLevelsOperationModel>().FirstOrDefault(item => item.Id == document.FaceArtworkSampleOperationId);
+        if (artworkElement is null || operation is null || artworkElement.Width <= 0d || artworkElement.Height <= 0d) return false;
+        var x = (pointer.X - document.FacePanX) / Math.Max(document.FaceZoom, 0.0001d);
+        var y = (pointer.Y - document.FacePanY) / Math.Max(document.FaceZoom, 0.0001d);
+        if (x < artworkElement.X || x > artworkElement.X + artworkElement.Width || y < artworkElement.Y || y > artworkElement.Y + artworkElement.Height) return false;
+        var point = new NormalizedFacePointModel { X = (x - artworkElement.X) / artworkElement.Width, Y = (y - artworkElement.Y) / artworkElement.Height }.Normalize();
+        var updated = new BlackWhiteLevelsOperationModel
+        {
+            Id = operation.Id, Enabled = operation.Enabled, Strength = operation.Strength,
+            BlackSamples = document.FaceArtworkSampleMode == FaceArtworkSampleMode.AddBlack ? operation.BlackSamples.Append(point).ToArray() : operation.BlackSamples,
+            WhiteSamples = document.FaceArtworkSampleMode == FaceArtworkSampleMode.AddWhite ? operation.WhiteSamples.Append(point).ToArray() : operation.WhiteSamples
+        };
+        document.CommandService.Execute(FaceMutationCommands.CreateUpdateProcessingOperationCommand(document.DocumentId, document, updated,
+            document.FaceArtworkSampleMode == FaceArtworkSampleMode.AddBlack ? "Add black reference" : "Add white reference"));
+        return true;
     }
 
     private void OnFaceSkiaSurfaceMouseMove(object sender, MouseEventArgs eventArgs)

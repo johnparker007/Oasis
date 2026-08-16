@@ -2,6 +2,45 @@ namespace OasisEditor;
 
 internal static class FaceMutationCommands
 {
+    public static Commands.ICommand CreateSetProcessingPipelineCommand(
+        Guid documentId,
+        DocumentTabViewModel document,
+        ImageProcessingPipelineModel pipeline,
+        string description = "Update artwork processing")
+    {
+        return new SetProcessingPipelineMutationCommand(documentId, document, pipeline, description);
+    }
+
+    public static Commands.ICommand CreateAddBlackWhiteLevelsCommand(Guid documentId, DocumentTabViewModel document)
+    {
+        var operations = document.GetFaceDocument().Artwork?.ProcessingPipeline.Operations ?? [];
+        return CreateSetProcessingPipelineCommand(documentId, document,
+            new ImageProcessingPipelineModel { Operations = operations.Append(new BlackWhiteLevelsOperationModel()).ToArray() },
+            "Add Black / White Normalisation");
+    }
+
+    public static Commands.ICommand CreateRemoveProcessingOperationCommand(Guid documentId, DocumentTabViewModel document, string operationId) =>
+        TransformPipeline(documentId, document, operationId, "Remove artwork processing operation", (operations, index) => { operations.RemoveAt(index); });
+
+    public static Commands.ICommand CreateMoveProcessingOperationCommand(Guid documentId, DocumentTabViewModel document, string operationId, int offset) =>
+        TransformPipeline(documentId, document, operationId, "Reorder artwork processing operations", (operations, index) =>
+        {
+            var target = Math.Clamp(index + offset, 0, operations.Count - 1);
+            if (target == index) return;
+            var item = operations[index]; operations.RemoveAt(index); operations.Insert(target, item);
+        });
+
+    public static Commands.ICommand CreateUpdateProcessingOperationCommand(Guid documentId, DocumentTabViewModel document, ImageProcessingOperationModel operation, string description) =>
+        TransformPipeline(documentId, document, operation.Id, description, (operations, index) => operations[index] = operation);
+
+    private static Commands.ICommand TransformPipeline(Guid documentId, DocumentTabViewModel document, string operationId, string description, Action<List<ImageProcessingOperationModel>, int> transform)
+    {
+        var operations = (document.GetFaceDocument().Artwork?.ProcessingPipeline.Operations ?? []).ToList();
+        var index = operations.FindIndex(operation => string.Equals(operation.Id, operationId, StringComparison.Ordinal));
+        if (index >= 0) transform(operations, index);
+        return CreateSetProcessingPipelineCommand(documentId, document, new ImageProcessingPipelineModel { Operations = operations }, description);
+    }
+
     public static Commands.ICommand CreateAddLampWindowCommand(Guid documentId, DocumentTabViewModel document, FaceLampWindowElement element)
     {
         return new AddFaceElementMutationCommand(documentId, document, element);
@@ -75,6 +114,62 @@ internal static class FaceMutationCommands
             Layers = faceDocument.Layers,
             Elements = faceDocument.Elements
         };
+    }
+
+    private static FaceDocumentModel WithPipeline(FaceDocumentModel model, ImageProcessingPipelineModel pipeline)
+    {
+        var artwork = model.Artwork is null ? null : new FaceArtworkModel
+        {
+            Id = model.Artwork.Id, Source = model.Artwork.Source, ProcessingPipeline = pipeline,
+            GeneratedAssetPath = model.Artwork.GeneratedAssetPath, OutputWidth = model.Artwork.OutputWidth, OutputHeight = model.Artwork.OutputHeight
+        };
+        return new FaceDocumentModel
+        {
+            Id = model.Id, Title = model.Title, Summary = model.Summary, SourcePanel2DDocumentId = model.SourcePanel2DDocumentId,
+            SourcePanel2DDocumentPath = model.SourcePanel2DDocumentPath, SourceFaceShapeId = model.SourceFaceShapeId,
+            AssignedCabinetFaceTargetId = model.AssignedCabinetFaceTargetId, AssignedCabinetAssetPath = model.AssignedCabinetAssetPath,
+            SourceRegion = model.SourceRegion, LastRegeneratedAtUtc = model.LastRegeneratedAtUtc, GenerationSettings = model.GenerationSettings,
+            Artwork = artwork, RuntimeRenderAssets = model.RuntimeRenderAssets, MaskLayer = model.MaskLayer, Trays = model.Trays,
+            LampEmitters = model.LampEmitters, Layers = model.Layers, Elements = model.Elements
+        };
+    }
+
+    private sealed class SetProcessingPipelineMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _documentId; private readonly DocumentTabViewModel _document; private readonly ImageProcessingPipelineModel _next; private readonly string _description;
+        private ImageProcessingPipelineModel? _previous;
+        public SetProcessingPipelineMutationCommand(Guid documentId, DocumentTabViewModel document, ImageProcessingPipelineModel next, string description)
+        { _documentId = documentId; _document = document; _next = next; _description = description; }
+        public Guid DocumentId => _documentId; public string Description => _description; public bool WasExecuted { get; private set; }
+        public void Execute()
+        {
+            WasExecuted = false; var current = _document.GetFaceDocument(); if (current.Artwork is null) return;
+            _previous ??= current.Artwork.ProcessingPipeline;
+            if (PipelinesEquivalent(_previous, _next)) return;
+            _document.SetFaceDocument(WithPipeline(current, _next), CreateChange(_document, current.Artwork.Id, PanelChangeProperties.Metadata));
+            _document.TryRebuildFaceArtwork();
+            _document.MarkDirty(); WasExecuted = true;
+        }
+        public void Undo()
+        {
+            if (_previous is null) return; var current = _document.GetFaceDocument();
+            _document.SetFaceDocument(WithPipeline(current, _previous), CreateChange(_document, current.Artwork?.Id, PanelChangeProperties.Metadata));
+            _document.TryRebuildFaceArtwork();
+            _document.MarkDirty();
+        }
+    }
+
+    private static bool PipelinesEquivalent(ImageProcessingPipelineModel left, ImageProcessingPipelineModel right)
+    {
+        if (left.Operations.Count != right.Operations.Count) return false;
+        for (var index = 0; index < left.Operations.Count; index++)
+        {
+            if (left.Operations[index] is not BlackWhiteLevelsOperationModel a || right.Operations[index] is not BlackWhiteLevelsOperationModel b
+                || a.Id != b.Id || a.Enabled != b.Enabled || a.Strength != b.Strength
+                || !a.BlackSamples.Select(p => (p.X, p.Y)).SequenceEqual(b.BlackSamples.Select(p => (p.X, p.Y)))
+                || !a.WhiteSamples.Select(p => (p.X, p.Y)).SequenceEqual(b.WhiteSamples.Select(p => (p.X, p.Y)))) return false;
+        }
+        return true;
     }
 
     private sealed class AddFaceElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
