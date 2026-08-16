@@ -7,6 +7,33 @@ namespace OasisEditor.Tests;
 
 public sealed class FaceGenerationServiceTests
 {
+    [Fact]
+    public void GenerateFromPanelFaceSourceShape_CreatesCanonicalOriginalArtwork()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-face-generation-{Guid.NewGuid():N}");
+        var faceDirectory = Path.Combine(directory, "Assets", "Faces", "TestFace");
+        Directory.CreateDirectory(faceDirectory);
+        try
+        {
+            var backgroundPath = Path.Combine(directory, "background.png");
+            using (var bitmap = new SkiaSharp.SKBitmap(8, 8))
+            using (var image = SkiaSharp.SKImage.FromBitmap(bitmap))
+            using (var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100))
+            using (var stream = File.Create(backgroundPath)) data.SaveTo(stream);
+            var panel = new Panel2DDocumentModel
+            {
+                Elements = [new PanelElementModel { Kind = PanelElementKind.Background, AssetPath = backgroundPath, Width = 8, Height = 8 }]
+            };
+
+            var result = new FaceGenerationService().GenerateFromPanelFaceSourceShape(
+                panel, CreateSourceShape(), "Test Face", projectDirectory: directory, faceAssetDirectory: faceDirectory);
+
+            var generatedPath = Path.Combine(directory, result.Document.Artwork!.GeneratedAssetPath!.Replace('/', Path.DirectorySeparatorChar));
+            Assert.True(File.Exists(generatedPath));
+            Assert.True(File.Exists(FaceArtworkRebuildService.GetOriginalArtworkPath(generatedPath)));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
 
 
 

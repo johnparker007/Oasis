@@ -257,25 +257,52 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         return _faceDocumentModel;
     }
 
-    internal bool TryRebuildFaceArtwork()
+    internal bool TryRebuildFaceArtwork(out string? errorMessage)
     {
+        errorMessage = null;
         var artwork = _faceDocumentModel.Artwork;
         var project = _projectAccessor?.Invoke();
-        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)) return false;
-        var rebuilt = new FaceArtworkRebuildService().ApplyProcessing(artwork, project.ProjectDirectory);
-        if (rebuilt)
+        if (artwork is null)
         {
-            NotifyGeneratedArtworkChanged(artwork);
+            errorMessage = "The Face has no authored artwork state.";
+            return false;
         }
-        return rebuilt;
+        if (project is null)
+        {
+            errorMessage = "The Face is not associated with an open project, so generated artwork paths cannot be resolved.";
+            return false;
+        }
+        var result = new FaceArtworkRebuildService().ApplyProcessing(artwork, project.ProjectDirectory);
+        errorMessage = result.ErrorMessage;
+        if (!result.Succeeded) return false;
+        NotifyGeneratedArtworkChanged(artwork);
+        return true;
     }
 
-    internal bool TryReadGeneratedArtwork(out byte[] bytes)
+    internal bool TryReadGeneratedArtwork(out byte[] bytes, out string? errorMessage)
     {
         bytes = [];
-        if (!TryGetGeneratedArtworkPath(out var path) || !File.Exists(path)) return false;
-        bytes = File.ReadAllBytes(path);
-        return true;
+        errorMessage = null;
+        if (!TryGetGeneratedArtworkPath(out var path))
+        {
+            errorMessage = "The generated artwork path is missing or cannot be resolved because no project is open.";
+            return false;
+        }
+        if (!File.Exists(path))
+        {
+            errorMessage = $"Generated artwork was not found at '{path}'. Regenerate the Face before applying artwork processing.";
+            return false;
+        }
+        try
+        {
+            bytes = File.ReadAllBytes(path);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            errorMessage = $"Generated artwork could not be read from '{path}': {exception.Message}";
+            return false;
+        }
     }
 
     internal bool TryRestoreGeneratedArtwork(byte[] bytes)

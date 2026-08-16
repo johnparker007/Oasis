@@ -176,7 +176,7 @@ internal static class FaceMutationCommands
         return false;
     }
 
-    private sealed class ApplyArtworkProcessingCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    private sealed class ApplyArtworkProcessingCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand, Commands.IExecutionFailureDiagnostic
     {
         private readonly Guid _documentId;
         private readonly DocumentTabViewModel _document;
@@ -187,16 +187,33 @@ internal static class FaceMutationCommands
         public Guid DocumentId => _documentId;
         public string Description => "Apply Face Artwork Processing";
         public bool WasExecuted { get; private set; }
+        public string? ExecutionFailureMessage { get; private set; }
 
         public void Execute()
         {
             WasExecuted = false;
+            ExecutionFailureMessage = null;
             if (_after is not null)
             {
                 WasExecuted = _document.TryRestoreGeneratedArtwork(_after);
+                if (!WasExecuted) ExecutionFailureMessage = "The previously applied artwork could not be restored during redo.";
                 return;
             }
-            if (!_document.TryReadGeneratedArtwork(out var before) || !_document.TryRebuildFaceArtwork() || !_document.TryReadGeneratedArtwork(out var after)) return;
+            if (!_document.TryReadGeneratedArtwork(out var before, out var readBeforeError))
+            {
+                ExecutionFailureMessage = readBeforeError;
+                return;
+            }
+            if (!_document.TryRebuildFaceArtwork(out var processingError))
+            {
+                ExecutionFailureMessage = processingError;
+                return;
+            }
+            if (!_document.TryReadGeneratedArtwork(out var after, out var readAfterError))
+            {
+                ExecutionFailureMessage = readAfterError ?? "Processed artwork could not be read back after Apply.";
+                return;
+            }
             _before = before;
             _after = after;
             WasExecuted = true;
