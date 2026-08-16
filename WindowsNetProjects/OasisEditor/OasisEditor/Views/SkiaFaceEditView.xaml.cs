@@ -229,7 +229,7 @@ public partial class SkiaFaceEditView : UserControl
             DrawArtworkElement(canvas, element, previewPath, viewport, hiddenPaint);
         }
 
-        foreach (var element in document.GetFaceElements().Where(element => element is not FaceArtworkElement))
+        foreach (var element in FaceArtworkEditingPresentation.GetViewportElements(document).Where(element => element is not FaceArtworkElement))
         {
             var rect = SKRect.Create((float)element.X, (float)element.Y, (float)Math.Max(0d, element.Width), (float)Math.Max(0d, element.Height));
             if (element is FaceReelDisplayElement reelDisplay)
@@ -268,6 +268,7 @@ public partial class SkiaFaceEditView : UserControl
         foreach (var item in document.SelectionState.Items.Where(item => item.Domain == EditorSelectionDomain.FaceElement))
         {
             if (!document.TryGetFaceElementByObjectId(item.ObjectId, out var selectedElement)) continue;
+            if (FaceArtworkEditingPresentation.IsSuppressed(document, selectedElement)) continue;
             var isPrimary = document.SelectionState.PrimaryItem == item;
             using var selectionPaint = new SKPaint
             {
@@ -707,7 +708,7 @@ public partial class SkiaFaceEditView : UserControl
         }
 
         var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
-        var selection = FaceSelectionService.SelectFromPoint(document.GetFaceElements(), viewport.ScreenToDocument(screenPoint), document.HierarchySelectedPanelSelection);
+        var selection = FaceSelectionService.SelectFromPoint(FaceArtworkEditingPresentation.GetViewportElements(document).ToArray(), viewport.ScreenToDocument(screenPoint), document.HierarchySelectedPanelSelection);
         var isCtrl = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
         if (selection is not { } selected)
         {
@@ -742,7 +743,7 @@ public partial class SkiaFaceEditView : UserControl
     {
         var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
         var rect = Panel2DSelectionBoundsService.CreateNormalizedDocumentRect(viewport.ScreenToDocument(startScreenPoint), viewport.ScreenToDocument(endScreenPoint));
-        var items = FaceSelectionInteractionService.SelectItemsFromRect(document.GetFaceElements(), rect);
+        var items = FaceSelectionInteractionService.SelectItemsFromRect(FaceArtworkEditingPresentation.GetViewportElements(document).ToArray(), rect);
         if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control) document.SelectionState.AddRange(items);
         else document.SelectionState.Replace(items);
     }
@@ -786,6 +787,7 @@ public partial class SkiaFaceEditView : UserControl
         foreach (var item in document.SelectionState.Items.Where(item => item.Domain == EditorSelectionDomain.FaceElement).Reverse())
         {
             if (document.TryGetFaceElementByObjectId(item.ObjectId, out var element)
+                && !FaceArtworkEditingPresentation.IsSuppressed(document, element)
                 && documentPoint.X >= element.X && documentPoint.X <= element.X + element.Width
                 && documentPoint.Y >= element.Y && documentPoint.Y <= element.Y + element.Height)
             {
