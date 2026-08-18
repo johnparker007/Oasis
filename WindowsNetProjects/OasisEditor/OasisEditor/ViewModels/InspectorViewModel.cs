@@ -1602,6 +1602,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                         ? new FaceArtworkSourceModel { Kind=FaceArtworkSourceKind.RegisteredImage,AssetPath=source?.Kind==FaceArtworkSourceKind.RegisteredImage?source.AssetPath:null,RegistrationQuad=source?.Kind==FaceArtworkSourceKind.RegisteredImage?source.RegistrationQuad:FaceArtworkRegistrationQuadModel.FullImage }
                         : new FaceArtworkSourceModel { Kind=FaceArtworkSourceKind.Panel2DFaceSourceShape,Panel2DDocumentId=selectedDocument.GetFaceDocument().SourcePanel2DDocumentId,Panel2DDocumentPath=selectedDocument.GetFaceDocument().SourcePanel2DDocumentPath,FaceSourceShapeId=selectedDocument.GetFaceDocument().SourceFaceShapeId };
                     _executeCanvasCommand(selectedDocument.DocumentId,FaceMutationCommands.CreateSetArtworkSourceCommand(selectedDocument.DocumentId,selectedDocument,next,"Change artwork source type"));
+                    // Source kinds have different row schemas; do not reuse the previous selection's cached rows.
+                    _lastInspectorSelectionObjectId = null;
+                    _lastObservedDocumentSelectionKey = null;
                     if (!registered) selectedDocument.FaceArtworkRegistrationEditing=false;
                     return null;
                 }));
