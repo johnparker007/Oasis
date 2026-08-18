@@ -12,6 +12,38 @@ internal sealed record FaceArtworkProcessingResult(bool Succeeded, string? Error
 
 internal sealed class FaceArtworkRebuildService
 {
+    public FaceArtworkProcessingResult RebuildRegisteredImage(
+        FaceArtworkModel artwork, string projectDirectory, string outputPath,
+        double? targetAspectRatio, out FaceSourceShapeOutputSize outputSize)
+    {
+        outputSize = default;
+        ArgumentNullException.ThrowIfNull(artwork);
+        if (artwork.Source.Kind != FaceArtworkSourceKind.RegisteredImage)
+            return FaceArtworkProcessingResult.Failure("The artwork source is not a Registered Image.");
+        if (string.IsNullOrWhiteSpace(artwork.Source.AssetPath) || Path.IsPathRooted(artwork.Source.AssetPath))
+            return FaceArtworkProcessingResult.Failure("Registered image paths must be project-relative authored asset paths.");
+        var sourcePath = Path.Combine(projectDirectory, artwork.Source.AssetPath.Replace('/', Path.DirectorySeparatorChar));
+        var assetsRoot = Path.GetFullPath(Path.Combine(projectDirectory, "Assets")) + Path.DirectorySeparatorChar;
+        if (!Path.GetFullPath(sourcePath).StartsWith(assetsRoot, StringComparison.OrdinalIgnoreCase))
+            return FaceArtworkProcessingResult.Failure("Registered images must be stored under the project Assets directory.");
+        if (!File.Exists(sourcePath)) return FaceArtworkProcessingResult.Failure($"Registered image was not found at '{sourcePath}'.");
+        using var source = SKBitmap.Decode(sourcePath);
+        if (source is null) return FaceArtworkProcessingResult.Failure("The registered image could not be decoded.");
+        var q = artwork.Source.RegistrationQuad.Normalize();
+        FacePointModel Pixel(NormalizedFacePointModel p) => new() { X = p.X * (source.Width - 1), Y = p.Y * (source.Height - 1) };
+        var quad = new[] { Pixel(q.TopLeft), Pixel(q.TopRight), Pixel(q.BottomRight), Pixel(q.BottomLeft) };
+        outputSize = PerspectiveRectificationService.EstimateOutputSize(quad, targetAspectRatio);
+        try
+        {
+            using var rectified = PerspectiveRectificationService.Rectify(source, quad, outputSize.Width, outputSize.Height);
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+            WriteBitmap(rectified, GetOriginalArtworkPath(outputPath));
+            WriteProcessedArtwork(rectified, artwork.ProcessingPipeline, outputPath);
+            return FaceArtworkProcessingResult.Success;
+        }
+        catch (Exception exception) { return FaceArtworkProcessingResult.Failure($"Registered image rectification failed: {exception.Message}"); }
+    }
+
     public string? Rebuild(
         FaceArtworkModel artwork,
         Panel2DDocumentModel panel,
@@ -86,6 +118,14 @@ internal sealed class FaceArtworkRebuildService
         using var image = SKImage.FromBitmap(processed);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         using var stream = File.Create(outputPath);
+        data.SaveTo(stream);
+    }
+
+    private static void WriteBitmap(SKBitmap bitmap, string path)
+    {
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = File.Create(path);
         data.SaveTo(stream);
     }
 

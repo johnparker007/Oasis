@@ -36,7 +36,7 @@ public sealed class FaceDocumentModel
 public enum FaceArtworkSourceKind
 {
     Panel2DFaceSourceShape,
-    IndependentImage
+    RegisteredImage
 }
 
 /// <summary>Authored artwork state owned by the Face. GeneratedAssetPath is rebuildable output.</summary>
@@ -57,6 +57,23 @@ public sealed class FaceArtworkSourceModel
     public string? Panel2DDocumentId { get; init; }
     public string? Panel2DDocumentPath { get; init; }
     public string? FaceSourceShapeId { get; init; }
+    public FaceArtworkRegistrationQuadModel RegistrationQuad { get; init; } = FaceArtworkRegistrationQuadModel.FullImage;
+}
+
+/// <summary>A semantically ordered, source-image-normalized perspective registration.</summary>
+public sealed class FaceArtworkRegistrationQuadModel
+{
+    public static FaceArtworkRegistrationQuadModel FullImage { get; } = new();
+    public NormalizedFacePointModel TopLeft { get; init; } = new();
+    public NormalizedFacePointModel TopRight { get; init; } = new() { X = 1 };
+    public NormalizedFacePointModel BottomRight { get; init; } = new() { X = 1, Y = 1 };
+    public NormalizedFacePointModel BottomLeft { get; init; } = new() { Y = 1 };
+
+    public FaceArtworkRegistrationQuadModel Normalize() => new()
+    {
+        TopLeft = TopLeft.Normalize(), TopRight = TopRight.Normalize(),
+        BottomRight = BottomRight.Normalize(), BottomLeft = BottomLeft.Normalize()
+    };
 }
 
 public sealed class ImageProcessingPipelineModel

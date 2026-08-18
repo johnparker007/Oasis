@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 13;
+    public const int CurrentSchemaVersion = 14;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -232,7 +232,8 @@ public static class FaceDocumentStorage
                 AssetPath = NormalizeOptional(file.Source.AssetPath),
                 Panel2DDocumentId = NormalizeOptional(file.Source.Panel2DDocumentId),
                 Panel2DDocumentPath = NormalizeOptional(file.Source.Panel2DDocumentPath),
-                FaceSourceShapeId = NormalizeOptional(file.Source.FaceSourceShapeId)
+                FaceSourceShapeId = NormalizeOptional(file.Source.FaceSourceShapeId),
+                RegistrationQuad = ToModel(file.Source.RegistrationQuad)
             },
             ProcessingPipeline = new ImageProcessingPipelineModel
             {
@@ -256,7 +257,8 @@ public static class FaceDocumentStorage
                 AssetPath = model.Source.AssetPath,
                 Panel2DDocumentId = model.Source.Panel2DDocumentId,
                 Panel2DDocumentPath = model.Source.Panel2DDocumentPath,
-                FaceSourceShapeId = model.Source.FaceSourceShapeId
+                FaceSourceShapeId = model.Source.FaceSourceShapeId,
+                RegistrationQuad = ToFile(model.Source.RegistrationQuad)
             },
             ProcessingPipeline = new ImageProcessingPipelineFile
             {
@@ -267,6 +269,29 @@ public static class FaceDocumentStorage
             OutputHeight = model.OutputHeight
         };
     }
+
+    private static FaceArtworkRegistrationQuadModel ToModel(FaceArtworkRegistrationQuadFile? value)
+    {
+        value ??= new FaceArtworkRegistrationQuadFile();
+        return new FaceArtworkRegistrationQuadModel
+        {
+            TopLeft = ToModel(value.TopLeft), TopRight = ToModel(value.TopRight),
+            BottomRight = ToModel(value.BottomRight), BottomLeft = ToModel(value.BottomLeft)
+        }.Normalize();
+    }
+
+    private static FaceArtworkRegistrationQuadFile ToFile(FaceArtworkRegistrationQuadModel value)
+    {
+        var normalized = value.Normalize();
+        return new FaceArtworkRegistrationQuadFile
+        {
+            TopLeft = ToFile(normalized.TopLeft), TopRight = ToFile(normalized.TopRight),
+            BottomRight = ToFile(normalized.BottomRight), BottomLeft = ToFile(normalized.BottomLeft)
+        };
+    }
+
+    private static NormalizedFacePointModel ToModel(NormalizedFacePointFile value) => new() { X = value.X, Y = value.Y };
+    private static NormalizedFacePointFile ToFile(NormalizedFacePointModel value) => new() { X = value.X, Y = value.Y };
 
     private static ImageProcessingOperationModel ToModel(ImageProcessingOperationFile file) => file.Kind switch
     {
@@ -890,6 +915,21 @@ public sealed record FaceArtworkSourceFile
     public string? Panel2DDocumentId { get; init; }
     public string? Panel2DDocumentPath { get; init; }
     public string? FaceSourceShapeId { get; init; }
+    public FaceArtworkRegistrationQuadFile RegistrationQuad { get; init; } = new();
+}
+
+public sealed record FaceArtworkRegistrationQuadFile
+{
+    public NormalizedFacePointFile TopLeft { get; init; } = new();
+    public NormalizedFacePointFile TopRight { get; init; } = new() { X = 1 };
+    public NormalizedFacePointFile BottomRight { get; init; } = new() { X = 1, Y = 1 };
+    public NormalizedFacePointFile BottomLeft { get; init; } = new() { Y = 1 };
+}
+
+public sealed record NormalizedFacePointFile
+{
+    public double X { get; init; }
+    public double Y { get; init; }
 }
 
 public sealed record ImageProcessingPipelineFile

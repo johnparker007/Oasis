@@ -22,6 +22,10 @@ internal static class FaceMutationCommands
     public static Commands.ICommand CreateApplyArtworkProcessingCommand(Guid documentId, DocumentTabViewModel document) =>
         new ApplyArtworkProcessingCommand(documentId, document);
 
+    public static Commands.ICommand CreateSetArtworkSourceCommand(Guid documentId, DocumentTabViewModel document,
+        FaceArtworkSourceModel source, string description = "Update artwork source") =>
+        new SetArtworkSourceMutationCommand(documentId, document, source, description);
+
     public static Commands.ICommand CreateRemoveProcessingOperationCommand(Guid documentId, DocumentTabViewModel document, string operationId) =>
         TransformPipeline(documentId, document, operationId, "Remove artwork processing operation", (operations, index) => { operations.RemoveAt(index); });
 
@@ -135,6 +139,36 @@ internal static class FaceMutationCommands
             Artwork = artwork, RuntimeRenderAssets = model.RuntimeRenderAssets, MaskLayer = model.MaskLayer, Trays = model.Trays,
             LampEmitters = model.LampEmitters, Layers = model.Layers, Elements = model.Elements
         };
+    }
+
+    private static FaceDocumentModel WithArtworkSource(FaceDocumentModel model, FaceArtworkSourceModel source)
+    {
+        var current = model.Artwork!;
+        var artwork = new FaceArtworkModel { Id = current.Id, Source = source, ProcessingPipeline = current.ProcessingPipeline,
+            GeneratedAssetPath = current.GeneratedAssetPath, OutputWidth = current.OutputWidth, OutputHeight = current.OutputHeight };
+        return new FaceDocumentModel { Id=model.Id,Title=model.Title,Summary=model.Summary,SourcePanel2DDocumentId=model.SourcePanel2DDocumentId,
+            SourcePanel2DDocumentPath=model.SourcePanel2DDocumentPath,SourceFaceShapeId=model.SourceFaceShapeId,
+            AssignedCabinetFaceTargetId=model.AssignedCabinetFaceTargetId,AssignedCabinetAssetPath=model.AssignedCabinetAssetPath,
+            SourceRegion=model.SourceRegion,LastRegeneratedAtUtc=model.LastRegeneratedAtUtc,GenerationSettings=model.GenerationSettings,
+            Artwork=artwork,RuntimeRenderAssets=model.RuntimeRenderAssets,MaskLayer=model.MaskLayer,Trays=model.Trays,
+            LampEmitters=model.LampEmitters,Layers=model.Layers,Elements=model.Elements };
+    }
+
+    private sealed class SetArtworkSourceMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _id; private readonly DocumentTabViewModel _document; private readonly FaceArtworkSourceModel _next; private readonly string _description;
+        private FaceArtworkSourceModel? _previous;
+        public SetArtworkSourceMutationCommand(Guid id, DocumentTabViewModel document, FaceArtworkSourceModel next, string description)
+        { _id=id;_document=document;_next=next;_description=description; }
+        public Guid DocumentId=>_id; public string Description=>_description; public bool WasExecuted{get;private set;}
+        public void Execute(){var model=_document.GetFaceDocument();if(model.Artwork is null)return;_previous??=model.Artwork.Source;
+            if (SourcesEquivalent(_previous,_next)) return;
+            _document.SetFaceDocument(WithArtworkSource(model,_next),CreateChange(_document,null,PanelChangeProperties.Metadata));_document.MarkDirty();WasExecuted=true;}
+        public void Undo(){if(_previous is null)return;_document.SetFaceDocument(WithArtworkSource(_document.GetFaceDocument(),_previous),CreateChange(_document,null,PanelChangeProperties.Metadata));_document.MarkDirty();}
+        private static bool SourcesEquivalent(FaceArtworkSourceModel a,FaceArtworkSourceModel b)
+        { var aq=a.RegistrationQuad.Normalize();var bq=b.RegistrationQuad.Normalize();return a.Kind==b.Kind&&a.AssetPath==b.AssetPath&&a.Panel2DDocumentId==b.Panel2DDocumentId&&a.Panel2DDocumentPath==b.Panel2DDocumentPath&&a.FaceSourceShapeId==b.FaceSourceShapeId&&
+            Same(aq.TopLeft,bq.TopLeft)&&Same(aq.TopRight,bq.TopRight)&&Same(aq.BottomRight,bq.BottomRight)&&Same(aq.BottomLeft,bq.BottomLeft); }
+        private static bool Same(NormalizedFacePointModel a,NormalizedFacePointModel b)=>a.X.Equals(b.X)&&a.Y.Equals(b.Y);
     }
 
     private sealed class SetProcessingPipelineMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand

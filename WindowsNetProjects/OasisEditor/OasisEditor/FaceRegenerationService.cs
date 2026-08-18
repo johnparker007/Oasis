@@ -45,6 +45,8 @@ internal sealed class FaceRegenerationService
     {
         ArgumentNullException.ThrowIfNull(existingFace);
         ArgumentNullException.ThrowIfNull(sourcePanel);
+        if (existingFace.Artwork?.Source.Kind == FaceArtworkSourceKind.RegisteredImage)
+            throw new InvalidOperationException("Regenerate From Source Shape is not applicable to Registered Image artwork. Use Apply Registration instead.");
         progress ??= NoOpEditorProgressReporter.Instance;
         progress.Report(0.0, "Validating source metadata...");
 
@@ -136,7 +138,7 @@ internal sealed class FaceRegenerationService
             addedElementCount++;
         }
 
-        if (existingFace.Artwork?.Source.Kind == FaceArtworkSourceKind.IndependentImage)
+        if (existingFace.Artwork?.Source.Kind == FaceArtworkSourceKind.RegisteredImage)
         {
             var existingArtworkElement = existingFace.Elements.OfType<FaceArtworkElement>().FirstOrDefault();
             if (existingArtworkElement is not null)
@@ -202,7 +204,7 @@ internal sealed class FaceRegenerationService
     private static FaceArtworkModel? PreserveArtwork(FaceArtworkModel? existing, FaceArtworkModel? generated)
     {
         if (existing is null) return generated;
-        if (generated is null || existing.Source.Kind == FaceArtworkSourceKind.IndependentImage) return existing;
+        if (generated is null || existing.Source.Kind == FaceArtworkSourceKind.RegisteredImage) return existing;
 
         return new FaceArtworkModel
         {
