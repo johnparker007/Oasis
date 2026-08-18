@@ -6,7 +6,9 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.IO;
 using System.Windows.Input;
+using Microsoft.Win32;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.ViewModels;
 using EditorCommands = OasisEditor.Commands;
@@ -1588,8 +1590,29 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         if (selectedElement is FaceArtworkElement artwork)
         {
             var authoredArtwork = selectedDocument.GetFaceDocument().Artwork;
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Type", "Artwork", authoredArtwork?.Source.Kind.ToString() ?? "Unknown"));
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Asset Path", "Artwork", authoredArtwork?.Source.AssetPath ?? string.Empty));
+            const string sourceGroup = "Artwork Source";
+            var source = authoredArtwork?.Source;
+            var sourceLabel = source?.Kind == FaceArtworkSourceKind.RegisteredImage ? "Registered Image" : "Panel2D Face Source Shape";
+            _propertyRows.Add(new InspectorChoicePropertyViewModel("Source Type", sourceGroup,
+                ["Panel2D Face Source Shape", "Registered Image"], sourceLabel, commit: choice =>
+                {
+                    if (authoredArtwork is null) return "The Face has no authored artwork state.";
+                    var registered = choice == "Registered Image";
+                    var next = registered
+                        ? new FaceArtworkSourceModel { Kind=FaceArtworkSourceKind.RegisteredImage,AssetPath=source?.Kind==FaceArtworkSourceKind.RegisteredImage?source.AssetPath:null,RegistrationQuad=source?.Kind==FaceArtworkSourceKind.RegisteredImage?source.RegistrationQuad:FaceArtworkRegistrationQuadModel.FullImage }
+                        : new FaceArtworkSourceModel { Kind=FaceArtworkSourceKind.Panel2DFaceSourceShape,Panel2DDocumentId=selectedDocument.GetFaceDocument().SourcePanel2DDocumentId,Panel2DDocumentPath=selectedDocument.GetFaceDocument().SourcePanel2DDocumentPath,FaceSourceShapeId=selectedDocument.GetFaceDocument().SourceFaceShapeId };
+                    _executeCanvasCommand(selectedDocument.DocumentId,FaceMutationCommands.CreateSetArtworkSourceCommand(selectedDocument.DocumentId,selectedDocument,next,"Change artwork source type"));
+                    if (!registered) selectedDocument.FaceArtworkRegistrationEditing=false;
+                    return null;
+                }));
+            if (source?.Kind == FaceArtworkSourceKind.RegisteredImage)
+            {
+                _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Image",sourceGroup,source.AssetPath??"No image selected"));
+                _propertyRows.Add(new InspectorActionPropertyViewModel("Choose Image...",sourceGroup,new RelayCommand(()=>ChooseRegisteredArtworkImage(selectedDocument))));
+                _propertyRows.Add(new InspectorActionPropertyViewModel("Edit / Finish Registration",sourceGroup,new RelayCommand(()=>selectedDocument.FaceArtworkRegistrationEditing=!selectedDocument.FaceArtworkRegistrationEditing)));
+                _propertyRows.Add(new InspectorActionPropertyViewModel("Apply Registration",sourceGroup,new RelayCommand(()=>
+                    _executeCanvasCommand(selectedDocument.DocumentId,FaceMutationCommands.CreateApplyArtworkRegistrationCommand(selectedDocument.DocumentId,selectedDocument)))));
+            }
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Generated Artwork Path", "Artwork", authoredArtwork?.GeneratedAssetPath ?? artwork.AssetPath ?? string.Empty));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Output Dimensions", "Artwork", authoredArtwork is null ? $"{artwork.Width:0} × {artwork.Height:0}" : $"{authoredArtwork.OutputWidth} × {authoredArtwork.OutputHeight}"));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Processing Operations", "Artwork", authoredArtwork?.ProcessingPipeline.Operations.Count.ToString() ?? "0"));
@@ -1698,6 +1721,36 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private void AddPanelReelLampNumberRow(PanelElementModel reel, string displayName, ReelLampSlotPosition position)
     {
         _propertyRows.Add(new InspectorIntPropertyViewModel(displayName, "Reel Lamps", GetReelLampNumber(reel.ReelLamps, position), commit: value => value < 0 ? "Lamp Number must be zero or greater." : TryApplyUpdate(reel.ObjectId, $"Update {displayName.ToLowerInvariant()}", new PanelElementModelUpdate { ReelLamps = new PanelElementOptionalValue<IReadOnlyList<ReelLampSlotModel>>(SetReelLampNumber(reel.ReelLamps, position, value)) })));
+    }
+
+    private void ChooseRegisteredArtworkImage(DocumentTabViewModel document)
+    {
+        var project = _loadedProjectAccessor();
+        if (project is null) return;
+        var dialog = new OpenFileDialog { Title="Choose replacement Face artwork",Filter="Image files|*.png;*.jpg;*.jpeg|PNG files|*.png|JPEG files|*.jpg;*.jpeg",CheckFileExists=true };
+        if (dialog.ShowDialog()!=true) return;
+        try
+        {
+            var sourcePath=Path.GetFullPath(dialog.FileName);var assetsRoot=Path.GetFullPath(project.AssetsDirectory);
+            string importedPath;
+            if (sourcePath.StartsWith(assetsRoot+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)) importedPath=sourcePath;
+            else
+            {
+                var destinationDirectory=Path.Combine(assetsRoot,"FaceSources");Directory.CreateDirectory(destinationDirectory);
+                var stem=Path.GetFileNameWithoutExtension(sourcePath);var extension=Path.GetExtension(sourcePath).ToLowerInvariant();
+                importedPath=Path.Combine(destinationDirectory,stem+extension);var suffix=2;
+                while(File.Exists(importedPath)&&!FilesEqual(sourcePath,importedPath)) importedPath=Path.Combine(destinationDirectory,$"{stem}-{suffix++}{extension}");
+                if(!File.Exists(importedPath))File.Copy(sourcePath,importedPath);
+            }
+            var relative=ProjectAssetPathService.NormalizeProjectRelativePath(Path.GetRelativePath(project.ProjectDirectory,importedPath));
+            var next=new FaceArtworkSourceModel{Kind=FaceArtworkSourceKind.RegisteredImage,AssetPath=relative,RegistrationQuad=FaceArtworkRegistrationQuadModel.FullImage};
+            _executeCanvasCommand(document.DocumentId,FaceMutationCommands.CreateSetArtworkSourceCommand(document.DocumentId,document,next,"Choose registered artwork image"));
+            document.FaceArtworkRegistrationEditing=true;
+        }
+        catch(Exception exception){System.Windows.MessageBox.Show($"The replacement artwork image could not be imported.\n\n{exception.Message}","Import Artwork Image",System.Windows.MessageBoxButton.OK,System.Windows.MessageBoxImage.Error);}
+
+        static bool FilesEqual(string left,string right)
+        { var a=new FileInfo(left);var b=new FileInfo(right);return a.Length==b.Length&&File.ReadAllBytes(left).SequenceEqual(File.ReadAllBytes(right)); }
     }
 
     private void AddFaceReelLampRows(FaceReelDisplayElement reel)

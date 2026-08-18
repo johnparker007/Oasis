@@ -1,5 +1,6 @@
 using SkiaSharp;
 using Xunit;
+using EditorCommands = OasisEditor.Commands;
 
 namespace OasisEditor.Tests;
 
@@ -100,6 +101,42 @@ public sealed class FaceRegisteredArtworkSourceTests
         Assert.Equal(0, document.GetFaceDocument().Artwork!.Source.RegistrationQuad.TopLeft.X);
         command.Execute();
         Assert.Equal(.2, document.GetFaceDocument().Artwork!.Source.RegistrationQuad.TopLeft.X);
+    }
+
+    [Fact]
+    public void Artwork_inspector_exposes_registered_source_workflow_and_switch_preserves_calibration()
+    {
+        var calibration=new ArtworkCalibrationOperationModel{BlackReference=new CalibrationReferenceModel{Samples=[new CalibrationSampleModel{Id="black",X=.2,Y=.3}]},SameColorGroups=[new SameColorCalibrationGroupModel{Id="group",Name="Gold",Samples=[new CalibrationSampleModel{Id="gold",X=.7,Y=.8}]}]};
+        var model=new FaceDocumentModel{Artwork=new FaceArtworkModel{Source=new FaceArtworkSourceModel(),ProcessingPipeline=new ImageProcessingPipelineModel{Operations=[calibration]}},Elements=[new FaceArtworkElement{ObjectId="art",Name="Artwork",Width=100,Height=200}]};
+        var document=new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"),faceDocumentJson:FaceDocumentStorage.Serialize(model));document.SelectionState.Replace(new EditorSelectionItem(EditorSelectionDomain.FaceElement,"art"));
+        var context=new ActiveDocumentContextService();context.SetActiveDocument(document);context.SetPanelSelection(document.DocumentId,new PanelSelectionInfo("art","artwork",0,0,100,200));
+        var inspector=new InspectorViewModel(()=>null,()=>document,()=>null,context,Execute,(d,s)=>d);inspector.NotifyContextChanged();
+        var choice=Assert.IsType<InspectorChoicePropertyViewModel>(inspector.InspectorPropertyRows.Single(row=>row.DisplayName=="Source Type"));
+        Assert.Contains("Registered Image",choice.Choices);choice.Value="Registered Image";
+        Assert.Equal(FaceArtworkSourceKind.RegisteredImage,document.GetFaceDocument().Artwork!.Source.Kind);
+        Assert.Equal(0,document.GetFaceDocument().Artwork.Source.RegistrationQuad.TopLeft.X);Assert.Equal(1,document.GetFaceDocument().Artwork.Source.RegistrationQuad.BottomRight.Y);
+        var retained=Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(document.GetFaceDocument().Artwork.ProcessingPipeline.Operations));
+        Assert.Equal("black",Assert.Single(retained.BlackReference.Samples).Id);Assert.Equal("group",Assert.Single(retained.SameColorGroups).Id);
+        inspector.NotifyContextChanged();Assert.Contains(inspector.InspectorPropertyRows,row=>row.DisplayName=="Choose Image...");Assert.Contains(inspector.InspectorPropertyRows,row=>row.DisplayName=="Edit / Finish Registration");Assert.Contains(inspector.InspectorPropertyRows,row=>row.DisplayName=="Apply Registration");
+        static bool Execute(Guid _,EditorCommands.ICommand command){command.Execute();return command is not EditorCommands.IExecutionTrackedCommand tracked||tracked.WasExecuted;}
+    }
+
+    [Fact]
+    public void Apply_registration_updates_texture_dimensions_without_changing_face_geometry_or_calibration()
+    {
+        var root=Path.Combine(Path.GetTempPath(),$"oasis-apply-{Guid.NewGuid():N}");var sourcePath=Path.Combine(root,"Assets","FaceSources","photo.png");Directory.CreateDirectory(Path.GetDirectoryName(sourcePath)!);using(var image=CreateCornerBitmap(120,180))Save(image,sourcePath);
+        try
+        {
+            var sample=new CalibrationSampleModel{Id="sample",X=.25,Y=.75,SamplingMode=CalibrationSamplingMode.Area,RadiusNormalized=.03};var calibration=new ArtworkCalibrationOperationModel{Id="calibration",BlackReference=new CalibrationReferenceModel{Samples=[sample]}};
+            var element=new FaceArtworkElement{ObjectId="art",Name="Artwork",X=11,Y=22,Width=300,Height=450,AssetPath="Generated/Faces/Test/Artwork/artwork.png"};
+            var model=new FaceDocumentModel{SourceRegion=new FaceSourceRegionModel{X=0,Y=0,Width=2,Height=3},Artwork=new FaceArtworkModel{GeneratedAssetPath=element.AssetPath,Source=new FaceArtworkSourceModel{Kind=FaceArtworkSourceKind.RegisteredImage,AssetPath="Assets/FaceSources/photo.png"},ProcessingPipeline=new ImageProcessingPipelineModel{Operations=[calibration]}},Elements=[element]};
+            var document=new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"),faceDocumentJson:FaceDocumentStorage.Serialize(model));document.SetProjectAccessor(()=>new EditorProject{Name="Test",ProjectFilePath=Path.Combine(root,"test.oasis"),ProjectDirectory=root,AssetsDirectory=Path.Combine(root,"Assets"),MachinesDirectory=Path.Combine(root,"Machines"),GeneratedDirectory=Path.Combine(root,"Generated")});
+            Assert.True(document.TryApplyArtworkRegistration(out var error),error);var updated=document.GetFaceDocument();
+            Assert.Equal((11d,22d,300d,450d),(updated.Elements[0].X,updated.Elements[0].Y,updated.Elements[0].Width,updated.Elements[0].Height));Assert.True(updated.Artwork!.OutputWidth>100);Assert.True(updated.Artwork.OutputHeight>150);
+            var retained=Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(updated.Artwork.ProcessingPipeline.Operations));Assert.Equal("sample",Assert.Single(retained.BlackReference.Samples).Id);
+            Assert.True(File.Exists(Path.Combine(root,"Generated","Faces","Test","Artwork","original.png")));Assert.True(File.Exists(Path.Combine(root,"Generated","Faces","Test","Artwork","artwork.png")));
+        }
+        finally{Directory.Delete(root,true);}
     }
 
     private static FacePointModel P(double x, double y) => new() { X = x, Y = y };

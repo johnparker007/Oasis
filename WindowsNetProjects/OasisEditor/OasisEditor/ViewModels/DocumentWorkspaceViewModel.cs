@@ -247,7 +247,8 @@ public sealed class DocumentWorkspaceViewModel
         }
 
         var faceDocument = selectedDocument.GetFaceDocument();
-        return !string.IsNullOrWhiteSpace(faceDocument.SourcePanel2DDocumentId)
+        return faceDocument.Artwork?.Source.Kind != FaceArtworkSourceKind.RegisteredImage
+            && !string.IsNullOrWhiteSpace(faceDocument.SourcePanel2DDocumentId)
             && !string.IsNullOrWhiteSpace(faceDocument.SourceFaceShapeId)
             && faceDocument.SourceRegion is { IsValid: true };
     }

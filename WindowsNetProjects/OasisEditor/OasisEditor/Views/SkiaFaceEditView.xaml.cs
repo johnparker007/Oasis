@@ -32,6 +32,8 @@ public partial class SkiaFaceEditView : UserControl
     private bool _isRenderDirty;
     private Point _panStart;
     private CalibrationSampleModel? _markerPreviewPoint;
+    private int _registrationDragCorner = -1;
+    private FaceArtworkSourceModel? _registrationDragSource;
     private Vector _panOrigin;
     private readonly Stopwatch _renderStopwatch = Stopwatch.StartNew();
     private readonly DispatcherTimer _renderThrottleTimer;
@@ -115,6 +117,8 @@ public partial class SkiaFaceEditView : UserControl
             or nameof(DocumentTabViewModel.FacePanX)
             or nameof(DocumentTabViewModel.FacePanY)
             or nameof(DocumentTabViewModel.FaceArtworkShowOriginal)
+            or nameof(DocumentTabViewModel.FaceArtworkRegistrationEditing)
+            or nameof(DocumentTabViewModel.FaceArtworkRegistrationPreview)
             or nameof(DocumentTabViewModel.CalibrationPlacement)
             or nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
         {
@@ -177,12 +181,36 @@ public partial class SkiaFaceEditView : UserControl
         canvas.Save();
         canvas.Translate((float)viewport.PanX, (float)viewport.PanY);
         canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
-        DrawFaceElements(canvas, document, viewport);
-        DrawArtworkSamples(canvas, document, viewport);
-        DrawSelectionOutline(canvas, document, viewport);
-        DrawDragSelectionRect(canvas, viewport);
+        if (document.FaceArtworkRegistrationEditing) DrawArtworkRegistration(canvas,document,viewport);
+        else
+        {
+            DrawFaceElements(canvas, document, viewport);
+            DrawArtworkSamples(canvas, document, viewport);
+            DrawSelectionOutline(canvas, document, viewport);
+            DrawDragSelectionRect(canvas, viewport);
+        }
         canvas.Restore();
     }
+
+    private static void DrawArtworkRegistration(SKCanvas canvas,DocumentTabViewModel document,PanelViewportTransform viewport)
+    {
+        var source=document.GetFaceDocument().Artwork?.Source;var artwork=document.GetFaceElements().OfType<FaceArtworkElement>().FirstOrDefault();
+        if(source?.Kind!=FaceArtworkSourceKind.RegisteredImage||artwork is null||!TryGetArtworkImage(source.AssetPath,out var image))return;
+        var rect=GetRegistrationImageRect(artwork,image.Width,image.Height);
+        using(var imagePaint=new SKPaint{IsAntialias=true,FilterQuality=SKFilterQuality.High})canvas.DrawImage(image,new SKRect(0,0,image.Width,image.Height),rect,imagePaint);
+        var quad=document.FaceArtworkRegistrationPreview??source.RegistrationQuad;var points=new[]{ToPoint(quad.TopLeft),ToPoint(quad.TopRight),ToPoint(quad.BottomRight),ToPoint(quad.BottomLeft)};
+        using var line=new SKPaint{Style=SKPaintStyle.Stroke,Color=new SKColor(0,220,255),StrokeWidth=(float)(3/viewport.NormalizedZoom),IsAntialias=true};
+        using var fill=new SKPaint{Style=SKPaintStyle.Fill,Color=new SKColor(0,120,160),IsAntialias=true};
+        using var border=new SKPaint{Style=SKPaintStyle.Stroke,Color=SKColors.White,StrokeWidth=(float)(2/viewport.NormalizedZoom),IsAntialias=true};
+        using var shade=new SKPaint{Style=SKPaintStyle.Fill,Color=new SKColor(0,0,0,80)};canvas.DrawRect(rect,shade);
+        using var path=new SKPath();path.MoveTo(points[0]);foreach(var point in points.Skip(1))path.LineTo(point);path.Close();canvas.DrawPath(path,line);
+        var radius=(float)(9/viewport.NormalizedZoom);foreach(var point in points){canvas.DrawCircle(point,radius,fill);canvas.DrawCircle(point,radius,border);}
+        using var label=new SKPaint{Color=SKColors.White,TextSize=(float)(14/viewport.NormalizedZoom),IsAntialias=true};canvas.DrawText("REGISTER ARTWORK SOURCE · drag corners, then Apply Registration",rect.Left,rect.Top-(float)(10/viewport.NormalizedZoom),label);
+        SKPoint ToPoint(NormalizedFacePointModel p)=>new(rect.Left+(float)(p.X*rect.Width),rect.Top+(float)(p.Y*rect.Height));
+    }
+
+    private static SKRect GetRegistrationImageRect(FaceArtworkElement artwork,int imageWidth,int imageHeight)
+    { var scale=Math.Min(artwork.Width/Math.Max(1,imageWidth),artwork.Height/Math.Max(1,imageHeight));var width=imageWidth*scale;var height=imageHeight*scale;return SKRect.Create((float)(artwork.X+(artwork.Width-width)/2),(float)(artwork.Y+(artwork.Height-height)/2),(float)width,(float)height); }
 
     private void DrawArtworkSamples(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)
     {
@@ -431,6 +459,7 @@ public partial class SkiaFaceEditView : UserControl
         if (eventArgs.ChangedButton == MouseButton.Left)
         {
             var pointer = eventArgs.GetPosition(FaceSkiaSurface);
+            if (TryBeginRegistrationDrag(document,pointer)){eventArgs.Handled=true;return;}
             if (TryAddArtworkSample(document, pointer))
             {
                 eventArgs.Handled = true;
@@ -474,6 +503,23 @@ public partial class SkiaFaceEditView : UserControl
         eventArgs.Handled = true;
     }
 
+    private bool TryBeginRegistrationDrag(DocumentTabViewModel document,Point pointer)
+    {
+        if(!document.FaceArtworkRegistrationEditing)return false;var source=document.GetFaceDocument().Artwork?.Source;var artwork=document.GetFaceElements().OfType<FaceArtworkElement>().FirstOrDefault();
+        if(source?.Kind!=FaceArtworkSourceKind.RegisteredImage||artwork is null||!TryGetArtworkImage(source.AssetPath,out var image))return true;
+        var rect=GetRegistrationImageRect(artwork,image.Width,image.Height);var q=document.FaceArtworkRegistrationPreview??source.RegistrationQuad;var points=new[]{q.TopLeft,q.TopRight,q.BottomRight,q.BottomLeft};
+        var docX=(pointer.X-document.FacePanX)/Math.Max(document.FaceZoom,.0001);var docY=(pointer.Y-document.FacePanY)/Math.Max(document.FaceZoom,.0001);var tolerance=14/Math.Max(document.FaceZoom,.0001);
+        _registrationDragCorner=Array.FindIndex(points,p=>Math.Pow(rect.Left+p.X*rect.Width-docX,2)+Math.Pow(rect.Top+p.Y*rect.Height-docY,2)<=tolerance*tolerance);
+        if(_registrationDragCorner>=0){_registrationDragSource=source;FaceSkiaSurface.CaptureMouse();UpdateRegistrationDrag(document,pointer);}return true;
+    }
+
+    private void UpdateRegistrationDrag(DocumentTabViewModel document,Point pointer)
+    {
+        if(_registrationDragCorner<0||_registrationDragSource is null)return;var artwork=document.GetFaceElements().OfType<FaceArtworkElement>().FirstOrDefault();if(artwork is null||!TryGetArtworkImage(_registrationDragSource.AssetPath,out var image))return;
+        var rect=GetRegistrationImageRect(artwork,image.Width,image.Height);var x=Math.Clamp(((pointer.X-document.FacePanX)/Math.Max(document.FaceZoom,.0001)-rect.Left)/rect.Width,0,1);var y=Math.Clamp(((pointer.Y-document.FacePanY)/Math.Max(document.FaceZoom,.0001)-rect.Top)/rect.Height,0,1);
+        var q=document.FaceArtworkRegistrationPreview??_registrationDragSource.RegistrationQuad;var point=new NormalizedFacePointModel{X=x,Y=y};document.FaceArtworkRegistrationPreview=new FaceArtworkRegistrationQuadModel{TopLeft=_registrationDragCorner==0?point:q.TopLeft,TopRight=_registrationDragCorner==1?point:q.TopRight,BottomRight=_registrationDragCorner==2?point:q.BottomRight,BottomLeft=_registrationDragCorner==3?point:q.BottomLeft};
+    }
+
     private static bool TryAddArtworkSample(DocumentTabViewModel document, Point pointer)
     {
         var placement=document.CalibrationPlacement;if(placement is null)return false;var artwork=document.GetFaceElements().OfType<FaceArtworkElement>().FirstOrDefault();var operation=document.GetFaceDocument().Artwork?.ProcessingPipeline.Operations.OfType<ArtworkCalibrationOperationModel>().FirstOrDefault(o=>o.Id==placement.OperationId);if(artwork is null||operation is null)return false;
@@ -487,6 +533,7 @@ public partial class SkiaFaceEditView : UserControl
 
     private void OnFaceSkiaSurfaceMouseMove(object sender, MouseEventArgs eventArgs)
     {
+        if(_registrationDragCorner>=0&&Document is { } registrationDocument){UpdateRegistrationDrag(registrationDocument,eventArgs.GetPosition(FaceSkiaSurface));return;}
         UpdateMarkerPreview(eventArgs.GetPosition(FaceSkiaSurface));
         if (_isLeftMouseDown)
         {
@@ -543,6 +590,8 @@ public partial class SkiaFaceEditView : UserControl
         if (eventArgs.ChangedButton == MouseButton.Left)
         {
             var document = Document;
+            if(document is not null&&_registrationDragCorner>=0&&_registrationDragSource is not null)
+            { var quad=document.FaceArtworkRegistrationPreview??_registrationDragSource.RegistrationQuad;var next=new FaceArtworkSourceModel{Kind=_registrationDragSource.Kind,AssetPath=_registrationDragSource.AssetPath,Panel2DDocumentId=_registrationDragSource.Panel2DDocumentId,Panel2DDocumentPath=_registrationDragSource.Panel2DDocumentPath,FaceSourceShapeId=_registrationDragSource.FaceSourceShapeId,RegistrationQuad=quad};document.CommandService.Execute(FaceMutationCommands.CreateSetArtworkSourceCommand(document.DocumentId,document,next,"Move artwork registration corner"));_registrationDragCorner=-1;_registrationDragSource=null;FaceSkiaSurface.ReleaseMouseCapture();eventArgs.Handled=true;return;}
             if (document is not null)
             {
                 if (_isDragSelecting)
@@ -614,6 +663,7 @@ public partial class SkiaFaceEditView : UserControl
 
     private void OnFaceSkiaSurfaceLostMouseCapture(object sender, MouseEventArgs eventArgs)
     {
+        if(_registrationDragCorner>=0){_registrationDragCorner=-1;_registrationDragSource=null;if(Document is { } document)document.FaceArtworkRegistrationPreview=document.GetFaceDocument().Artwork?.Source.RegistrationQuad;RequestRender();}
         if (_isPanning)
         {
             EndPan(releaseMouseCapture: false);

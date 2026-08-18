@@ -8,6 +8,8 @@ internal static class PerspectiveRectificationService
     public static FaceSourceShapeOutputSize EstimateOutputSize(IReadOnlyList<FacePointModel> quad, double? targetAspectRatio = null)
     {
         if (quad.Count != 4) throw new ArgumentException("A perspective quad must contain four ordered corners.", nameof(quad));
+        var twiceArea=0d;for(var i=0;i<4;i++){var next=(i+1)%4;twiceArea+=(quad[i].X*quad[next].Y)-(quad[next].X*quad[i].Y);}
+        if(Math.Abs(twiceArea)<1d)throw new ArgumentException("The registration quad is degenerate; move its corners to enclose the artwork.",nameof(quad));
         var width = Math.Max(Distance(quad[0], quad[1]), Distance(quad[3], quad[2]));
         var height = Math.Max(Distance(quad[0], quad[3]), Distance(quad[1], quad[2]));
         if (targetAspectRatio is > 0d and < double.PositiveInfinity)

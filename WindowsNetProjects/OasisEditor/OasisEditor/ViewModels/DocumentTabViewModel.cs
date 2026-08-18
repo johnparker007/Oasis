@@ -33,6 +33,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private double _panelPanY;
     private CalibrationPlacementState? _calibrationPlacement;
     private bool _faceArtworkShowOriginal;
+    private bool _faceArtworkRegistrationEditing;
+    private FaceArtworkRegistrationQuadModel? _faceArtworkRegistrationPreview;
     private Dictionary<string, object>? _lastVisualStateByObjectId;
     private readonly MachineRuntimeState _runtimeState;
     private CabinetModelDocumentViewModel? _cabinetViewer;
@@ -123,6 +125,24 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         get => _faceArtworkShowOriginal;
         set { if (_faceArtworkShowOriginal == value) return; _faceArtworkShowOriginal = value; PropertyChanged?.Invoke(this, new(nameof(FaceArtworkShowOriginal))); }
+    }
+    public bool FaceArtworkRegistrationEditing
+    {
+        get => _faceArtworkRegistrationEditing;
+        set
+        {
+            if (_faceArtworkRegistrationEditing == value) return;
+            _faceArtworkRegistrationEditing = value;
+            _faceArtworkRegistrationPreview = value ? _faceDocumentModel.Artwork?.Source.RegistrationQuad.Normalize() : null;
+            CalibrationPlacement = null;
+            PropertyChanged?.Invoke(this, new(nameof(FaceArtworkRegistrationEditing)));
+            PropertyChanged?.Invoke(this, new(nameof(FaceArtworkRegistrationPreview)));
+        }
+    }
+    public FaceArtworkRegistrationQuadModel? FaceArtworkRegistrationPreview
+    {
+        get => _faceArtworkRegistrationPreview;
+        internal set { _faceArtworkRegistrationPreview = value?.Normalize(); PropertyChanged?.Invoke(this, new(nameof(FaceArtworkRegistrationPreview))); }
     }
     public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && !string.IsNullOrWhiteSpace(_cabinetDocumentModel.Model.Path);
     public CabinetModelDocumentViewModel? ExistingCabinetViewer => _cabinetViewer;
@@ -279,6 +299,55 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         return true;
     }
 
+    internal bool TryApplyArtworkRegistration(out string? errorMessage)
+    {
+        errorMessage = null;
+        var artwork = _faceDocumentModel.Artwork;
+        var project = _projectAccessor?.Invoke();
+        if (artwork?.Source.Kind != FaceArtworkSourceKind.RegisteredImage) { errorMessage = "Apply Registration requires a Registered Image artwork source."; return false; }
+        if (project is null) { errorMessage = "The Face is not associated with an open project."; return false; }
+        if (string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)) { errorMessage = "The Face has no generated artwork output path."; return false; }
+        var output = FaceArtworkRebuildService.ResolveGeneratedArtworkPath(artwork.GeneratedAssetPath, project.ProjectDirectory);
+        var aspect = _faceDocumentModel.SourceRegion is { IsValid: true } bounds ? bounds.Width / bounds.Height : (double?)null;
+        var result = new FaceArtworkRebuildService().RebuildRegisteredImage(artwork, project.ProjectDirectory, output, aspect, out var size);
+        if (!result.Succeeded) { errorMessage = result.ErrorMessage; return false; }
+        var updatedArtwork = new FaceArtworkModel { Id=artwork.Id,Source=artwork.Source,ProcessingPipeline=artwork.ProcessingPipeline,
+            GeneratedAssetPath=artwork.GeneratedAssetPath,OutputWidth=size.Width,OutputHeight=size.Height };
+        _faceDocumentModel = CopyFaceWithArtwork(_faceDocumentModel, updatedArtwork);
+        _faceDocumentJson = FaceDocumentStorage.Serialize(_faceDocumentModel);
+        InvalidateGeneratedArtwork(artwork);
+        PanelChanged?.Invoke(new PanelChangeEvent(DocumentId, artwork.Id, PanelChangeProperties.Metadata, true, false, true, true));
+        return true;
+    }
+
+    private static FaceDocumentModel CopyFaceWithArtwork(FaceDocumentModel model, FaceArtworkModel artwork) => new()
+    { Id=model.Id,Title=model.Title,Summary=model.Summary,SourcePanel2DDocumentId=model.SourcePanel2DDocumentId,SourcePanel2DDocumentPath=model.SourcePanel2DDocumentPath,
+      SourceFaceShapeId=model.SourceFaceShapeId,AssignedCabinetFaceTargetId=model.AssignedCabinetFaceTargetId,AssignedCabinetAssetPath=model.AssignedCabinetAssetPath,
+      SourceRegion=model.SourceRegion,LastRegeneratedAtUtc=model.LastRegeneratedAtUtc,GenerationSettings=model.GenerationSettings,Artwork=artwork,
+      RuntimeRenderAssets=model.RuntimeRenderAssets,MaskLayer=model.MaskLayer,Trays=model.Trays,LampEmitters=model.LampEmitters,Layers=model.Layers,Elements=model.Elements };
+
+    internal void RestoreArtworkAfterRegistration(FaceArtworkModel artwork, byte[]? processed, byte[]? original)
+    {
+        _faceDocumentModel = CopyFaceWithArtwork(_faceDocumentModel, artwork);
+        _faceDocumentJson = FaceDocumentStorage.Serialize(_faceDocumentModel);
+        var project = _projectAccessor?.Invoke();
+        if (project is not null && !string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath))
+        {
+            var path = FaceArtworkRebuildService.ResolveGeneratedArtworkPath(artwork.GeneratedAssetPath, project.ProjectDirectory);
+            if (processed is not null) File.WriteAllBytes(path, processed);
+            if (original is not null) File.WriteAllBytes(FaceArtworkRebuildService.GetOriginalArtworkPath(path), original);
+        }
+        InvalidateGeneratedArtwork(artwork);
+        PanelChanged?.Invoke(new PanelChangeEvent(DocumentId, artwork.Id, PanelChangeProperties.Metadata, true, false, true, true));
+    }
+
+    private void InvalidateGeneratedArtwork(FaceArtworkModel artwork)
+    {
+        Views.SkiaFaceEditView.InvalidateArtworkImage(artwork.GeneratedAssetPath);
+        if (!string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath))
+            Views.SkiaFaceEditView.InvalidateArtworkImage(FaceArtworkRebuildService.GetOriginalArtworkPath(artwork.GeneratedAssetPath));
+    }
+
     internal bool TryReadGeneratedArtwork(out byte[] bytes, out string? errorMessage)
     {
         bytes = [];
@@ -305,6 +374,14 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    internal byte[]? TryReadCanonicalOriginalArtwork()
+    {
+        var project=_projectAccessor?.Invoke();var path=_faceDocumentModel.Artwork?.GeneratedAssetPath;
+        if(project is null||string.IsNullOrWhiteSpace(path))return null;
+        var original=FaceArtworkRebuildService.GetOriginalArtworkPath(FaceArtworkRebuildService.ResolveGeneratedArtworkPath(path,project.ProjectDirectory));
+        return File.Exists(original)?File.ReadAllBytes(original):null;
+    }
+
     internal bool TryRestoreGeneratedArtwork(byte[] bytes)
     {
         ArgumentNullException.ThrowIfNull(bytes);
@@ -326,7 +403,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     private void NotifyGeneratedArtworkChanged(FaceArtworkModel artwork)
     {
-        Views.SkiaFaceEditView.InvalidateArtworkImage(artwork.GeneratedAssetPath);
+        InvalidateGeneratedArtwork(artwork);
         PanelChanged?.Invoke(new PanelChangeEvent(DocumentId, artwork.Id, PanelChangeProperties.Metadata, AffectsCanvas: true, AffectsHierarchy: false, AffectsInspectorRows: false, AffectsPersistence: false));
     }
 

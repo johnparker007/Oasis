@@ -57,7 +57,7 @@ internal sealed class FaceArtworkRebuildService
 
         if (artwork.Source.Kind != FaceArtworkSourceKind.Panel2DFaceSourceShape)
         {
-            throw new NotSupportedException("Independent artwork sources are authored state but are not rebuildable yet.");
+            throw new NotSupportedException("This rebuild path applies only to Panel2D Face Source Shape artwork.");
         }
 
         var generatedPath = FaceSourceShapeTransformService.TryGenerateBackground(

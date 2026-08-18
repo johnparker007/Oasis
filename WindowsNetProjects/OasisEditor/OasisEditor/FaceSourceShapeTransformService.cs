@@ -29,20 +29,8 @@ internal static class FaceSourceShapeTransformService
         if (!File.Exists(sourcePath)) return null;
         using var source = SKBitmap.Decode(sourcePath);
         if (source is null) return null;
-        using var output = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
-        for (var y = 0; y < height; y++)
-        for (var x = 0; x < width; x++)
-        {
-            if (!TryTransformFacePointToPanel(shape, width, height, x, y, out var panelPoint))
-            {
-                output.SetPixel(x, y, SKColors.Transparent);
-                continue;
-            }
-
-            var px = panelPoint.X - background.X;
-            var py = panelPoint.Y - background.Y;
-            output.SetPixel(x, y, SampleBicubic(source, px / Math.Max(1d, background.Width) * source.Width, py / Math.Max(1d, background.Height) * source.Height));
-        }
+        FacePointModel Pixel(FacePointModel point)=>new(){X=(point.X-background.X)/Math.Max(1d,background.Width)*source.Width,Y=(point.Y-background.Y)/Math.Max(1d,background.Height)*source.Height};
+        using var output = PerspectiveRectificationService.Rectify(source,[Pixel(shape.TopLeft),Pixel(shape.TopRight),Pixel(shape.BottomRight),Pixel(shape.BottomLeft)],width,height);
         var path = string.IsNullOrWhiteSpace(outputPath)
             ? Path.Combine(projectDirectory, "Generated", "Faces", $"face-source-shape-{Guid.NewGuid():N}.png")
             : outputPath;

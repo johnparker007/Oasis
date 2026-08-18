@@ -26,6 +26,9 @@ internal static class FaceMutationCommands
         FaceArtworkSourceModel source, string description = "Update artwork source") =>
         new SetArtworkSourceMutationCommand(documentId, document, source, description);
 
+    public static Commands.ICommand CreateApplyArtworkRegistrationCommand(Guid documentId, DocumentTabViewModel document) =>
+        new ApplyArtworkRegistrationCommand(documentId, document);
+
     public static Commands.ICommand CreateRemoveProcessingOperationCommand(Guid documentId, DocumentTabViewModel document, string operationId) =>
         TransformPipeline(documentId, document, operationId, "Remove artwork processing operation", (operations, index) => { operations.RemoveAt(index); });
 
@@ -163,12 +166,24 @@ internal static class FaceMutationCommands
         public Guid DocumentId=>_id; public string Description=>_description; public bool WasExecuted{get;private set;}
         public void Execute(){var model=_document.GetFaceDocument();if(model.Artwork is null)return;_previous??=model.Artwork.Source;
             if (SourcesEquivalent(_previous,_next)) return;
-            _document.SetFaceDocument(WithArtworkSource(model,_next),CreateChange(_document,null,PanelChangeProperties.Metadata));_document.MarkDirty();WasExecuted=true;}
-        public void Undo(){if(_previous is null)return;_document.SetFaceDocument(WithArtworkSource(_document.GetFaceDocument(),_previous),CreateChange(_document,null,PanelChangeProperties.Metadata));_document.MarkDirty();}
+            _document.SetFaceDocument(WithArtworkSource(model,_next),CreateChange(_document,null,PanelChangeProperties.Metadata));if(_document.FaceArtworkRegistrationEditing)_document.FaceArtworkRegistrationPreview=_next.RegistrationQuad;_document.MarkDirty();WasExecuted=true;}
+        public void Undo(){if(_previous is null)return;_document.SetFaceDocument(WithArtworkSource(_document.GetFaceDocument(),_previous),CreateChange(_document,null,PanelChangeProperties.Metadata));if(_document.FaceArtworkRegistrationEditing)_document.FaceArtworkRegistrationPreview=_previous.RegistrationQuad;_document.MarkDirty();}
         private static bool SourcesEquivalent(FaceArtworkSourceModel a,FaceArtworkSourceModel b)
         { var aq=a.RegistrationQuad.Normalize();var bq=b.RegistrationQuad.Normalize();return a.Kind==b.Kind&&a.AssetPath==b.AssetPath&&a.Panel2DDocumentId==b.Panel2DDocumentId&&a.Panel2DDocumentPath==b.Panel2DDocumentPath&&a.FaceSourceShapeId==b.FaceSourceShapeId&&
             Same(aq.TopLeft,bq.TopLeft)&&Same(aq.TopRight,bq.TopRight)&&Same(aq.BottomRight,bq.BottomRight)&&Same(aq.BottomLeft,bq.BottomLeft); }
         private static bool Same(NormalizedFacePointModel a,NormalizedFacePointModel b)=>a.X.Equals(b.X)&&a.Y.Equals(b.Y);
+    }
+
+    private sealed class ApplyArtworkRegistrationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand, Commands.IExecutionFailureDiagnostic
+    {
+        private readonly Guid _id; private readonly DocumentTabViewModel _document;
+        private FaceArtworkModel? _before; private byte[]? _beforeProcessed; private byte[]? _beforeOriginal;
+        public ApplyArtworkRegistrationCommand(Guid id,DocumentTabViewModel document){_id=id;_document=document;}
+        public Guid DocumentId=>_id; public string Description=>"Apply Face Artwork Registration"; public bool WasExecuted{get;private set;} public string? ExecutionFailureMessage{get;private set;}
+        public void Execute(){_before??=_document.GetFaceDocument().Artwork;if(_before is not null&&_beforeProcessed is null&&_document.TryReadGeneratedArtwork(out var bytes,out _)){
+            _beforeProcessed=bytes;_beforeOriginal=_document.TryReadCanonicalOriginalArtwork();}
+            WasExecuted=_document.TryApplyArtworkRegistration(out var error);ExecutionFailureMessage=error;if(WasExecuted){_document.FaceArtworkRegistrationEditing=false;_document.MarkDirty();}}
+        public void Undo(){if(_before is not null)_document.RestoreArtworkAfterRegistration(_before,_beforeProcessed,_beforeOriginal);}
     }
 
     private sealed class SetProcessingPipelineMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
