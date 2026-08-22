@@ -29,20 +29,10 @@ internal static class FaceSourceShapeTransformService
         if (!File.Exists(sourcePath)) return null;
         using var source = SKBitmap.Decode(sourcePath);
         if (source is null) return null;
-        using var output = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
-        for (var y = 0; y < height; y++)
-        for (var x = 0; x < width; x++)
-        {
-            if (!TryTransformFacePointToPanel(shape, width, height, x, y, out var panelPoint))
-            {
-                output.SetPixel(x, y, SKColors.Transparent);
-                continue;
-            }
-
-            var px = panelPoint.X - background.X;
-            var py = panelPoint.Y - background.Y;
-            output.SetPixel(x, y, SampleBicubic(source, px / Math.Max(1d, background.Width) * source.Width, py / Math.Max(1d, background.Height) * source.Height));
-        }
+        var sourceQuad = new[] { shape.TopLeft, shape.TopRight, shape.BottomRight, shape.BottomLeft }
+            .Select(point => PanelPointToBitmap(point, background, source))
+            .ToArray();
+        using var output = PerspectiveRasterizer.Rectify(source, sourceQuad, width, height);
         var path = string.IsNullOrWhiteSpace(outputPath)
             ? Path.Combine(projectDirectory, "Generated", "Faces", $"face-source-shape-{Guid.NewGuid():N}.png")
             : outputPath;
@@ -84,27 +74,21 @@ internal static class FaceSourceShapeTransformService
 
         var outputWidth = Math.Max(1, (int)Math.Ceiling(faceBounds.Width));
         var outputHeight = Math.Max(1, (int)Math.Ceiling(faceBounds.Height));
-        using var output = new SKBitmap(outputWidth, outputHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
-        output.Erase(SKColors.Transparent);
-
-        for (var y = 0; y < outputHeight; y++)
-        for (var x = 0; x < outputWidth; x++)
+        if (!TryCreateFaceToPanelHomography(shape, faceWidth, faceHeight, out var faceToPanel)) return null;
+        var faceCorners = new[]
         {
-            var faceX = faceBounds.X + x;
-            var faceY = faceBounds.Y + y;
-            if (!TryTransformFacePointToPanel(shape, faceWidth, faceHeight, faceX, faceY, out var panelPoint)
-                || panelPoint.X < sourceElement.X
-                || panelPoint.Y < sourceElement.Y
-                || panelPoint.X > sourceElement.X + sourceElement.Width
-                || panelPoint.Y > sourceElement.Y + sourceElement.Height)
-            {
-                continue;
-            }
-
-            var sourceX = (panelPoint.X - sourceElement.X) / Math.Max(1d, sourceElement.Width) * source.Width;
-            var sourceY = (panelPoint.Y - sourceElement.Y) / Math.Max(1d, sourceElement.Height) * source.Height;
-            output.SetPixel(x, y, SampleBicubic(source, sourceX, sourceY));
+            new FacePointModel { X = faceBounds.X, Y = faceBounds.Y },
+            new FacePointModel { X = faceBounds.X + outputWidth, Y = faceBounds.Y },
+            new FacePointModel { X = faceBounds.X + outputWidth, Y = faceBounds.Y + outputHeight },
+            new FacePointModel { X = faceBounds.X, Y = faceBounds.Y + outputHeight }
+        };
+        var sourceQuad = new FacePointModel[4];
+        for (var i = 0; i < sourceQuad.Length; i++)
+        {
+            if (!TryApplyHomography(faceToPanel, faceCorners[i].X, faceCorners[i].Y, out var panelPoint)) return null;
+            sourceQuad[i] = PanelPointToBitmap(panelPoint, sourceElement, source);
         }
+        using var output = PerspectiveRasterizer.Rectify(source, sourceQuad, outputWidth, outputHeight);
 
         var safePrefix = string.IsNullOrWhiteSpace(fileNamePrefix) ? "face-source-shape-asset" : fileNamePrefix.Trim();
         var relative = Path.Combine("Generated", "Faces", $"{safePrefix}-{Guid.NewGuid():N}.png");
@@ -172,7 +156,7 @@ internal static class FaceSourceShapeTransformService
         return TryCreateHomography(source, destination, out h);
     }
 
-    private static FacePointModel[] CreateFaceCorners(int width, int height) =>
+    internal static FacePointModel[] CreateFaceCorners(int width, int height) =>
     [
         new FacePointModel { X = 0, Y = 0 },
         new FacePointModel { X = Math.Max(0, width), Y = 0 },
@@ -180,7 +164,7 @@ internal static class FaceSourceShapeTransformService
         new FacePointModel { X = 0, Y = Math.Max(0, height) }
     ];
 
-    private static bool TryCreateHomography(IReadOnlyList<FacePointModel> source, IReadOnlyList<FacePointModel> destination, out double[] h)
+    internal static bool TryCreateHomography(IReadOnlyList<FacePointModel> source, IReadOnlyList<FacePointModel> destination, out double[] h)
     {
         h = new double[9];
         var a = new double[8, 9];
@@ -224,7 +208,7 @@ internal static class FaceSourceShapeTransformService
         return h.All(IsFinite);
     }
 
-    private static bool TryApplyHomography(double[] h, double sourceX, double sourceY, out FacePointModel point)
+    internal static bool TryApplyHomography(double[] h, double sourceX, double sourceY, out FacePointModel point)
     {
         point = new FacePointModel();
         var denominator = (h[6] * sourceX) + (h[7] * sourceY) + h[8];
@@ -251,10 +235,9 @@ internal static class FaceSourceShapeTransformService
         var dx = a.X - b.X; var dy = a.Y - b.Y; return Math.Sqrt(dx * dx + dy * dy);
     }
 
-    private static SKColor SampleBicubic(SKBitmap bitmap, double x, double y)
+    private static FacePointModel PanelPointToBitmap(FacePointModel point, PanelElementModel element, SKBitmap bitmap) => new()
     {
-        var ix = Math.Clamp((int)Math.Round(x), 0, bitmap.Width - 1);
-        var iy = Math.Clamp((int)Math.Round(y), 0, bitmap.Height - 1);
-        return bitmap.GetPixel(ix, iy);
-    }
+        X = (point.X - element.X) / Math.Max(1d, element.Width) * bitmap.Width,
+        Y = (point.Y - element.Y) / Math.Max(1d, element.Height) * bitmap.Height
+    };
 }
