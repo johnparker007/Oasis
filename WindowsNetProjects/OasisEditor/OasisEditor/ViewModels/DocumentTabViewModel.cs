@@ -122,6 +122,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         get => _calibrationPlacement;
         set { if (_calibrationPlacement == value) return; _calibrationPlacement = value; PropertyChanged?.Invoke(this, new(nameof(CalibrationPlacement))); }
     }
+    public void BeginCalibrationPlacement(CalibrationPlacementState placement)
+    {
+        FaceWorkspace?.NavigateTo(FaceWorkspaceDestination.ArtworkCalibration);
+        CalibrationPlacement = placement;
+    }
+
+    public void CancelCalibrationPlacement() => CalibrationPlacement = null;
     public bool FaceArtworkShowOriginal
     {
         get => _faceArtworkShowOriginal;
@@ -216,6 +223,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     public void Dispose()
     {
+        CancelCalibrationPlacement();
         DisposeCabinetViewer();
         SelectionState.SelectionChanged -= OnSelectionStateChanged;
     }
