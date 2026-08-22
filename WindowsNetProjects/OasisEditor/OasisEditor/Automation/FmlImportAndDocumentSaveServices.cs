@@ -199,6 +199,8 @@ public sealed class DocumentSaveService : IDocumentSaveService
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,
+            Provenance = faceDocument.Provenance,
+            BuildState = faceDocument.BuildState,
             Artwork = WithGeneratedArtworkPath(faceDocument.Artwork, artworkRelative, faceDocument),
             RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
             MaskLayer = maskLayer,

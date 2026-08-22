@@ -82,6 +82,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                 SourceRegion = _faceDocumentModel.SourceRegion,
                 LastRegeneratedAtUtc = _faceDocumentModel.LastRegeneratedAtUtc,
                 GenerationSettings = _faceDocumentModel.GenerationSettings,
+            Provenance = _faceDocumentModel.Provenance, BuildState = _faceDocumentModel.BuildState,
                 Artwork = _faceDocumentModel.Artwork,
                 RuntimeRenderAssets = _faceDocumentModel.RuntimeRenderAssets,
                 MaskLayer = _faceDocumentModel.MaskLayer,
@@ -269,6 +270,46 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         return _faceDocumentModel;
     }
 
+    public FaceBuildResult BuildFace(bool force = false)
+    {
+        var service = new FaceBuildService();
+        var executors = new Dictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>>
+        {
+            [FaceGeneratedProduct.ArtworkOutput] = () => TryRebuildFaceArtwork(out var error)
+                ? new(FaceGeneratedProduct.ArtworkOutput, true)
+                : new(FaceGeneratedProduct.ArtworkOutput, false, error),
+            [FaceGeneratedProduct.Trays] = BuildTrays,
+            [FaceGeneratedProduct.RuntimeLighting] = BuildRuntimeLighting
+        };
+        var result = service.Build(_faceDocumentModel.BuildState, executors, force);
+        _faceDocumentJson = GetFaceDocumentJson();
+        _faceWorkspace?.RefreshSummaries();
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
+        return result;
+    }
+
+    private FaceBuildNodeResult BuildTrays()
+    {
+        var generated = new FaceTrayAutoAuthoringService().AutoAuthor(_faceDocumentModel, _projectAccessor?.Invoke()?.ProjectDirectory);
+        _faceDocumentModel = FaceDocumentCopy.WithGeneratedIllumination(_faceDocumentModel, generated.Trays, generated.Emitters);
+        return new(FaceGeneratedProduct.Trays, true);
+    }
+
+    private FaceBuildNodeResult BuildRuntimeLighting()
+    {
+        var project = _projectAccessor?.Invoke();
+        if (project is null) return new(FaceGeneratedProduct.RuntimeLighting, false, "No project is open.");
+        var exported = new FaceRuntimeExportService().Export(_faceDocumentModel, project, FilePath);
+        _faceDocumentModel = exported.Document;
+        return new(FaceGeneratedProduct.RuntimeLighting, true);
+    }
+
+    internal void InvalidateFaceBuild(FaceBuildInput input)
+    {
+        new FaceBuildService().Invalidate(_faceDocumentModel.BuildState, input);
+        _faceWorkspace?.RefreshSummaries();
+    }
+
     internal bool TryRebuildFaceArtwork(out string? errorMessage)
     {
         errorMessage = null;
@@ -434,6 +475,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             SourceRegion = _faceDocumentModel.SourceRegion,
             LastRegeneratedAtUtc = _faceDocumentModel.LastRegeneratedAtUtc,
             GenerationSettings = _faceDocumentModel.GenerationSettings,
+            Provenance = _faceDocumentModel.Provenance, BuildState = _faceDocumentModel.BuildState,
             Artwork = _faceDocumentModel.Artwork,
             RuntimeRenderAssets = _faceDocumentModel.RuntimeRenderAssets,
             MaskLayer = _faceDocumentModel.MaskLayer,

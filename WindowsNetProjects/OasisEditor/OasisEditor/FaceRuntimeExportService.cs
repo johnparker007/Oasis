@@ -109,6 +109,7 @@ public sealed class FaceRuntimeExportService
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,
+            Provenance = faceDocument.Provenance, BuildState = faceDocument.BuildState,
             Artwork = faceDocument.Artwork,
             RuntimeRenderAssets = runtimeAssets,
             MaskLayer = faceDocument.MaskLayer,

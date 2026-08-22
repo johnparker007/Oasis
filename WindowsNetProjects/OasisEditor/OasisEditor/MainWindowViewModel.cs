@@ -1160,6 +1160,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = (settings ?? FaceGenerationSettingsModel.Default).Normalize(),
+            Provenance = faceDocument.Provenance,
+            BuildState = faceDocument.BuildState,
             Artwork = faceDocument.Artwork,
             RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
             MaskLayer = faceDocument.MaskLayer,
@@ -1177,6 +1179,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AffectsInspectorRows: true,
             AffectsPersistence: true));
         SelectedDocument.MarkDirty();
+        SelectedDocument.InvalidateFaceBuild(FaceBuildInput.ArtworkCorrection);
+        SelectedDocument.InvalidateFaceBuild(FaceBuildInput.MaskSettings);
+        SelectedDocument.InvalidateFaceBuild(FaceBuildInput.TraySettings);
         AddOutputEntry($"Updated face generation settings for '{SelectedDocument.Title}'.", OutputLogStatus.Info);
     }
 

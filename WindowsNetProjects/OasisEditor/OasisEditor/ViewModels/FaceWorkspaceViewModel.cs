@@ -35,6 +35,8 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         NavigateToIlluminationCommand = Command(FaceWorkspaceDestination.Illumination);
         NavigateToIlluminationLampsCommand = Command(FaceWorkspaceDestination.IlluminationLamps);
         NavigateToFaceEditorCommand = Command(FaceWorkspaceDestination.FaceEditor);
+        BuildFaceCommand = new RelayCommand(() => RunBuild(false));
+        RebuildFaceCommand = new RelayCommand(() => RunBuild(true));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -61,8 +63,36 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public ICommand NavigateToIlluminationCommand { get; }
     public ICommand NavigateToIlluminationLampsCommand { get; }
     public ICommand NavigateToFaceEditorCommand { get; }
+    public ICommand BuildFaceCommand { get; }
+    public ICommand RebuildFaceCommand { get; }
+
+    public string BuildStatusSummary
+    {
+        get
+        {
+            var states = _document.GetFaceDocument().BuildState.Products.Values;
+            var errors = states.Count(state => state.Status == FaceBuildStatus.Error);
+            var stale = states.Count(state => state.Status == FaceBuildStatus.Stale);
+            if (errors > 0) return $"Build status: {errors} output{(errors == 1 ? "" : "s")} failed";
+            return stale > 0 ? $"Build status: {stale} output{(stale == 1 ? " needs" : "s need")} building" : "Build status: Current";
+        }
+    }
+
+    public string ArtworkBuildSummary => $"{FormatProvenance(_document.GetFaceDocument().Provenance.Artwork)} • Output: {Status(FaceGeneratedProduct.ArtworkOutput)}";
+    public string ComponentsProvenanceSummary => FormatProvenance(_document.GetFaceDocument().Provenance.Components);
+    public string IlluminationBuildSummary => $"{FormatProvenance(_document.GetFaceDocument().Provenance.Illumination)} • Mask: {Status(FaceGeneratedProduct.LampMask)} • Trays: {Status(FaceGeneratedProduct.Trays)} • Runtime: {Status(FaceGeneratedProduct.RuntimeLighting)}";
 
     private ICommand Command(FaceWorkspaceDestination destination) => new RelayCommand(() => NavigateTo(destination));
+
+    private void RunBuild(bool force)
+    {
+        _document.BuildFace(force);
+        RefreshSummaries();
+    }
+
+    private string Status(FaceGeneratedProduct product) => _document.GetFaceDocument().BuildState.Get(product).Status.ToString();
+    private static string FormatProvenance(FaceSubsystemProvenanceModel value) =>
+        value.IsLocallyModified ? $"{value.Origin} • locally modified" : value.Origin.ToString();
 
     public string ArtworkSourceSummary
     {
@@ -153,5 +183,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     {
         Raise(nameof(ArtworkSourceSummary)); Raise(nameof(ArtworkOutputSummary)); Raise(nameof(ArtworkCalibrationSummary));
         Raise(nameof(ComponentsSummary)); Raise(nameof(IlluminationSummary));
+        Raise(nameof(BuildStatusSummary)); Raise(nameof(ArtworkBuildSummary));
+        Raise(nameof(ComponentsProvenanceSummary)); Raise(nameof(IlluminationBuildSummary));
     }
 }

@@ -15,6 +15,8 @@ public sealed class FaceDocumentRoundTripTests
             Id = "face-1",
             Title = "Front Face",
             Summary = "Physical face summary",
+            Provenance = FaceBuildStateFactory.CreateDerivedProvenance("Assets/Panel2D/Glass/asset.panel2d"),
+            BuildState = FaceBuildStateFactory.CreateGeneratedState(true, true, true, false),
             Artwork = new FaceArtworkModel
             {
                 Id = "artwork-state-1",
@@ -142,6 +144,9 @@ public sealed class FaceDocumentRoundTripTests
         Assert.Equal("face-1", savedDocument.Id);
         Assert.Equal("Front Face", savedDocument.Title);
         Assert.Equal("Physical face summary", savedDocument.Summary);
+        Assert.Equal(FaceSubsystemOrigin.Derived, savedDocument.Provenance.Artwork.Origin);
+        Assert.Equal(FaceBuildStatus.Current, savedDocument.BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
+        Assert.Equal(FaceBuildStatus.NotConfigured, savedDocument.BuildState.Get(FaceGeneratedProduct.RuntimeLighting).Status);
         Assert.Equal("artwork-state-1", savedDocument.Artwork!.Id);
         Assert.Equal(FaceArtworkSourceKind.Panel2DFaceSourceShape, savedDocument.Artwork.Source.Kind);
         Assert.Equal("shape-1", savedDocument.Artwork.Source.FaceSourceShapeId);
@@ -214,6 +219,34 @@ public sealed class FaceDocumentRoundTripTests
             Assert.True(File.Exists(tempPath));
             Assert.True(FaceDocumentStorage.TryRead(File.ReadAllText(tempPath), out var faceDocument));
             Assert.Equal("Face Save", faceDocument.Title);
+        }
+        finally
+        {
+            if (File.Exists(tempPath)) File.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public void Save_ClearsDirtyButPreservesStaleBuildState()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"oasis-stale-{Guid.NewGuid():N}.face");
+        try
+        {
+            var model = new FaceDocumentModel
+            {
+                Title = "Stale Face",
+                BuildState = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false)
+            };
+            new FaceBuildService().Invalidate(model.BuildState, FaceBuildInput.ArtworkCorrection);
+            var current = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Stale Face").MarkDirty(),
+                faceDocumentJson: FaceDocumentStorage.Serialize(model));
+            Assert.True(current.IsDirty);
+            Assert.Equal(FaceBuildStatus.Stale, current.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
+
+            var saved = new DocumentSaveService().SaveDocument(current, tempPath);
+
+            Assert.False(saved.IsDirty);
+            Assert.Equal(FaceBuildStatus.Stale, saved.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
         }
         finally
         {
