@@ -529,13 +529,7 @@ public partial class SkiaPanel2DEditView : UserControl
             Placement = PlacementMode.MousePoint
         };
 
-        var shapeAtPoint = document.GetPanelFaceSourceShapes().LastOrDefault(shape => IsInsideShapeBounds(shape, panelPoint));
-        if (shapeAtPoint is not null)
-        {
-            document.HierarchySelectedPanelSelection = PanelFaceSourceShapeCommands.ToSelection(shapeAtPoint);
-        }
-
-        if ((document.HierarchySelectedPanelSelection is { Kind: PanelFaceSourceShapeCommands.SelectionKind } || shapeAtPoint is not null)
+        if (document.HierarchySelectedPanelSelection is { Kind: PanelFaceSourceShapeCommands.SelectionKind }
             && Window.GetWindow(this)?.DataContext is MainWindowViewModel mainWindow)
         {
             var createFaceItem = new MenuItem { Header = "Create Face from Face Source Shape", Command = mainWindow.GenerateFaceFromSourceShapeCommand };
@@ -609,13 +603,6 @@ public partial class SkiaPanel2DEditView : UserControl
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var documentPoint = viewport.ScreenToDocument(screenPoint);
         var isCtrl = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
-        var shapeSelection = document.GetPanelFaceSourceShapes().LastOrDefault(shape => IsInsideShapeBounds(shape, documentPoint));
-        if (shapeSelection is not null)
-        {
-            NotifySelection(document, PanelFaceSourceShapeCommands.ToSelection(shapeSelection));
-            return;
-        }
-
         var selection = Panel2DSelectionService.SelectFromPoint(document.GetPanelElements(), documentPoint, document.HierarchySelectedPanelSelection);
         if (selection is not { } selected)
         {
@@ -644,11 +631,6 @@ public partial class SkiaPanel2DEditView : UserControl
         var start = viewport.ScreenToDocument(startScreenPoint);
         var end = viewport.ScreenToDocument(endScreenPoint);
         return Panel2DViewportInteractionService.HasDocumentDelta(start, end);
-    }
-
-    private void NotifySelection(DocumentTabViewModel document, PanelSelectionInfo? selection)
-    {
-        Panel2DSelectionNotificationService.NotifySelection(this, document, selection);
     }
 
     private void HandleDragSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
@@ -911,7 +893,6 @@ public partial class SkiaPanel2DEditView : UserControl
     private void DrawFaceSourceShapes(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)
     {
         using var linePaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(0xFF, 0xC1, 0x07), StrokeWidth = (float)(2d / viewport.NormalizedZoom), IsAntialias = true };
-        using var fillPaint = new SKPaint { Style = SKPaintStyle.Fill, Color = new SKColor(0xFF, 0xC1, 0x07, 0x28), IsAntialias = true };
         using var handlePaint = new SKPaint { Style = SKPaintStyle.Fill, Color = new SKColor(0xFF, 0xA0, 0x00), IsAntialias = true };
         foreach (var sourceShape in document.GetPanelFaceSourceShapes())
         {
@@ -922,7 +903,6 @@ public partial class SkiaPanel2DEditView : UserControl
             path.LineTo((float)shape.BottomRight.X, (float)shape.BottomRight.Y);
             path.LineTo((float)shape.BottomLeft.X, (float)shape.BottomLeft.Y);
             path.Close();
-            canvas.DrawPath(path, fillPaint);
             canvas.DrawPath(path, linePaint);
             var radius = (float)(5d / viewport.NormalizedZoom);
             foreach (var point in GetShapePoints(shape)) canvas.DrawCircle((float)point.X, (float)point.Y, radius, handlePaint);
@@ -958,36 +938,19 @@ public partial class SkiaPanel2DEditView : UserControl
         };
     }
 
-    private static bool IsInsideShapeBounds(PanelFaceSourceShapeModel shape, Point point)
-    {
-        return point.X >= shape.X && point.X <= shape.X + shape.Width && point.Y >= shape.Y && point.Y <= shape.Y + shape.Height;
-    }
-
     private static FacePointModel[] GetShapePoints(PanelFaceSourceShapeModel shape) => [shape.TopLeft, shape.TopRight, shape.BottomRight, shape.BottomLeft];
 
     private bool TryGetFaceSourceShapeCornerAtPoint(DocumentTabViewModel document, Point screenPoint, out PanelFaceSourceShapeModel shape, out int cornerIndex)
     {
-        shape = new PanelFaceSourceShapeModel();
-        cornerIndex = -1;
         var viewport = new PanelViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var docPoint = viewport.ScreenToDocument(screenPoint);
         var hitRadius = 8d / viewport.NormalizedZoom;
-        foreach (var candidate in document.GetPanelFaceSourceShapes().Reverse())
+        if (PanelFaceSourceShapeHitTestService.TryHitCorner(document.GetPanelFaceSourceShapes(), docPoint, hitRadius, out shape, out cornerIndex))
         {
-            var points = GetShapePoints(candidate);
-            for (var i = 0; i < points.Length; i++)
-            {
-                var dx = points[i].X - docPoint.X;
-                var dy = points[i].Y - docPoint.Y;
-                if (Math.Sqrt(dx * dx + dy * dy) <= hitRadius)
-                {
-                    shape = candidate;
-                    cornerIndex = i;
-                    document.HierarchySelectedPanelSelection = PanelFaceSourceShapeCommands.ToSelection(candidate);
-                    return true;
-                }
-            }
+            document.HierarchySelectedPanelSelection = PanelFaceSourceShapeCommands.ToSelection(shape);
+            return true;
         }
+
         return false;
     }
 
