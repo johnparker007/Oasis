@@ -17,24 +17,35 @@ public sealed class FaceGenerationSettingsTests
                 MaskExtractionThreshold = 17,
                 TrayBoundsInflationPercent = 22.5,
                 TrayBoundsPaddingPixels = 6.25,
-                ClampTrayBoundsToLampWindow = true
+                ClampTrayBoundsToLampWindow = true,
+                PostWarpSharpeningEnabled = false,
+                PostWarpSharpeningAmount = 1.2,
+                PostWarpSharpeningRadiusPixels = 1.5,
+                PostWarpSharpeningThreshold = 8
             }
         };
 
         var json = FaceDocumentStorage.Serialize(source);
 
         Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
+        Assert.Equal(14, file.SchemaVersion);
         Assert.NotNull(file.GenerationSettings);
         Assert.Equal(17, file.GenerationSettings!.MaskExtractionThreshold);
         Assert.Equal(22.5, file.GenerationSettings.TrayBoundsInflationPercent);
         Assert.Equal(6.25, file.GenerationSettings.TrayBoundsPaddingPixels);
         Assert.True(file.GenerationSettings.ClampTrayBoundsToLampWindow);
+        Assert.False(file.GenerationSettings.PostWarpSharpeningEnabled);
+        Assert.Equal(1.2, file.GenerationSettings.PostWarpSharpeningAmount);
+        Assert.Equal(1.5, file.GenerationSettings.PostWarpSharpeningRadiusPixels);
+        Assert.Equal(8, file.GenerationSettings.PostWarpSharpeningThreshold);
 
         var model = FaceDocumentStorage.ToModel(file);
         Assert.Equal(17, model.GenerationSettings.MaskExtractionThreshold);
         Assert.Equal(22.5, model.GenerationSettings.TrayBoundsInflationPercent);
         Assert.Equal(6.25, model.GenerationSettings.TrayBoundsPaddingPixels);
         Assert.True(model.GenerationSettings.ClampTrayBoundsToLampWindow);
+        Assert.False(model.GenerationSettings.PostWarpSharpeningEnabled);
+        Assert.Equal(1.2, model.GenerationSettings.PostWarpSharpeningAmount);
     }
 
 
@@ -202,24 +213,62 @@ public sealed class FaceGenerationSettingsTests
             MaskExtractionThreshold = 18,
             TrayBoundsInflationPercent = 12.5,
             TrayBoundsPaddingPixels = 3.5,
-            ClampTrayBoundsToLampWindow = true
+            ClampTrayBoundsToLampWindow = true,
+            PostWarpSharpeningEnabled = false,
+            PostWarpSharpeningAmount = 1.1,
+            PostWarpSharpeningRadiusPixels = 1.25,
+            PostWarpSharpeningThreshold = 9
         });
 
         Assert.Equal("18", viewModel.MaskExtractionThresholdText);
         Assert.Equal("12.5", viewModel.TrayBoundsInflationPercentText);
         Assert.Equal("3.5", viewModel.TrayBoundsPaddingPixelsText);
         Assert.True(viewModel.ClampTrayBoundsToLampWindow);
+        Assert.False(viewModel.PostWarpSharpeningEnabled);
+        Assert.Equal("1.1", viewModel.PostWarpSharpeningAmountText);
 
         viewModel.MaskExtractionThresholdText = "7";
         viewModel.TrayBoundsInflationPercentText = "20";
         viewModel.TrayBoundsPaddingPixelsText = "5";
         viewModel.ClampTrayBoundsToLampWindow = false;
+        viewModel.PostWarpSharpeningEnabled = true;
+        viewModel.PostWarpSharpeningAmountText = "0.8";
+        viewModel.PostWarpSharpeningRadiusPixelsText = "0.9";
+        viewModel.PostWarpSharpeningThresholdText = "4";
 
         Assert.True(viewModel.TryCreateSettings(out var settings));
         Assert.Equal(7, settings.MaskExtractionThreshold);
         Assert.Equal(20, settings.TrayBoundsInflationPercent);
         Assert.Equal(5, settings.TrayBoundsPaddingPixels);
         Assert.False(settings.ClampTrayBoundsToLampWindow);
+        Assert.True(settings.PostWarpSharpeningEnabled);
+        Assert.Equal(0.8, settings.PostWarpSharpeningAmount);
+        Assert.Equal(0.9, settings.PostWarpSharpeningRadiusPixels);
+        Assert.Equal(4, settings.PostWarpSharpeningThreshold);
+    }
+
+    [Fact]
+    public void DefaultsAndNormalize_UseBoundedSharpeningValues()
+    {
+        var defaults = FaceGenerationSettingsModel.Default;
+        Assert.True(defaults.PostWarpSharpeningEnabled);
+        Assert.Equal(0.65, defaults.PostWarpSharpeningAmount);
+        Assert.Equal(0.75, defaults.PostWarpSharpeningRadiusPixels);
+        Assert.Equal(2, defaults.PostWarpSharpeningThreshold);
+
+        var normalized = new FaceGenerationSettingsModel
+        {
+            PostWarpSharpeningAmount = double.NaN,
+            PostWarpSharpeningRadiusPixels = double.PositiveInfinity,
+            PostWarpSharpeningThreshold = 999
+        }.Normalize();
+        Assert.Equal(0.65, normalized.PostWarpSharpeningAmount);
+        Assert.Equal(0.75, normalized.PostWarpSharpeningRadiusPixels);
+        Assert.Equal(255, normalized.PostWarpSharpeningThreshold);
+        Assert.Equal(0, new FaceGenerationSettingsModel { PostWarpSharpeningAmount = -1 }.Normalize().PostWarpSharpeningAmount);
+        Assert.Equal(2, new FaceGenerationSettingsModel { PostWarpSharpeningAmount = 9 }.Normalize().PostWarpSharpeningAmount);
+        Assert.Equal(0.1, new FaceGenerationSettingsModel { PostWarpSharpeningRadiusPixels = 0 }.Normalize().PostWarpSharpeningRadiusPixels);
+        Assert.Equal(3, new FaceGenerationSettingsModel { PostWarpSharpeningRadiusPixels = 9 }.Normalize().PostWarpSharpeningRadiusPixels);
     }
 
     private static Panel2DDocumentModel CreatePanelWithFaceSourceShape()

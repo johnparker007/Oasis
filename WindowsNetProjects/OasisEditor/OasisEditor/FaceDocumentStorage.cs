@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 13;
+    public const int CurrentSchemaVersion = 14;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -306,7 +306,11 @@ public static class FaceDocumentStorage
             MaskExtractionThreshold = file.MaskExtractionThreshold,
             TrayBoundsInflationPercent = file.TrayBoundsInflationPercent,
             TrayBoundsPaddingPixels = file.TrayBoundsPaddingPixels,
-            ClampTrayBoundsToLampWindow = file.ClampTrayBoundsToLampWindow
+            ClampTrayBoundsToLampWindow = file.ClampTrayBoundsToLampWindow,
+            PostWarpSharpeningEnabled = file.PostWarpSharpeningEnabled,
+            PostWarpSharpeningAmount = file.PostWarpSharpeningAmount,
+            PostWarpSharpeningRadiusPixels = file.PostWarpSharpeningRadiusPixels,
+            PostWarpSharpeningThreshold = file.PostWarpSharpeningThreshold
         }.Normalize();
     }
 
@@ -318,7 +322,11 @@ public static class FaceDocumentStorage
             MaskExtractionThreshold = normalized.MaskExtractionThreshold,
             TrayBoundsInflationPercent = normalized.TrayBoundsInflationPercent,
             TrayBoundsPaddingPixels = normalized.TrayBoundsPaddingPixels,
-            ClampTrayBoundsToLampWindow = normalized.ClampTrayBoundsToLampWindow
+            ClampTrayBoundsToLampWindow = normalized.ClampTrayBoundsToLampWindow,
+            PostWarpSharpeningEnabled = normalized.PostWarpSharpeningEnabled,
+            PostWarpSharpeningAmount = normalized.PostWarpSharpeningAmount,
+            PostWarpSharpeningRadiusPixels = normalized.PostWarpSharpeningRadiusPixels,
+            PostWarpSharpeningThreshold = normalized.PostWarpSharpeningThreshold
         };
     }
 
@@ -918,6 +926,10 @@ public sealed record SameColorCalibrationGroupFile { public string Id {get;init;
 
 public sealed record FaceGenerationSettingsFile
 {
+    public bool PostWarpSharpeningEnabled { get; init; } = FaceGenerationSettingsModel.DefaultPostWarpSharpeningEnabled;
+    public double PostWarpSharpeningAmount { get; init; } = FaceGenerationSettingsModel.DefaultPostWarpSharpeningAmount;
+    public double PostWarpSharpeningRadiusPixels { get; init; } = FaceGenerationSettingsModel.DefaultPostWarpSharpeningRadiusPixels;
+    public int PostWarpSharpeningThreshold { get; init; } = FaceGenerationSettingsModel.DefaultPostWarpSharpeningThreshold;
     public byte MaskExtractionThreshold { get; init; } = FaceGenerationSettingsModel.DefaultMaskExtractionThreshold;
     public double TrayBoundsInflationPercent { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsInflationPercent;
     public double TrayBoundsPaddingPixels { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsPaddingPixels;

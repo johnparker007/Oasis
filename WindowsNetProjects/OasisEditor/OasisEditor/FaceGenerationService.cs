@@ -128,7 +128,8 @@ internal sealed class FaceGenerationService
             OutputWidth = output.Width,
             OutputHeight = output.Height
         };
-        var assetPath = new FaceArtworkRebuildService().Rebuild(artworkState, sourcePanel, sourceShape, projectDirectory, faceArtworkPath);
+        var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
+        var assetPath = new FaceArtworkRebuildService().Rebuild(artworkState, sourcePanel, sourceShape, projectDirectory, faceArtworkPath, settings);
         artworkState = new FaceArtworkModel
         {
             Id = artworkState.Id,
@@ -138,7 +139,6 @@ internal sealed class FaceGenerationService
             OutputWidth = artworkState.OutputWidth,
             OutputHeight = artworkState.OutputHeight
         };
-        var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
         var faceDocumentId = Guid.NewGuid().ToString("N");
         progress?.Report(0.2, "Converting source-shape semantic components...");
         var semanticElements = _semanticElementConversionService.ConvertSupportedElements(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, inputDefinitions, cabinetDocument?.DefaultReelSpecificationId).ToArray();

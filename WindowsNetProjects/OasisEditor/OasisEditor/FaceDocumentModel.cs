@@ -152,6 +152,10 @@ public sealed class NormalizedFacePointModel
 
 public sealed class FaceGenerationSettingsModel
 {
+    public const bool DefaultPostWarpSharpeningEnabled = true;
+    public const double DefaultPostWarpSharpeningAmount = 0.65d;
+    public const double DefaultPostWarpSharpeningRadiusPixels = 0.75d;
+    public const int DefaultPostWarpSharpeningThreshold = 2;
     public const byte DefaultMaskExtractionThreshold = 1;
     public const double DefaultTrayBoundsInflationPercent = 0d;
     public const double DefaultTrayBoundsPaddingPixels = 0d;
@@ -163,6 +167,10 @@ public sealed class FaceGenerationSettingsModel
     public double TrayBoundsInflationPercent { get; init; } = DefaultTrayBoundsInflationPercent;
     public double TrayBoundsPaddingPixels { get; init; } = DefaultTrayBoundsPaddingPixels;
     public bool ClampTrayBoundsToLampWindow { get; init; } = DefaultClampTrayBoundsToLampWindow;
+    public bool PostWarpSharpeningEnabled { get; init; } = DefaultPostWarpSharpeningEnabled;
+    public double PostWarpSharpeningAmount { get; init; } = DefaultPostWarpSharpeningAmount;
+    public double PostWarpSharpeningRadiusPixels { get; init; } = DefaultPostWarpSharpeningRadiusPixels;
+    public int PostWarpSharpeningThreshold { get; init; } = DefaultPostWarpSharpeningThreshold;
 
     public FaceGenerationSettingsModel Normalize()
     {
@@ -171,7 +179,11 @@ public sealed class FaceGenerationSettingsModel
             MaskExtractionThreshold = MaskExtractionThreshold,
             TrayBoundsInflationPercent = IsFinite(TrayBoundsInflationPercent) ? Math.Clamp(TrayBoundsInflationPercent, 0d, 1000d) : DefaultTrayBoundsInflationPercent,
             TrayBoundsPaddingPixels = IsFinite(TrayBoundsPaddingPixels) ? Math.Clamp(TrayBoundsPaddingPixels, 0d, 10000d) : DefaultTrayBoundsPaddingPixels,
-            ClampTrayBoundsToLampWindow = ClampTrayBoundsToLampWindow
+            ClampTrayBoundsToLampWindow = ClampTrayBoundsToLampWindow,
+            PostWarpSharpeningEnabled = PostWarpSharpeningEnabled,
+            PostWarpSharpeningAmount = IsFinite(PostWarpSharpeningAmount) ? Math.Clamp(PostWarpSharpeningAmount, 0d, 2d) : DefaultPostWarpSharpeningAmount,
+            PostWarpSharpeningRadiusPixels = IsFinite(PostWarpSharpeningRadiusPixels) ? Math.Clamp(PostWarpSharpeningRadiusPixels, 0.1d, 3d) : DefaultPostWarpSharpeningRadiusPixels,
+            PostWarpSharpeningThreshold = Math.Clamp(PostWarpSharpeningThreshold, 0, 255)
         };
     }
 

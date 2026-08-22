@@ -37,6 +37,10 @@ public sealed class NativeEmulationPreferences
 
 public sealed class FaceGenerationPreferences
 {
+    public bool DefaultPostWarpSharpeningEnabled { get; init; } = FaceGenerationSettingsModel.DefaultPostWarpSharpeningEnabled;
+    public double DefaultPostWarpSharpeningAmount { get; init; } = FaceGenerationSettingsModel.DefaultPostWarpSharpeningAmount;
+    public double DefaultPostWarpSharpeningRadiusPixels { get; init; } = FaceGenerationSettingsModel.DefaultPostWarpSharpeningRadiusPixels;
+    public int DefaultPostWarpSharpeningThreshold { get; init; } = FaceGenerationSettingsModel.DefaultPostWarpSharpeningThreshold;
     public byte DefaultMaskExtractionThreshold { get; init; } = FaceGenerationSettingsModel.DefaultMaskExtractionThreshold;
     public double DefaultTrayBoundsInflationPercent { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsInflationPercent;
     public double DefaultTrayBoundsPaddingPixels { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsPaddingPixels;
@@ -50,7 +54,11 @@ public sealed class FaceGenerationPreferences
             MaskExtractionThreshold = DefaultMaskExtractionThreshold,
             TrayBoundsInflationPercent = DefaultTrayBoundsInflationPercent,
             TrayBoundsPaddingPixels = DefaultTrayBoundsPaddingPixels,
-            ClampTrayBoundsToLampWindow = DefaultClampTrayBoundsToLampWindow
+            ClampTrayBoundsToLampWindow = DefaultClampTrayBoundsToLampWindow,
+            PostWarpSharpeningEnabled = DefaultPostWarpSharpeningEnabled,
+            PostWarpSharpeningAmount = DefaultPostWarpSharpeningAmount,
+            PostWarpSharpeningRadiusPixels = DefaultPostWarpSharpeningRadiusPixels,
+            PostWarpSharpeningThreshold = DefaultPostWarpSharpeningThreshold
         }.Normalize();
     }
 
@@ -65,6 +73,10 @@ public sealed class FaceGenerationPreferences
             DefaultTrayBoundsInflationPercent = normalized.TrayBoundsInflationPercent,
             DefaultTrayBoundsPaddingPixels = normalized.TrayBoundsPaddingPixels,
             DefaultClampTrayBoundsToLampWindow = normalized.ClampTrayBoundsToLampWindow,
+            DefaultPostWarpSharpeningEnabled = normalized.PostWarpSharpeningEnabled,
+            DefaultPostWarpSharpeningAmount = normalized.PostWarpSharpeningAmount,
+            DefaultPostWarpSharpeningRadiusPixels = normalized.PostWarpSharpeningRadiusPixels,
+            DefaultPostWarpSharpeningThreshold = normalized.PostWarpSharpeningThreshold,
             ShowFaceGenerationSettingsBeforeRegenerate = showBeforeRegenerate
         };
     }
