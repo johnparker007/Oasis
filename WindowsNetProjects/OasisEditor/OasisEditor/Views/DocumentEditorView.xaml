@@ -61,7 +61,7 @@
                 <Grid MinHeight="280"
                       ClipToBounds="True"
                       Background="{DynamicResource PanelBackgroundBrush}">
-                    <views:SkiaFaceEditView />
+                    <views:FaceWorkspaceView />
 
                 </Grid>
             </Border>

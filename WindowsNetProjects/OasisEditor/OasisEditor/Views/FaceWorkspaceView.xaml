@@ -1,0 +1,114 @@
+<UserControl x:Class="OasisEditor.Views.FaceWorkspaceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:OasisEditor"
+             xmlns:views="clr-namespace:OasisEditor.Views">
+    <UserControl.Resources>
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Padding" Value="18" />
+            <Setter Property="Margin" Value="0,0,0,14" />
+            <Setter Property="Background" Value="{DynamicResource EditorBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style x:Key="Heading" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+        <Style x:Key="Summary" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{DynamicResource PanelBackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Padding="12,9" Background="{DynamicResource ToolBarBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Margin="4,0" Padding="10,4" Content="Overview" Command="{Binding FaceWorkspace.NavigateToOverviewCommand}" />
+                    <Button Margin="4,0" Padding="10,4" Content="Face Editor" Command="{Binding FaceWorkspace.NavigateToFaceEditorCommand}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Padding="2" Background="Transparent" BorderThickness="0"
+                            Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="SemiBold"
+                            Content="{Binding FaceWorkspace.FaceName}" Command="{Binding FaceWorkspace.NavigateToOverviewCommand}" />
+                    <TextBlock Margin="7,0" VerticalAlignment="Center" Foreground="{DynamicResource TextMutedBrush}" Text="›" />
+                    <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"
+                               Text="{Binding FaceWorkspace.DestinationName}" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                <StackPanel MaxWidth="980" HorizontalAlignment="Stretch">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding FaceWorkspace.Destination}" Value="{x:Static local:FaceWorkspaceDestination.Overview}">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Style="{StaticResource Heading}" FontSize="24" Text="Face Overview" />
+                    <TextBlock Style="{StaticResource Summary}" Margin="0,0,0,18" Text="Choose a subsystem to review its current state, or open the Face Editor to work visually." />
+                    <Border Style="{StaticResource Card}"><StackPanel>
+                        <TextBlock Style="{StaticResource Heading}" Text="Artwork" />
+                        <TextBlock Style="{StaticResource Summary}" Text="{Binding FaceWorkspace.ArtworkSourceSummary}" />
+                        <TextBlock Style="{StaticResource Summary}" Text="{Binding FaceWorkspace.ArtworkOutputSummary}" />
+                        <TextBlock Style="{StaticResource Summary}" Text="{Binding FaceWorkspace.ArtworkCalibrationSummary}" />
+                        <Button HorizontalAlignment="Left" Padding="12,5" Content="View Artwork" Command="{Binding FaceWorkspace.NavigateToArtworkCommand}" />
+                    </StackPanel></Border>
+                    <Border Style="{StaticResource Card}"><StackPanel>
+                        <TextBlock Style="{StaticResource Heading}" Text="Components" />
+                        <TextBlock Style="{StaticResource Summary}" Text="{Binding FaceWorkspace.ComponentsSummary}" />
+                        <StackPanel Orientation="Horizontal"><Button Padding="12,5" Content="View Components" Command="{Binding FaceWorkspace.NavigateToComponentsCommand}" />
+                            <Button Margin="8,0,0,0" Padding="12,5" Content="Edit in Face Editor" Command="{Binding FaceWorkspace.NavigateToFaceEditorCommand}" /></StackPanel>
+                    </StackPanel></Border>
+                    <Border Style="{StaticResource Card}"><StackPanel>
+                        <TextBlock Style="{StaticResource Heading}" Text="Illumination" />
+                        <TextBlock Style="{StaticResource Summary}" Text="{Binding FaceWorkspace.IlluminationSummary}" />
+                        <Button HorizontalAlignment="Left" Padding="12,5" Content="View Illumination" Command="{Binding FaceWorkspace.NavigateToIlluminationCommand}" />
+                    </StackPanel></Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <Border Margin="20">
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding FaceWorkspace.Destination}" Value="{x:Static local:FaceWorkspaceDestination.Artwork}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel><TextBlock Style="{StaticResource Heading}" Text="Artwork" /><TextBlock Style="{StaticResource Summary}" Text="Source" FontWeight="SemiBold" /><TextBlock Style="{StaticResource Summary}" Text="{Binding FaceWorkspace.ArtworkSourceSummary}" /><TextBlock Style="{StaticResource Summary}" Text="Calibration" FontWeight="SemiBold" /><TextBlock Style="{StaticResource Summary}" Text="{Binding FaceWorkspace.ArtworkCalibrationSummary}" /><TextBlock Style="{StaticResource Summary}" Text="Generated output" FontWeight="SemiBold" /><TextBlock Style="{StaticResource Summary}" Text="{Binding FaceWorkspace.ArtworkOutputSummary}" /><Button HorizontalAlignment="Left" Padding="12,5" Content="Open Face Editor" Command="{Binding FaceWorkspace.NavigateToFaceEditorCommand}" /></StackPanel>
+            </Border>
+            <Border Margin="20">
+                <Border.Style><Style TargetType="Border" BasedOn="{StaticResource Card}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding FaceWorkspace.Destination}" Value="{x:Static local:FaceWorkspaceDestination.Components}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Border.Style>
+                <StackPanel><TextBlock Style="{StaticResource Heading}" Text="Components" /><TextBlock Style="{StaticResource Summary}" Text="Face objects remain listed and selectable in the Hierarchy." /><TextBlock Style="{StaticResource Summary}" Text="{Binding FaceWorkspace.ComponentsSummary}" /><Button HorizontalAlignment="Left" Padding="12,5" Content="Edit Components in Face Editor" Command="{Binding FaceWorkspace.NavigateToFaceEditorCommand}" /></StackPanel>
+            </Border>
+            <Border Margin="20">
+                <Border.Style><Style TargetType="Border" BasedOn="{StaticResource Card}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding FaceWorkspace.Destination}" Value="{x:Static local:FaceWorkspaceDestination.Illumination}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Border.Style>
+                <StackPanel><TextBlock Style="{StaticResource Heading}" Text="Illumination" /><TextBlock Style="{StaticResource Summary}" Text="Current lamp, generated mask, tray, and emitter information." /><TextBlock Style="{StaticResource Summary}" Text="{Binding FaceWorkspace.IlluminationSummary}" /><Button HorizontalAlignment="Left" Padding="12,5" Content="Open Face Editor" Command="{Binding FaceWorkspace.NavigateToFaceEditorCommand}" /></StackPanel>
+            </Border>
+
+            <Grid ClipToBounds="True" Background="{DynamicResource PanelBackgroundBrush}">
+                <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding FaceWorkspace.Destination}" Value="{x:Static local:FaceWorkspaceDestination.FaceEditor}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+                <views:SkiaFaceEditView />
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

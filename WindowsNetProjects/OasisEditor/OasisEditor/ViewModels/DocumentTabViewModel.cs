@@ -38,6 +38,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private CabinetModelDocumentViewModel? _cabinetViewer;
     private Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
     private Func<EditorProject?>? _projectAccessor;
+    private readonly FaceWorkspaceViewModel? _faceWorkspace;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -94,6 +95,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             ? cabinetDocument
             : CabinetDocument.Empty;
         RebuildLampCaches();
+        _faceWorkspace = document.DocumentType == EditorDocumentType.Face ? new FaceWorkspaceViewModel(this) : null;
     }
 
     public EditorDocument Document => _document;
@@ -101,6 +103,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public CommandService CommandService => _commandService;
     public MachineRuntimeState RuntimeState => _runtimeState;
     public DocumentSelectionState SelectionState { get; } = new();
+    public FaceWorkspaceViewModel? FaceWorkspace => _faceWorkspace;
     public string Title => Document.IsDirty ? $"{Document.Title}*" : Document.Title;
     public string TypeLabel => Document.DocumentType switch
     {
@@ -231,6 +234,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             _faceDocumentModel = FaceDocumentStorage.TryRead(value, out var faceDocumentFile)
                 ? FaceDocumentStorage.ToModel(faceDocumentFile)
                 : new FaceDocumentModel();
+            _faceWorkspace?.RefreshSummaries();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
         }
     }
@@ -393,6 +397,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         ArgumentNullException.ThrowIfNull(model);
 
         _faceDocumentModel = model;
+        _faceWorkspace?.RefreshSummaries();
         if (updateSerializedDocument)
         {
             _faceDocumentJson = GetFaceDocumentJson();
