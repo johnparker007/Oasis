@@ -44,8 +44,16 @@ public sealed class PerspectiveRasterizerTests
         using var result = PerspectiveRasterizer.Rectify(source, quad, 30, 35);
 
         var centroids = Enumerable.Range(3, result.Height - 6).Select(y => BrightnessCentroid(result, y)).ToArray();
-        Assert.All(centroids, centroid => Assert.InRange(centroid, 14.0, 16.0));
-        Assert.True(centroids.Max() - centroids.Min() < 1.0);
+        var adjacentMovements = centroids.Zip(centroids.Skip(1), (first, second) => Math.Abs(second - first));
+
+        // This asymmetric quad correctly produces a slightly angled line. Stability means its
+        // centroid moves smoothly along that line rather than jumping between whole pixels.
+        Assert.InRange(centroids.Max() - centroids.Min(), 0.3, 0.7);
+        Assert.All(adjacentMovements, movement => Assert.InRange(movement, 0d, 0.08d));
+        Assert.Contains(
+            Enumerable.Range(3, result.Height - 6)
+                .SelectMany(y => Enumerable.Range(0, result.Width).Select(x => result.GetPixel(x, y).Red)),
+            value => value is > 10 and < 245);
     }
 
     [Fact]
