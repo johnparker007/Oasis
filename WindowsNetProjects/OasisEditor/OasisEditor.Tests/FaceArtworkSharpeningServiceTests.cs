@@ -56,7 +56,11 @@ public sealed class FaceArtworkSharpeningServiceTests
         source.SetPixel(3, 0, new SKColor(255, 20, 20, 255));
         using var result = FaceArtworkSharpeningService.Apply(source, Settings(true, 1));
         for (var x = 0; x < source.Width; x++) Assert.Equal(source.GetPixel(x, 0).Alpha, result.GetPixel(x, 0).Alpha);
-        Assert.Equal(SKColors.Transparent, result.GetPixel(0, 0));
+        var transparent = result.GetPixel(0, 0);
+        Assert.Equal(0, transparent.Alpha);
+        Assert.Equal(0, transparent.Red);
+        Assert.Equal(0, transparent.Green);
+        Assert.Equal(0, transparent.Blue);
     }
 
     private static FaceGenerationSettingsModel Settings(bool enabled, double amount) => new() { PostWarpSharpeningEnabled = enabled, PostWarpSharpeningAmount = amount, PostWarpSharpeningRadiusPixels = .75, PostWarpSharpeningThreshold = 0 };
