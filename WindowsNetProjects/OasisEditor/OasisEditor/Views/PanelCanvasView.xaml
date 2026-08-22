@@ -141,31 +141,6 @@
                                       ClipToBounds="True"
                                       Background="{DynamicResource PanelBackgroundBrush}">
                                     <views:SkiaFaceEditView />
-
-                                    <Border Margin="12"
-                                            Padding="12"
-                                            HorizontalAlignment="Left"
-                                            VerticalAlignment="Top"
-                                            IsHitTestVisible="False"
-                                            CornerRadius="4"
-                                            Background="{DynamicResource ToolBarBackgroundBrush}"
-                                            BorderBrush="{DynamicResource BorderSubtleBrush}"
-                                            BorderThickness="1">
-                                        <StackPanel>
-                                            <TextBlock FontWeight="SemiBold"
-                                                       Text="Face Edit View"
-                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
-                                            <TextBlock Margin="0,6,0,0"
-                                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                                       Text="Right-click to add a lamp window. Left-click to select." />
-                                            <TextBlock Margin="0,4,0,0"
-                                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                                       Text="Drag with middle mouse to pan. Use mouse wheel to zoom." />
-                                            <TextBlock Margin="0,4,0,0"
-                                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                                       Text="Cabinet target: click empty canvas, then choose Inspector > Cabinet Assignment > Cabinet Face Target." />
-                                        </StackPanel>
-                                    </Border>
                                 </Grid>
                             </Border>
 
