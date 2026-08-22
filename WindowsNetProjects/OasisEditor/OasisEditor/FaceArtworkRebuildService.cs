@@ -17,7 +17,8 @@ internal sealed class FaceArtworkRebuildService
         Panel2DDocumentModel panel,
         PanelFaceSourceShapeModel shape,
         string? projectDirectory,
-        string outputPath)
+        string outputPath,
+        FaceGenerationSettingsModel? generationSettings = null)
     {
         ArgumentNullException.ThrowIfNull(artwork);
         ArgumentNullException.ThrowIfNull(panel);
@@ -35,13 +36,14 @@ internal sealed class FaceArtworkRebuildService
         var absolutePath = ResolveGeneratedArtworkPath(generatedPath, projectDirectory);
         using var rectified = SKBitmap.Decode(absolutePath);
         if (rectified is null) return null;
-        using (var originalImage = SKImage.FromBitmap(rectified))
+        using var enhanced = FaceArtworkSharpeningService.Apply(rectified, generationSettings ?? FaceGenerationSettingsModel.Default);
+        using (var originalImage = SKImage.FromBitmap(enhanced))
         using (var originalData = originalImage.Encode(SKEncodedImageFormat.Png, 100))
         using (var originalStream = File.Create(GetOriginalArtworkPath(absolutePath)))
         {
             originalData.SaveTo(originalStream);
         }
-        WriteProcessedArtwork(rectified, artwork.ProcessingPipeline, absolutePath);
+        WriteProcessedArtwork(enhanced, artwork.ProcessingPipeline, absolutePath);
         return generatedPath;
     }
 
