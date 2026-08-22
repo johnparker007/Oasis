@@ -11,7 +11,31 @@
   <Border Grid.Row="0" Padding="12,9" Background="{DynamicResource ToolBarBackgroundBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
    <DockPanel>
     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Button Margin="4,0" Padding="10,4" Content="Overview" Command="{Binding FaceWorkspace.NavigateToOverviewCommand}"/><Button Margin="4,0" Padding="10,4" Content="Face Editor" Command="{Binding FaceWorkspace.NavigateToFaceEditorCommand}"/></StackPanel>
-    <ItemsControl ItemsSource="{Binding FaceWorkspace.Breadcrumbs}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><StackPanel Orientation="Horizontal"><TextBlock Margin="7,0" VerticalAlignment="Center" Foreground="{DynamicResource TextMutedBrush}" Text="›"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Visible"/><DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style></TextBlock.Style></TextBlock><Button Padding="2" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimaryBrush}" Content="{Binding Label}" Command="{Binding Command}"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+    <ItemsControl ItemsSource="{Binding FaceWorkspace.Breadcrumbs}">
+     <ItemsControl.ItemsPanel>
+      <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+     </ItemsControl.ItemsPanel>
+     <ItemsControl.ItemTemplate>
+      <DataTemplate>
+       <StackPanel Orientation="Horizontal">
+        <TextBlock Margin="7,0" VerticalAlignment="Center" Foreground="{DynamicResource TextMutedBrush}" Text="›">
+         <TextBlock.Style>
+          <Style TargetType="TextBlock">
+           <Setter Property="Visibility" Value="Visible"/>
+           <Style.Triggers>
+            <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}" Value="{x:Null}">
+             <Setter Property="Visibility" Value="Collapsed"/>
+            </DataTrigger>
+           </Style.Triggers>
+          </Style>
+         </TextBlock.Style>
+        </TextBlock>
+        <Button Padding="2" Background="Transparent" BorderThickness="0"
+                Foreground="{DynamicResource TextPrimaryBrush}" Content="{Binding Label}" Command="{Binding Command}"/>
+       </StackPanel>
+      </DataTemplate>
+     </ItemsControl.ItemTemplate>
+    </ItemsControl>
    </DockPanel>
   </Border>
   <Grid Grid.Row="1">
