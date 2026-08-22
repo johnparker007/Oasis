@@ -7,6 +7,62 @@ namespace OasisEditor.Tests;
 
 public sealed class FaceGenerationServiceTests
 {
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void Regenerate_OverwritesStableArtworkUsingCurrentSharpeningSettings(bool initiallyEnabled, bool regeneratedEnabled)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-face-sharpen-regeneration-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var backgroundPath = Path.Combine(directory, "background.png");
+            using (var bitmap = new SkiaSharp.SKBitmap(100, 100, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Premul))
+            {
+                byte[] edge = [30, 45, 70, 105, 150, 190, 215, 225];
+                for (var y = 0; y < bitmap.Height; y++)
+                for (var x = 0; x < bitmap.Width; x++)
+                {
+                    var value = edge[Math.Clamp(x - 46, 0, edge.Length - 1)];
+                    bitmap.SetPixel(x, y, new SkiaSharp.SKColor(value, value, value));
+                }
+                using var image = SkiaSharp.SKImage.FromBitmap(bitmap);
+                using var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+                using var stream = File.Create(backgroundPath);
+                data.SaveTo(stream);
+            }
+
+            var shape = CreateSourceShape();
+            var panel = new Panel2DDocumentModel
+            {
+                FaceSourceShapes = [shape],
+                Elements = [new PanelElementModel { Kind = PanelElementKind.Background, AssetPath = backgroundPath, Width = 100, Height = 100 }]
+            };
+            var initial = new FaceGenerationService().GenerateFromPanelFaceSourceShape(
+                panel, shape, "Face", sourcePanel2DDocumentId: "panel-doc", projectDirectory: directory,
+                faceAssetName: "Face", generationSettings: SharpeningSettings(initiallyEnabled));
+            var initialPath = Path.Combine(directory, initial.Document.Artwork!.GeneratedAssetPath!.Replace('/', Path.DirectorySeparatorChar));
+            var initialBytes = File.ReadAllBytes(initialPath);
+            using var initialBitmap = SkiaSharp.SKBitmap.Decode(initialPath);
+            var initialContrast = EdgeContrast(initialBitmap);
+
+            var regenerated = new FaceRegenerationService().Regenerate(
+                initial.Document, panel, directory, Path.Combine(directory, "Generated"),
+                generationSettings: SharpeningSettings(regeneratedEnabled),
+                documentPath: Path.Combine(directory, "Assets", "Faces", "Face", "asset.face"));
+            var regeneratedPath = Path.Combine(directory, regenerated.Document.Artwork!.GeneratedAssetPath!.Replace('/', Path.DirectorySeparatorChar));
+            using var regeneratedBitmap = SkiaSharp.SKBitmap.Decode(regeneratedPath);
+            var regeneratedContrast = EdgeContrast(regeneratedBitmap);
+
+            Assert.Equal(initial.Document.Artwork.GeneratedAssetPath, regenerated.Document.Artwork.GeneratedAssetPath);
+            Assert.Equal(regeneratedEnabled, regenerated.Document.GenerationSettings.PostWarpSharpeningEnabled);
+            Assert.False(initialBytes.SequenceEqual(File.ReadAllBytes(regeneratedPath)));
+            if (regeneratedEnabled) Assert.True(regeneratedContrast > initialContrast);
+            else Assert.True(regeneratedContrast < initialContrast);
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
     [Fact]
     public void GenerateFromPanelFaceSourceShape_CreatesCanonicalOriginalArtwork()
     {
@@ -411,5 +467,16 @@ public sealed class FaceGenerationServiceTests
             BottomLeft = new FacePointModel { X = 0, Y = 100 }
         };
     }
+
+    private static FaceGenerationSettingsModel SharpeningSettings(bool enabled) => new()
+    {
+        PostWarpSharpeningEnabled = enabled,
+        PostWarpSharpeningAmount = 1,
+        PostWarpSharpeningRadiusPixels = 0.75,
+        PostWarpSharpeningThreshold = 0
+    };
+
+    private static int EdgeContrast(SkiaSharp.SKBitmap bitmap) =>
+        bitmap.GetPixel(52, 50).Red - bitmap.GetPixel(47, 50).Red;
 
 }
