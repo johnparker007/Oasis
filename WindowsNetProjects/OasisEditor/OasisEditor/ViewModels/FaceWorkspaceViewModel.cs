@@ -26,6 +26,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
 {
     private readonly DocumentTabViewModel _document;
     private FaceWorkspaceDestination _destination = FaceWorkspaceDestination.Overview;
+    private FaceComponentKind? _componentPlacementKind;
 
     public FaceWorkspaceViewModel(DocumentTabViewModel document)
     {
@@ -45,6 +46,11 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         ResetRegistrationCommand = new RelayCommand(ResetRegistration);
         BuildFaceCommand = new RelayCommand(() => RunBuild(false));
         RebuildFaceCommand = new RelayCommand(() => RunBuild(true));
+        AddReelCommand = Placement(FaceComponentKind.Reel);
+        AddButtonCommand = Placement(FaceComponentKind.Button);
+        AddSevenSegmentCommand = Placement(FaceComponentKind.SevenSegmentDisplay);
+        AddAlphaDisplayCommand = Placement(FaceComponentKind.AlphaDisplay);
+        RebuildComponentsFromSourceCommand = new RelayCommand(RebuildComponentsFromSource,()=>CanRebuildComponentsFromSource);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -79,6 +85,15 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public ICommand ResetRegistrationCommand { get; }
     public ICommand BuildFaceCommand { get; }
     public ICommand RebuildFaceCommand { get; }
+    public ICommand AddReelCommand { get; }
+    public ICommand AddButtonCommand { get; }
+    public ICommand AddSevenSegmentCommand { get; }
+    public ICommand AddAlphaDisplayCommand { get; }
+    public ICommand RebuildComponentsFromSourceCommand { get; }
+    public bool CanRebuildComponentsFromSource => _document.GetFaceDocument().Provenance.Components.Origin==FaceSubsystemOrigin.Derived && _document.TryConvertComponentsFromSource(out _,out _);
+    public FaceComponentKind? ComponentPlacementKind => _componentPlacementKind;
+    public bool IsComponentPlacementActive => _componentPlacementKind.HasValue;
+    public string ComponentEditorStatus => _componentPlacementKind is { } kind ? $"Place {DisplayComponentKind(kind)}: click and drag bounds; Escape cancels." : "Select components in the viewport or Hierarchy, or choose an Add tool.";
 
     public string BuildStatusSummary
     {
@@ -118,6 +133,29 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     }
 
     private ICommand Command(FaceWorkspaceDestination destination) => new RelayCommand(() => NavigateTo(destination));
+    private ICommand Placement(FaceComponentKind kind) => new RelayCommand(() =>
+    { NavigateTo(FaceWorkspaceDestination.ComponentsEditor); _componentPlacementKind=kind; Raise(nameof(ComponentPlacementKind)); Raise(nameof(IsComponentPlacementActive)); Raise(nameof(ComponentEditorStatus)); });
+
+    public void CancelComponentPlacement()
+    { if(!_componentPlacementKind.HasValue)return; _componentPlacementKind=null; Raise(nameof(ComponentPlacementKind)); Raise(nameof(IsComponentPlacementActive)); Raise(nameof(ComponentEditorStatus)); }
+
+    public void CompleteComponentPlacement(double x,double y,double width,double height)
+    {
+        if(_componentPlacementKind is not { } kind)return;
+        var element=FaceComponentFactory.Create(kind,x,y,width > 0 ? width : null,height > 0 ? height : null);
+        _document.CommandService.Execute(FaceMutationCommands.CreateAddComponentCommand(_document.DocumentId,_document,element));
+        CancelComponentPlacement();
+    }
+
+    private static string DisplayComponentKind(FaceComponentKind kind)=>kind switch { FaceComponentKind.SevenSegmentDisplay=>"Seven-Segment Display", FaceComponentKind.AlphaDisplay=>"Alpha Display", _=>kind.ToString() };
+    private void RebuildComponentsFromSource()
+    {
+        if(!_document.TryConvertComponentsFromSource(out var components,out var error)){MessageBox.Show(error,"Rebuild Components",MessageBoxButton.OK,MessageBoxImage.Warning);return;}
+        var warning="Rebuilding Components from the source Panel2D will replace local component edits on this Face. Artwork and Illumination will not be changed.";
+        if(MessageBox.Show(warning,"Rebuild Components From Source",MessageBoxButton.OKCancel,MessageBoxImage.Warning)!=MessageBoxResult.OK)return;
+        var source=_document.GetFaceDocument().Provenance.Components.SourceDocumentPath??_document.GetFaceDocument().SourcePanel2DDocumentPath??string.Empty;
+        _document.CommandService.Execute(FaceMutationCommands.CreateRebuildComponentsCommand(_document.DocumentId,_document,components,source)); RefreshSummaries();
+    }
 
     private void RunBuild(bool force)
     {
@@ -126,8 +164,12 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     }
 
     private string Status(FaceGeneratedProduct product) => _document.GetFaceDocument().BuildState.Get(product).Status.ToString();
-    private static string FormatProvenance(FaceSubsystemProvenanceModel value) =>
-        value.IsLocallyModified ? $"{value.Origin} • locally modified" : value.Origin.ToString();
+    private static string FormatProvenance(FaceSubsystemProvenanceModel value)
+    {
+        if(value.Origin==FaceSubsystemOrigin.Authored)return "AUTHORED";
+        var source=string.IsNullOrWhiteSpace(value.SourceDocumentPath)?string.Empty:$" from {Path.GetFileName(value.SourceDocumentPath)}";
+        return value.IsLocallyModified?$"DERIVED{source} · LOCALLY MODIFIED":$"DERIVED{source}";
+    }
     private static string DisplayName(FaceGeneratedProduct product) => product switch
     {
         FaceGeneratedProduct.BaseArtwork => "Base Artwork",
@@ -210,9 +252,16 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     {
         get
         {
-            var elements = _document.GetFaceDocument().Elements;
-            return $"{elements.OfType<FaceReelDisplayElement>().Count()} reels • {elements.OfType<FaceButtonElement>().Count()} buttons • " +
-                   $"{elements.OfType<FaceSevenSegmentDisplayElement>().Count()} seven-segment • {elements.OfType<FaceAlphaDisplayElement>().Count()} alpha displays";
+            var elements = _document.GetFaceDocument().Elements.Where(FaceElementClassification.IsComponent).ToArray();
+            if(elements.Length==0)return "No components";
+            var counts=new[]
+            {
+                (elements.OfType<FaceReelDisplayElement>().Count(),"Reel"),
+                (elements.OfType<FaceButtonElement>().Count(),"Button"),
+                (elements.OfType<FaceSevenSegmentDisplayElement>().Count(),"Seven-Segment Display"),
+                (elements.OfType<FaceAlphaDisplayElement>().Count(),"Alpha Display")
+            };
+            return string.Join(" • ",counts.Where(item=>item.Item1>0).Select(item=>$"{item.Item1} {item.Item2}{(item.Item1==1?string.Empty:"s")}"));
         }
     }
 
@@ -231,6 +280,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     {
         if (_destination == destination) return;
         if (destination != FaceWorkspaceDestination.ArtworkCalibration) _document.CancelCalibrationPlacement();
+        if (destination != FaceWorkspaceDestination.ComponentsEditor) CancelComponentPlacement();
         _destination = destination;
         Raise(nameof(Destination));
         Raise(nameof(DestinationName));
@@ -261,6 +311,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     {
         Raise(nameof(ArtworkSourceSummary)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(IsPanel2DArtworkSource)); Raise(nameof(CanUsePanel2DSource)); Raise(nameof(Panel2DSourceAvailability)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkGeometrySummary)); Raise(nameof(ArtworkOutputSummary)); Raise(nameof(ArtworkCalibrationSummary));
         if (UsePanel2DSourceCommand is RelayCommand usePanel2D) usePanel2D.RaiseCanExecuteChanged();
+        if (RebuildComponentsFromSourceCommand is RelayCommand rebuildComponents) rebuildComponents.RaiseCanExecuteChanged();
         Raise(nameof(ComponentsSummary)); Raise(nameof(IlluminationSummary));
         Raise(nameof(BuildStatusSummary)); Raise(nameof(ArtworkBuildSummary));
         Raise(nameof(ComponentsProvenanceSummary)); Raise(nameof(IlluminationBuildSummary));

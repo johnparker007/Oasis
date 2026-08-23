@@ -9,8 +9,10 @@ public partial class FaceWorkspaceView : UserControl
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs eventArgs)
     {
-        if (eventArgs.Key != Key.Escape || DataContext is not DocumentTabViewModel document || document.CalibrationPlacement is null) return;
-        document.CancelCalibrationPlacement();
+        if (eventArgs.Key != Key.Escape || DataContext is not DocumentTabViewModel document) return;
+        if(document.FaceWorkspace?.IsComponentPlacementActive==true) document.FaceWorkspace.CancelComponentPlacement();
+        else if(document.CalibrationPlacement is not null) document.CancelCalibrationPlacement();
+        else return;
         eventArgs.Handled = true;
     }
 }

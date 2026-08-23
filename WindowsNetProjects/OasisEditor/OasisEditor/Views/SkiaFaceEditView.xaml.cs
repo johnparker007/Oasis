@@ -427,6 +427,11 @@ public partial class SkiaFaceEditView : UserControl
         if (eventArgs.ChangedButton == MouseButton.Left)
         {
             var pointer = eventArgs.GetPosition(FaceSkiaSurface);
+            if(document.FaceWorkspace?.IsComponentPlacementActive==true)
+            {
+                _isLeftMouseDown=true; _leftMouseDownStart=pointer; _dragSelectionCurrent=pointer;
+                FaceSkiaSurface.CaptureMouse(); eventArgs.Handled=true; return;
+            }
             if (TryAddArtworkSample(document, pointer))
             {
                 eventArgs.Handled = true;
@@ -541,7 +546,14 @@ public partial class SkiaFaceEditView : UserControl
             var document = Document;
             if (document is not null)
             {
-                if (_isDragSelecting)
+                if(document.FaceWorkspace?.IsComponentPlacementActive==true)
+                {
+                    var zoom=Math.Max(document.FaceZoom,.0001); var start=new Point((_leftMouseDownStart.X-document.FacePanX)/zoom,(_leftMouseDownStart.Y-document.FacePanY)/zoom);
+                    var end=new Point((_dragSelectionCurrent.X-document.FacePanX)/zoom,(_dragSelectionCurrent.Y-document.FacePanY)/zoom);
+                    var width=Math.Abs(end.X-start.X); var height=Math.Abs(end.Y-start.Y);
+                    document.FaceWorkspace.CompleteComponentPlacement(Math.Min(start.X,end.X),Math.Min(start.Y,end.Y),width>=4?width:0,height>=4?height:0);
+                }
+                else if (_isDragSelecting)
                 {
                     HandleDragSelection(document, _leftMouseDownStart, _dragSelectionCurrent);
                 }
