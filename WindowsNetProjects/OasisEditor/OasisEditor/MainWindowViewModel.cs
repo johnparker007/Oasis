@@ -955,7 +955,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OpenFaceStubDocument()
     {
-        _documentWorkspace.OpenFaceStubDocument();
+        var dialog = new NewFaceDialog(_documentWorkspace.NextFaceDefaultName) { Owner = _ownerWindow };
+        if (dialog.ShowDialog() != true) return;
+        var vm = dialog.ViewModel;
+        var result = _documentWorkspace.CreateNativeFace(new Automation.FaceDocumentCreationOptions(
+            vm.Name, _documentWorkspace.NextFaceIndex,
+            vm.IsImage ? Automation.FaceStartingArtworkKind.Image : Automation.FaceStartingArtworkKind.Blank,
+            vm.ImagePath));
+        if (!result.Succeeded)
+            MessageBox.Show(result.ErrorMessage ?? "The Face could not be created.", "Create Face", MessageBoxButton.OK, MessageBoxImage.Error);
     }
 
     private bool CanAddFaceSourceShape()

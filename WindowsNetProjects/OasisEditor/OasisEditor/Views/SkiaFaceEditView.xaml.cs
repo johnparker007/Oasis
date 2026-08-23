@@ -176,11 +176,25 @@ public partial class SkiaFaceEditView : UserControl
         canvas.Save();
         canvas.Translate((float)viewport.PanX, (float)viewport.PanY);
         canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
+        DrawBlankNativeCanvas(canvas, document, viewport);
         DrawFaceElements(canvas, document, viewport);
         DrawArtworkSamples(canvas, document, viewport);
         DrawSelectionOutline(canvas, document, viewport);
         DrawDragSelectionRect(canvas, viewport);
         canvas.Restore();
+    }
+
+    private static void DrawBlankNativeCanvas(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)
+    {
+        var face = document.GetFaceDocument();
+        if (face.Artwork is not null || face.SourceRegion is not { Width: > 0, Height: > 0 } bounds) return;
+        using var fill = new SKPaint { Style = SKPaintStyle.Fill, Color = new SKColor(0x2A, 0x2A, 0x2A) };
+        using var grid = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(0x48, 0x48, 0x48), StrokeWidth = (float)(1d / viewport.NormalizedZoom) };
+        canvas.DrawRect(SKRect.Create(0, 0, (float)bounds.Width, (float)bounds.Height), fill);
+        const int spacing = 64;
+        for (var x = spacing; x < bounds.Width; x += spacing) canvas.DrawLine(x, 0, x, (float)bounds.Height, grid);
+        for (var y = spacing; y < bounds.Height; y += spacing) canvas.DrawLine(0, y, (float)bounds.Width, y, grid);
+        canvas.DrawRect(SKRect.Create(0, 0, (float)bounds.Width, (float)bounds.Height), grid);
     }
 
     private void DrawArtworkSamples(SKCanvas canvas, DocumentTabViewModel document, PanelViewportTransform viewport)

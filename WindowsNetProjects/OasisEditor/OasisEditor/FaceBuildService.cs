@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace OasisEditor;
 
 public enum FaceBuildInput
@@ -130,6 +132,53 @@ public sealed class FaceBuildService
             }
         }
         return result;
+    }
+}
+
+/// <summary>Reconciles recipe availability with generated-product configuration before freshness invalidation/build.</summary>
+public static class FaceBuildConfigurationService
+{
+    private static readonly FaceGeneratedProduct[] s_artworkProducts =
+        [FaceGeneratedProduct.ArtworkCorrectionInput, FaceGeneratedProduct.BaseArtwork, FaceGeneratedProduct.ArtworkOutput];
+
+    public static void ReconcileArtwork(FaceDocumentModel face) => ReconcileArtwork(face.Artwork, face.BuildState);
+
+    public static void ReconcileArtwork(FaceArtworkModel? artwork, FaceBuildStateModel state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        var configured = IsArtworkRecipeConfigured(artwork);
+        foreach (var product in s_artworkProducts)
+        {
+            var node = state.Get(product);
+            if (!configured)
+            {
+                node.Status = FaceBuildStatus.NotConfigured;
+                node.ErrorMessage = null;
+            }
+            else if (node.Status == FaceBuildStatus.NotConfigured)
+            {
+                node.Status = FaceBuildStatus.Stale;
+                node.ErrorMessage = null;
+            }
+        }
+    }
+
+    public static bool IsArtworkRecipeConfigured(FaceArtworkModel? artwork)
+    {
+        if (artwork is null || string.IsNullOrWhiteSpace(artwork.Source.AssetPath)
+            || string.IsNullOrWhiteSpace(artwork.CorrectionInputAssetPath)
+            || string.IsNullOrWhiteSpace(artwork.BaseAssetPath)
+            || string.IsNullOrWhiteSpace(artwork.OutputAssetPath)
+            || artwork.OutputWidth <= 0 || artwork.OutputHeight <= 0)
+            return false;
+
+        if (artwork.Source.Kind == FaceArtworkSourceKind.Image)
+            return !Path.IsPathRooted(artwork.Source.AssetPath)
+                && artwork.Source.PixelWidth > 0 && artwork.Source.PixelHeight > 0
+                && artwork.Geometry.PerspectiveRegistration.IsValid();
+
+        return !string.IsNullOrWhiteSpace(artwork.Source.Panel2DDocumentId)
+            && !string.IsNullOrWhiteSpace(artwork.Source.FaceSourceShapeId);
     }
 }
 

@@ -6,6 +6,8 @@ namespace OasisEditor;
 public static class FaceDocumentStorage
 {
     public const int CurrentSchemaVersion = 20;
+    public const int DefaultNativeLogicalWidth = 1024;
+    public const int DefaultNativeLogicalHeight = 1024;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -28,7 +30,10 @@ public static class FaceDocumentStorage
             SchemaVersion = CurrentSchemaVersion,
             Id = Guid.NewGuid().ToString("N"),
             Title = resolvedTitle,
-            Summary = "Face document placeholder.",
+            Summary = "Native Face document.",
+            SourceRegion = ToFile(FaceSourceRegionModel.FromRect(new System.Windows.Rect(0, 0, DefaultNativeLogicalWidth, DefaultNativeLogicalHeight))),
+            Provenance = new FaceProvenanceModel(),
+            BuildState = new FaceBuildStateModel(),
             GenerationSettings = ToFile(FaceGenerationSettingsModel.Default),
             SavedAtUtc = DateTime.UtcNow,
             Layers =
@@ -264,7 +269,7 @@ public static class FaceDocumentStorage
         };
     }
 
-    private static FaceArtworkFile? ToFile(FaceArtworkModel? model)
+    internal static FaceArtworkFile? ToFile(FaceArtworkModel? model)
     {
         if (model is null) return null;
         return new FaceArtworkFile

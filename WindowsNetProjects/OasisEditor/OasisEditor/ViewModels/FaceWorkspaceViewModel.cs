@@ -135,7 +135,8 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
             var errors = states.Count(state => state.Status == FaceBuildStatus.Error);
             var stale = states.Count(state => state.Status == FaceBuildStatus.Stale);
             if (errors > 0) return $"Build status: {errors} output{(errors == 1 ? "" : "s")} failed";
-            return stale > 0 ? $"Build status: {stale} output{(stale == 1 ? " needs" : "s need")} building" : "Build status: Current";
+            if (stale > 0) return $"Build status: {stale} output{(stale == 1 ? " needs" : "s need")} building";
+            return states.All(state => state.Status == FaceBuildStatus.NotConfigured) ? "Build status: Not configured" : "Build status: Current";
         }
     }
 
@@ -243,7 +244,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         get
         {
             var artwork = _document.GetFaceDocument().Artwork;
-            if (artwork is null) return "No authored artwork information";
+            if (artwork is null) return "Not configured";
             var source = artwork.Source.Kind == FaceArtworkSourceKind.Panel2DFaceSourceShape ? "Panel2D / Face Source Shape" : "Image";
             var path = artwork.Source.Panel2DDocumentPath ?? artwork.Source.AssetPath;
             var dimensions = artwork.Source.PixelWidth > 0 ? $" • {artwork.Source.PixelWidth} × {artwork.Source.PixelHeight}" : string.Empty;
@@ -254,10 +255,21 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
 
     public bool IsImageArtworkSource => _document.GetFaceDocument().Artwork?.Source.Kind == FaceArtworkSourceKind.Image;
     public bool IsPanel2DArtworkSource => _document.GetFaceDocument().Artwork?.Source.Kind == FaceArtworkSourceKind.Panel2DFaceSourceShape;
+    public bool CanChooseImageArtwork => !IsImageArtworkSource;
+    public bool HasRetainedPanel2DArtworkSource
+    {
+        get
+        {
+            var face = _document.GetFaceDocument();
+            return !string.IsNullOrWhiteSpace(face.SourcePanel2DDocumentId)
+                && !string.IsNullOrWhiteSpace(face.SourceFaceShapeId);
+        }
+    }
+    public bool CanShowUsePanel2DSource => IsImageArtworkSource && HasRetainedPanel2DArtworkSource;
     public bool CanUsePanel2DSource => _document.CanUsePanel2DArtworkSource(out _);
     public string Panel2DSourceAvailability => _document.CanUsePanel2DArtworkSource(out var reason)
         ? string.Empty
-        : IsImageArtworkSource ? reason ?? "The retained Panel2D source is unavailable." : string.Empty;
+        : IsImageArtworkSource && HasRetainedPanel2DArtworkSource ? reason ?? "The retained Panel2D source is unavailable." : string.Empty;
     public string? ArtworkRawImagePath => _document.GetArtworkSourceAbsolutePath();
     public int ArtworkSourcePixelWidth => _document.GetFaceDocument().Artwork?.Source.PixelWidth ?? 0;
     public int ArtworkSourcePixelHeight => _document.GetFaceDocument().Artwork?.Source.PixelHeight ?? 0;
@@ -265,7 +277,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public void CommitRegistration(FacePerspectiveRegistrationModel value) { _document.SetArtworkRegistration(value); RefreshSummaries(); }
     public void ResetRegistration() { _document.SetArtworkRegistration(FacePerspectiveRegistrationModel.FullImage, "Reset artwork registration"); RefreshSummaries(); }
 
-    public string ArtworkGeometrySummary => IsImageArtworkSource
+    public string ArtworkGeometrySummary => _document.GetFaceDocument().Artwork is null ? "Not configured" : IsImageArtworkSource
         ? $"Perspective registration • {_document.GetFaceDocument().Artwork?.OutputWidth} × {_document.GetFaceDocument().Artwork?.OutputHeight}"
         : $"Derived from Face Source Shape • {_document.GetFaceDocument().Artwork?.OutputWidth} × {_document.GetFaceDocument().Artwork?.OutputHeight}";
     public string ArtworkCorrectionSummary
@@ -402,7 +414,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
 
     internal void RefreshSummaries()
     {
-        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(OverridePreviewMargin)); Raise(nameof(OverridePreviewWidth)); Raise(nameof(OverridePreviewHeight)); Raise(nameof(ArtworkOverride)); Raise(nameof(HasArtworkOverride)); Raise(nameof(ArtworkOverrideSummary)); Raise(nameof(OverrideToggleLabel)); Raise(nameof(ArtworkBaseAbsolutePath)); Raise(nameof(ArtworkOverrideAbsolutePath)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(IsPanel2DArtworkSource)); Raise(nameof(CanUsePanel2DSource)); Raise(nameof(Panel2DSourceAvailability)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkGeometrySummary)); Raise(nameof(ArtworkOutputSummary)); Raise(nameof(ArtworkCalibrationSummary));
+        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(OverridePreviewMargin)); Raise(nameof(OverridePreviewWidth)); Raise(nameof(OverridePreviewHeight)); Raise(nameof(ArtworkOverride)); Raise(nameof(HasArtworkOverride)); Raise(nameof(ArtworkOverrideSummary)); Raise(nameof(OverrideToggleLabel)); Raise(nameof(ArtworkBaseAbsolutePath)); Raise(nameof(ArtworkOverrideAbsolutePath)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(IsPanel2DArtworkSource)); Raise(nameof(CanChooseImageArtwork)); Raise(nameof(HasRetainedPanel2DArtworkSource)); Raise(nameof(CanShowUsePanel2DSource)); Raise(nameof(CanUsePanel2DSource)); Raise(nameof(Panel2DSourceAvailability)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkGeometrySummary)); Raise(nameof(ArtworkOutputSummary)); Raise(nameof(ArtworkCalibrationSummary));
         if (UsePanel2DSourceCommand is RelayCommand usePanel2D) usePanel2D.RaiseCanExecuteChanged();
         if (RebuildComponentsFromSourceCommand is RelayCommand rebuildComponents) rebuildComponents.RaiseCanExecuteChanged();
         Raise(nameof(ComponentsSummary)); Raise(nameof(IlluminationSummary));
