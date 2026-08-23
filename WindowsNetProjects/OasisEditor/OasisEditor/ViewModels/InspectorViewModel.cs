@@ -1590,6 +1590,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Asset Path", "Artwork", authoredArtwork?.Source.AssetPath ?? string.Empty));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Output Dimensions", "Artwork", authoredArtwork is null ? $"{artwork.Width:0} × {artwork.Height:0}" : $"{authoredArtwork.OutputWidth} × {authoredArtwork.OutputHeight}"));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Processing Operations", "Artwork", authoredArtwork?.ProcessingPipeline.Operations.Count.ToString() ?? "0"));
+            _propertyRows.Add(new InspectorActionPropertyViewModel(
+                "+ Add Artwork Calibration",
+                "Processing Stack",
+                new RelayCommand(() =>
+                    _executeCanvasCommand(
+                        selectedDocument.DocumentId,
+                        FaceMutationCommands.CreateAddArtworkCalibrationCommand(
+                            selectedDocument.DocumentId,
+                            selectedDocument)))));
             if (authoredArtwork is not null)
             for (var index = 0; index < authoredArtwork.ProcessingPipeline.Operations.Count; index++)
             {
