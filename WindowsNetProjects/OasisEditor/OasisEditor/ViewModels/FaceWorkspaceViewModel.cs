@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.IO;
 using System.Windows.Input;
+using Microsoft.Win32;
+using System.Windows;
 
 namespace OasisEditor;
 
@@ -8,6 +10,7 @@ public enum FaceWorkspaceDestination
 {
     Overview,
     Artwork,
+    ArtworkGeometry,
     ArtworkCalibration,
     Components,
     ComponentsEditor,
@@ -29,12 +32,16 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         _document = document;
         NavigateToOverviewCommand = Command(FaceWorkspaceDestination.Overview);
         NavigateToArtworkCommand = Command(FaceWorkspaceDestination.Artwork);
+        NavigateToArtworkGeometryCommand = Command(FaceWorkspaceDestination.ArtworkGeometry);
         NavigateToArtworkCalibrationCommand = Command(FaceWorkspaceDestination.ArtworkCalibration);
         NavigateToComponentsCommand = Command(FaceWorkspaceDestination.Components);
         NavigateToComponentsEditorCommand = Command(FaceWorkspaceDestination.ComponentsEditor);
         NavigateToIlluminationCommand = Command(FaceWorkspaceDestination.Illumination);
         NavigateToIlluminationLampsCommand = Command(FaceWorkspaceDestination.IlluminationLamps);
         NavigateToFaceEditorCommand = Command(FaceWorkspaceDestination.FaceEditor);
+        UseImageCommand = new RelayCommand(ChooseImage);
+        ReloadImageCommand = new RelayCommand(() => { _document.ReloadArtworkImage(); RefreshSummaries(); });
+        ResetRegistrationCommand = new RelayCommand(ResetRegistration);
         BuildFaceCommand = new RelayCommand(() => RunBuild(false));
         RebuildFaceCommand = new RelayCommand(() => RunBuild(true));
     }
@@ -45,6 +52,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public string FaceName => _document.Document.Title;
     public string DestinationName => _destination switch
     {
+        FaceWorkspaceDestination.ArtworkGeometry => "Geometry",
         FaceWorkspaceDestination.ArtworkCalibration => "Calibration",
         FaceWorkspaceDestination.ComponentsEditor => "Edit",
         FaceWorkspaceDestination.IlluminationLamps => "Lamps",
@@ -52,17 +60,21 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         _ => _destination.ToString()
     };
     public IReadOnlyList<FaceWorkspaceBreadcrumb> Breadcrumbs => BuildBreadcrumbs();
-    public bool IsViewportDestination => _destination is FaceWorkspaceDestination.ArtworkCalibration
+    public bool IsViewportDestination => _destination is FaceWorkspaceDestination.ArtworkGeometry or FaceWorkspaceDestination.ArtworkCalibration
         or FaceWorkspaceDestination.ComponentsEditor or FaceWorkspaceDestination.IlluminationLamps
         or FaceWorkspaceDestination.FaceEditor;
     public ICommand NavigateToOverviewCommand { get; }
     public ICommand NavigateToArtworkCommand { get; }
+    public ICommand NavigateToArtworkGeometryCommand { get; }
     public ICommand NavigateToArtworkCalibrationCommand { get; }
     public ICommand NavigateToComponentsCommand { get; }
     public ICommand NavigateToComponentsEditorCommand { get; }
     public ICommand NavigateToIlluminationCommand { get; }
     public ICommand NavigateToIlluminationLampsCommand { get; }
     public ICommand NavigateToFaceEditorCommand { get; }
+    public ICommand UseImageCommand { get; }
+    public ICommand ReloadImageCommand { get; }
+    public ICommand ResetRegistrationCommand { get; }
     public ICommand BuildFaceCommand { get; }
     public ICommand RebuildFaceCommand { get; }
 
@@ -85,6 +97,15 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         _document.GetFaceDocument().BuildState.Products
             .Where(pair => pair.Value.Status == FaceBuildStatus.Error && !string.IsNullOrWhiteSpace(pair.Value.ErrorMessage))
             .Select(pair => $"{DisplayName(pair.Key)}: {pair.Value.ErrorMessage}"));
+
+    private void ChooseImage()
+    {
+        var dialog=new OpenFileDialog { Title=IsImageArtworkSource ? "Replace Face artwork image" : "Use image for Face artwork",
+            Filter="Image files|*.png;*.jpg;*.jpeg;*.webp;*.bmp|All files|*.*", CheckFileExists=true };
+        if(dialog.ShowDialog()!=true)return;
+        if(!_document.ImportArtworkImage(dialog.FileName,out var error)) MessageBox.Show(error ?? "The image could not be imported.", "Artwork Source", MessageBoxButton.OK, MessageBoxImage.Error);
+        RefreshSummaries();
+    }
 
     private ICommand Command(FaceWorkspaceDestination destination) => new RelayCommand(() => NavigateTo(destination));
 
@@ -114,10 +135,19 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
             if (artwork is null) return "No authored artwork information";
             var source = artwork.Source.Kind == FaceArtworkSourceKind.Panel2DFaceSourceShape ? "Panel2D / Face Source Shape" : "Image";
             var path = artwork.Source.Panel2DDocumentPath ?? artwork.Source.AssetPath;
-            return string.IsNullOrWhiteSpace(path) ? source : $"{source}: {Path.GetFileName(path)}";
+            var dimensions = artwork.Source.PixelWidth > 0 ? $" • {artwork.Source.PixelWidth} × {artwork.Source.PixelHeight}" : string.Empty;
+            return string.IsNullOrWhiteSpace(path) ? source : $"{source}: {path}{dimensions}";
         }
     }
 
+
+    public bool IsImageArtworkSource => _document.GetFaceDocument().Artwork?.Source.Kind == FaceArtworkSourceKind.Image;
+    public string? ArtworkRawImagePath => _document.GetArtworkSourceAbsolutePath();
+    public int ArtworkSourcePixelWidth => _document.GetFaceDocument().Artwork?.Source.PixelWidth ?? 0;
+    public int ArtworkSourcePixelHeight => _document.GetFaceDocument().Artwork?.Source.PixelHeight ?? 0;
+    public FacePerspectiveRegistrationModel ArtworkRegistration => _document.GetFaceDocument().Artwork?.Geometry.PerspectiveRegistration ?? FacePerspectiveRegistrationModel.FullImage;
+    public void CommitRegistration(FacePerspectiveRegistrationModel value) { _document.SetArtworkRegistration(value); RefreshSummaries(); }
+    public void ResetRegistration() { _document.SetArtworkRegistration(FacePerspectiveRegistrationModel.FullImage, "Reset artwork registration"); RefreshSummaries(); }
 
     public string ArtworkGeometrySummary => $"Perspective rectification • {_document.GetFaceDocument().Artwork?.OutputWidth} × {_document.GetFaceDocument().Artwork?.OutputHeight}";
     public string ArtworkCorrectionSummary
@@ -198,6 +228,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         {
             FaceWorkspaceDestination.Overview => [root],
             FaceWorkspaceDestination.Artwork => [root, new("Artwork", null)],
+            FaceWorkspaceDestination.ArtworkGeometry => [root, new("Artwork", NavigateToArtworkCommand), new("Geometry", null)],
             FaceWorkspaceDestination.ArtworkCalibration => [root, new("Artwork", NavigateToArtworkCommand), new("Calibration", null)],
             FaceWorkspaceDestination.Components => [root, new("Components", null)],
             FaceWorkspaceDestination.ComponentsEditor => [root, new("Components", NavigateToComponentsCommand), new("Edit", null)],
@@ -211,7 +242,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
 
     internal void RefreshSummaries()
     {
-        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(ArtworkOutputSummary)); Raise(nameof(ArtworkCalibrationSummary));
+        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkOutputSummary)); Raise(nameof(ArtworkCalibrationSummary));
         Raise(nameof(ComponentsSummary)); Raise(nameof(IlluminationSummary));
         Raise(nameof(BuildStatusSummary)); Raise(nameof(ArtworkBuildSummary));
         Raise(nameof(ComponentsProvenanceSummary)); Raise(nameof(IlluminationBuildSummary));

@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 17;
+    public const int CurrentSchemaVersion = 18;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -236,7 +236,12 @@ public static class FaceDocumentStorage
                 AssetPath = NormalizeOptional(file.Source.AssetPath),
                 Panel2DDocumentId = NormalizeOptional(file.Source.Panel2DDocumentId),
                 Panel2DDocumentPath = NormalizeOptional(file.Source.Panel2DDocumentPath),
-                FaceSourceShapeId = NormalizeOptional(file.Source.FaceSourceShapeId)
+                FaceSourceShapeId = NormalizeOptional(file.Source.FaceSourceShapeId),
+                PixelWidth = file.Source.PixelWidth, PixelHeight = file.Source.PixelHeight
+            },
+            Geometry = new FaceArtworkGeometryModel
+            {
+                PerspectiveRegistration = ToModel(file.Geometry.PerspectiveRegistration)
             },
             ProcessingPipeline = new ImageProcessingPipelineModel
             {
@@ -262,7 +267,12 @@ public static class FaceDocumentStorage
                 AssetPath = model.Source.AssetPath,
                 Panel2DDocumentId = model.Source.Panel2DDocumentId,
                 Panel2DDocumentPath = model.Source.Panel2DDocumentPath,
-                FaceSourceShapeId = model.Source.FaceSourceShapeId
+                FaceSourceShapeId = model.Source.FaceSourceShapeId,
+                PixelWidth = model.Source.PixelWidth, PixelHeight = model.Source.PixelHeight
+            },
+            Geometry = new FaceArtworkGeometryFile
+            {
+                PerspectiveRegistration = ToFile(model.Geometry.PerspectiveRegistration)
             },
             ProcessingPipeline = new ImageProcessingPipelineFile
             {
@@ -275,6 +285,18 @@ public static class FaceDocumentStorage
             OutputHeight = model.OutputHeight
         };
     }
+
+    private static FacePerspectiveRegistrationModel ToModel(FacePerspectiveRegistrationFile file) => new FacePerspectiveRegistrationModel
+    {
+        TopLeft = ToModel(file.TopLeft), TopRight = ToModel(file.TopRight),
+        BottomRight = ToModel(file.BottomRight), BottomLeft = ToModel(file.BottomLeft)
+    }.Normalize();
+    private static NormalizedFacePointModel ToModel(NormalizedFacePointFile file) => new() { X = file.X, Y = file.Y };
+    private static FacePerspectiveRegistrationFile ToFile(FacePerspectiveRegistrationModel model) => new()
+    {
+        TopLeft = ToFile(model.TopLeft), TopRight = ToFile(model.TopRight), BottomRight = ToFile(model.BottomRight), BottomLeft = ToFile(model.BottomLeft)
+    };
+    private static NormalizedFacePointFile ToFile(NormalizedFacePointModel model) => new() { X = model.X, Y = model.Y };
 
     private static ImageProcessingOperationModel ToModel(ImageProcessingOperationFile file) => file.Kind switch
     {
@@ -895,6 +917,7 @@ public sealed record FaceArtworkFile
 {
     public string Id { get; init; } = string.Empty;
     public FaceArtworkSourceFile Source { get; init; } = new();
+    public FaceArtworkGeometryFile Geometry { get; init; } = new();
     public ImageProcessingPipelineFile ProcessingPipeline { get; init; } = new();
     public string? CorrectionInputAssetPath { get; init; }
     public string? BaseAssetPath { get; init; }
@@ -910,7 +933,22 @@ public sealed record FaceArtworkSourceFile
     public string? Panel2DDocumentId { get; init; }
     public string? Panel2DDocumentPath { get; init; }
     public string? FaceSourceShapeId { get; init; }
+    public int PixelWidth { get; init; }
+    public int PixelHeight { get; init; }
 }
+
+public sealed record FaceArtworkGeometryFile
+{
+    public FacePerspectiveRegistrationFile PerspectiveRegistration { get; init; } = new();
+}
+public sealed record FacePerspectiveRegistrationFile
+{
+    public NormalizedFacePointFile TopLeft { get; init; } = new();
+    public NormalizedFacePointFile TopRight { get; init; } = new() { X = 1d };
+    public NormalizedFacePointFile BottomRight { get; init; } = new() { X = 1d, Y = 1d };
+    public NormalizedFacePointFile BottomLeft { get; init; } = new() { Y = 1d };
+}
+public sealed record NormalizedFacePointFile { public double X { get; init; } public double Y { get; init; } }
 
 public sealed record ImageProcessingPipelineFile
 {

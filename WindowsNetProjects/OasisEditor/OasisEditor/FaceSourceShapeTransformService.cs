@@ -7,6 +7,17 @@ internal readonly record struct FaceSourceShapeOutputSize(int Width, int Height)
 
 internal static class FaceSourceShapeTransformService
 {
+    public static FaceSourceShapeOutputSize EstimateRegisteredImageOutputSize(int sourceWidth, int sourceHeight, FacePerspectiveRegistrationModel registration)
+    {
+        var r = registration.Normalize();
+        var points = new[] { r.TopLeft, r.TopRight, r.BottomRight, r.BottomLeft }
+            .Select(point => new FacePointModel { X = point.X * sourceWidth, Y = point.Y * sourceHeight }).ToArray();
+        var width = Math.Max(Distance(points[0], points[1]), Distance(points[3], points[2]));
+        var height = Math.Max(Distance(points[0], points[3]), Distance(points[1], points[2]));
+        return new FaceSourceShapeOutputSize(Math.Max(1, Math.Min(sourceWidth, (int)Math.Ceiling(width))),
+            Math.Max(1, Math.Min(sourceHeight, (int)Math.Ceiling(height))));
+    }
+
     public static FaceSourceShapeOutputSize EstimateOutputSize(PanelFaceSourceShapeModel shape, double? targetAspectRatio = null)
     {
         var sourceWidth = Math.Max(Distance(shape.TopLeft, shape.TopRight), Distance(shape.BottomLeft, shape.BottomRight));

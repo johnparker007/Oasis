@@ -19,7 +19,7 @@ internal sealed class FaceArtworkRebuildService
     {
         ArgumentNullException.ThrowIfNull(artwork);
         if (artwork.Source.Kind != FaceArtworkSourceKind.Panel2DFaceSourceShape)
-            throw new NotSupportedException("Independent artwork sources are not rebuildable until Phase 5.");
+            throw new InvalidOperationException("This overload requires Panel2D Face Source Shape artwork.");
         if (string.IsNullOrWhiteSpace(projectDirectory)) return null;
 
         var absoluteInput = FaceArtworkGeneratedPathService.Resolve(correctionInputPath, projectDirectory);
@@ -38,6 +38,27 @@ internal sealed class FaceArtworkRebuildService
             return FaceArtworkGeneratedPathService.ToProjectRelative(absoluteInput, projectDirectory);
         }
         finally { if (File.Exists(geometryPath)) File.Delete(geometryPath); }
+    }
+
+    /// <summary>Rectifies an authored image once through the shared quality-first rasterizer, then sharpens it.</summary>
+    public string? RebuildImageCorrectionInput(FaceArtworkModel artwork, string projectDirectory,
+        string correctionInputPath, FaceGenerationSettingsModel? generationSettings = null)
+    {
+        if (artwork.Source.Kind != FaceArtworkSourceKind.Image || string.IsNullOrWhiteSpace(artwork.Source.AssetPath)) return null;
+        var registration = artwork.Geometry.PerspectiveRegistration.Normalize();
+        if (!registration.IsValid()) return null;
+        var sourcePath = FaceArtworkGeneratedPathService.Resolve(artwork.Source.AssetPath, projectDirectory);
+        if (!File.Exists(sourcePath)) return null;
+        using var source = SKBitmap.Decode(sourcePath);
+        if (source is null) return null;
+        var size = FaceSourceShapeTransformService.EstimateRegisteredImageOutputSize(source.Width, source.Height, registration);
+        var quad = new[] { registration.TopLeft, registration.TopRight, registration.BottomRight, registration.BottomLeft }
+            .Select(point => new FacePointModel { X = point.X * source.Width, Y = point.Y * source.Height }).ToArray();
+        using var rectified = PerspectiveRasterizer.Rectify(source, quad, size.Width, size.Height);
+        using var sharpened = FaceArtworkSharpeningService.Apply(rectified, generationSettings ?? FaceGenerationSettingsModel.Default);
+        var output = FaceArtworkGeneratedPathService.Resolve(correctionInputPath, projectDirectory);
+        WriteVerified(sharpened, output);
+        return FaceArtworkGeneratedPathService.ToProjectRelative(output, projectDirectory);
     }
 
     /// <summary>Applies the authored processing stack to the cached correction input.</summary>

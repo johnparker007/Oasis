@@ -149,6 +149,7 @@ internal sealed class FaceGenerationService
         {
             Id = artworkState.Id,
             Source = artworkState.Source,
+            Geometry = artworkState.Geometry,
             ProcessingPipeline = artworkState.ProcessingPipeline,
             CorrectionInputAssetPath = generatedCorrectionInputPath,
             BaseAssetPath = generatedBasePath,

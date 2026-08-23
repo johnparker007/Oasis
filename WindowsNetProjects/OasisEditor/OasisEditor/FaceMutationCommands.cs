@@ -2,6 +2,36 @@ namespace OasisEditor;
 
 internal static class FaceMutationCommands
 {
+    public static Commands.ICommand CreateSetArtworkRecipeCommand(Guid documentId, DocumentTabViewModel document,
+        FaceArtworkModel artwork, FaceSubsystemProvenanceModel provenance, string description) =>
+        new SetArtworkRecipeMutationCommand(documentId, document, artwork, provenance, description);
+
+    private sealed class SetArtworkRecipeMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _id; private readonly DocumentTabViewModel _document; private readonly FaceArtworkModel _next;
+        private readonly FaceSubsystemProvenanceModel _nextProvenance; private readonly string _description;
+        private FaceArtworkModel? _previous; private FaceSubsystemProvenanceModel? _previousProvenance;
+        public SetArtworkRecipeMutationCommand(Guid id, DocumentTabViewModel document, FaceArtworkModel next,
+            FaceSubsystemProvenanceModel provenance, string description)
+        { _id=id; _document=document; _next=next; _nextProvenance=provenance; _description=description; }
+        public Guid DocumentId => _id; public string Description => _description; public bool WasExecuted { get; private set; }
+        public void Execute()
+        {
+            var face=_document.GetFaceDocument(); if (face.Artwork is null) return;
+            _previous ??= face.Artwork; _previousProvenance ??= face.Provenance.Artwork;
+            if (ReferenceEquals(face.Artwork, _next)) return;
+            _document.SetFaceDocument(FaceDocumentCopy.WithArtwork(face, _next, _nextProvenance));
+            _document.InvalidateFaceBuild(FaceBuildInput.ArtworkSource); _document.MarkDirty(); WasExecuted=true;
+        }
+        public void Undo()
+        {
+            if (_previous is null || _previousProvenance is null) return;
+            _document.SetFaceDocument(FaceDocumentCopy.WithArtwork(_document.GetFaceDocument(), _previous, _previousProvenance));
+            _document.InvalidateFaceBuild(FaceBuildInput.ArtworkSource); _document.MarkDirty();
+        }
+    }
+
+
     public static Commands.ICommand CreateSetProcessingPipelineCommand(
         Guid documentId,
         DocumentTabViewModel document,
@@ -124,7 +154,7 @@ internal static class FaceMutationCommands
     {
         var artwork = model.Artwork is null ? null : new FaceArtworkModel
         {
-            Id = model.Artwork.Id, Source = model.Artwork.Source, ProcessingPipeline = pipeline,
+            Id = model.Artwork.Id, Source = model.Artwork.Source, Geometry = model.Artwork.Geometry, ProcessingPipeline = pipeline,
             CorrectionInputAssetPath = model.Artwork.CorrectionInputAssetPath, BaseAssetPath = model.Artwork.BaseAssetPath, OutputAssetPath = model.Artwork.OutputAssetPath, OutputWidth = model.Artwork.OutputWidth, OutputHeight = model.Artwork.OutputHeight
         };
         return new FaceDocumentModel
