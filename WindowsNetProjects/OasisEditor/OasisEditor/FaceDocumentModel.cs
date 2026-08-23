@@ -94,6 +94,31 @@ public sealed class FaceArtworkModel
     public string? OutputAssetPath { get; init; }
     public int OutputWidth { get; init; }
     public int OutputHeight { get; init; }
+    /// <summary>The optional designer-owned image composited after Base Artwork.</summary>
+    public FaceArtworkOverrideModel? Override { get; init; }
+    /// <summary>Actual final raster dimensions. Zero means the Base dimensions until Output is built.</summary>
+    public int FinalOutputWidth { get; init; }
+    public int FinalOutputHeight { get; init; }
+}
+
+public sealed class FaceArtworkOverrideModel
+{
+    public const double MaximumExtent = 16d;
+    public bool Enabled { get; init; } = true;
+    public string AssetPath { get; init; } = string.Empty;
+    public int PixelWidth { get; init; }
+    public int PixelHeight { get; init; }
+    public double X { get; init; }
+    public double Y { get; init; }
+    public double Width { get; init; } = 1d;
+    public double Height { get; init; } = 1d;
+    public long ContentRevision { get; init; }
+
+    public bool IsValid() => !string.IsNullOrWhiteSpace(AssetPath)
+        && PixelWidth > 0 && PixelHeight > 0
+        && double.IsFinite(X) && double.IsFinite(Y) && double.IsFinite(Width) && double.IsFinite(Height)
+        && Math.Abs(X) <= MaximumExtent && Math.Abs(Y) <= MaximumExtent
+        && Width > 0d && Height > 0d && Width <= MaximumExtent && Height <= MaximumExtent;
 }
 
 public sealed class FaceArtworkSourceModel

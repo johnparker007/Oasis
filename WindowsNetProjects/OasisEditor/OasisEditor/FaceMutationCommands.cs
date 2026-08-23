@@ -4,16 +4,20 @@ internal static class FaceMutationCommands
 {
     public static Commands.ICommand CreateSetArtworkRecipeCommand(Guid documentId, DocumentTabViewModel document,
         FaceArtworkModel artwork, FaceSubsystemProvenanceModel provenance, string description) =>
-        new SetArtworkRecipeMutationCommand(documentId, document, artwork, provenance, description);
+        new SetArtworkRecipeMutationCommand(documentId, document, artwork, provenance, description, FaceBuildInput.ArtworkSource);
+
+    public static Commands.ICommand CreateSetArtworkOverrideCommand(Guid documentId, DocumentTabViewModel document,
+        FaceArtworkModel artwork, string description) => new SetArtworkRecipeMutationCommand(documentId, document,
+            artwork, document.GetFaceDocument().Provenance.Artwork, description, FaceBuildInput.ArtworkOverride);
 
     private sealed class SetArtworkRecipeMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _id; private readonly DocumentTabViewModel _document; private readonly FaceArtworkModel _next;
-        private readonly FaceSubsystemProvenanceModel _nextProvenance; private readonly string _description;
+        private readonly FaceSubsystemProvenanceModel _nextProvenance; private readonly string _description; private readonly FaceBuildInput _buildInput;
         private FaceArtworkModel? _previous; private FaceSubsystemProvenanceModel? _previousProvenance;
         public SetArtworkRecipeMutationCommand(Guid id, DocumentTabViewModel document, FaceArtworkModel next,
-            FaceSubsystemProvenanceModel provenance, string description)
-        { _id=id; _document=document; _next=next; _nextProvenance=provenance; _description=description; }
+            FaceSubsystemProvenanceModel provenance, string description, FaceBuildInput buildInput)
+        { _id=id; _document=document; _next=next; _nextProvenance=provenance; _description=description; _buildInput=buildInput; }
         public Guid DocumentId => _id; public string Description => _description; public bool WasExecuted { get; private set; }
         public void Execute()
         {
@@ -21,13 +25,13 @@ internal static class FaceMutationCommands
             _previous ??= face.Artwork; _previousProvenance ??= face.Provenance.Artwork;
             if (ReferenceEquals(face.Artwork, _next)) return;
             _document.SetFaceDocument(FaceDocumentCopy.WithArtwork(face, _next, _nextProvenance));
-            _document.InvalidateFaceBuild(FaceBuildInput.ArtworkSource); _document.MarkDirty(); WasExecuted=true;
+            _document.InvalidateFaceBuild(_buildInput); _document.MarkDirty(); WasExecuted=true;
         }
         public void Undo()
         {
             if (_previous is null || _previousProvenance is null) return;
             _document.SetFaceDocument(FaceDocumentCopy.WithArtwork(_document.GetFaceDocument(), _previous, _previousProvenance));
-            _document.InvalidateFaceBuild(FaceBuildInput.ArtworkSource); _document.MarkDirty();
+            _document.InvalidateFaceBuild(_buildInput); _document.MarkDirty();
         }
     }
 
@@ -195,7 +199,8 @@ internal static class FaceMutationCommands
         var artwork = model.Artwork is null ? null : new FaceArtworkModel
         {
             Id = model.Artwork.Id, Source = model.Artwork.Source, Geometry = model.Artwork.Geometry, ProcessingPipeline = pipeline,
-            CorrectionInputAssetPath = model.Artwork.CorrectionInputAssetPath, BaseAssetPath = model.Artwork.BaseAssetPath, OutputAssetPath = model.Artwork.OutputAssetPath, OutputWidth = model.Artwork.OutputWidth, OutputHeight = model.Artwork.OutputHeight
+            CorrectionInputAssetPath = model.Artwork.CorrectionInputAssetPath, BaseAssetPath = model.Artwork.BaseAssetPath, OutputAssetPath = model.Artwork.OutputAssetPath, OutputWidth = model.Artwork.OutputWidth, OutputHeight = model.Artwork.OutputHeight,
+            Override = model.Artwork.Override, FinalOutputWidth = model.Artwork.FinalOutputWidth, FinalOutputHeight = model.Artwork.FinalOutputHeight
         };
         return new FaceDocumentModel
         {

@@ -12,6 +12,8 @@ internal sealed record FaceArtworkProcessingResult(bool Succeeded, string? Error
 /// <summary>Builds the generated correction input, Base and Output stages.</summary>
 internal sealed class FaceArtworkRebuildService
 {
+    public const int MaximumOutputDimension = 16384;
+    public const long MaximumOutputPixels = 268_435_456;
     /// <summary>Rectifies and sharpens source artwork, without applying any processing operations.</summary>
     public string? RebuildCorrectionInput(FaceArtworkModel artwork, Panel2DDocumentModel panel,
         PanelFaceSourceShapeModel shape, string? projectDirectory, string correctionInputPath,
@@ -91,10 +93,38 @@ internal sealed class FaceArtworkRebuildService
         {
             using var bitmap = SKBitmap.Decode(basePath);
             if (bitmap is null) return FaceArtworkProcessingResult.Failure($"Base artwork could not be decoded: '{basePath}'.");
-            WriteVerified(bitmap, outputPath);
+            var artworkOverride = artwork.Override;
+            if (artworkOverride is not { Enabled: true }) { WriteVerified(bitmap, outputPath); return FaceArtworkProcessingResult.Success; }
+            if (!artworkOverride.IsValid()) return FaceArtworkProcessingResult.Failure("The enabled Artwork Override recipe is invalid.");
+            var overridePath = FaceArtworkGeneratedPathService.Resolve(artworkOverride.AssetPath, projectDirectory);
+            using var overlay = SKBitmap.Decode(overridePath);
+            if (overlay is null) return FaceArtworkProcessingResult.Failure($"Artwork Override could not be decoded: '{overridePath}'.");
+            var size = DetermineOutputSize(bitmap.Width, bitmap.Height, artworkOverride, overlay.Width, overlay.Height);
+            using var output = new SKBitmap(new SKImageInfo(size.Width, size.Height, SKColorType.Bgra8888, SKAlphaType.Premul));
+            using (var canvas = new SKCanvas(output))
+            using (var paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
+            {
+                canvas.Clear(SKColors.Transparent);
+                canvas.DrawBitmap(bitmap, new SKRect(0, 0, size.Width, size.Height), paint);
+                canvas.DrawBitmap(overlay, new SKRect((float)(artworkOverride.X * size.Width), (float)(artworkOverride.Y * size.Height),
+                    (float)((artworkOverride.X + artworkOverride.Width) * size.Width),
+                    (float)((artworkOverride.Y + artworkOverride.Height) * size.Height)), paint);
+                canvas.Flush();
+            }
+            WriteVerified(output, outputPath);
             return FaceArtworkProcessingResult.Success;
         }
         catch (Exception exception) { return FaceArtworkProcessingResult.Failure($"Artwork output failed: {exception.Message}"); }
+    }
+
+    public static (int Width, int Height) DetermineOutputSize(int baseWidth, int baseHeight,
+        FaceArtworkOverrideModel artworkOverride, int overrideWidth, int overrideHeight)
+    {
+        var width = Math.Max(baseWidth, (int)Math.Ceiling(overrideWidth / artworkOverride.Width));
+        var height = Math.Max(baseHeight, (int)Math.Ceiling(overrideHeight / artworkOverride.Height));
+        if (width > MaximumOutputDimension || height > MaximumOutputDimension || (long)width * height > MaximumOutputPixels)
+            throw new InvalidOperationException($"Artwork Output size {width} x {height} exceeds the safe generation limit.");
+        return (width, height);
     }
 
     private static void WriteVerified(SKBitmap bitmap, string path)

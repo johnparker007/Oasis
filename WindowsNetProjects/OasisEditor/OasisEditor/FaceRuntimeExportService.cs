@@ -583,6 +583,7 @@ public sealed class FaceRuntimeExportService
 
     private static int ResolveRuntimeWidth(FaceDocumentModel faceDocument)
     {
+        if (faceDocument.Artwork is { FinalOutputWidth: > 0 } artwork) return artwork.FinalOutputWidth;
         if (faceDocument.SourceRegion is { IsValid: true } sourceRegion)
         {
             return Math.Max(1, (int)Math.Ceiling(sourceRegion.Width));
@@ -598,6 +599,7 @@ public sealed class FaceRuntimeExportService
 
     private static int ResolveRuntimeHeight(FaceDocumentModel faceDocument)
     {
+        if (faceDocument.Artwork is { FinalOutputHeight: > 0 } artwork) return artwork.FinalOutputHeight;
         if (faceDocument.SourceRegion is { IsValid: true } sourceRegion)
         {
             return Math.Max(1, (int)Math.Ceiling(sourceRegion.Height));
