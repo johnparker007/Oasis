@@ -111,6 +111,41 @@ public sealed class FaceWorkspaceViewModelTests
         Assert.NotNull(document.CalibrationPlacement);
     }
 
+    [Fact]
+    public void BuildSummary_IsDrivenByCentralStateAndRefreshesAfterInvalidation()
+    {
+        var model = new FaceDocumentModel
+        {
+            Title = "Upper Glass",
+            BuildState = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false)
+        };
+        var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Upper Glass"),
+            faceDocumentJson: FaceDocumentStorage.Serialize(model));
+        var workspace = Assert.IsType<FaceWorkspaceViewModel>(document.FaceWorkspace);
+        Assert.Equal("Build status: Current", workspace.BuildStatusSummary);
+
+        document.InvalidateFaceBuild(FaceBuildInput.ArtworkCorrection);
+
+        Assert.Equal("Build status: 1 output needs building", workspace.BuildStatusSummary);
+        Assert.Contains("Output: Stale", workspace.ArtworkBuildSummary);
+    }
+
+    [Fact]
+    public void BuildErrorMessage_IsAvailableInWorkspaceSummary()
+    {
+        var model = new FaceDocumentModel { Title = "Upper Glass" };
+        var node = model.BuildState.Get(FaceGeneratedProduct.LampMask);
+        node.Status = FaceBuildStatus.Error;
+        node.ErrorMessage = "Source Panel2D is unavailable.";
+        var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Upper Glass"),
+            faceDocumentJson: FaceDocumentStorage.Serialize(model));
+
+        var workspace = Assert.IsType<FaceWorkspaceViewModel>(document.FaceWorkspace);
+
+        Assert.Contains("Lamp Mask: Source Panel2D is unavailable.", workspace.BuildErrorSummary);
+        Assert.Contains("Mask: Error", workspace.IlluminationBuildSummary);
+    }
+
     private static CalibrationPlacementState Placement() =>
         new("calibration", CalibrationPlacementTargetKind.BlackReference, string.Empty, CalibrationSamplingMode.Pixel, .01);
 

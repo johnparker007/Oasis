@@ -24,6 +24,8 @@ public sealed class FaceDocumentModel
     public FaceSourceRegionModel? SourceRegion { get; init; }
     public DateTime? LastRegeneratedAtUtc { get; init; }
     public FaceGenerationSettingsModel GenerationSettings { get; init; } = FaceGenerationSettingsModel.Default;
+    public FaceProvenanceModel Provenance { get; init; } = new();
+    public FaceBuildStateModel BuildState { get; init; } = new();
     public FaceArtworkModel? Artwork { get; init; }
     public FaceRuntimeRenderAssetsModel? RuntimeRenderAssets { get; init; }
     public FaceMaskLayerModel? MaskLayer { get; init; }
@@ -31,6 +33,47 @@ public sealed class FaceDocumentModel
     public IReadOnlyList<FaceLampEmitterElement> LampEmitters { get; init; } = [];
     public IReadOnlyList<FaceLayerModel> Layers { get; init; } = [];
     public IReadOnlyList<FaceElementModel> Elements { get; init; } = [];
+}
+
+public enum FaceSubsystemOrigin { Authored, Derived }
+
+public sealed class FaceSubsystemProvenanceModel
+{
+    public FaceSubsystemOrigin Origin { get; init; } = FaceSubsystemOrigin.Authored;
+    public string? SourceDocumentPath { get; init; }
+    public bool IsLocallyModified { get; init; }
+}
+
+public sealed class FaceProvenanceModel
+{
+    public FaceSubsystemProvenanceModel Artwork { get; init; } = new();
+    public FaceSubsystemProvenanceModel Components { get; init; } = new();
+    public FaceSubsystemProvenanceModel Illumination { get; init; } = new();
+}
+
+public enum FaceGeneratedProduct { ArtworkOutput, LampMask, Trays, RuntimeAssets }
+public enum FaceBuildStatus { NotConfigured, Current, Stale, Error }
+
+public sealed class FaceGeneratedProductStateModel
+{
+    public FaceBuildStatus Status { get; set; } = FaceBuildStatus.NotConfigured;
+    public string? ErrorMessage { get; set; }
+}
+
+public sealed class FaceBuildStateModel
+{
+    public IDictionary<FaceGeneratedProduct, FaceGeneratedProductStateModel> Products { get; init; } =
+        Enum.GetValues<FaceGeneratedProduct>().ToDictionary(product => product, _ => new FaceGeneratedProductStateModel());
+
+    public FaceGeneratedProductStateModel Get(FaceGeneratedProduct product)
+    {
+        if (!Products.TryGetValue(product, out var state))
+        {
+            state = new FaceGeneratedProductStateModel();
+            Products[product] = state;
+        }
+        return state;
+    }
 }
 
 public enum FaceArtworkSourceKind

@@ -95,6 +95,14 @@ public sealed class FaceRuntimeExportService
             Height = height,
             GeneratedUtc = generatedUtc
         };
+        var runtimeBuildState = faceDocument.BuildState.Get(FaceGeneratedProduct.RuntimeAssets);
+        // This persisted node describes standalone Face Build capability. Machine export may
+        // successfully supply Cabinet context while the standalone node remains NotConfigured.
+        if (runtimeBuildState.Status != FaceBuildStatus.NotConfigured)
+        {
+            runtimeBuildState.Status = FaceBuildStatus.Current;
+            runtimeBuildState.ErrorMessage = null;
+        }
 
         var updatedDocument = new FaceDocumentModel
         {
@@ -109,6 +117,7 @@ public sealed class FaceRuntimeExportService
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,
+            Provenance = faceDocument.Provenance, BuildState = faceDocument.BuildState,
             Artwork = faceDocument.Artwork,
             RuntimeRenderAssets = runtimeAssets,
             MaskLayer = faceDocument.MaskLayer,
@@ -120,6 +129,23 @@ public sealed class FaceRuntimeExportService
 
         progress.Report(1.0, "Runtime export complete.");
         return new FaceRuntimeExportResult(updatedDocument, manifest, outputDirectory, manifestPath, artworkPath, maskPath);
+    }
+
+    internal void ValidateStandaloneBuildContext(FaceDocumentModel faceDocument, FaceCabinetContext cabinetContext)
+    {
+        ArgumentNullException.ThrowIfNull(faceDocument);
+        ArgumentNullException.ThrowIfNull(cabinetContext);
+        if (!cabinetContext.HasCabinet)
+        {
+            throw new InvalidOperationException(cabinetContext.DiagnosticMessage ?? "Face has no Cabinet context.");
+        }
+        var width = ResolveRuntimeWidth(faceDocument);
+        var height = ResolveRuntimeHeight(faceDocument);
+        _runtimeTextureGenerator.CreatePlan(faceDocument, width, height);
+        foreach (var reel in faceDocument.Elements.OfType<FaceReelDisplayElement>())
+        {
+            _ = ResolveReelPhysicalDimensions(faceDocument, reel, cabinetContext);
+        }
     }
 
     private static FaceCabinetContext ResolveStandaloneCabinetContext(FaceDocumentModel faceDocument, EditorProject project)

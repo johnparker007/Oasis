@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 14;
+    public const int CurrentSchemaVersion = 15;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -166,6 +166,8 @@ public static class FaceDocumentStorage
             SourceRegion = ToModel(file.SourceRegion),
             LastRegeneratedAtUtc = file.LastRegeneratedAtUtc,
             GenerationSettings = ToModel(file.GenerationSettings),
+            Provenance = file.Provenance,
+            BuildState = file.BuildState,
             Artwork = ToModel(file.Artwork),
             RuntimeRenderAssets = ToModel(file.RuntimeRenderAssets),
             MaskLayer = ToModel(file.MaskLayer),
@@ -203,6 +205,8 @@ public static class FaceDocumentStorage
             SourceRegion = ToFile(model.SourceRegion),
             LastRegeneratedAtUtc = model.LastRegeneratedAtUtc,
             GenerationSettings = ToFile(model.GenerationSettings),
+            Provenance = model.Provenance,
+            BuildState = model.BuildState,
             Artwork = ToFile(model.Artwork),
             RuntimeRenderAssets = ToFile(model.RuntimeRenderAssets),
             MaskLayer = ToFile(model.MaskLayer),
@@ -871,6 +875,8 @@ public sealed record FaceDocumentFile
     public FaceSourceRegionFile? SourceRegion { get; init; }
     public DateTime? LastRegeneratedAtUtc { get; init; }
     public FaceGenerationSettingsFile? GenerationSettings { get; init; }
+    public FaceProvenanceModel Provenance { get; init; } = new();
+    public FaceBuildStateModel BuildState { get; init; } = new();
     public FaceArtworkFile? Artwork { get; init; }
     public FaceRuntimeRenderAssetsFile? RuntimeRenderAssets { get; init; }
     public FaceMaskLayerFile? MaskLayer { get; init; }

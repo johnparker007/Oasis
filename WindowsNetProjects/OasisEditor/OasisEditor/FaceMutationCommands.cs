@@ -109,6 +109,7 @@ internal static class FaceMutationCommands
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,
+            Provenance = faceDocument.Provenance, BuildState = faceDocument.BuildState,
             Artwork = faceDocument.Artwork,
             RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
             MaskLayer = faceDocument.MaskLayer,
@@ -132,6 +133,7 @@ internal static class FaceMutationCommands
             SourcePanel2DDocumentPath = model.SourcePanel2DDocumentPath, SourceFaceShapeId = model.SourceFaceShapeId,
             AssignedCabinetFaceTargetId = model.AssignedCabinetFaceTargetId, AssignedCabinetAssetPath = model.AssignedCabinetAssetPath,
             SourceRegion = model.SourceRegion, LastRegeneratedAtUtc = model.LastRegeneratedAtUtc, GenerationSettings = model.GenerationSettings,
+            Provenance = model.Provenance, BuildState = model.BuildState,
             Artwork = artwork, RuntimeRenderAssets = model.RuntimeRenderAssets, MaskLayer = model.MaskLayer, Trays = model.Trays,
             LampEmitters = model.LampEmitters, Layers = model.Layers, Elements = model.Elements
         };
@@ -153,6 +155,7 @@ internal static class FaceMutationCommands
                 ? PanelChangeProperties.Metadata | PanelChangeProperties.Structure | PanelChangeProperties.Ordering
                 : PanelChangeProperties.Metadata;
             _document.SetFaceDocument(WithPipeline(current, _next), CreateChange(_document, null, properties, structure: properties.HasFlag(PanelChangeProperties.Structure)));
+            _document.InvalidateFaceBuild(FaceBuildInput.ArtworkCorrection);
             _document.MarkDirty(); WasExecuted = true;
         }
         public void Undo()
@@ -162,6 +165,7 @@ internal static class FaceMutationCommands
                 ? PanelChangeProperties.Metadata | PanelChangeProperties.Structure | PanelChangeProperties.Ordering
                 : PanelChangeProperties.Metadata;
             _document.SetFaceDocument(WithPipeline(current, _previous), CreateChange(_document, null, properties, structure: properties.HasFlag(PanelChangeProperties.Structure)));
+            _document.InvalidateFaceBuild(FaceBuildInput.ArtworkCorrection);
             _document.MarkDirty();
         }
     }
@@ -297,6 +301,7 @@ internal static class FaceMutationCommands
             elements.Insert(index, _element);
             _insertIndex = index;
             _document.SetFaceElements(elements, CreateChange(_document, _element.ObjectId, PanelChangeProperties.Structure, structure: true));
+            _document.InvalidateFaceBuild(FaceBuildInput.LampInformation);
             _document.HierarchySelectedPanelSelection = FaceSelectionService.ToSelectionInfo(_element);
             _document.MarkDirty();
             WasExecuted = true;
@@ -313,6 +318,7 @@ internal static class FaceMutationCommands
 
             elements.RemoveAt(index);
             _document.SetFaceElements(elements, CreateChange(_document, _element.ObjectId, PanelChangeProperties.Structure, structure: true));
+            _document.InvalidateFaceBuild(FaceBuildInput.LampInformation);
             if (_document.HierarchySelectedPanelSelection is PanelSelectionInfo selection
                 && string.Equals(selection.ObjectId, _element.ObjectId, StringComparison.Ordinal))
             {
@@ -358,6 +364,7 @@ internal static class FaceMutationCommands
             _originalElement ??= elements[index];
             elements[index] = _updatedElement;
             _document.SetFaceElements(elements, CreateChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
+            _document.InvalidateFaceBuild(_updatedElement is FaceLampWindowElement ? FaceBuildInput.LampInformation : FaceBuildInput.RuntimeAssetsSettings);
             _document.HierarchySelectedPanelSelection = FaceSelectionService.ToSelectionInfo(_updatedElement);
             _document.MarkDirty();
             WasExecuted = true;
@@ -379,6 +386,7 @@ internal static class FaceMutationCommands
 
             elements[index] = _originalElement;
             _document.SetFaceElements(elements, CreateChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
+            _document.InvalidateFaceBuild(_originalElement is FaceLampWindowElement ? FaceBuildInput.LampInformation : FaceBuildInput.RuntimeAssetsSettings);
             _document.HierarchySelectedPanelSelection = FaceSelectionService.ToSelectionInfo(_originalElement);
             _document.MarkDirty();
         }
@@ -520,6 +528,7 @@ internal static class FaceMutationCommands
             _document.SetFaceDocument(
                 WithAssignedCabinetFaceTarget(faceDocument, _assignedTargetId, _assignedCabinetAssetPath),
                 CreateChange(_document, null, PanelChangeProperties.Metadata));
+            _document.ReconcileRuntimeAssetsConfiguration();
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -530,6 +539,7 @@ internal static class FaceMutationCommands
             _document.SetFaceDocument(
                 WithAssignedCabinetFaceTarget(faceDocument, _originalTargetId, _originalCabinetAssetPath),
                 CreateChange(_document, null, PanelChangeProperties.Metadata));
+            _document.ReconcileRuntimeAssetsConfiguration();
             _document.MarkDirty();
         }
     }

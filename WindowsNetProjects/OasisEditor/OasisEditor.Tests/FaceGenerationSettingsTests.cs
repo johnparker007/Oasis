@@ -28,7 +28,7 @@ public sealed class FaceGenerationSettingsTests
         var json = FaceDocumentStorage.Serialize(source);
 
         Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
-        Assert.Equal(14, file.SchemaVersion);
+        Assert.Equal(FaceDocumentStorage.CurrentSchemaVersion, file.SchemaVersion);
         Assert.NotNull(file.GenerationSettings);
         Assert.Equal(17, file.GenerationSettings!.MaskExtractionThreshold);
         Assert.Equal(22.5, file.GenerationSettings.TrayBoundsInflationPercent);

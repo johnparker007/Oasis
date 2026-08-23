@@ -143,7 +143,7 @@ internal sealed class FaceGenerationService
         progress?.Report(0.2, "Converting source-shape semantic components...");
         var semanticElements = _semanticElementConversionService.ConvertSupportedElements(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, inputDefinitions, cabinetDocument?.DefaultReelSpecificationId).ToArray();
         var lampWindows = semanticElements.OfType<FaceLampWindowElement>().ToArray();
-        var maskLayer = CreateMaskLayerFromSourceShape(
+        var maskLayer = GenerateMaskFromSourceShape(
             sourcePanel,
             sourceShape,
             output.Width,
@@ -186,6 +186,12 @@ internal sealed class FaceGenerationService
             SourceRegion = region,
             LastRegeneratedAtUtc = DateTime.UtcNow,
             GenerationSettings = settings,
+            Provenance = FaceBuildStateFactory.CreateDerivedProvenance(sourcePanel2DDocumentPath),
+            BuildState = FaceBuildStateFactory.CreateGeneratedState(artwork: true,
+                mask: maskLayer is not null && lampWindows.Length > 0,
+                trays: maskLayer is not null && lampWindows.Length > 0 && autoAuthored.Trays.Count > 0,
+                runtimeAssetsCurrent: false,
+                runtimeAssetsConfigured: false),
             Artwork = artworkState,
             MaskLayer = maskLayer,
             Trays = autoAuthored.Trays,
@@ -207,7 +213,7 @@ internal sealed class FaceGenerationService
         return new FaceGenerationResult(document, lampWindows.Length, 1, buttonCount, sevenSegmentCount, alphaCount, reelCount);
     }
 
-    private FaceMaskLayerModel? CreateMaskLayerFromSourceShape(
+    internal FaceMaskLayerModel? GenerateMaskFromSourceShape(
         Panel2DDocumentModel sourcePanel,
         PanelFaceSourceShapeModel sourceShape,
         int faceWidth,

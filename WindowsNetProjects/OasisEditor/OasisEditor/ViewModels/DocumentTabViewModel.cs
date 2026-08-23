@@ -39,6 +39,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
     private Func<EditorProject?>? _projectAccessor;
     private readonly FaceWorkspaceViewModel? _faceWorkspace;
+    private readonly FaceRuntimeAssetsConfigurationService _runtimeAssetsConfiguration = new();
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -82,6 +83,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                 SourceRegion = _faceDocumentModel.SourceRegion,
                 LastRegeneratedAtUtc = _faceDocumentModel.LastRegeneratedAtUtc,
                 GenerationSettings = _faceDocumentModel.GenerationSettings,
+            Provenance = _faceDocumentModel.Provenance, BuildState = _faceDocumentModel.BuildState,
                 Artwork = _faceDocumentModel.Artwork,
                 RuntimeRenderAssets = _faceDocumentModel.RuntimeRenderAssets,
                 MaskLayer = _faceDocumentModel.MaskLayer,
@@ -150,11 +152,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public void SetOpenDocumentsAccessor(Func<IReadOnlyList<DocumentTabViewModel>> openDocumentsAccessor)
     {
         _openDocumentsAccessor = openDocumentsAccessor;
+        ReconcileRuntimeAssetsConfiguration();
     }
 
     public void SetProjectAccessor(Func<EditorProject?> projectAccessor)
     {
         _projectAccessor = projectAccessor;
+        ReconcileRuntimeAssetsConfiguration();
         _cabinetViewer?.ReflectionEditor.RefreshProjectContext();
     }
 
@@ -267,6 +271,204 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public FaceDocumentModel GetFaceDocument()
     {
         return _faceDocumentModel;
+    }
+
+    public FaceBuildResult BuildFace(bool force = false)
+    {
+        ReconcileRuntimeAssetsConfiguration();
+        var service = new FaceBuildService();
+        var executors = new Dictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>>
+        {
+            [FaceGeneratedProduct.ArtworkOutput] = () => TryRebuildFaceArtwork(out var error)
+                ? new(FaceGeneratedProduct.ArtworkOutput, true)
+                : new(FaceGeneratedProduct.ArtworkOutput, false, error),
+            [FaceGeneratedProduct.LampMask] = BuildLampMask,
+            [FaceGeneratedProduct.Trays] = BuildTrays,
+            [FaceGeneratedProduct.RuntimeAssets] = BuildRuntimeAssets
+        };
+        var result = service.Build(_faceDocumentModel.BuildState, executors, force);
+        _faceDocumentJson = GetFaceDocumentJson();
+        PersistBuildStateWhenDocumentIsClean(result);
+        _faceWorkspace?.RefreshSummaries();
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
+        return result;
+    }
+
+    private FaceBuildNodeResult BuildLampMask()
+    {
+        var project = _projectAccessor?.Invoke();
+        if (project is null)
+        {
+            return new(FaceGeneratedProduct.LampMask, false, "The source Panel2D mask cannot be rebuilt because no project is open.");
+        }
+        if (!TryResolveSourcePanel(out var panel, out var sourceError))
+        {
+            return new(FaceGeneratedProduct.LampMask, false, sourceError);
+        }
+        var shape = panel.FaceSourceShapes.FirstOrDefault(candidate =>
+            string.Equals(candidate.Id, _faceDocumentModel.SourceFaceShapeId, StringComparison.Ordinal));
+        if (shape is null)
+        {
+            return new(FaceGeneratedProduct.LampMask, false,
+                $"Face Source Shape '{_faceDocumentModel.SourceFaceShapeId}' was not found in the source Panel2D.");
+        }
+        var width = _faceDocumentModel.Artwork?.OutputWidth ?? _faceDocumentModel.MaskLayer?.Width ?? 0;
+        var height = _faceDocumentModel.Artwork?.OutputHeight ?? _faceDocumentModel.MaskLayer?.Height ?? 0;
+        if (width <= 0 || height <= 0)
+        {
+            return new(FaceGeneratedProduct.LampMask, false, "The Face has no valid output dimensions for mask generation.");
+        }
+        var lampWindows = _faceDocumentModel.Elements.OfType<FaceLampWindowElement>().Where(window => window.IsVisible).ToArray();
+        if (lampWindows.Length == 0)
+        {
+            return new(FaceGeneratedProduct.LampMask, false, "The configured lamp mask has no visible Face lamp windows to generate.");
+        }
+        var sourceLamps = panel.Elements.Where(element => element.Kind == PanelElementKind.Lamp
+                && !string.IsNullOrWhiteSpace(element.ObjectId))
+            .ToDictionary(element => element.ObjectId, StringComparer.Ordinal);
+        foreach (var window in lampWindows)
+        {
+            if (string.IsNullOrWhiteSpace(window.LinkedPanel2DElementId)
+                || !sourceLamps.TryGetValue(window.LinkedPanel2DElementId, out var lamp)
+                || string.IsNullOrWhiteSpace(lamp.AssetPath))
+            {
+                return new(FaceGeneratedProduct.LampMask, false,
+                    $"Lamp window '{window.Name}' has no usable linked Panel2D lamp artwork.");
+            }
+            var sourceAssetPath = ResolveGeneratedPath(lamp.AssetPath, project.ProjectDirectory);
+            if (string.IsNullOrWhiteSpace(sourceAssetPath) || !File.Exists(sourceAssetPath))
+            {
+                return new(FaceGeneratedProduct.LampMask, false,
+                    $"Lamp artwork '{lamp.AssetPath}' required by lamp window '{window.Name}' is unavailable.");
+            }
+        }
+        var maskPath = ResolveGeneratedPath(_faceDocumentModel.MaskLayer?.AssetPath, project.ProjectDirectory);
+        if (string.IsNullOrWhiteSpace(maskPath))
+        {
+            return new(FaceGeneratedProduct.LampMask, false, "The Face has no configured generated lamp-mask path.");
+        }
+        var mask = new FaceGenerationService().GenerateMaskFromSourceShape(
+            panel, shape, width, height, lampWindows,
+            _faceDocumentModel.Id, _faceDocumentModel.SourcePanel2DDocumentId, project.ProjectDirectory,
+            ProjectAssetPathService.GetPackageAssetNameFromManifestPath(FilePath, EditorAssetType.Face) ?? _faceDocumentModel.Title,
+            maskPath, _faceDocumentModel.GenerationSettings.MaskExtractionThreshold);
+        if (mask is null)
+        {
+            return new(FaceGeneratedProduct.LampMask, false, "Lamp-mask generation did not produce an output.");
+        }
+        _faceDocumentModel = FaceDocumentCopy.WithMaskLayer(_faceDocumentModel, mask);
+        return new(FaceGeneratedProduct.LampMask, true);
+    }
+
+    private bool TryResolveSourcePanel(out Panel2DDocumentModel panel, out string error)
+    {
+        panel = new Panel2DDocumentModel();
+        error = string.Empty;
+        var sourcePath = _faceDocumentModel.SourcePanel2DDocumentPath?.Trim();
+        var sourceId = _faceDocumentModel.SourcePanel2DDocumentId?.Trim();
+        if (string.IsNullOrWhiteSpace(_faceDocumentModel.SourceFaceShapeId)
+            || (string.IsNullOrWhiteSpace(sourcePath) && string.IsNullOrWhiteSpace(sourceId)))
+        {
+            error = "The Face has no complete Panel2D / Face Source Shape linkage for lamp-mask generation.";
+            return false;
+        }
+        var open = (_openDocumentsAccessor?.Invoke() ?? []).FirstOrDefault(document =>
+            document.Document.DocumentType == EditorDocumentType.Panel2D
+            && ((!string.IsNullOrWhiteSpace(sourcePath) && PathsEqual(document.FilePath, sourcePath))
+                || (!string.IsNullOrWhiteSpace(sourceId)
+                    && (string.Equals(document.DocumentId.ToString("N"), sourceId, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(document.DocumentId.ToString("D"), sourceId, StringComparison.OrdinalIgnoreCase)
+                        || PathsEqual(document.FilePath, sourceId)))));
+        if (open is not null)
+        {
+            panel = open.GetPanelDocument();
+            return true;
+        }
+        var project = _projectAccessor?.Invoke();
+        var fullPath = ResolveGeneratedPath(sourcePath, project?.ProjectDirectory);
+        if (!string.IsNullOrWhiteSpace(fullPath) && File.Exists(fullPath))
+        {
+            panel = Panel2DDocumentStorage.DeserializeModel(File.ReadAllText(fullPath));
+            return true;
+        }
+        error = $"The source Panel2D '{sourcePath ?? sourceId}' is unavailable. Open it or restore the linked file, then retry.";
+        return false;
+    }
+
+    private void PersistBuildStateWhenDocumentIsClean(FaceBuildResult result)
+    {
+        if (IsDirty) return; // The next normal Save persists authored changes and build state together.
+        if (!string.IsNullOrWhiteSpace(FilePath) && File.Exists(FilePath))
+        {
+            try { File.WriteAllText(FilePath, _faceDocumentJson); }
+            catch (Exception exception)
+            {
+                foreach (var product in result.Built.ToArray())
+                {
+                    var message = $"{product} was built, but its Current state could not be saved: {exception.Message}";
+                    var node = _faceDocumentModel.BuildState.Get(product);
+                    node.Status = FaceBuildStatus.Error;
+                    node.ErrorMessage = message;
+                    result.Built.Remove(product);
+                    result.Failed.Add(new FaceBuildNodeResult(product, false, message));
+                }
+                _faceDocumentJson = GetFaceDocumentJson();
+            }
+            return;
+        }
+        MarkDirty(); // An unsaved document needs a normal Save to establish its .face file.
+    }
+
+    private static bool PathsEqual(string? left, string? right) =>
+        string.Equals(left?.Replace('\\', '/'), right?.Replace('\\', '/'), StringComparison.OrdinalIgnoreCase);
+
+    private static string? ResolveGeneratedPath(string? path, string? projectDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        return Path.IsPathRooted(path) ? path : string.IsNullOrWhiteSpace(projectDirectory)
+            ? null : Path.Combine(projectDirectory, path.Replace('/', Path.DirectorySeparatorChar));
+    }
+
+    private FaceBuildNodeResult BuildTrays()
+    {
+        var generated = new FaceTrayAutoAuthoringService().AutoAuthor(_faceDocumentModel, _projectAccessor?.Invoke()?.ProjectDirectory);
+        _faceDocumentModel = FaceDocumentCopy.WithGeneratedIllumination(_faceDocumentModel, generated.Trays, generated.Emitters);
+        return new(FaceGeneratedProduct.Trays, true);
+    }
+
+    private FaceBuildNodeResult BuildRuntimeAssets()
+    {
+        var project = _projectAccessor?.Invoke();
+        if (project is null) return new(FaceGeneratedProduct.RuntimeAssets, false, "No project is open.");
+        var capability = _runtimeAssetsConfiguration.Evaluate(
+            _faceDocumentModel, project, _openDocumentsAccessor?.Invoke() ?? []);
+        if (!capability.IsConfigured || capability.CabinetContext is null)
+        {
+            return new(FaceGeneratedProduct.RuntimeAssets, false,
+                capability.Reason ?? "Standalone Face runtime assets are not configured.");
+        }
+        var exported = new FaceRuntimeExportService().Export(
+            _faceDocumentModel, project, capability.CabinetContext, FilePath);
+        _faceDocumentModel = exported.Document;
+        return new(FaceGeneratedProduct.RuntimeAssets, true);
+    }
+
+    internal void ReconcileRuntimeAssetsConfiguration()
+    {
+        if (Document.DocumentType != EditorDocumentType.Face) return;
+        var capability = _runtimeAssetsConfiguration.Evaluate(
+            _faceDocumentModel, _projectAccessor?.Invoke(), _openDocumentsAccessor?.Invoke() ?? []);
+        _runtimeAssetsConfiguration.Reconcile(_faceDocumentModel, capability);
+        _faceDocumentJson = GetFaceDocumentJson();
+        _faceWorkspace?.RefreshSummaries();
+    }
+
+    internal void InvalidateFaceBuild(FaceBuildInput input)
+    {
+        new FaceBuildService().Invalidate(_faceDocumentModel.BuildState, input);
+        _faceDocumentJson = GetFaceDocumentJson();
+        _faceWorkspace?.RefreshSummaries();
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
     }
 
     internal bool TryRebuildFaceArtwork(out string? errorMessage)
@@ -434,6 +636,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             SourceRegion = _faceDocumentModel.SourceRegion,
             LastRegeneratedAtUtc = _faceDocumentModel.LastRegeneratedAtUtc,
             GenerationSettings = _faceDocumentModel.GenerationSettings,
+            Provenance = _faceDocumentModel.Provenance, BuildState = _faceDocumentModel.BuildState,
             Artwork = _faceDocumentModel.Artwork,
             RuntimeRenderAssets = _faceDocumentModel.RuntimeRenderAssets,
             MaskLayer = _faceDocumentModel.MaskLayer,
