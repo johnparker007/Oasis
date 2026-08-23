@@ -17,7 +17,7 @@ public sealed class NativeFaceCreationTests : IDisposable
         var document = Assert.IsType<DocumentTabViewModel>(result.Document);
         var face = document.GetFaceDocument();
         Assert.Equal(EditorDocumentType.Face, document.Document.DocumentType);
-        Assert.Equal("Native Upper Glass", document.Title);
+        Assert.Equal("Native Upper Glass", document.Document.Title);
         Assert.Null(face.SourcePanel2DDocumentId); Assert.Null(face.SourcePanel2DDocumentPath); Assert.Null(face.SourceFaceShapeId);
         Assert.Null(face.Artwork);
         Assert.Equal(FaceSubsystemOrigin.Authored, face.Provenance.Components.Origin);

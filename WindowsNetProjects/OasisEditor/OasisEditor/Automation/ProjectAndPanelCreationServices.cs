@@ -91,7 +91,7 @@ public sealed class FaceDocumentCreationService : IFaceDocumentCreationService
             var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub(title).MarkDirty(), faceDocumentJson: FaceDocumentStorage.Serialize(file));
             return new FaceDocumentCreationResult(document, null);
         }
-        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is ArgumentException or InvalidDataException or IOException or UnauthorizedAccessException)
         {
             return FaceDocumentCreationResult.Failure(exception.Message);
         }
