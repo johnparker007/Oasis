@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows.Input;
 using Microsoft.Win32;
 using System.Windows;
+using System.Windows.Media.Imaging;
 
 namespace OasisEditor;
 
@@ -12,6 +13,7 @@ public enum FaceWorkspaceDestination
     Artwork,
     ArtworkGeometry,
     ArtworkCalibration,
+    ArtworkOverride,
     Components,
     ComponentsEditor,
     Illumination,
@@ -28,6 +30,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     private FaceWorkspaceDestination _destination = FaceWorkspaceDestination.Overview;
     private FaceComponentKind? _componentPlacementKind;
     private bool _isLampPlacementActive;
+    private double _overridePreviewOpacity = .5d;
 
     public FaceWorkspaceViewModel(DocumentTabViewModel document)
     {
@@ -36,6 +39,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         NavigateToArtworkCommand = Command(FaceWorkspaceDestination.Artwork);
         NavigateToArtworkGeometryCommand = Command(FaceWorkspaceDestination.ArtworkGeometry);
         NavigateToArtworkCalibrationCommand = Command(FaceWorkspaceDestination.ArtworkCalibration);
+        NavigateToArtworkOverrideCommand = Command(FaceWorkspaceDestination.ArtworkOverride);
         NavigateToComponentsCommand = Command(FaceWorkspaceDestination.Components);
         NavigateToComponentsEditorCommand = Command(FaceWorkspaceDestination.ComponentsEditor);
         NavigateToIlluminationCommand = Command(FaceWorkspaceDestination.Illumination);
@@ -54,6 +58,12 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         RebuildComponentsFromSourceCommand = new RelayCommand(RebuildComponentsFromSource,()=>CanRebuildComponentsFromSource);
         UseAuthoredMaskCommand = new RelayCommand(ChooseLampMask);
         AddLampCommand = new RelayCommand(() => { NavigateTo(FaceWorkspaceDestination.IlluminationLamps); _isLampPlacementActive=true; Raise(nameof(IsLampPlacementActive)); Raise(nameof(LampEditorStatus)); });
+        CreateOverrideFromBaseCommand=new RelayCommand(CreateOverrideFromBase);
+        ImportOverrideCommand=new RelayCommand(()=>ChooseOverride(false)); ReplaceOverrideCommand=new RelayCommand(()=>ChooseOverride(true));
+        ReloadOverrideCommand=new RelayCommand(()=>{if(!_document.ReloadArtworkOverride(out var error))ShowOverrideError(error);RefreshSummaries();});
+        ToggleOverrideCommand=new RelayCommand(ToggleOverride); RemoveOverrideCommand=new RelayCommand(()=>{_document.SetArtworkOverride(null,"Remove Artwork Override");RefreshSummaries();});
+        ResetOverrideAlignmentCommand=new RelayCommand(()=>CommitOverrideAlignment(0,0,1,1,"Reset Artwork Override alignment"));
+        DoneOverrideAlignmentCommand=NavigateToArtworkCommand;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -64,19 +74,21 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     {
         FaceWorkspaceDestination.ArtworkGeometry => "Geometry",
         FaceWorkspaceDestination.ArtworkCalibration => "Calibration",
+        FaceWorkspaceDestination.ArtworkOverride => "Override",
         FaceWorkspaceDestination.ComponentsEditor => "Edit",
         FaceWorkspaceDestination.IlluminationLamps => "Lamps",
         FaceWorkspaceDestination.FaceEditor => "Face Editor",
         _ => _destination.ToString()
     };
     public IReadOnlyList<FaceWorkspaceBreadcrumb> Breadcrumbs => BuildBreadcrumbs();
-    public bool IsViewportDestination => _destination is FaceWorkspaceDestination.ArtworkGeometry or FaceWorkspaceDestination.ArtworkCalibration
+    public bool IsViewportDestination => _destination is FaceWorkspaceDestination.ArtworkGeometry or FaceWorkspaceDestination.ArtworkCalibration or FaceWorkspaceDestination.ArtworkOverride
         or FaceWorkspaceDestination.ComponentsEditor or FaceWorkspaceDestination.IlluminationLamps
         or FaceWorkspaceDestination.FaceEditor;
     public ICommand NavigateToOverviewCommand { get; }
     public ICommand NavigateToArtworkCommand { get; }
     public ICommand NavigateToArtworkGeometryCommand { get; }
     public ICommand NavigateToArtworkCalibrationCommand { get; }
+    public ICommand NavigateToArtworkOverrideCommand { get; }
     public ICommand NavigateToComponentsCommand { get; }
     public ICommand NavigateToComponentsEditorCommand { get; }
     public ICommand NavigateToIlluminationCommand { get; }
@@ -95,6 +107,15 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public ICommand RebuildComponentsFromSourceCommand { get; }
     public ICommand AddLampCommand { get; }
     public ICommand UseAuthoredMaskCommand { get; }
+    public ICommand CreateOverrideFromBaseCommand { get; }
+    public ICommand ImportOverrideCommand { get; }
+    public ICommand ReplaceOverrideCommand { get; }
+    public ICommand ReloadOverrideCommand { get; }
+    public ICommand ToggleOverrideCommand { get; }
+    public ICommand RemoveOverrideCommand { get; }
+    public ICommand ResetOverrideAlignmentCommand { get; }
+    public ICommand DoneOverrideAlignmentCommand { get; }
+    public double OverridePreviewOpacity { get=>_overridePreviewOpacity; set { _overridePreviewOpacity=Math.Clamp(value,0d,1d);Raise(nameof(OverridePreviewOpacity)); } }
     public bool IsLampPlacementActive => _isLampPlacementActive;
     public string LampEditorStatus => _isLampPlacementActive ? "Place Lamp: click and drag bounds; Escape cancels." : "Select lamps in the viewport or Hierarchy, or choose Add Lamp.";
     public bool CanRebuildComponentsFromSource => _document.GetFaceDocument().Provenance.Components.Origin==FaceSubsystemOrigin.Derived && _document.TryConvertComponentsFromSource(out _,out _);
@@ -138,6 +159,13 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         if(!_document.ImportLampMaskImage(dialog.FileName,out var error))MessageBox.Show(error??"The lamp mask could not be imported.","Lamp Mask",MessageBoxButton.OK,MessageBoxImage.Error);
         RefreshSummaries();
     }
+
+    private void CreateOverrideFromBase(){if(!_document.CreateArtworkOverrideFromBase(out var error))ShowOverrideError(error);else NavigateTo(FaceWorkspaceDestination.ArtworkOverride);RefreshSummaries();}
+    private void ChooseOverride(bool replace){var dialog=new OpenFileDialog{Title=replace?"Replace Artwork Override":"Import Artwork Override",Filter="Image files|*.png;*.jpg;*.jpeg;*.webp;*.bmp|All files|*.*",CheckFileExists=true};if(dialog.ShowDialog()!=true)return;if(!_document.ImportArtworkOverride(dialog.FileName,replace,out var error))ShowOverrideError(error);else NavigateTo(FaceWorkspaceDestination.ArtworkOverride);RefreshSummaries();}
+    private static void ShowOverrideError(string? error)=>MessageBox.Show(error??"The Artwork Override operation failed.","Artwork Override",MessageBoxButton.OK,MessageBoxImage.Error);
+    private void ToggleOverride(){var value=ArtworkOverride;if(value is null)return;CommitOverride(new FaceArtworkOverrideModel{Enabled=!value.Enabled,AssetPath=value.AssetPath,PixelWidth=value.PixelWidth,PixelHeight=value.PixelHeight,X=value.X,Y=value.Y,Width=value.Width,Height=value.Height,ContentRevision=value.ContentRevision},value.Enabled?"Disable Artwork Override":"Enable Artwork Override");}
+    private void CommitOverride(FaceArtworkOverrideModel value,string description){_document.SetArtworkOverride(value,description);RefreshSummaries();}
+    public void CommitOverrideAlignment(double x,double y,double width,double height,string description="Align Artwork Override"){var value=ArtworkOverride;if(value is null)return;CommitOverride(new FaceArtworkOverrideModel{Enabled=value.Enabled,AssetPath=value.AssetPath,PixelWidth=value.PixelWidth,PixelHeight=value.PixelHeight,X=x,Y=y,Width=width,Height=height,ContentRevision=value.ContentRevision},description);}
 
     private void UsePanel2DSource()
     {
@@ -264,6 +292,17 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         }
     }
 
+    public FaceArtworkOverrideModel? ArtworkOverride=>_document.GetFaceDocument().Artwork?.Override;
+    public bool HasArtworkOverride=>ArtworkOverride is not null;
+    public string ArtworkOverrideSummary=>ArtworkOverride is not { } value?"None":$"AUTHORED • {(value.Enabled?"Enabled":"Disabled")} • {value.PixelWidth} × {value.PixelHeight} • Alignment {value.X:0.###}, {value.Y:0.###} / {value.Width:P1} × {value.Height:P1} • {value.AssetPath}";
+    public string OverrideToggleLabel=>ArtworkOverride?.Enabled==true?"Disable":"Enable";
+    public BitmapImage? ArtworkBaseAbsolutePath=>LoadPreview(_document.GetArtworkAssetAbsolutePath(_document.GetFaceDocument().Artwork?.BaseAssetPath));
+    public BitmapImage? ArtworkOverrideAbsolutePath=>LoadPreview(_document.GetArtworkAssetAbsolutePath(ArtworkOverride?.AssetPath));
+    public Thickness OverridePreviewMargin=>new((ArtworkOverride?.X??0)*1000,(ArtworkOverride?.Y??0)*1000,0,0);
+    public double OverridePreviewWidth=>(ArtworkOverride?.Width??1)*1000;
+    public double OverridePreviewHeight=>(ArtworkOverride?.Height??1)*1000;
+    private static BitmapImage? LoadPreview(string? path){if(string.IsNullOrWhiteSpace(path)||!File.Exists(path))return null;var image=new BitmapImage();image.BeginInit();image.CacheOption=BitmapCacheOption.OnLoad;image.UriSource=new Uri(path,UriKind.Absolute);image.EndInit();image.Freeze();return image;}
+
     public string ArtworkCalibrationSummary
     {
         get
@@ -325,6 +364,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
             FaceWorkspaceDestination.Artwork => [root, new("Artwork", null)],
             FaceWorkspaceDestination.ArtworkGeometry => [root, new("Artwork", NavigateToArtworkCommand), new("Geometry", null)],
             FaceWorkspaceDestination.ArtworkCalibration => [root, new("Artwork", NavigateToArtworkCommand), new("Calibration", null)],
+            FaceWorkspaceDestination.ArtworkOverride => [root, new("Artwork", NavigateToArtworkCommand), new("Override", null)],
             FaceWorkspaceDestination.Components => [root, new("Components", null)],
             FaceWorkspaceDestination.ComponentsEditor => [root, new("Components", NavigateToComponentsCommand), new("Edit", null)],
             FaceWorkspaceDestination.Illumination => [root, new("Illumination", null)],
@@ -337,7 +377,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
 
     internal void RefreshSummaries()
     {
-        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(IsPanel2DArtworkSource)); Raise(nameof(CanUsePanel2DSource)); Raise(nameof(Panel2DSourceAvailability)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkGeometrySummary)); Raise(nameof(ArtworkOutputSummary)); Raise(nameof(ArtworkCalibrationSummary));
+        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(OverridePreviewMargin)); Raise(nameof(OverridePreviewWidth)); Raise(nameof(OverridePreviewHeight)); Raise(nameof(ArtworkOverride)); Raise(nameof(HasArtworkOverride)); Raise(nameof(ArtworkOverrideSummary)); Raise(nameof(OverrideToggleLabel)); Raise(nameof(ArtworkBaseAbsolutePath)); Raise(nameof(ArtworkOverrideAbsolutePath)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(IsPanel2DArtworkSource)); Raise(nameof(CanUsePanel2DSource)); Raise(nameof(Panel2DSourceAvailability)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkGeometrySummary)); Raise(nameof(ArtworkOutputSummary)); Raise(nameof(ArtworkCalibrationSummary));
         if (UsePanel2DSourceCommand is RelayCommand usePanel2D) usePanel2D.RaiseCanExecuteChanged();
         if (RebuildComponentsFromSourceCommand is RelayCommand rebuildComponents) rebuildComponents.RaiseCanExecuteChanged();
         Raise(nameof(ComponentsSummary)); Raise(nameof(IlluminationSummary));

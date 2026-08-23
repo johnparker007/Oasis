@@ -276,6 +276,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         return string.IsNullOrWhiteSpace(path) || project is null ? null : ResolveGeneratedPath(path, project.ProjectDirectory);
     }
 
+    internal string? GetArtworkAssetAbsolutePath(string? path)
+    { var project=_projectAccessor?.Invoke(); return string.IsNullOrWhiteSpace(path)||project is null?null:FaceArtworkGeneratedPathService.Resolve(path,project.ProjectDirectory); }
+
     public bool ImportArtworkImage(string externalPath, out string? error)
     {
         error = null; var project = _projectAccessor?.Invoke(); var current = _faceDocumentModel.Artwork;
@@ -289,7 +292,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                     PixelWidth=imported.Width, PixelHeight=imported.Height }, Geometry=new FaceArtworkGeometryModel(),
                 ProcessingPipeline=current.ProcessingPipeline, CorrectionInputAssetPath=current.CorrectionInputAssetPath,
                 BaseAssetPath=current.BaseAssetPath, OutputAssetPath=current.OutputAssetPath,
-                OutputWidth=imported.Width, OutputHeight=imported.Height
+                OutputWidth=imported.Width, OutputHeight=imported.Height, Override=current.Override,
+                FinalOutputWidth=current.FinalOutputWidth, FinalOutputHeight=current.FinalOutputHeight
             };
             CommandService.Execute(FaceMutationCommands.CreateSetArtworkRecipeCommand(DocumentId, this, artwork,
                 new FaceSubsystemProvenanceModel { Origin=FaceSubsystemOrigin.Authored }, "Change artwork source to image"));
@@ -355,7 +359,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             BaseAssetPath = current.BaseAssetPath,
             OutputAssetPath = current.OutputAssetPath,
             OutputWidth = size.Width,
-            OutputHeight = size.Height
+            OutputHeight = size.Height, Override=current.Override,
+            FinalOutputWidth=current.FinalOutputWidth, FinalOutputHeight=current.FinalOutputHeight
         };
         CommandService.Execute(FaceMutationCommands.CreateSetArtworkRecipeCommand(DocumentId, this, artwork,
             FaceBuildStateFactory.CreateDerivedProvenance(_faceDocumentModel.SourcePanel2DDocumentPath).Artwork,
@@ -400,7 +405,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var artwork=new FaceArtworkModel { Id=current.Id, Source=current.Source,
             Geometry=new FaceArtworkGeometryModel { PerspectiveRegistration=normalized }, ProcessingPipeline=current.ProcessingPipeline,
             CorrectionInputAssetPath=current.CorrectionInputAssetPath, BaseAssetPath=current.BaseAssetPath, OutputAssetPath=current.OutputAssetPath,
-            OutputWidth=size.Width, OutputHeight=size.Height };
+            OutputWidth=size.Width, OutputHeight=size.Height, Override=current.Override,
+            FinalOutputWidth=current.FinalOutputWidth, FinalOutputHeight=current.FinalOutputHeight };
         CommandService.Execute(FaceMutationCommands.CreateSetArtworkRecipeCommand(DocumentId, this, artwork,
             _faceDocumentModel.Provenance.Artwork, description)); return true;
     }
@@ -409,6 +415,40 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         if (_faceDocumentModel.Artwork?.Source.Kind != FaceArtworkSourceKind.Image) return;
         InvalidateFaceBuild(FaceBuildInput.ArtworkSource);
+    }
+
+    public bool CreateArtworkOverrideFromBase(out string? error)
+    {
+        error=null; var artwork=_faceDocumentModel.Artwork; var project=_projectAccessor?.Invoke();
+        if(artwork is null||project is null){error="Artwork or project is unavailable.";return false;}
+        if(_faceDocumentModel.BuildState.Get(FaceGeneratedProduct.BaseArtwork).Status!=FaceBuildStatus.Current)
+        {error="Build the current Base Artwork before creating an Override.";return false;}
+        try { return SetArtworkOverride(FaceArtworkOverrideAssetService.CreateFromBase(artwork,project,_faceDocumentModel.Title),"Create Artwork Override from Base"); }
+        catch(Exception exception){error=exception.Message;return false;}
+    }
+
+    public bool ImportArtworkOverride(string path, bool preserveAlignment, out string? error)
+    {
+        error=null;var artwork=_faceDocumentModel.Artwork;var project=_projectAccessor?.Invoke();
+        if(artwork is null||project is null){error="Artwork or project is unavailable.";return false;}
+        try{return SetArtworkOverride(FaceArtworkOverrideAssetService.Import(path,project,_faceDocumentModel.Title,
+            preserveAlignment?artwork.Override:null),artwork.Override is null?"Import Artwork Override":"Replace Artwork Override");}
+        catch(Exception exception){error=exception.Message;return false;}
+    }
+
+    public bool ReloadArtworkOverride(out string? error)
+    {
+        error=null;var artwork=_faceDocumentModel.Artwork;var project=_projectAccessor?.Invoke();
+        if(artwork?.Override is null||project is null){error="Artwork Override or project is unavailable.";return false;}
+        try{return SetArtworkOverride(FaceArtworkOverrideAssetService.Reload(artwork.Override,project),"Reload Artwork Override");}
+        catch(Exception exception){error=exception.Message;return false;}
+    }
+
+    public bool SetArtworkOverride(FaceArtworkOverrideModel? value, string description="Edit Artwork Override")
+    {
+        var artwork=_faceDocumentModel.Artwork;if(artwork is null||value is { } configured&&!configured.IsValid())return false;
+        CommandService.Execute(FaceMutationCommands.CreateSetArtworkOverrideCommand(DocumentId,this,
+            FaceDocumentCopy.WithOverride(artwork,value),description));return true;
     }
 
     public FaceBuildResult BuildFace(bool force = false)
@@ -470,7 +510,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             if(string.IsNullOrWhiteSpace(destination))return new(FaceGeneratedProduct.LampMask,false,"The generated lamp-mask path is not configured.");
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
             using var bitmap=SkiaSharp.SKBitmap.Decode(source);if(bitmap is null)return new(FaceGeneratedProduct.LampMask,false,"The authored lamp-mask image could not be decoded.");
-            var authoredWidth=_faceDocumentModel.Artwork?.OutputWidth??bitmap.Width;var authoredHeight=_faceDocumentModel.Artwork?.OutputHeight??bitmap.Height;
+            var authoredWidth=_faceDocumentModel.Artwork is { } artwork ? (artwork.FinalOutputWidth > 0 ? artwork.FinalOutputWidth : artwork.OutputWidth) : bitmap.Width;var authoredHeight=_faceDocumentModel.Artwork is { } artworkHeight ? (artworkHeight.FinalOutputHeight > 0 ? artworkHeight.FinalOutputHeight : artworkHeight.OutputHeight) : bitmap.Height;
             using var normalized=bitmap.Width==authoredWidth&&bitmap.Height==authoredHeight?bitmap.Copy():bitmap.Resize(new SkiaSharp.SKImageInfo(authoredWidth,authoredHeight),SkiaSharp.SKFilterQuality.High);
             if(normalized is null)return new(FaceGeneratedProduct.LampMask,false,"The authored lamp-mask image could not be normalized.");
             using var image=SkiaSharp.SKImage.FromBitmap(normalized);using var data=image.Encode(SkiaSharp.SKEncodedImageFormat.Png,100);using var stream=File.Open(destination,FileMode.Create,FileAccess.Write);data.SaveTo(stream);
@@ -487,8 +527,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             return new(FaceGeneratedProduct.LampMask, false,
                 $"Face Source Shape '{_faceDocumentModel.SourceFaceShapeId}' was not found in the source Panel2D.");
         }
-        var width = _faceDocumentModel.Artwork?.OutputWidth ?? _faceDocumentModel.MaskLayer?.Width ?? 0;
-        var height = _faceDocumentModel.Artwork?.OutputHeight ?? _faceDocumentModel.MaskLayer?.Height ?? 0;
+        var width = _faceDocumentModel.Artwork is { } artworkWidth ? (artworkWidth.FinalOutputWidth > 0 ? artworkWidth.FinalOutputWidth : artworkWidth.OutputWidth) : _faceDocumentModel.MaskLayer?.Width ?? 0;
+        var height = _faceDocumentModel.Artwork is { } artworkHeight ? (artworkHeight.FinalOutputHeight > 0 ? artworkHeight.FinalOutputHeight : artworkHeight.OutputHeight) : _faceDocumentModel.MaskLayer?.Height ?? 0;
         if (width <= 0 || height <= 0)
         {
             return new(FaceGeneratedProduct.LampMask, false, "The Face has no valid output dimensions for mask generation.");
@@ -709,6 +749,10 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var result = new FaceArtworkRebuildService().FinalizeOutput(artwork, project.ProjectDirectory);
         errorMessage = result.ErrorMessage;
         if (!result.Succeeded) return false;
+        var outputPath=FaceArtworkGeneratedPathService.Resolve(artwork.OutputAssetPath!,project.ProjectDirectory);
+        using(var output=SKBitmap.Decode(outputPath))
+            if(output is not null)_faceDocumentModel=FaceDocumentCopy.WithArtwork(_faceDocumentModel,
+                FaceDocumentCopy.WithOverride(artwork,artwork.Override,output.Width,output.Height),_faceDocumentModel.Provenance.Artwork);
         NotifyGeneratedArtworkChanged(artwork);
         return true;
     }

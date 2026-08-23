@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 19;
+    public const int CurrentSchemaVersion = 20;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -251,7 +251,16 @@ public static class FaceDocumentStorage
             BaseAssetPath = NormalizeOptional(file.BaseAssetPath),
             OutputAssetPath = NormalizeOptional(file.OutputAssetPath),
             OutputWidth = file.OutputWidth,
-            OutputHeight = file.OutputHeight
+            OutputHeight = file.OutputHeight,
+            FinalOutputWidth = file.FinalOutputWidth,
+            FinalOutputHeight = file.FinalOutputHeight,
+            Override = file.Override is null ? null : new FaceArtworkOverrideModel
+            {
+                Enabled = file.Override.Enabled, AssetPath = NormalizeOptional(file.Override.AssetPath) ?? string.Empty,
+                PixelWidth = file.Override.PixelWidth, PixelHeight = file.Override.PixelHeight,
+                X = file.Override.X, Y = file.Override.Y, Width = file.Override.Width, Height = file.Override.Height,
+                ContentRevision = file.Override.ContentRevision
+            }
         };
     }
 
@@ -282,7 +291,16 @@ public static class FaceDocumentStorage
             BaseAssetPath = model.BaseAssetPath,
             OutputAssetPath = model.OutputAssetPath,
             OutputWidth = model.OutputWidth,
-            OutputHeight = model.OutputHeight
+            OutputHeight = model.OutputHeight,
+            FinalOutputWidth = model.FinalOutputWidth,
+            FinalOutputHeight = model.FinalOutputHeight,
+            Override = model.Override is null ? null : new FaceArtworkOverrideFile
+            {
+                Enabled = model.Override.Enabled, AssetPath = model.Override.AssetPath,
+                PixelWidth = model.Override.PixelWidth, PixelHeight = model.Override.PixelHeight,
+                X = model.Override.X, Y = model.Override.Y, Width = model.Override.Width, Height = model.Override.Height,
+                ContentRevision = model.Override.ContentRevision
+            }
         };
     }
 
@@ -928,6 +946,22 @@ public sealed record FaceArtworkFile
     public string? OutputAssetPath { get; init; }
     public int OutputWidth { get; init; }
     public int OutputHeight { get; init; }
+    public int FinalOutputWidth { get; init; }
+    public int FinalOutputHeight { get; init; }
+    public FaceArtworkOverrideFile? Override { get; init; }
+}
+
+public sealed record FaceArtworkOverrideFile
+{
+    public bool Enabled { get; init; } = true;
+    public string AssetPath { get; init; } = string.Empty;
+    public int PixelWidth { get; init; }
+    public int PixelHeight { get; init; }
+    public double X { get; init; }
+    public double Y { get; init; }
+    public double Width { get; init; } = 1d;
+    public double Height { get; init; } = 1d;
+    public long ContentRevision { get; init; }
 }
 
 public sealed record FaceArtworkSourceFile

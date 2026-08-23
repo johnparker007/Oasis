@@ -2,6 +2,15 @@ namespace OasisEditor;
 
 internal static class FaceDocumentCopy
 {
+    public static FaceArtworkModel WithOverride(FaceArtworkModel value, FaceArtworkOverrideModel? artworkOverride,
+        int? finalWidth = null, int? finalHeight = null) => new()
+    {
+        Id=value.Id, Source=value.Source, Geometry=value.Geometry, ProcessingPipeline=value.ProcessingPipeline,
+        CorrectionInputAssetPath=value.CorrectionInputAssetPath, BaseAssetPath=value.BaseAssetPath,
+        OutputAssetPath=value.OutputAssetPath, OutputWidth=value.OutputWidth, OutputHeight=value.OutputHeight,
+        Override=artworkOverride, FinalOutputWidth=finalWidth ?? value.FinalOutputWidth,
+        FinalOutputHeight=finalHeight ?? value.FinalOutputHeight
+    };
     public static FaceDocumentModel WithElementsAndComponents(FaceDocumentModel value,
         IReadOnlyList<FaceElementModel> elements, FaceSubsystemProvenanceModel components) => new()
     {

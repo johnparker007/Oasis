@@ -230,7 +230,8 @@ internal sealed class FaceRegenerationService
             BaseAssetPath = generated.BaseAssetPath,
             OutputAssetPath = generated.OutputAssetPath,
             OutputWidth = generated.OutputWidth,
-            OutputHeight = generated.OutputHeight
+            OutputHeight = generated.OutputHeight, Override=existing.Override,
+            FinalOutputWidth=existing.FinalOutputWidth, FinalOutputHeight=existing.FinalOutputHeight
         };
     }
 

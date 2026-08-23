@@ -126,7 +126,7 @@ internal sealed class FaceGenerationService
             },
             ProcessingPipeline = new ImageProcessingPipelineModel(),
             OutputWidth = output.Width,
-            OutputHeight = output.Height
+            OutputHeight = output.Height, FinalOutputWidth=output.Width, FinalOutputHeight=output.Height
         };
         var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
         string? generatedCorrectionInputPath = null;
@@ -155,7 +155,8 @@ internal sealed class FaceGenerationService
             BaseAssetPath = generatedBasePath,
             OutputAssetPath = assetPath,
             OutputWidth = artworkState.OutputWidth,
-            OutputHeight = artworkState.OutputHeight
+            OutputHeight = artworkState.OutputHeight, Override=artworkState.Override,
+            FinalOutputWidth=artworkState.FinalOutputWidth, FinalOutputHeight=artworkState.FinalOutputHeight
         };
         if (!string.IsNullOrWhiteSpace(projectDirectory)
             && !string.IsNullOrWhiteSpace(artworkState.BaseAssetPath)
