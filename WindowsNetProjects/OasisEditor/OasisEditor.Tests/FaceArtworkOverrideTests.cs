@@ -1,5 +1,6 @@
 using OasisEditor;
 using SkiaSharp;
+using System.Windows.Media;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -50,11 +51,43 @@ public sealed class FaceArtworkOverrideTests : IDisposable
         var recipe=new FaceArtworkModel{BaseAssetPath=Path.GetRelativePath(_root,basePath)};var created=FaceArtworkOverrideAssetService.CreateFromBase(recipe,project,"Top Glass");
         Assert.StartsWith("Assets/Faces/Top Glass/ArtworkOverride/",created.AssetPath);Assert.Equal((0d,0d,1d,1d),(created.X,created.Y,created.Width,created.Height));
         var authored=Path.Combine(_root,created.AssetPath.Replace('/',Path.DirectorySeparatorChar));Write(authored,8,12,(_,_)=>SKColors.Green);
-        var reloaded=FaceArtworkOverrideAssetService.Reload(new FaceArtworkOverrideModel{Enabled=true,AssetPath=created.AssetPath,PixelWidth=2,PixelHeight=3,X=-.1,Y=.2,Width=1.1,Height=.9},project);
-        Assert.Equal((8,12),(reloaded.PixelWidth,reloaded.PixelHeight));Assert.Equal((-.1,.2,1.1,.9),(reloaded.X,reloaded.Y,reloaded.Width,reloaded.Height));Assert.True(reloaded.ContentRevision>0);
+        var reloaded=FaceArtworkOverrideAssetService.Reload(new FaceArtworkOverrideModel{Enabled=true,AssetPath=created.AssetPath,PixelWidth=2,PixelHeight=3,X=-.1,Y=.2,Width=1.1,Height=.9,ContentRevision=8},project);
+        Assert.Equal((8,12),(reloaded.PixelWidth,reloaded.PixelHeight));Assert.Equal((-.1,.2,1.1,.9),(reloaded.X,reloaded.Y,reloaded.Width,reloaded.Height));Assert.Equal(9,reloaded.ContentRevision);
+        var state=FaceBuildStateFactory.CreateGeneratedState(true,true,true,true,true);new FaceBuildService().Invalidate(state,FaceBuildInput.ArtworkOverride);
+        Assert.Equal(FaceBuildStatus.Stale,state.Get(FaceGeneratedProduct.ArtworkOutput).Status);
+    }
+
+    [Fact]
+    public void PreviewLoader_ReadsCurrentPixelsWhenSamePathIsOverwritten()
+    {
+        var path=Path.Combine(_root,"mutable.png");Write(path,2,2,(_,_)=>SKColors.Red);
+        var first=Assert.IsType<System.Windows.Media.Imaging.BitmapImage>(ReloadableBitmapImageLoader.Load(path));
+        Assert.Equal((byte)255,Red(first));
+        Write(path,2,2,(_,_)=>SKColors.Blue);
+        var second=Assert.IsType<System.Windows.Media.Imaging.BitmapImage>(ReloadableBitmapImageLoader.Load(path));
+        Assert.NotSame(first,second);Assert.Equal((byte)0,Red(second));
+    }
+
+    [Fact]
+    public void OutputBuilder_ReadsCurrentOverrideBytesAfterSamePathReload()
+    {
+        var project=Project();var basePath=Path.Combine(project.GeneratedDirectory,"Artwork","base.png");Directory.CreateDirectory(Path.GetDirectoryName(basePath)!);Write(basePath,2,2,(_,_)=>SKColors.Green);
+        var artwork=new FaceArtworkModel{BaseAssetPath=Path.GetRelativePath(_root,basePath),OutputAssetPath="Generated/Artwork/artwork.png"};
+        var created=FaceArtworkOverrideAssetService.CreateFromBase(artwork,project,"Glass");var overridePath=Path.Combine(_root,created.AssetPath.Replace('/',Path.DirectorySeparatorChar));
+        Write(overridePath,2,2,(_,_)=>SKColors.Red);var reloaded=FaceArtworkOverrideAssetService.Reload(created,project);
+        var result=new FaceArtworkRebuildService().FinalizeOutput(FaceDocumentCopy.WithOverride(artwork,reloaded),_root);Assert.True(result.Succeeded);
+        using var output=SKBitmap.Decode(Path.Combine(_root,"Generated","Artwork","artwork.png"));Assert.Equal(SKColors.Red,output.GetPixel(0,0));
+    }
+
+    [Fact]
+    public void PreviewLoader_ReadsRebuiltBaseAtStablePath()
+    {
+        var path=Path.Combine(_root,"base.png");Write(path,1,1,(_,_)=>SKColors.Red);var first=ReloadableBitmapImageLoader.Load(path)!;Assert.Equal((byte)255,Red(first));
+        Write(path,1,1,(_,_)=>SKColors.Blue);var rebuilt=ReloadableBitmapImageLoader.Load(path)!;Assert.Equal((byte)0,Red(rebuilt));
     }
 
     private EditorProject Project(){var assets=Path.Combine(_root,"Assets");var generated=Path.Combine(_root,"Generated");Directory.CreateDirectory(assets);return new EditorProject{Name="Test",ProjectDirectory=_root,ProjectFilePath=Path.Combine(_root,"test.oasisproj"),AssetsDirectory=assets,GeneratedDirectory=generated,MachinesDirectory=Path.Combine(_root,"Machines")};}
     private static void Write(string path,int width,int height,Func<int,int,SKColor> pixel){Directory.CreateDirectory(Path.GetDirectoryName(path)!);using var bitmap=new SKBitmap(width,height);for(var y=0;y<height;y++)for(var x=0;x<width;x++)bitmap.SetPixel(x,y,pixel(x,y));using var image=SKImage.FromBitmap(bitmap);using var data=image.Encode(SKEncodedImageFormat.Png,100);using var stream=File.Create(path);data.SaveTo(stream);}
+    private static byte Red(System.Windows.Media.Imaging.BitmapSource source){var converted=new System.Windows.Media.Imaging.FormatConvertedBitmap(source,PixelFormats.Bgra32,null,0);var pixels=new byte[4];converted.CopyPixels(pixels,4,0);return pixels[2];}
     public void Dispose(){if(Directory.Exists(_root))Directory.Delete(_root,true);}
 }

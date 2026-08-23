@@ -31,6 +31,10 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     private FaceComponentKind? _componentPlacementKind;
     private bool _isLampPlacementActive;
     private double _overridePreviewOpacity = .5d;
+    private BitmapImage? _basePreview;
+    private BitmapImage? _overridePreview;
+    private string? _basePreviewPath;
+    private string? _overridePreviewKey;
 
     public FaceWorkspaceViewModel(DocumentTabViewModel document)
     {
@@ -60,7 +64,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         AddLampCommand = new RelayCommand(() => { NavigateTo(FaceWorkspaceDestination.IlluminationLamps); _isLampPlacementActive=true; Raise(nameof(IsLampPlacementActive)); Raise(nameof(LampEditorStatus)); });
         CreateOverrideFromBaseCommand=new RelayCommand(CreateOverrideFromBase);
         ImportOverrideCommand=new RelayCommand(()=>ChooseOverride(false)); ReplaceOverrideCommand=new RelayCommand(()=>ChooseOverride(true));
-        ReloadOverrideCommand=new RelayCommand(()=>{if(!_document.ReloadArtworkOverride(out var error))ShowOverrideError(error);RefreshSummaries();});
+        ReloadOverrideCommand=new RelayCommand(()=>{if(!_document.ReloadArtworkOverride(out var error))ShowOverrideError(error);else RefreshArtworkPreviews(false,true);RefreshSummaries();});
         ToggleOverrideCommand=new RelayCommand(ToggleOverride); RemoveOverrideCommand=new RelayCommand(()=>{_document.SetArtworkOverride(null,"Remove Artwork Override");RefreshSummaries();});
         ResetOverrideAlignmentCommand=new RelayCommand(()=>CommitOverrideAlignment(0,0,1,1,"Reset Artwork Override alignment"));
         DoneOverrideAlignmentCommand=NavigateToArtworkCommand;
@@ -296,12 +300,33 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public bool HasArtworkOverride=>ArtworkOverride is not null;
     public string ArtworkOverrideSummary=>ArtworkOverride is not { } value?"None":$"AUTHORED • {(value.Enabled?"Enabled":"Disabled")} • {value.PixelWidth} × {value.PixelHeight} • Alignment {value.X:0.###}, {value.Y:0.###} / {value.Width:P1} × {value.Height:P1} • {value.AssetPath}";
     public string OverrideToggleLabel=>ArtworkOverride?.Enabled==true?"Disable":"Enable";
-    public BitmapImage? ArtworkBaseAbsolutePath=>LoadPreview(_document.GetArtworkAssetAbsolutePath(_document.GetFaceDocument().Artwork?.BaseAssetPath));
-    public BitmapImage? ArtworkOverrideAbsolutePath=>LoadPreview(_document.GetArtworkAssetAbsolutePath(ArtworkOverride?.AssetPath));
+    public BitmapImage? ArtworkBaseAbsolutePath
+    {
+        get
+        {
+            var path=_document.GetArtworkAssetAbsolutePath(_document.GetFaceDocument().Artwork?.BaseAssetPath);
+            if(!string.Equals(path,_basePreviewPath,StringComparison.OrdinalIgnoreCase)){_basePreviewPath=path;_basePreview=ReloadableBitmapImageLoader.Load(path);}
+            return _basePreview;
+        }
+    }
+    public BitmapImage? ArtworkOverrideAbsolutePath
+    {
+        get
+        {
+            var value=ArtworkOverride;var path=_document.GetArtworkAssetAbsolutePath(value?.AssetPath);
+            var key=$"{path}|{value?.ContentRevision ?? -1}";
+            if(!string.Equals(key,_overridePreviewKey,StringComparison.Ordinal)){_overridePreviewKey=key;_overridePreview=ReloadableBitmapImageLoader.Load(path);}
+            return _overridePreview;
+        }
+    }
     public Thickness OverridePreviewMargin=>new((ArtworkOverride?.X??0)*1000,(ArtworkOverride?.Y??0)*1000,0,0);
     public double OverridePreviewWidth=>(ArtworkOverride?.Width??1)*1000;
     public double OverridePreviewHeight=>(ArtworkOverride?.Height??1)*1000;
-    private static BitmapImage? LoadPreview(string? path){if(string.IsNullOrWhiteSpace(path)||!File.Exists(path))return null;var image=new BitmapImage();image.BeginInit();image.CacheOption=BitmapCacheOption.OnLoad;image.UriSource=new Uri(path,UriKind.Absolute);image.EndInit();image.Freeze();return image;}
+    internal void RefreshArtworkPreviews(bool refreshBase, bool refreshOverride)
+    {
+        if(refreshBase){_basePreview=null;_basePreviewPath=null;Raise(nameof(ArtworkBaseAbsolutePath));}
+        if(refreshOverride){_overridePreview=null;_overridePreviewKey=null;Raise(nameof(ArtworkOverrideAbsolutePath));}
+    }
 
     public string ArtworkCalibrationSummary
     {

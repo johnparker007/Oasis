@@ -490,6 +490,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         _faceDocumentJson = GetFaceDocumentJson();
         PersistBuildStateWhenDocumentIsClean(result);
+        if(result.Built.Contains(FaceGeneratedProduct.BaseArtwork))_faceWorkspace?.RefreshArtworkPreviews(true,false);
         _faceWorkspace?.RefreshSummaries();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
     }
