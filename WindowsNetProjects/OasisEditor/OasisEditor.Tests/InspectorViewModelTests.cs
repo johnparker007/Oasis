@@ -10,10 +10,11 @@ namespace OasisEditor.Tests;
 public sealed class InspectorViewModelTests
 {
     [Fact]
-    public void FaceArtworkProcessingStack_AddAndRemoveRefreshInspectorWithoutReselection()
+    public void FaceArtworkProcessingStack_AddCalibrationInvalidatesBuildAndRefreshesAcrossUndoRedo()
     {
         var face = new FaceDocumentModel
         {
+            BuildState = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false),
             Artwork = new FaceArtworkModel(),
             Elements = [new FaceArtworkElement { ObjectId = "art", Name = "Artwork", Width = 100, Height = 100 }]
         };
@@ -26,8 +27,53 @@ public sealed class InspectorViewModelTests
         document.PanelChanged += viewModel.NotifyPanelChanged;
         viewModel.NotifyContextChanged();
 
+        var add = Assert.IsType<InspectorActionPropertyViewModel>(
+            viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "+ Add Artwork Calibration"));
+        add.Command.Execute(null);
+
+        Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations));
+        Assert.True(document.IsDirty);
+        Assert.Equal(FaceBuildStatus.Current, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.ArtworkCorrectionInput).Status);
+        Assert.Equal(FaceBuildStatus.Stale, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.BaseArtwork).Status);
+        Assert.Equal(FaceBuildStatus.Stale, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Strength (%)");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Add White Sample");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Add Black Sample");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "+ Add Colour Group");
+
+        Assert.True(document.CommandService.TryUndo());
+        Assert.Empty(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations);
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "+ Add Artwork Calibration");
         Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.DisplayName == "Strength (%)");
-        Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "+ Add Artwork Calibration")).Command.Execute(null);
+
+        Assert.True(document.CommandService.TryRedo());
+        Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations));
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Strength (%)");
+    }
+
+    [Fact]
+    public void FaceArtworkProcessingStack_RemoveRefreshesInspectorWithoutReselection()
+    {
+        var face = new FaceDocumentModel
+        {
+            Artwork = new FaceArtworkModel
+            {
+                ProcessingPipeline = new ImageProcessingPipelineModel
+                {
+                    Operations = [new ArtworkCalibrationOperationModel()]
+                }
+            },
+            Elements = [new FaceArtworkElement { ObjectId = "art", Name = "Artwork", Width = 100, Height = 100 }]
+        };
+        var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"), faceDocumentJson: FaceDocumentStorage.Serialize(face));
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(document);
+        context.SetPanelSelection(document.DocumentId, new PanelSelectionInfo("art", "artwork", 0, 0, 100, 100));
+        bool Execute(Guid _, EditorCommands.ICommand command) { document.CommandService.Execute(command); return true; }
+        var viewModel = CreateInspectorViewModel(document, context, Execute);
+        document.PanelChanged += viewModel.NotifyPanelChanged;
+        viewModel.NotifyContextChanged();
+
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Strength (%)");
 
         Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Remove Calibration")).Command.Execute(null);

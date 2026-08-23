@@ -25,7 +25,6 @@ public sealed class DocumentWorkspaceViewModel
     private readonly Automation.IPanel2DDocumentCreationService _panel2dCreationService;
     private readonly Automation.IFaceDocumentCreationService _faceCreationService;
     private readonly FaceGenerationService _faceGenerationService = new();
-    private readonly FaceRegenerationService _faceRegenerationService = new();
     private readonly FaceRuntimeExportService _faceRuntimeExportService = new();
     private readonly FaceValidationService _faceValidationService = new();
     private readonly FaceCabinetContextResolver _faceCabinetContextResolver = new();
@@ -239,21 +238,6 @@ public sealed class DocumentWorkspaceViewModel
         }
     }
 
-    public bool CanRegenerateSelectedFace()
-    {
-        var selectedDocument = _getSelectedDocument();
-        if (_getLoadedProject() is null || selectedDocument is not { Document.DocumentType: EditorDocumentType.Face })
-        {
-            return false;
-        }
-
-        var faceDocument = selectedDocument.GetFaceDocument();
-        return faceDocument.Artwork?.Source.Kind != FaceArtworkSourceKind.Image
-            && !string.IsNullOrWhiteSpace(faceDocument.SourcePanel2DDocumentId)
-            && !string.IsNullOrWhiteSpace(faceDocument.SourceFaceShapeId)
-            && faceDocument.SourceRegion is { IsValid: true };
-    }
-
     public bool CanOpenSourcePanel2DForSelectedFace()
     {
         var selectedDocument = _getSelectedDocument();
@@ -285,70 +269,6 @@ public sealed class DocumentWorkspaceViewModel
         _setSelectedDocument(sourcePanelDocument);
         _setStatusMessage($"Opened source Panel2D for face '{selectedDocument.Title}': {sourcePanelDocument.Title}");
         _addOutputEntry($"Activated source Panel2D document '{sourcePanelDocument.Title}' for face '{selectedDocument.Title}'.", OutputLogStatus.Info);
-        return true;
-    }
-
-    public bool RegenerateSelectedFace(FaceGenerationSettingsModel? generationSettings = null, IEditorProgressReporter? progress = null)
-    {
-        var selectedDocument = _getSelectedDocument();
-        var loadedProject = _getLoadedProject();
-        if (loadedProject is null || selectedDocument is null || selectedDocument.Document.DocumentType != EditorDocumentType.Face)
-        {
-            return false;
-        }
-
-        var existingFace = selectedDocument.GetFaceDocument();
-        if (!TryFindSourcePanelDocument(existingFace, out var sourcePanelDocument))
-        {
-            _setStatusMessage("Unable to regenerate Face: source Panel2D document is not open.");
-            _addOutputEntry(BuildSourcePanelMissingMessage(existingFace), OutputLogStatus.Warning);
-            LogFaceDiagnostics(existingFace);
-            return false;
-        }
-
-        progress ??= NoOpEditorProgressReporter.Instance;
-        progress.Report(0.0, "Regenerating selected Face from Face Source Shape...");
-        var cabinetContext = _faceCabinetContextResolver.ResolveForFace(loadedProject, _openDocuments, existingFace);
-        if (!cabinetContext.HasCabinet)
-        {
-            _addOutputEntry($"Face regeneration did not resolve a Cabinet reel specification context: {cabinetContext.DiagnosticMessage}", OutputLogStatus.Warning);
-        }
-
-        var result = _faceRegenerationService.Regenerate(
-            existingFace,
-            sourcePanelDocument.GetPanelDocument(),
-            loadedProject.ProjectDirectory,
-            loadedProject.GeneratedDirectory,
-            generationSettings,
-            progress.CreateChild(0.0, 0.8),
-            selectedDocument.FilePath,
-            cabinetContext.CabinetDocument);
-
-        progress.Report(0.8, "Exporting regenerated runtime preview assets...");
-        var regeneratedFaceDocument = ExportRuntimeAssetsForPreview(result.Document, loadedProject, selectedDocument.FilePath, progress.CreateChild(0.8, 0.95));
-
-        progress.Report(0.95, "Updating Face document...");
-
-        // Regeneration intentionally overwrites the stable Face artwork path. Evict the old decoded
-        // image before the canvas-change notification causes the view to render that path again.
-        Views.SkiaFaceEditView.InvalidateArtworkImage(regeneratedFaceDocument.Artwork?.OutputAssetPath);
-        selectedDocument.SetFaceDocument(
-            regeneratedFaceDocument,
-            new PanelChangeEvent(
-                selectedDocument.DocumentId,
-                null,
-                PanelChangeProperties.Structure | PanelChangeProperties.Geometry | PanelChangeProperties.Metadata,
-                AffectsCanvas: true,
-                AffectsHierarchy: true,
-                AffectsInspectorRows: true,
-                AffectsPersistence: true));
-        selectedDocument.MarkDirty();
-
-        _setStatusMessage($"Regenerated face '{selectedDocument.Title}' from Face Source Shape/source Panel2D metadata.");
-        _addOutputEntry($"Regenerated face '{selectedDocument.Title}' from Face Source Shape/source Panel2D metadata with {result.UpdatedElementCount} updated generated element(s), {result.AddedElementCount} added generated element(s), {result.RemovedGeneratedElementCount} removed stale generated element(s), and {result.PreservedManualElementCount} preserved manual element(s).", OutputLogStatus.Info);
-        LogFaceMaskLayerStatus(regeneratedFaceDocument, loadedProject);
-        LogFaceDiagnostics(regeneratedFaceDocument);
-        progress.Report(1.0, "Face regeneration complete.");
         return true;
     }
 

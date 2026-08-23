@@ -18,7 +18,7 @@ public enum FaceWorkspaceDestination
     ComponentsEditor,
     Illumination,
     IlluminationLamps,
-    FaceEditor
+    LayoutView
 }
 
 public sealed record FaceWorkspaceBreadcrumb(string Label, ICommand? Command);
@@ -48,13 +48,14 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         NavigateToComponentsEditorCommand = Command(FaceWorkspaceDestination.ComponentsEditor);
         NavigateToIlluminationCommand = Command(FaceWorkspaceDestination.Illumination);
         NavigateToIlluminationLampsCommand = Command(FaceWorkspaceDestination.IlluminationLamps);
-        NavigateToFaceEditorCommand = Command(FaceWorkspaceDestination.FaceEditor);
+        NavigateToLayoutViewCommand = Command(FaceWorkspaceDestination.LayoutView);
         UseImageCommand = new RelayCommand(ChooseImage);
         UsePanel2DSourceCommand = new RelayCommand(UsePanel2DSource, () => CanUsePanel2DSource);
         ReloadImageCommand = new RelayCommand(() => { _document.ReloadArtworkImage(); RefreshSummaries(); });
         ResetRegistrationCommand = new RelayCommand(ResetRegistration);
         BuildFaceCommand = new RelayCommand(() => RunBuild(false));
         RebuildFaceCommand = new RelayCommand(() => RunBuild(true));
+        OpenGenerationSettingsCommand = new RelayCommand(OpenGenerationSettings);
         AddReelCommand = Placement(FaceComponentKind.Reel);
         AddButtonCommand = Placement(FaceComponentKind.Button);
         AddSevenSegmentCommand = Placement(FaceComponentKind.SevenSegmentDisplay);
@@ -81,13 +82,13 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         FaceWorkspaceDestination.ArtworkOverride => "Override",
         FaceWorkspaceDestination.ComponentsEditor => "Edit",
         FaceWorkspaceDestination.IlluminationLamps => "Lamps",
-        FaceWorkspaceDestination.FaceEditor => "Face Editor",
+        FaceWorkspaceDestination.LayoutView => "Layout View",
         _ => _destination.ToString()
     };
     public IReadOnlyList<FaceWorkspaceBreadcrumb> Breadcrumbs => BuildBreadcrumbs();
     public bool IsViewportDestination => _destination is FaceWorkspaceDestination.ArtworkGeometry or FaceWorkspaceDestination.ArtworkCalibration or FaceWorkspaceDestination.ArtworkOverride
         or FaceWorkspaceDestination.ComponentsEditor or FaceWorkspaceDestination.IlluminationLamps
-        or FaceWorkspaceDestination.FaceEditor;
+        or FaceWorkspaceDestination.LayoutView;
     public ICommand NavigateToOverviewCommand { get; }
     public ICommand NavigateToArtworkCommand { get; }
     public ICommand NavigateToArtworkGeometryCommand { get; }
@@ -97,13 +98,14 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public ICommand NavigateToComponentsEditorCommand { get; }
     public ICommand NavigateToIlluminationCommand { get; }
     public ICommand NavigateToIlluminationLampsCommand { get; }
-    public ICommand NavigateToFaceEditorCommand { get; }
+    public ICommand NavigateToLayoutViewCommand { get; }
     public ICommand UseImageCommand { get; }
     public ICommand UsePanel2DSourceCommand { get; }
     public ICommand ReloadImageCommand { get; }
     public ICommand ResetRegistrationCommand { get; }
     public ICommand BuildFaceCommand { get; }
     public ICommand RebuildFaceCommand { get; }
+    public ICommand OpenGenerationSettingsCommand { get; }
     public ICommand AddReelCommand { get; }
     public ICommand AddButtonCommand { get; }
     public ICommand AddSevenSegmentCommand { get; }
@@ -220,6 +222,18 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     private void RunBuild(bool force)
     {
         _document.BuildFace(force);
+        RefreshSummaries();
+    }
+
+    private void OpenGenerationSettings()
+    {
+        var dialog = new FaceGenerationSettingsDialog(_document.GetFaceDocument().GenerationSettings, "Save")
+        {
+            Owner = Application.Current?.MainWindow
+        };
+        if (dialog.ShowDialog() != true) return;
+        _document.CommandService.Execute(FaceMutationCommands.CreateSetGenerationSettingsCommand(
+            _document.DocumentId, _document, dialog.Settings));
         RefreshSummaries();
     }
 
@@ -406,7 +420,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
             FaceWorkspaceDestination.ComponentsEditor => [root, new("Components", NavigateToComponentsCommand), new("Edit", null)],
             FaceWorkspaceDestination.Illumination => [root, new("Illumination", null)],
             FaceWorkspaceDestination.IlluminationLamps => [root, new("Illumination", NavigateToIlluminationCommand), new("Lamps", null)],
-            _ => [root, new("Face Editor", null)]
+            _ => [root, new("Layout View", null)]
         };
     }
 

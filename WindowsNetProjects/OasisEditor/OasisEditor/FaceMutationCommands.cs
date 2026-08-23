@@ -2,6 +2,37 @@ namespace OasisEditor;
 
 internal static class FaceMutationCommands
 {
+    public static Commands.ICommand CreateSetGenerationSettingsCommand(Guid documentId, DocumentTabViewModel document,
+        FaceGenerationSettingsModel settings) => new SetGenerationSettingsCommand(documentId, document, settings.Normalize());
+
+    private sealed class SetGenerationSettingsCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _id; private readonly DocumentTabViewModel _document; private readonly FaceGenerationSettingsModel _next;
+        private FaceGenerationSettingsModel? _previous;
+        public SetGenerationSettingsCommand(Guid id, DocumentTabViewModel document, FaceGenerationSettingsModel next)
+        { _id=id; _document=document; _next=next; }
+        public Guid DocumentId=>_id; public string Description=>"Update Face generation settings"; public bool WasExecuted{get;private set;}
+        public void Execute()
+        {
+            var face=_document.GetFaceDocument(); _previous ??= face.GenerationSettings;
+            if (_previous == _next) return;
+            _document.SetFaceDocument(FaceDocumentCopy.WithGenerationSettings(face,_next));
+            _document.InvalidateFaceBuild(FaceBuildInput.ArtworkProcessing);
+            _document.InvalidateFaceBuild(FaceBuildInput.MaskSettings);
+            _document.InvalidateFaceBuild(FaceBuildInput.TraySettings);
+            _document.MarkDirty(); WasExecuted=true;
+        }
+        public void Undo()
+        {
+            if(_previous is null)return;
+            _document.SetFaceDocument(FaceDocumentCopy.WithGenerationSettings(_document.GetFaceDocument(),_previous));
+            _document.InvalidateFaceBuild(FaceBuildInput.ArtworkProcessing);
+            _document.InvalidateFaceBuild(FaceBuildInput.MaskSettings);
+            _document.InvalidateFaceBuild(FaceBuildInput.TraySettings);
+            _document.MarkDirty();
+        }
+    }
+
     public static Commands.ICommand CreateSetArtworkRecipeCommand(Guid documentId, DocumentTabViewModel document,
         FaceArtworkModel artwork, FaceSubsystemProvenanceModel provenance, string description) =>
         new SetArtworkRecipeMutationCommand(documentId, document, artwork, provenance, description, FaceBuildInput.ArtworkSource);
@@ -54,9 +85,6 @@ internal static class FaceMutationCommands
             new ImageProcessingPipelineModel { Operations = operations.Append(new ArtworkCalibrationOperationModel()).ToArray() },
             "Add Artwork Calibration");
     }
-
-    public static Commands.ICommand CreateApplyArtworkProcessingCommand(Guid documentId, DocumentTabViewModel document) =>
-        new ApplyArtworkProcessingCommand(documentId, document);
 
     public static Commands.ICommand CreateRemoveProcessingOperationCommand(Guid documentId, DocumentTabViewModel document, string operationId) =>
         TransformPipeline(documentId, document, operationId, "Remove artwork processing operation", (operations, index) => { operations.RemoveAt(index); });
@@ -255,35 +283,6 @@ internal static class FaceMutationCommands
                !a.BlackReference.Samples.Select(x=>x.Id).SequenceEqual(b.BlackReference.Samples.Select(x=>x.Id)) || !a.WhiteReference.Samples.Select(x=>x.Id).SequenceEqual(b.WhiteReference.Samples.Select(x=>x.Id)) ||
                !a.SameColorGroups.Select(g=>(g.Id,g.Name,g.Samples.Count)).SequenceEqual(b.SameColorGroups.Select(g=>(g.Id,g.Name,g.Samples.Count)))) return true;
         return false;
-    }
-
-    private sealed class ApplyArtworkProcessingCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand,
-        Commands.IExecutionFailureDiagnostic, Commands.INonUndoableCommand
-    {
-        private readonly Guid _documentId;
-        private readonly DocumentTabViewModel _document;
-
-        public ApplyArtworkProcessingCommand(Guid documentId, DocumentTabViewModel document) { _documentId = documentId; _document = document; }
-        public Guid DocumentId => _documentId;
-        public string Description => "Apply Face Artwork Processing";
-        public bool WasExecuted { get; private set; }
-        public string? ExecutionFailureMessage { get; private set; }
-
-        public void Execute()
-        {
-            WasExecuted = false;
-            ExecutionFailureMessage = null;
-            var result = _document.BuildArtwork();
-            if (!result.Succeeded)
-            {
-                ExecutionFailureMessage = string.Join(Environment.NewLine,
-                    result.Failed.Select(failure => failure.ErrorMessage).Where(message => !string.IsNullOrWhiteSpace(message)));
-                return;
-            }
-            WasExecuted = true;
-        }
-
-        public void Undo() { }
     }
 
     private static bool PipelinesEquivalent(ImageProcessingPipelineModel left, ImageProcessingPipelineModel right)

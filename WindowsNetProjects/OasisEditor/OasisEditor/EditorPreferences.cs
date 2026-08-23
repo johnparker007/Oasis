@@ -45,7 +45,6 @@ public sealed class FaceGenerationPreferences
     public double DefaultTrayBoundsInflationPercent { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsInflationPercent;
     public double DefaultTrayBoundsPaddingPixels { get; init; } = FaceGenerationSettingsModel.DefaultTrayBoundsPaddingPixels;
     public bool DefaultClampTrayBoundsToLampWindow { get; init; } = FaceGenerationSettingsModel.DefaultClampTrayBoundsToLampWindow;
-    public bool ShowFaceGenerationSettingsBeforeRegenerate { get; init; } = true;
 
     public FaceGenerationSettingsModel ToSettings()
     {
@@ -62,9 +61,7 @@ public sealed class FaceGenerationPreferences
         }.Normalize();
     }
 
-    public static FaceGenerationPreferences FromSettings(
-        FaceGenerationSettingsModel settings,
-        bool showBeforeRegenerate)
+    public static FaceGenerationPreferences FromSettings(FaceGenerationSettingsModel settings)
     {
         var normalized = (settings ?? FaceGenerationSettingsModel.Default).Normalize();
         return new FaceGenerationPreferences
@@ -76,8 +73,7 @@ public sealed class FaceGenerationPreferences
             DefaultPostWarpSharpeningEnabled = normalized.PostWarpSharpeningEnabled,
             DefaultPostWarpSharpeningAmount = normalized.PostWarpSharpeningAmount,
             DefaultPostWarpSharpeningRadiusPixels = normalized.PostWarpSharpeningRadiusPixels,
-            DefaultPostWarpSharpeningThreshold = normalized.PostWarpSharpeningThreshold,
-            ShowFaceGenerationSettingsBeforeRegenerate = showBeforeRegenerate
+            DefaultPostWarpSharpeningThreshold = normalized.PostWarpSharpeningThreshold
         };
     }
 }
