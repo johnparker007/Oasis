@@ -298,6 +298,90 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         catch (Exception exception) { error=exception.Message; return false; }
     }
 
+    public bool CanUsePanel2DArtworkSource(out string? unavailableReason)
+    {
+        unavailableReason = null;
+        if (_faceDocumentModel.Artwork?.Source.Kind != FaceArtworkSourceKind.Image)
+        {
+            unavailableReason = "Panel2D artwork is already active.";
+            return false;
+        }
+        if (!TryResolvePanel2DArtworkSource(out _, out _, out var error))
+        {
+            unavailableReason = error;
+            return false;
+        }
+        return true;
+    }
+
+    public bool UsePanel2DArtworkSource(out string? error)
+    {
+        error = null;
+        var current = _faceDocumentModel.Artwork;
+        if (current?.Source.Kind != FaceArtworkSourceKind.Image)
+        {
+            error = "Image artwork is not active.";
+            return false;
+        }
+        if (!TryResolvePanel2DArtworkSource(out var panel, out var shape, out error)) return false;
+
+        var background = panel.Elements.First(element => element.Kind == PanelElementKind.Background
+            && !string.IsNullOrWhiteSpace(element.AssetPath));
+        var size = FaceSourceShapeTransformService.EstimateOutputSize(shape);
+        var artwork = new FaceArtworkModel
+        {
+            Id = current.Id,
+            Source = new FaceArtworkSourceModel
+            {
+                Kind = FaceArtworkSourceKind.Panel2DFaceSourceShape,
+                AssetPath = background.AssetPath,
+                Panel2DDocumentId = _faceDocumentModel.SourcePanel2DDocumentId,
+                Panel2DDocumentPath = _faceDocumentModel.SourcePanel2DDocumentPath,
+                FaceSourceShapeId = _faceDocumentModel.SourceFaceShapeId
+            },
+            Geometry = new FaceArtworkGeometryModel(),
+            ProcessingPipeline = current.ProcessingPipeline,
+            CorrectionInputAssetPath = current.CorrectionInputAssetPath,
+            BaseAssetPath = current.BaseAssetPath,
+            OutputAssetPath = current.OutputAssetPath,
+            OutputWidth = size.Width,
+            OutputHeight = size.Height
+        };
+        CommandService.Execute(FaceMutationCommands.CreateSetArtworkRecipeCommand(DocumentId, this, artwork,
+            FaceBuildStateFactory.CreateDerivedProvenance(_faceDocumentModel.SourcePanel2DDocumentPath).Artwork,
+            "Use Panel2D artwork source"));
+        return true;
+    }
+
+    private bool TryResolvePanel2DArtworkSource(out Panel2DDocumentModel panel,
+        out PanelFaceSourceShapeModel shape, out string error)
+    {
+        shape = new PanelFaceSourceShapeModel();
+        if (!TryResolveSourcePanel(out panel, out error)) return false;
+        shape = panel.FaceSourceShapes.FirstOrDefault(candidate =>
+            string.Equals(candidate.Id, _faceDocumentModel.SourceFaceShapeId, StringComparison.Ordinal))!;
+        if (shape is null)
+        {
+            error = $"Face Source Shape '{_faceDocumentModel.SourceFaceShapeId}' is unavailable in the linked Panel2D.";
+            return false;
+        }
+        var background = panel.Elements.FirstOrDefault(element => element.Kind == PanelElementKind.Background
+            && !string.IsNullOrWhiteSpace(element.AssetPath));
+        if (background is null)
+        {
+            error = "The linked Panel2D has no background artwork.";
+            return false;
+        }
+        var project = _projectAccessor?.Invoke();
+        var backgroundPath = ResolveGeneratedPath(background.AssetPath, project?.ProjectDirectory);
+        if (string.IsNullOrWhiteSpace(backgroundPath) || !File.Exists(backgroundPath))
+        {
+            error = $"The linked Panel2D background artwork '{background.AssetPath}' is unavailable.";
+            return false;
+        }
+        return true;
+    }
+
     public bool SetArtworkRegistration(FacePerspectiveRegistrationModel registration, string description="Edit artwork registration")
     {
         var current=_faceDocumentModel.Artwork; if (current?.Source.Kind != FaceArtworkSourceKind.Image) return false;
