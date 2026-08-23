@@ -463,7 +463,6 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     internal FaceBuildResult BuildArtwork()
     {
-        FaceBuildConfigurationService.ReconcileArtwork(_faceDocumentModel);
         var result = new FaceBuildService().Build(_faceDocumentModel.BuildState, CreateFaceBuildExecutors(),
             includedProducts: new HashSet<FaceGeneratedProduct>
             {
