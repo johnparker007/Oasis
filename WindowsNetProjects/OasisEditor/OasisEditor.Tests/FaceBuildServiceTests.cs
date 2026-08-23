@@ -8,6 +8,28 @@ namespace OasisEditor.Tests;
 public sealed class FaceBuildServiceTests
 {
     [Fact]
+    public void ArtworkConfiguration_ReconcilesBothAvailabilityTransitions()
+    {
+        var state = new FaceBuildStateModel();
+        var artwork = new FaceArtworkModel
+        {
+            Source = new FaceArtworkSourceModel { Kind=FaceArtworkSourceKind.Image, AssetPath="Assets/Faces/Test/ArtworkSource/source.png", PixelWidth=400, PixelHeight=200 },
+            Geometry = new FaceArtworkGeometryModel(), CorrectionInputAssetPath="Generated/Faces/Test/Artwork/correction-input.png",
+            BaseAssetPath="Generated/Faces/Test/Artwork/base.png", OutputAssetPath="Generated/Faces/Test/Artwork/artwork.png",
+            OutputWidth=400, OutputHeight=200
+        };
+
+        FaceBuildConfigurationService.ReconcileArtwork(artwork, state);
+        Assert.All(new[] { FaceGeneratedProduct.ArtworkCorrectionInput, FaceGeneratedProduct.BaseArtwork, FaceGeneratedProduct.ArtworkOutput },
+            product => Assert.Equal(FaceBuildStatus.Stale, state.Get(product).Status));
+
+        state.Get(FaceGeneratedProduct.BaseArtwork).Status=FaceBuildStatus.Current;
+        FaceBuildConfigurationService.ReconcileArtwork(null, state);
+        Assert.All(new[] { FaceGeneratedProduct.ArtworkCorrectionInput, FaceGeneratedProduct.BaseArtwork, FaceGeneratedProduct.ArtworkOutput },
+            product => Assert.Equal(FaceBuildStatus.NotConfigured, state.Get(product).Status));
+    }
+
+    [Fact]
     public void ArtworkCorrection_InvalidatesArtworkAndRuntimeOnly()
     {
         var state = FaceBuildStateFactory.CreateGeneratedState(true, true, true, true, true);

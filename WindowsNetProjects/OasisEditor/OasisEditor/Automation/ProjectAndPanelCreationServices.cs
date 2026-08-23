@@ -75,7 +75,7 @@ public sealed class FaceDocumentCreationService : IFaceDocumentCreationService
                 {
                     Artwork = FaceDocumentStorage.ToFile(artwork),
                     Provenance = new FaceProvenanceModel(),
-                    BuildState = CreateImageBuildState(),
+                    BuildState = new FaceBuildStateModel(),
                     Elements =
                     [
                         new FaceElementFile
@@ -87,6 +87,7 @@ public sealed class FaceDocumentCreationService : IFaceDocumentCreationService
                         }
                     ]
                 };
+                FaceBuildConfigurationService.ReconcileArtwork(artwork, file.BuildState);
             }
             var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub(title).MarkDirty(), faceDocumentJson: FaceDocumentStorage.Serialize(file));
             return new FaceDocumentCreationResult(document, null);
@@ -108,12 +109,4 @@ public sealed class FaceDocumentCreationService : IFaceDocumentCreationService
             faceDocumentJson: FaceDocumentStorage.Serialize(FaceDocumentStorage.CreateEmpty(resolvedTitle)));
     }
 
-    private static FaceBuildStateModel CreateImageBuildState()
-    {
-        var state = new FaceBuildStateModel();
-        state.Get(FaceGeneratedProduct.ArtworkCorrectionInput).Status = FaceBuildStatus.Stale;
-        state.Get(FaceGeneratedProduct.BaseArtwork).Status = FaceBuildStatus.Stale;
-        state.Get(FaceGeneratedProduct.ArtworkOutput).Status = FaceBuildStatus.Stale;
-        return state;
-    }
 }

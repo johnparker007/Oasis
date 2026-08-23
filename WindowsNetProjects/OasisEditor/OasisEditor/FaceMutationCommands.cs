@@ -25,12 +25,14 @@ internal static class FaceMutationCommands
             _previousFace ??= face;
             if (ReferenceEquals(face.Artwork, _next)) return;
             _document.SetFaceDocument(FaceDocumentCopy.WithArtworkAndVisual(face, _next, _nextProvenance));
+            FaceBuildConfigurationService.ReconcileArtwork(_document.GetFaceDocument());
             _document.InvalidateFaceBuild(_buildInput); _document.MarkDirty(); WasExecuted=true;
         }
         public void Undo()
         {
             if (_previousFace is null) return;
             _document.SetFaceDocument(_previousFace);
+            FaceBuildConfigurationService.ReconcileArtwork(_document.GetFaceDocument());
             _document.InvalidateFaceBuild(_buildInput); _document.MarkDirty();
         }
     }

@@ -453,6 +453,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     public FaceBuildResult BuildFace(bool force = false)
     {
+        FaceBuildConfigurationService.ReconcileArtwork(_faceDocumentModel);
         ReconcileRuntimeAssetsConfiguration();
         var service = new FaceBuildService();
         var result = service.Build(_faceDocumentModel.BuildState, CreateFaceBuildExecutors(), force);
@@ -462,6 +463,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     internal FaceBuildResult BuildArtwork()
     {
+        FaceBuildConfigurationService.ReconcileArtwork(_faceDocumentModel);
         var result = new FaceBuildService().Build(_faceDocumentModel.BuildState, CreateFaceBuildExecutors(),
             includedProducts: new HashSet<FaceGeneratedProduct>
             {
