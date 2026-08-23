@@ -40,6 +40,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         NavigateToIlluminationLampsCommand = Command(FaceWorkspaceDestination.IlluminationLamps);
         NavigateToFaceEditorCommand = Command(FaceWorkspaceDestination.FaceEditor);
         UseImageCommand = new RelayCommand(ChooseImage);
+        UsePanel2DSourceCommand = new RelayCommand(UsePanel2DSource, () => CanUsePanel2DSource);
         ReloadImageCommand = new RelayCommand(() => { _document.ReloadArtworkImage(); RefreshSummaries(); });
         ResetRegistrationCommand = new RelayCommand(ResetRegistration);
         BuildFaceCommand = new RelayCommand(() => RunBuild(false));
@@ -73,6 +74,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public ICommand NavigateToIlluminationLampsCommand { get; }
     public ICommand NavigateToFaceEditorCommand { get; }
     public ICommand UseImageCommand { get; }
+    public ICommand UsePanel2DSourceCommand { get; }
     public ICommand ReloadImageCommand { get; }
     public ICommand ResetRegistrationCommand { get; }
     public ICommand BuildFaceCommand { get; }
@@ -104,6 +106,14 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
             Filter="Image files|*.png;*.jpg;*.jpeg;*.webp;*.bmp|All files|*.*", CheckFileExists=true };
         if(dialog.ShowDialog()!=true)return;
         if(!_document.ImportArtworkImage(dialog.FileName,out var error)) MessageBox.Show(error ?? "The image could not be imported.", "Artwork Source", MessageBoxButton.OK, MessageBoxImage.Error);
+        RefreshSummaries();
+    }
+
+    private void UsePanel2DSource()
+    {
+        if (!_document.UsePanel2DArtworkSource(out var error))
+            MessageBox.Show(error ?? "The Panel2D artwork source is unavailable.", "Artwork Source",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
         RefreshSummaries();
     }
 
@@ -142,6 +152,11 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
 
 
     public bool IsImageArtworkSource => _document.GetFaceDocument().Artwork?.Source.Kind == FaceArtworkSourceKind.Image;
+    public bool IsPanel2DArtworkSource => _document.GetFaceDocument().Artwork?.Source.Kind == FaceArtworkSourceKind.Panel2DFaceSourceShape;
+    public bool CanUsePanel2DSource => _document.CanUsePanel2DArtworkSource(out _);
+    public string Panel2DSourceAvailability => _document.CanUsePanel2DArtworkSource(out var reason)
+        ? string.Empty
+        : IsImageArtworkSource ? reason ?? "The retained Panel2D source is unavailable." : string.Empty;
     public string? ArtworkRawImagePath => _document.GetArtworkSourceAbsolutePath();
     public int ArtworkSourcePixelWidth => _document.GetFaceDocument().Artwork?.Source.PixelWidth ?? 0;
     public int ArtworkSourcePixelHeight => _document.GetFaceDocument().Artwork?.Source.PixelHeight ?? 0;
@@ -149,7 +164,9 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public void CommitRegistration(FacePerspectiveRegistrationModel value) { _document.SetArtworkRegistration(value); RefreshSummaries(); }
     public void ResetRegistration() { _document.SetArtworkRegistration(FacePerspectiveRegistrationModel.FullImage, "Reset artwork registration"); RefreshSummaries(); }
 
-    public string ArtworkGeometrySummary => $"Perspective rectification • {_document.GetFaceDocument().Artwork?.OutputWidth} × {_document.GetFaceDocument().Artwork?.OutputHeight}";
+    public string ArtworkGeometrySummary => IsImageArtworkSource
+        ? $"Perspective registration • {_document.GetFaceDocument().Artwork?.OutputWidth} × {_document.GetFaceDocument().Artwork?.OutputHeight}"
+        : $"Derived from Face Source Shape • {_document.GetFaceDocument().Artwork?.OutputWidth} × {_document.GetFaceDocument().Artwork?.OutputHeight}";
     public string ArtworkCorrectionSummary
     {
         get
@@ -242,7 +259,8 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
 
     internal void RefreshSummaries()
     {
-        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkOutputSummary)); Raise(nameof(ArtworkCalibrationSummary));
+        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(IsPanel2DArtworkSource)); Raise(nameof(CanUsePanel2DSource)); Raise(nameof(Panel2DSourceAvailability)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkGeometrySummary)); Raise(nameof(ArtworkOutputSummary)); Raise(nameof(ArtworkCalibrationSummary));
+        if (UsePanel2DSourceCommand is RelayCommand usePanel2D) usePanel2D.RaiseCanExecuteChanged();
         Raise(nameof(ComponentsSummary)); Raise(nameof(IlluminationSummary));
         Raise(nameof(BuildStatusSummary)); Raise(nameof(ArtworkBuildSummary));
         Raise(nameof(ComponentsProvenanceSummary)); Raise(nameof(IlluminationBuildSummary));
