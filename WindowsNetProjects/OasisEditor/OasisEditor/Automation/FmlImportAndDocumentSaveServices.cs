@@ -223,7 +223,8 @@ public sealed class DocumentSaveService : IDocumentSaveService
             Id = artwork.Id,
             Source = artwork.Source,
             ProcessingPipeline = artwork.ProcessingPipeline,
-            GeneratedAssetPath = generatedAssetPath,
+            BaseAssetPath = FaceArtworkGeneratedPathService.ToProjectRelative(FaceArtworkGeneratedPathService.GetBasePathFromOutput(Path.Combine(project.ProjectDirectory, generatedAssetPath.Replace('/', Path.DirectorySeparatorChar))), project.ProjectDirectory),
+            OutputAssetPath = generatedAssetPath,
             OutputWidth = artwork.OutputWidth > 0 ? artwork.OutputWidth : Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Width ?? 1)),
             OutputHeight = artwork.OutputHeight > 0 ? artwork.OutputHeight : Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Height ?? 1))
         };
@@ -251,27 +252,17 @@ public sealed class DocumentSaveService : IDocumentSaveService
         data.SaveTo(stream);
     }
 
-    private static void EnsureCanonicalArtwork(EditorProject project, FaceArtworkModel? artwork, string processedArtworkPath)
+    private static void EnsureCanonicalArtwork(EditorProject project, FaceArtworkModel? artwork, string outputArtworkPath)
     {
-        var destinationOriginal = FaceArtworkRebuildService.GetOriginalArtworkPath(processedArtworkPath);
-        var sourceProcessed = ResolveExistingProjectPath(project, artwork?.GeneratedAssetPath);
-        var sourceOriginal = string.IsNullOrWhiteSpace(sourceProcessed) ? null : FaceArtworkRebuildService.GetOriginalArtworkPath(sourceProcessed);
-        if (!string.IsNullOrWhiteSpace(sourceOriginal) && File.Exists(sourceOriginal))
+        var destinationBase = FaceArtworkGeneratedPathService.GetBasePathFromOutput(outputArtworkPath);
+        var sourceBase = ResolveExistingProjectPath(project, artwork?.BaseAssetPath);
+        if (!string.IsNullOrWhiteSpace(sourceBase) && File.Exists(sourceBase))
         {
-            if (!string.Equals(Path.GetFullPath(sourceOriginal), Path.GetFullPath(destinationOriginal), StringComparison.OrdinalIgnoreCase))
-            {
-                File.Copy(sourceOriginal, destinationOriginal, overwrite: true);
-            }
-            return;
+            if (!string.Equals(Path.GetFullPath(sourceBase), Path.GetFullPath(destinationBase), StringComparison.OrdinalIgnoreCase))
+                File.Copy(sourceBase, destinationBase, overwrite: true);
         }
-
-        if (artwork is not null)
-        {
-            throw new InvalidOperationException("Face canonical original artwork is missing. Regenerate the Face before saving it.");
-        }
-
-        // Empty Face stubs have no source recipe; their newly-created transparent image is canonical.
-        File.Copy(processedArtworkPath, destinationOriginal, overwrite: true);
+        else if (!string.Equals(Path.GetFullPath(outputArtworkPath), Path.GetFullPath(destinationBase), StringComparison.OrdinalIgnoreCase))
+            File.Copy(outputArtworkPath, destinationBase, overwrite: true);
     }
 
     private static string? ResolveExistingProjectPath(EditorProject project, string? assetPath)

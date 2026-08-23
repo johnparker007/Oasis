@@ -94,15 +94,13 @@ internal sealed class FaceRegenerationService
             cabinetDocument: cabinetDocument);
 
         var artwork = PreserveArtwork(existingFace.Artwork, generated.Document.Artwork);
-        if (artwork is not null
-            && !string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)
-            && !string.IsNullOrWhiteSpace(projectDirectory))
+        if (artwork is not null && !string.IsNullOrWhiteSpace(projectDirectory) && !string.IsNullOrWhiteSpace(artwork.BaseAssetPath))
         {
-            var processingResult = new FaceArtworkRebuildService().ApplyProcessing(artwork, projectDirectory);
-            if (!processingResult.Succeeded)
-            {
-                throw new InvalidOperationException($"Regenerated Face artwork could not be processed with its preserved recipe: {processingResult.ErrorMessage}");
-            }
+            var builder = new FaceArtworkRebuildService();
+            if (builder.RebuildBase(artwork, sourcePanel, sourceShape, projectDirectory, artwork.BaseAssetPath, settings) is null)
+                throw new InvalidOperationException("Regenerated Face Base artwork could not be rebuilt from its preserved recipe.");
+            var output = builder.FinalizeOutput(artwork, projectDirectory);
+            if (!output.Succeeded) throw new InvalidOperationException(output.ErrorMessage);
         }
 
         progress.Report(0.45, "Correlating regenerated elements...");
@@ -223,7 +221,8 @@ internal sealed class FaceRegenerationService
                 FaceSourceShapeId = generated.Source.FaceSourceShapeId
             },
             ProcessingPipeline = existing.ProcessingPipeline,
-            GeneratedAssetPath = generated.GeneratedAssetPath,
+            BaseAssetPath = generated.BaseAssetPath,
+            OutputAssetPath = generated.OutputAssetPath,
             OutputWidth = generated.OutputWidth,
             OutputHeight = generated.OutputHeight
         };

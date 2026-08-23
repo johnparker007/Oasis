@@ -125,7 +125,7 @@ internal static class FaceMutationCommands
         var artwork = model.Artwork is null ? null : new FaceArtworkModel
         {
             Id = model.Artwork.Id, Source = model.Artwork.Source, ProcessingPipeline = pipeline,
-            GeneratedAssetPath = model.Artwork.GeneratedAssetPath, OutputWidth = model.Artwork.OutputWidth, OutputHeight = model.Artwork.OutputHeight
+            BaseAssetPath = model.Artwork.BaseAssetPath, OutputAssetPath = model.Artwork.OutputAssetPath, OutputWidth = model.Artwork.OutputWidth, OutputHeight = model.Artwork.OutputHeight
         };
         return new FaceDocumentModel
         {
@@ -208,7 +208,7 @@ internal static class FaceMutationCommands
                 ExecutionFailureMessage = readBeforeError;
                 return;
             }
-            if (!_document.TryRebuildFaceArtwork(out var processingError))
+            if (!_document.TryFinalizeFaceArtwork(out var processingError))
             {
                 ExecutionFailureMessage = processingError;
                 return;

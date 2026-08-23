@@ -24,11 +24,12 @@ public sealed class FaceBuildResult
 public sealed class FaceBuildService
 {
     private static readonly FaceGeneratedProduct[] s_order =
-        [FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets];
+        [FaceGeneratedProduct.BaseArtwork, FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets];
     private static readonly IReadOnlyDictionary<FaceGeneratedProduct, FaceGeneratedProduct[]> s_dependencies =
         new Dictionary<FaceGeneratedProduct, FaceGeneratedProduct[]>
         {
-            [FaceGeneratedProduct.ArtworkOutput] = [],
+            [FaceGeneratedProduct.BaseArtwork] = [],
+            [FaceGeneratedProduct.ArtworkOutput] = [FaceGeneratedProduct.BaseArtwork],
             [FaceGeneratedProduct.LampMask] = [],
             [FaceGeneratedProduct.Trays] = [FaceGeneratedProduct.LampMask],
             [FaceGeneratedProduct.RuntimeAssets] = [FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays]
@@ -37,8 +38,8 @@ public sealed class FaceBuildService
     private static readonly IReadOnlyDictionary<FaceBuildInput, FaceGeneratedProduct[]> s_invalidations =
         new Dictionary<FaceBuildInput, FaceGeneratedProduct[]>
         {
-            [FaceBuildInput.ArtworkSource] = [FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.RuntimeAssets],
-            [FaceBuildInput.ArtworkCorrection] = [FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.RuntimeAssets],
+            [FaceBuildInput.ArtworkSource] = [FaceGeneratedProduct.BaseArtwork],
+            [FaceBuildInput.ArtworkCorrection] = [FaceGeneratedProduct.BaseArtwork],
             [FaceBuildInput.LampInformation] = [FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
             [FaceBuildInput.MaskSettings] = [FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
             [FaceBuildInput.TraySettings] = [FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
@@ -48,12 +49,20 @@ public sealed class FaceBuildService
     public void Invalidate(FaceBuildStateModel state, FaceBuildInput input)
     {
         ArgumentNullException.ThrowIfNull(state);
-        foreach (var product in s_invalidations[input])
+        var pending = new Queue<FaceGeneratedProduct>(s_invalidations[input]);
+        var visited = new HashSet<FaceGeneratedProduct>();
+        while (pending.Count > 0)
         {
+            var product = pending.Dequeue();
+            if (!visited.Add(product)) continue;
             var node = state.Get(product);
-            if (node.Status == FaceBuildStatus.NotConfigured) continue;
-            node.Status = FaceBuildStatus.Stale;
-            node.ErrorMessage = null;
+            if (node.Status != FaceBuildStatus.NotConfigured)
+            {
+                node.Status = FaceBuildStatus.Stale;
+                node.ErrorMessage = null;
+            }
+            foreach (var dependent in s_dependencies.Where(pair => pair.Value.Contains(product)).Select(pair => pair.Key))
+                pending.Enqueue(dependent);
         }
     }
 
@@ -120,6 +129,7 @@ public static class FaceBuildStateFactory
         bool runtimeAssetsCurrent, bool runtimeAssetsConfigured)
     {
         var state = new FaceBuildStateModel();
+        Configure(state, FaceGeneratedProduct.BaseArtwork, artwork);
         Configure(state, FaceGeneratedProduct.ArtworkOutput, artwork);
         Configure(state, FaceGeneratedProduct.LampMask, mask);
         Configure(state, FaceGeneratedProduct.Trays, trays);

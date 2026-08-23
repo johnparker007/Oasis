@@ -330,7 +330,7 @@ public sealed class DocumentWorkspaceViewModel
 
         // Regeneration intentionally overwrites the stable Face artwork path. Evict the old decoded
         // image before the canvas-change notification causes the view to render that path again.
-        Views.SkiaFaceEditView.InvalidateArtworkImage(regeneratedFaceDocument.Artwork?.GeneratedAssetPath);
+        Views.SkiaFaceEditView.InvalidateArtworkImage(regeneratedFaceDocument.Artwork?.OutputAssetPath);
         selectedDocument.SetFaceDocument(
             regeneratedFaceDocument,
             new PanelChangeEvent(

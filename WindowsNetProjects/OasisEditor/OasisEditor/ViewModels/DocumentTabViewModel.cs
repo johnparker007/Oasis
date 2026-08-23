@@ -32,7 +32,6 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private double _panelPanX;
     private double _panelPanY;
     private CalibrationPlacementState? _calibrationPlacement;
-    private bool _faceArtworkShowOriginal;
     private Dictionary<string, object>? _lastVisualStateByObjectId;
     private readonly MachineRuntimeState _runtimeState;
     private CabinetModelDocumentViewModel? _cabinetViewer;
@@ -131,11 +130,6 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     }
 
     public void CancelCalibrationPlacement() => CalibrationPlacement = null;
-    public bool FaceArtworkShowOriginal
-    {
-        get => _faceArtworkShowOriginal;
-        set { if (_faceArtworkShowOriginal == value) return; _faceArtworkShowOriginal = value; PropertyChanged?.Invoke(this, new(nameof(FaceArtworkShowOriginal))); }
-    }
     public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && !string.IsNullOrWhiteSpace(_cabinetDocumentModel.Model.Path);
     public CabinetModelDocumentViewModel? ExistingCabinetViewer => _cabinetViewer;
     public CabinetModelDocumentViewModel? CabinetViewer => HasCabinetViewer ? GetOrCreateCabinetViewer() : null;
@@ -279,7 +273,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var service = new FaceBuildService();
         var executors = new Dictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>>
         {
-            [FaceGeneratedProduct.ArtworkOutput] = () => TryRebuildFaceArtwork(out var error)
+            [FaceGeneratedProduct.BaseArtwork] = BuildBaseArtwork,
+            [FaceGeneratedProduct.ArtworkOutput] = () => TryFinalizeFaceArtwork(out var error)
                 ? new(FaceGeneratedProduct.ArtworkOutput, true)
                 : new(FaceGeneratedProduct.ArtworkOutput, false, error),
             [FaceGeneratedProduct.LampMask] = BuildLampMask,
@@ -471,22 +466,25 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
     }
 
-    internal bool TryRebuildFaceArtwork(out string? errorMessage)
+    private FaceBuildNodeResult BuildBaseArtwork()
     {
-        errorMessage = null;
         var artwork = _faceDocumentModel.Artwork;
         var project = _projectAccessor?.Invoke();
-        if (artwork is null)
-        {
-            errorMessage = "The Face has no authored artwork state.";
-            return false;
-        }
-        if (project is null)
-        {
-            errorMessage = "The Face is not associated with an open project, so generated artwork paths cannot be resolved.";
-            return false;
-        }
-        var result = new FaceArtworkRebuildService().ApplyProcessing(artwork, project.ProjectDirectory);
+        if (artwork is null || project is null) return new(FaceGeneratedProduct.BaseArtwork, false, "Artwork or project is unavailable.");
+        if (!TryResolveSourcePanel(out var panel, out var error)) return new(FaceGeneratedProduct.BaseArtwork, false, error);
+        var shape = panel.FaceSourceShapes.FirstOrDefault(candidate => string.Equals(candidate.Id, artwork.Source.FaceSourceShapeId ?? _faceDocumentModel.SourceFaceShapeId, StringComparison.Ordinal));
+        if (shape is null) return new(FaceGeneratedProduct.BaseArtwork, false, "The linked Face Source Shape is unavailable.");
+        if (string.IsNullOrWhiteSpace(artwork.BaseAssetPath)) return new(FaceGeneratedProduct.BaseArtwork, false, "The Base artwork path is not configured.");
+        var built = new FaceArtworkRebuildService().RebuildBase(artwork, panel, shape, project.ProjectDirectory, artwork.BaseAssetPath, _faceDocumentModel.GenerationSettings);
+        return string.IsNullOrWhiteSpace(built) ? new(FaceGeneratedProduct.BaseArtwork, false, "Base artwork generation failed.") : new(FaceGeneratedProduct.BaseArtwork, true);
+    }
+
+    internal bool TryFinalizeFaceArtwork(out string? errorMessage)
+    {
+        var artwork = _faceDocumentModel.Artwork;
+        var project = _projectAccessor?.Invoke();
+        if (artwork is null || project is null) { errorMessage = "Artwork or project is unavailable."; return false; }
+        var result = new FaceArtworkRebuildService().FinalizeOutput(artwork, project.ProjectDirectory);
         errorMessage = result.ErrorMessage;
         if (!result.Succeeded) return false;
         NotifyGeneratedArtworkChanged(artwork);
@@ -531,7 +529,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private bool TryGetGeneratedArtworkPath(out string path)
     {
         path = string.Empty;
-        var artworkPath = _faceDocumentModel.Artwork?.GeneratedAssetPath;
+        var artworkPath = _faceDocumentModel.Artwork?.OutputAssetPath;
         var project = _projectAccessor?.Invoke();
         if (project is null || string.IsNullOrWhiteSpace(artworkPath)) return false;
         path = Path.IsPathRooted(artworkPath) ? artworkPath : Path.Combine(project.ProjectDirectory, artworkPath.Replace('/', Path.DirectorySeparatorChar));
@@ -540,7 +538,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     private void NotifyGeneratedArtworkChanged(FaceArtworkModel artwork)
     {
-        Views.SkiaFaceEditView.InvalidateArtworkImage(artwork.GeneratedAssetPath);
+        Views.SkiaFaceEditView.InvalidateArtworkImage(artwork.OutputAssetPath);
         PanelChanged?.Invoke(new PanelChangeEvent(DocumentId, artwork.Id, PanelChangeProperties.Metadata, AffectsCanvas: true, AffectsHierarchy: false, AffectsInspectorRows: false, AffectsPersistence: false));
     }
 
@@ -550,13 +548,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         whiteColor = operation.WhiteReference.ManualEnabled ? operation.WhiteReference.ManualColor : null;
         var artwork = _faceDocumentModel.Artwork;
         var project = _projectAccessor?.Invoke();
-        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)) return false;
-        var generatedPath = Path.IsPathRooted(artwork.GeneratedAssetPath)
-            ? artwork.GeneratedAssetPath
-            : Path.Combine(project.ProjectDirectory, artwork.GeneratedAssetPath.Replace('/', Path.DirectorySeparatorChar));
-        var originalPath = FaceArtworkRebuildService.GetOriginalArtworkPath(generatedPath);
-        if (!File.Exists(originalPath)) return false;
-        using var original = SKBitmap.Decode(originalPath);
+        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.OutputAssetPath)) return false;
+        if (!TryResolveSourcePanel(out var panel, out _)) return false;
+        var shape = panel.FaceSourceShapes.FirstOrDefault(candidate => string.Equals(candidate.Id, artwork.Source.FaceSourceShapeId, StringComparison.Ordinal));
+        if (shape is null) return false;
+        using var original = FaceArtworkRebuildService.BuildCorrectionInput(artwork, panel, shape, project.ProjectDirectory, _faceDocumentModel.GenerationSettings);
         if (original is null) return false;
         var index = artwork.ProcessingPipeline.Operations.ToList().FindIndex(o => o.Id == operation.Id);
         using var input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, Math.Max(0, index));
@@ -567,10 +563,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         var artwork = _faceDocumentModel.Artwork;
         var project = _projectAccessor?.Invoke();
-        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath)) return null;
-        var generated = Path.IsPathRooted(artwork.GeneratedAssetPath) ? artwork.GeneratedAssetPath : Path.Combine(project.ProjectDirectory, artwork.GeneratedAssetPath.Replace('/', Path.DirectorySeparatorChar));
-        var originalPath = FaceArtworkRebuildService.GetOriginalArtworkPath(generated);
-        using var original = File.Exists(originalPath) ? SKBitmap.Decode(originalPath) : null;
+        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.OutputAssetPath)) return null;
+        if (!TryResolveSourcePanel(out var panel, out _)) return null;
+        var shape = panel.FaceSourceShapes.FirstOrDefault(candidate => string.Equals(candidate.Id, artwork.Source.FaceSourceShapeId, StringComparison.Ordinal));
+        if (shape is null) return null;
+        using var original = FaceArtworkRebuildService.BuildCorrectionInput(artwork, panel, shape, project.ProjectDirectory, _faceDocumentModel.GenerationSettings);
         if (original is null) return null;
         var index = artwork.ProcessingPipeline.Operations.ToList().FindIndex(o => o.Id == operation.Id);
         using var input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, Math.Max(0, index));

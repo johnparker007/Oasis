@@ -78,7 +78,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         }
     }
 
-    public string ArtworkBuildSummary => $"{FormatProvenance(_document.GetFaceDocument().Provenance.Artwork)} • Output: {Status(FaceGeneratedProduct.ArtworkOutput)}";
+    public string ArtworkBuildSummary => $"{FormatProvenance(_document.GetFaceDocument().Provenance.Artwork)} • Base: {Status(FaceGeneratedProduct.BaseArtwork)} • Output: {Status(FaceGeneratedProduct.ArtworkOutput)}";
     public string ComponentsProvenanceSummary => FormatProvenance(_document.GetFaceDocument().Provenance.Components);
     public string IlluminationBuildSummary => $"{FormatProvenance(_document.GetFaceDocument().Provenance.Illumination)} • Mask: {Status(FaceGeneratedProduct.LampMask)} • Trays: {Status(FaceGeneratedProduct.Trays)} • Runtime: {Status(FaceGeneratedProduct.RuntimeAssets)}";
     public string BuildErrorSummary => string.Join(Environment.NewLine,
@@ -99,6 +99,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         value.IsLocallyModified ? $"{value.Origin} • locally modified" : value.Origin.ToString();
     private static string DisplayName(FaceGeneratedProduct product) => product switch
     {
+        FaceGeneratedProduct.BaseArtwork => "Base Artwork",
         FaceGeneratedProduct.ArtworkOutput => "Artwork Output",
         FaceGeneratedProduct.LampMask => "Lamp Mask",
         FaceGeneratedProduct.RuntimeAssets => "Runtime Assets",
@@ -117,6 +118,24 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         }
     }
 
+
+    public string ArtworkGeometrySummary => $"Perspective rectification • {_document.GetFaceDocument().Artwork?.OutputWidth} × {_document.GetFaceDocument().Artwork?.OutputHeight}";
+    public string ArtworkCorrectionSummary
+    {
+        get
+        {
+            var settings = _document.GetFaceDocument().GenerationSettings;
+            return $"{ArtworkCalibrationSummary} • Sharpening {(settings.PostWarpSharpeningEnabled ? $"enabled ({settings.PostWarpSharpeningAmount:0.##})" : "disabled")}";
+        }
+    }
+    public string ArtworkBaseSummary
+    {
+        get
+        {
+            var artwork = _document.GetFaceDocument().Artwork;
+            return artwork is null ? "Not configured" : $"Generated • {artwork.OutputWidth} × {artwork.OutputHeight} • {Status(FaceGeneratedProduct.BaseArtwork)} • {artwork.BaseAssetPath}";
+        }
+    }
     public string ArtworkOutputSummary
     {
         get
@@ -124,8 +143,8 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
             var artwork = _document.GetFaceDocument().Artwork;
             if (artwork is null) return "Generated output not configured";
             var dimensions = artwork.OutputWidth > 0 && artwork.OutputHeight > 0 ? $"{artwork.OutputWidth} × {artwork.OutputHeight}" : "dimensions unavailable";
-            var output = string.IsNullOrWhiteSpace(artwork.GeneratedAssetPath) ? "output path unavailable" : artwork.GeneratedAssetPath;
-            return $"{dimensions} • {output}";
+            var output = string.IsNullOrWhiteSpace(artwork.OutputAssetPath) ? "output path unavailable" : artwork.OutputAssetPath;
+            return $"Generated • {dimensions} • {Status(FaceGeneratedProduct.ArtworkOutput)} • {output}";
         }
     }
 

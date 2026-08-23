@@ -129,16 +129,24 @@ internal sealed class FaceGenerationService
             OutputHeight = output.Height
         };
         var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
-        var assetPath = new FaceArtworkRebuildService().Rebuild(artworkState, sourcePanel, sourceShape, projectDirectory, faceArtworkPath, settings);
+        var basePath = FaceArtworkGeneratedPathService.GetBasePathFromOutput(faceArtworkPath);
+        var generatedBasePath = new FaceArtworkRebuildService().RebuildBase(artworkState, sourcePanel, sourceShape, projectDirectory, basePath, settings);
+        var assetPath = string.IsNullOrWhiteSpace(projectDirectory) ? null : FaceArtworkGeneratedPathService.ToProjectRelative(faceArtworkPath, projectDirectory);
         artworkState = new FaceArtworkModel
         {
             Id = artworkState.Id,
             Source = artworkState.Source,
             ProcessingPipeline = artworkState.ProcessingPipeline,
-            GeneratedAssetPath = assetPath,
+            BaseAssetPath = generatedBasePath,
+            OutputAssetPath = assetPath,
             OutputWidth = artworkState.OutputWidth,
             OutputHeight = artworkState.OutputHeight
         };
+        if (!string.IsNullOrWhiteSpace(projectDirectory))
+        {
+            var finalized = new FaceArtworkRebuildService().FinalizeOutput(artworkState, projectDirectory);
+            if (!finalized.Succeeded) throw new InvalidOperationException(finalized.ErrorMessage);
+        }
         var faceDocumentId = Guid.NewGuid().ToString("N");
         progress?.Report(0.2, "Converting source-shape semantic components...");
         var semanticElements = _semanticElementConversionService.ConvertSupportedElements(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, inputDefinitions, cabinetDocument?.DefaultReelSpecificationId).ToArray();

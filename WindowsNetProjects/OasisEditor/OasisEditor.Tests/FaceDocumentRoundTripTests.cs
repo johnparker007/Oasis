@@ -32,7 +32,8 @@ public sealed class FaceDocumentRoundTripTests
                 {
                     Operations = [new ArtworkCalibrationOperationModel { Id = "operation-1", Enabled = false }]
                 },
-                GeneratedAssetPath = "Generated/Faces/Front Face/Artwork/artwork.png",
+                BaseAssetPath = "Generated/Faces/Front Face/Artwork/base.png",
+                OutputAssetPath = "Generated/Faces/Front Face/Artwork/artwork.png",
                 OutputWidth = 320,
                 OutputHeight = 240
             },
@@ -150,7 +151,8 @@ public sealed class FaceDocumentRoundTripTests
         Assert.Equal("artwork-state-1", savedDocument.Artwork!.Id);
         Assert.Equal(FaceArtworkSourceKind.Panel2DFaceSourceShape, savedDocument.Artwork.Source.Kind);
         Assert.Equal("shape-1", savedDocument.Artwork.Source.FaceSourceShapeId);
-        Assert.Equal("Generated/Faces/Front Face/Artwork/artwork.png", savedDocument.Artwork.GeneratedAssetPath);
+        Assert.Equal("Generated/Faces/Front Face/Artwork/base.png", savedDocument.Artwork.BaseAssetPath);
+        Assert.Equal("Generated/Faces/Front Face/Artwork/artwork.png", savedDocument.Artwork.OutputAssetPath);
         Assert.Equal("operation-1", Assert.Single(savedDocument.Artwork.ProcessingPipeline.Operations).Id);
         Assert.Equal("Generated/Faces/face-1-mask.png", savedDocument.MaskLayer!.AssetPath);
         Assert.Equal(24, savedDocument.MaskLayer.ExtractionThreshold);

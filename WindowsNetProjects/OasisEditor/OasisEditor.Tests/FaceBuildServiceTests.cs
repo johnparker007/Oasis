@@ -12,6 +12,7 @@ public sealed class FaceBuildServiceTests
     {
         var state = FaceBuildStateFactory.CreateGeneratedState(true, true, true, true, true);
         new FaceBuildService().Invalidate(state, FaceBuildInput.ArtworkCorrection);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.BaseArtwork).Status);
         Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.ArtworkOutput).Status);
         Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.RuntimeAssets).Status);
         Assert.Equal(FaceBuildStatus.Current, state.Get(FaceGeneratedProduct.Trays).Status);
@@ -48,7 +49,7 @@ public sealed class FaceBuildServiceTests
         var calls = new List<FaceGeneratedProduct>();
         var result = new FaceBuildService().Build(state, Builders(calls), force: true);
         Assert.True(result.Succeeded);
-        Assert.Equal(4, calls.Count);
+        Assert.Equal(5, calls.Count);
     }
 
     [Fact]
@@ -81,6 +82,22 @@ public sealed class FaceBuildServiceTests
     }
 
     [Fact]
+    public void BaseFailure_SkipsOutputAndLeavesItStale()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false);
+        new FaceBuildService().Invalidate(state, FaceBuildInput.ArtworkSource);
+        var builders = Builders([]).ToDictionary(pair => pair.Key, pair => pair.Value);
+        builders[FaceGeneratedProduct.BaseArtwork] = () => new(FaceGeneratedProduct.BaseArtwork, false, "source unavailable");
+
+        var result = new FaceBuildService().Build(state, builders);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(FaceBuildStatus.Error, state.Get(FaceGeneratedProduct.BaseArtwork).Status);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.ArtworkOutput).Status);
+        Assert.DoesNotContain(FaceGeneratedProduct.ArtworkOutput, result.Built);
+    }
+
+    [Fact]
     public void NotConfigured_IsSkippedWithoutFailure()
     {
         var result = new FaceBuildService().Build(new FaceBuildStateModel(), new Dictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>>());
@@ -97,7 +114,7 @@ public sealed class FaceBuildServiceTests
         var result = new FaceBuildService().Build(state, Builders(calls), force: true);
 
         Assert.True(result.Succeeded);
-        Assert.Equal([FaceGeneratedProduct.ArtworkOutput], calls);
+        Assert.Equal([FaceGeneratedProduct.BaseArtwork, FaceGeneratedProduct.ArtworkOutput], calls);
         Assert.Equal(FaceBuildStatus.NotConfigured, state.Get(FaceGeneratedProduct.RuntimeAssets).Status);
     }
 
@@ -226,6 +243,7 @@ public sealed class FaceBuildServiceTests
         var runtimeInvoked = false;
         var executors = new Dictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>>
         {
+            [FaceGeneratedProduct.BaseArtwork] = () => new(FaceGeneratedProduct.BaseArtwork, true),
             [FaceGeneratedProduct.ArtworkOutput] = () => new(FaceGeneratedProduct.ArtworkOutput, true),
             [FaceGeneratedProduct.RuntimeAssets] = () =>
             {
