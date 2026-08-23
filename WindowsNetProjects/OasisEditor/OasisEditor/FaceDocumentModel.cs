@@ -290,11 +290,17 @@ public sealed class FaceRuntimeRenderAssetsModel
     public DateTime GeneratedUtc { get; init; }
 }
 
+public enum FaceLampMaskSourceKind { Derived, AuthoredImage }
+
 public sealed class FaceMaskLayerModel
 {
     public string Id { get; init; } = "face-mask-layer";
     public string Name { get; init; } = "Face Mask";
+    /// <summary>Generated normalized mask path consumed by runtime export.</summary>
     public string? AssetPath { get; init; }
+    public FaceLampMaskSourceKind SourceKind { get; init; } = FaceLampMaskSourceKind.Derived;
+    /// <summary>Project-relative designer-owned image under Assets; never overwritten by Build.</summary>
+    public string? AuthoredAssetPath { get; init; }
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionModel? SourceRegion { get; init; }
     public byte ExtractionThreshold { get; init; }

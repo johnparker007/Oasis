@@ -8,6 +8,7 @@ public sealed class BulkDeleteSelectionCommand : Commands.IDocumentCommand, Comm
     private readonly List<DeletedPanelElement> _deletedPanelElements = [];
     private readonly List<DeletedFaceElement> _deletedFaceElements = [];
     private FaceSubsystemProvenanceModel? _previousComponentsProvenance;
+    private FaceSubsystemProvenanceModel? _previousIlluminationProvenance;
 
     public BulkDeleteSelectionCommand(Guid documentId, DocumentTabViewModel document, IEnumerable<EditorSelectionItem> selectionSnapshot)
     {
@@ -44,6 +45,7 @@ public sealed class BulkDeleteSelectionCommand : Commands.IDocumentCommand, Comm
         if (_deletedFaceElements.Count > 0)
         {
             _previousComponentsProvenance ??= _document.GetFaceDocument().Provenance.Components;
+            _previousIlluminationProvenance ??= _document.GetFaceDocument().Provenance.Illumination;
             var ids = _deletedFaceElements.Select(item => item.Element.ObjectId).ToHashSet(StringComparer.Ordinal);
             var elements = _document.GetFaceElements()
                 .Where(element => !ids.Contains(element.ObjectId))
@@ -54,6 +56,12 @@ public sealed class BulkDeleteSelectionCommand : Commands.IDocumentCommand, Comm
             {
                 _document.SetFaceDocument(FaceDocumentCopy.WithElementsAndComponents(_document.GetFaceDocument(),elements,FaceDocumentCopy.MarkComponentsModified(_document.GetFaceDocument().Provenance.Components)),CreateStructureChange(_document));
                 _document.InvalidateFaceBuild(FaceBuildInput.Components);
+            }
+            else if(_deletedFaceElements.Any(item=>item.Element is FaceLampWindowElement))
+            {
+                var face=_document.GetFaceDocument();
+                _document.SetFaceDocument(FaceDocumentCopy.WithIllumination(face,elements,face.MaskLayer,face.Trays,face.LampEmitters,FaceDocumentCopy.MarkIlluminationModified(face.Provenance.Illumination)),CreateStructureChange(_document));
+                _document.InvalidateFaceBuild(FaceBuildInput.LampInformation);
             }
             else _document.SetFaceElements(elements, CreateStructureChange(_document));
             changed = true;
@@ -108,6 +116,12 @@ public sealed class BulkDeleteSelectionCommand : Commands.IDocumentCommand, Comm
                 {
                     _document.SetFaceDocument(FaceDocumentCopy.WithElementsAndComponents(_document.GetFaceDocument(),elements,_previousComponentsProvenance),CreateStructureChange(_document));
                     _document.InvalidateFaceBuild(FaceBuildInput.Components);
+                }
+                else if(_previousIlluminationProvenance is not null && _deletedFaceElements.Any(item=>item.Element is FaceLampWindowElement))
+                {
+                    var face=_document.GetFaceDocument();
+                    _document.SetFaceDocument(FaceDocumentCopy.WithIllumination(face,elements,face.MaskLayer,face.Trays,face.LampEmitters,_previousIlluminationProvenance),CreateStructureChange(_document));
+                    _document.InvalidateFaceBuild(FaceBuildInput.LampInformation);
                 }
                 else _document.SetFaceElements(elements, CreateStructureChange(_document));
             }

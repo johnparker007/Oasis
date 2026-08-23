@@ -27,6 +27,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     private readonly DocumentTabViewModel _document;
     private FaceWorkspaceDestination _destination = FaceWorkspaceDestination.Overview;
     private FaceComponentKind? _componentPlacementKind;
+    private bool _isLampPlacementActive;
 
     public FaceWorkspaceViewModel(DocumentTabViewModel document)
     {
@@ -51,6 +52,8 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         AddSevenSegmentCommand = Placement(FaceComponentKind.SevenSegmentDisplay);
         AddAlphaDisplayCommand = Placement(FaceComponentKind.AlphaDisplay);
         RebuildComponentsFromSourceCommand = new RelayCommand(RebuildComponentsFromSource,()=>CanRebuildComponentsFromSource);
+        UseAuthoredMaskCommand = new RelayCommand(ChooseLampMask);
+        AddLampCommand = new RelayCommand(() => { NavigateTo(FaceWorkspaceDestination.IlluminationLamps); _isLampPlacementActive=true; Raise(nameof(IsLampPlacementActive)); Raise(nameof(LampEditorStatus)); });
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -90,6 +93,10 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public ICommand AddSevenSegmentCommand { get; }
     public ICommand AddAlphaDisplayCommand { get; }
     public ICommand RebuildComponentsFromSourceCommand { get; }
+    public ICommand AddLampCommand { get; }
+    public ICommand UseAuthoredMaskCommand { get; }
+    public bool IsLampPlacementActive => _isLampPlacementActive;
+    public string LampEditorStatus => _isLampPlacementActive ? "Place Lamp: click and drag bounds; Escape cancels." : "Select lamps in the viewport or Hierarchy, or choose Add Lamp.";
     public bool CanRebuildComponentsFromSource => _document.GetFaceDocument().Provenance.Components.Origin==FaceSubsystemOrigin.Derived && _document.TryConvertComponentsFromSource(out _,out _);
     public FaceComponentKind? ComponentPlacementKind => _componentPlacementKind;
     public bool IsComponentPlacementActive => _componentPlacementKind.HasValue;
@@ -124,6 +131,14 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         RefreshSummaries();
     }
 
+    private void ChooseLampMask()
+    {
+        var dialog=new OpenFileDialog{Title="Use authored lamp-mask image",Filter="Image files|*.png;*.jpg;*.jpeg;*.webp;*.bmp|All files|*.*",CheckFileExists=true};
+        if(dialog.ShowDialog()!=true)return;
+        if(!_document.ImportLampMaskImage(dialog.FileName,out var error))MessageBox.Show(error??"The lamp mask could not be imported.","Lamp Mask",MessageBoxButton.OK,MessageBoxImage.Error);
+        RefreshSummaries();
+    }
+
     private void UsePanel2DSource()
     {
         if (!_document.UsePanel2DArtworkSource(out var error))
@@ -145,6 +160,18 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         var element=FaceComponentFactory.Create(kind,x,y,width > 0 ? width : null,height > 0 ? height : null);
         _document.CommandService.Execute(FaceMutationCommands.CreateAddComponentCommand(_document.DocumentId,_document,element));
         CancelComponentPlacement();
+    }
+
+    public void CancelLampPlacement()
+    { if(!_isLampPlacementActive)return; _isLampPlacementActive=false; Raise(nameof(IsLampPlacementActive)); Raise(nameof(LampEditorStatus)); }
+
+    public void CompleteLampPlacement(double x,double y,double width,double height)
+    {
+        if(!_isLampPlacementActive)return;
+        var element=FaceElementFactory.CreateLampWindow(new System.Windows.Point(x,y));
+        if(width>0&&height>0) element=new FaceLampWindowElement { ObjectId=element.ObjectId,Name=element.Name,X=x,Y=y,Width=width,Height=height,IsVisible=true };
+        _document.CommandService.Execute(FaceMutationCommands.CreateAddLampWindowCommand(_document.DocumentId,_document,element));
+        CancelLampPlacement();
     }
 
     private static string DisplayComponentKind(FaceComponentKind kind)=>kind switch { FaceComponentKind.SevenSegmentDisplay=>"Seven-Segment Display", FaceComponentKind.AlphaDisplay=>"Alpha Display", _=>kind.ToString() };
@@ -271,7 +298,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         {
             var face = _document.GetFaceDocument();
             var lamps = face.Elements.OfType<FaceLampWindowElement>().Count();
-            var mask = face.MaskLayer is null ? "no mask" : $"mask {face.MaskLayer.Width} × {face.MaskLayer.Height}";
+            var mask = face.MaskLayer is null ? "no mask" : face.MaskLayer.SourceKind==FaceLampMaskSourceKind.AuthoredImage ? $"authored image: {face.MaskLayer.AuthoredAssetPath}" : $"derived mask {face.MaskLayer.Width} × {face.MaskLayer.Height}";
             return $"{lamps} lamps • {mask} • {face.Trays.Count} trays • {face.LampEmitters.Count} emitters";
         }
     }
@@ -281,6 +308,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         if (_destination == destination) return;
         if (destination != FaceWorkspaceDestination.ArtworkCalibration) _document.CancelCalibrationPlacement();
         if (destination != FaceWorkspaceDestination.ComponentsEditor) CancelComponentPlacement();
+        if (destination != FaceWorkspaceDestination.IlluminationLamps) CancelLampPlacement();
         _destination = destination;
         Raise(nameof(Destination));
         Raise(nameof(DestinationName));

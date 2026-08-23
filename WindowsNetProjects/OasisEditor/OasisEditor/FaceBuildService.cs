@@ -7,6 +7,7 @@ public enum FaceBuildInput
     ArtworkProcessing,
     Components,
     LampInformation,
+    LampMaskSource,
     MaskSettings,
     TraySettings,
     RuntimeAssetsSettings
@@ -45,7 +46,8 @@ public sealed class FaceBuildService
             [FaceBuildInput.ArtworkPreprocessing] = [FaceGeneratedProduct.ArtworkCorrectionInput],
             [FaceBuildInput.ArtworkProcessing] = [FaceGeneratedProduct.BaseArtwork],
             [FaceBuildInput.Components] = [FaceGeneratedProduct.RuntimeAssets],
-            [FaceBuildInput.LampInformation] = [FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
+            [FaceBuildInput.LampInformation] = [FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
+            [FaceBuildInput.LampMaskSource] = [FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
             [FaceBuildInput.MaskSettings] = [FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
             [FaceBuildInput.TraySettings] = [FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
             [FaceBuildInput.RuntimeAssetsSettings] = [FaceGeneratedProduct.RuntimeAssets]
