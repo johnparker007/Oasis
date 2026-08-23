@@ -223,7 +223,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
             Id = artwork.Id,
             Source = artwork.Source,
             ProcessingPipeline = artwork.ProcessingPipeline,
-            BaseAssetPath = FaceArtworkGeneratedPathService.ToProjectRelative(FaceArtworkGeneratedPathService.GetBasePathFromOutput(Path.Combine(project.ProjectDirectory, generatedAssetPath.Replace('/', Path.DirectorySeparatorChar))), project.ProjectDirectory),
+            BaseAssetPath = FaceArtworkGeneratedPathService.GetBasePathFromOutput(generatedAssetPath).Replace('\\', '/'),
             OutputAssetPath = generatedAssetPath,
             OutputWidth = artwork.OutputWidth > 0 ? artwork.OutputWidth : Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Width ?? 1)),
             OutputHeight = artwork.OutputHeight > 0 ? artwork.OutputHeight : Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Height ?? 1))
