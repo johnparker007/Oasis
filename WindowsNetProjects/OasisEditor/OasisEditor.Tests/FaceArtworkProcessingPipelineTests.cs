@@ -87,7 +87,7 @@ public sealed class FaceArtworkProcessingPipelineTests
     }
 
     [Fact]
-    public void ApplyChanges_BuildsStaleBaseAndOutputWithoutRebuildingCurrentCorrectionInput()
+    public void BuildArtwork_BuildsStaleBaseAndOutputWithoutRebuildingCurrentCorrectionInput()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"oasis-apply-processing-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
@@ -110,11 +110,9 @@ public sealed class FaceArtworkProcessingPipelineTests
             state.Get(FaceGeneratedProduct.BaseArtwork).Status = FaceBuildStatus.Stale;
             state.Get(FaceGeneratedProduct.ArtworkOutput).Status = FaceBuildStatus.Stale;
             using var document = CreateDocument(directory, inputPath, basePath, outputPath, operation, state);
-            var command = FaceMutationCommands.CreateApplyArtworkProcessingCommand(document.DocumentId, document);
+            var result = document.BuildArtwork();
 
-            document.CommandService.Execute(command);
-
-            Assert.True(Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command).WasExecuted);
+            Assert.True(result.Succeeded);
             Assert.Equal(FaceBuildStatus.Current, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.ArtworkCorrectionInput).Status);
             Assert.Equal(FaceBuildStatus.Current, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.BaseArtwork).Status);
             Assert.Equal(FaceBuildStatus.Current, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
@@ -127,7 +125,7 @@ public sealed class FaceArtworkProcessingPipelineTests
     }
 
     [Fact]
-    public void ApplyChanges_BaseFailureDoesNotFinalizeStaleOutput()
+    public void BuildArtwork_BaseFailureDoesNotFinalizeStaleOutput()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"oasis-apply-failure-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
@@ -143,11 +141,9 @@ public sealed class FaceArtworkProcessingPipelineTests
             state.Get(FaceGeneratedProduct.ArtworkOutput).Status = FaceBuildStatus.Stale;
             using var document = CreateDocument(directory, inputPath, Path.Combine(directory, "base.png"), outputPath,
                 new ArtworkCalibrationOperationModel(), state);
-            var command = FaceMutationCommands.CreateApplyArtworkProcessingCommand(document.DocumentId, document);
+            var result = document.BuildArtwork();
 
-            document.CommandService.Execute(command);
-
-            Assert.False(Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command).WasExecuted);
+            Assert.False(result.Succeeded);
             Assert.Equal(FaceBuildStatus.Error, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.BaseArtwork).Status);
             Assert.Equal(FaceBuildStatus.Stale, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
             Assert.Equal(outputBytes, File.ReadAllBytes(outputPath));

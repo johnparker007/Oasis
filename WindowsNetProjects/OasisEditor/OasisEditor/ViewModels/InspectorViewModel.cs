@@ -1350,7 +1350,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Generated Element Count", "Face Provenance", CountGeneratedElements(faceDocument).ToString()));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Last Regenerated", "Face Provenance", FormatTimestamp(faceDocument.LastRegeneratedAtUtc)));
         AddFaceMaskLayerSummaryRows(faceDocument.MaskLayer, "Mask Layer");
-        _propertyRows.Add(new InspectorInfoPropertyViewModel("Face Commands", "Workflow", "Use File > Regenerate Face, File > Validate Face, File > Open Source Panel2D, or Cabinet Assignment > Cabinet Face Target."));
 
         var missingMachineReferenceCount = CountMissingMachineReferences(faceDocument);
         if (missingMachineReferenceCount > 0)
@@ -1502,7 +1501,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         AddFaceMaskLayerSummaryRows(maskLayer, "Mask Layer");
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Panel2D Document", "Mask Provenance", maskLayer.SourcePanel2DDocumentId ?? selectedDocument.GetFaceDocument().SourcePanel2DDocumentId ?? string.Empty));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Renderer Contract", "Future Renderer Consumption", "Use this single face-sized mask as an aligned opacity/escape map. Do not infer runtime lamp identity from contribution metadata."));
-        _propertyRows.Add(new InspectorInfoPropertyViewModel("Mask Commands", "Workflow", "Use File > Regenerate Face to regenerate this layer from source metadata, or File > Validate Face to report mask diagnostics."));
 
         _hadInspectorSelection = true;
         _lastInspectorSelectionObjectId = maskLayer.Id;
@@ -1590,11 +1588,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             var authoredArtwork = selectedDocument.GetFaceDocument().Artwork;
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Type", "Artwork", authoredArtwork?.Source.Kind.ToString() ?? "Unknown"));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Asset Path", "Artwork", authoredArtwork?.Source.AssetPath ?? string.Empty));
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Generated Artwork Path", "Artwork", authoredArtwork?.OutputAssetPath ?? artwork.AssetPath ?? string.Empty));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Output Dimensions", "Artwork", authoredArtwork is null ? $"{artwork.Width:0} × {artwork.Height:0}" : $"{authoredArtwork.OutputWidth} × {authoredArtwork.OutputHeight}"));
             _propertyRows.Add(new InspectorInfoPropertyViewModel("Processing Operations", "Artwork", authoredArtwork?.ProcessingPipeline.Operations.Count.ToString() ?? "0"));
-            _propertyRows.Add(new InspectorActionPropertyViewModel("+ Add Artwork Calibration", "Processing Stack", new RelayCommand(() =>
-                _executeCanvasCommand(selectedDocument.DocumentId, FaceMutationCommands.CreateAddArtworkCalibrationCommand(selectedDocument.DocumentId, selectedDocument)))));
             if (authoredArtwork is not null)
             for (var index = 0; index < authoredArtwork.ProcessingPipeline.Operations.Count; index++)
             {
@@ -1617,7 +1612,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     _propertyRows.Add(new InspectorActionPropertyViewModel($"Remove {colourGroup.Name}",group,new RelayCommand(()=>TryUpdateCalibration(selectedDocument,calibration.Id,"Remove colour group",c=>CopyCalibration(c,groups:c.SameColorGroups.Where(g=>g.Id!=colourGroup.Id).ToArray())))));
                 }
                 _propertyRows.Add(new InspectorActionPropertyViewModel("+ Add Colour Group",group,new RelayCommand(()=>TryUpdateCalibration(selectedDocument,calibration.Id,"Add colour group",c=>CopyCalibration(c,groups:c.SameColorGroups.Append(new SameColorCalibrationGroupModel{Name=$"Colour Group {c.SameColorGroups.Count+1}"}).ToArray())))));
-                _propertyRows.Add(new InspectorActionPropertyViewModel("Apply Changes",group,new RelayCommand(()=>{CommitDeferredColors(group);_executeCanvasCommand(selectedDocument.DocumentId,FaceMutationCommands.CreateApplyArtworkProcessingCommand(selectedDocument.DocumentId,selectedDocument));})));
                 if(operationIndex>0)_propertyRows.Add(new InspectorActionPropertyViewModel("Move Up",group,new RelayCommand(()=>_executeCanvasCommand(selectedDocument.DocumentId,FaceMutationCommands.CreateMoveProcessingOperationCommand(selectedDocument.DocumentId,selectedDocument,calibration.Id,-1)))));
                 if(operationIndex+1<authoredArtwork.ProcessingPipeline.Operations.Count)_propertyRows.Add(new InspectorActionPropertyViewModel("Move Down",group,new RelayCommand(()=>_executeCanvasCommand(selectedDocument.DocumentId,FaceMutationCommands.CreateMoveProcessingOperationCommand(selectedDocument.DocumentId,selectedDocument,calibration.Id,1)))));
                 _propertyRows.Add(new InspectorActionPropertyViewModel("Remove Calibration",group,new RelayCommand(()=>_executeCanvasCommand(selectedDocument.DocumentId,FaceMutationCommands.CreateRemoveProcessingOperationCommand(selectedDocument.DocumentId,selectedDocument,calibration.Id)))));

@@ -2,6 +2,16 @@ namespace OasisEditor;
 
 internal static class FaceDocumentCopy
 {
+    public static FaceDocumentModel WithGenerationSettings(FaceDocumentModel value, FaceGenerationSettingsModel settings) => new()
+    {
+        Id=value.Id, Title=value.Title, Summary=value.Summary, SourcePanel2DDocumentId=value.SourcePanel2DDocumentId,
+        SourcePanel2DDocumentPath=value.SourcePanel2DDocumentPath, SourceFaceShapeId=value.SourceFaceShapeId,
+        AssignedCabinetFaceTargetId=value.AssignedCabinetFaceTargetId, AssignedCabinetAssetPath=value.AssignedCabinetAssetPath,
+        SourceRegion=value.SourceRegion, LastRegeneratedAtUtc=value.LastRegeneratedAtUtc, GenerationSettings=settings.Normalize(),
+        Provenance=value.Provenance, BuildState=value.BuildState, Artwork=value.Artwork, RuntimeRenderAssets=value.RuntimeRenderAssets,
+        MaskLayer=value.MaskLayer, Trays=value.Trays, LampEmitters=value.LampEmitters, Layers=value.Layers, Elements=value.Elements
+    };
+
     public static FaceArtworkModel WithOverride(FaceArtworkModel value, FaceArtworkOverrideModel? artworkOverride,
         int? finalWidth = null, int? finalHeight = null) => new()
     {

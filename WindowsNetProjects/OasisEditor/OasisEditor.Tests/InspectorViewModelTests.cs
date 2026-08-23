@@ -10,11 +10,17 @@ namespace OasisEditor.Tests;
 public sealed class InspectorViewModelTests
 {
     [Fact]
-    public void FaceArtworkProcessingStack_AddAndRemoveRefreshInspectorWithoutReselection()
+    public void FaceArtworkProcessingStack_RemoveRefreshesInspectorWithoutReselection()
     {
         var face = new FaceDocumentModel
         {
-            Artwork = new FaceArtworkModel(),
+            Artwork = new FaceArtworkModel
+            {
+                ProcessingPipeline = new ImageProcessingPipelineModel
+                {
+                    Operations = [new ArtworkCalibrationOperationModel()]
+                }
+            },
             Elements = [new FaceArtworkElement { ObjectId = "art", Name = "Artwork", Width = 100, Height = 100 }]
         };
         var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"), faceDocumentJson: FaceDocumentStorage.Serialize(face));
@@ -26,8 +32,6 @@ public sealed class InspectorViewModelTests
         document.PanelChanged += viewModel.NotifyPanelChanged;
         viewModel.NotifyContextChanged();
 
-        Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.DisplayName == "Strength (%)");
-        Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "+ Add Artwork Calibration")).Command.Execute(null);
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Strength (%)");
 
         Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Remove Calibration")).Command.Execute(null);

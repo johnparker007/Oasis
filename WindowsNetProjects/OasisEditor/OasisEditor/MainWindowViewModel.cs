@@ -45,7 +45,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private int _system6AudioBufferLengthMilliseconds = NativeEmulationPreferences.DefaultAudioBufferLengthMilliseconds;
     private string _lastMfmeFmlImportDirectory = string.Empty;
     private FaceGenerationSettingsModel _defaultFaceGenerationSettings = FaceGenerationSettingsModel.Default;
-    private bool _showFaceGenerationSettingsBeforeRegenerate = true;
     private string _oasisPlayerExecutablePath = string.Empty;
     private bool _oasisPlayerFullscreen;
     private int _oasisPlayerPreviewWidth = OasisPlayerLaunchService.DefaultPreviewWidth;
@@ -149,8 +148,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenFaceStubCommand = new RelayCommand(OpenFaceStubDocument, CanOpenUntitledDocument);
         AddFaceSourceShapeCommand = new RelayCommand(AddFaceSourceShape, CanAddFaceSourceShape);
         GenerateFaceFromSourceShapeCommand = new RelayCommand(GenerateFaceFromSourceShape, CanGenerateFaceFromSourceShape);
-        RegenerateFaceCommand = new RelayCommand(RegenerateFace, CanRegenerateFace);
-        OpenFaceGenerationSettingsCommand = new RelayCommand(OpenFaceGenerationSettings, CanOpenFaceGenerationSettings);
         ValidateFaceCommand = new RelayCommand(ValidateFace, CanValidateFace);
         OpenSourcePanel2DCommand = new RelayCommand(OpenSourcePanel2D, CanOpenSourcePanel2D);
         OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
@@ -248,7 +245,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _oasisPlayerPreviewHeight = preferences.Player.PreviewHeight;
             _lastMfmeFmlImportDirectory = preferences.LastMfmeFmlImportDirectory;
             _defaultFaceGenerationSettings = preferences.FaceGeneration.ToSettings();
-            _showFaceGenerationSettingsBeforeRegenerate = preferences.FaceGeneration.ShowFaceGenerationSettingsBeforeRegenerate;
             _outputLog.ShowInfoLogs = preferences.OutputLog.ShowInfoLogs;
             _outputLog.ShowWarningLogs = preferences.OutputLog.ShowWarningLogs;
             _outputLog.ShowErrorLogs = preferences.OutputLog.ShowErrorLogs;
@@ -370,8 +366,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenFaceStubCommand { get; }
     public ICommand AddFaceSourceShapeCommand { get; }
     public ICommand GenerateFaceFromSourceShapeCommand { get; }
-    public ICommand RegenerateFaceCommand { get; }
-    public ICommand OpenFaceGenerationSettingsCommand { get; }
     public ICommand ValidateFaceCommand { get; }
     public ICommand OpenSourcePanel2DCommand { get; }
     public ICommand OpenCabinet3DStubCommand { get; }
@@ -1000,213 +994,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AddOutputEntry($"Create Face from Face Source Shape failed: {ex.Message}", OutputLogStatus.Error);
             MessageBox.Show(ex.Message, "Create Face from Face Source Shape Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-    }
-
-    private bool CanRegenerateFace()
-    {
-        return _documentWorkspace.CanRegenerateSelectedFace();
-    }
-
-    private async void RegenerateFace()
-    {
-        if (!CanRegenerateFace())
-        {
-            return;
-        }
-
-        FaceGenerationSettingsModel? settings = null;
-        if (_showFaceGenerationSettingsBeforeRegenerate)
-        {
-            var existingFace = SelectedDocument?.GetFaceDocument();
-            if (existingFace is null)
-            {
-                return;
-            }
-
-            var dialog = new FaceGenerationSettingsDialog(existingFace.GenerationSettings, "Regenerate")
-            {
-                Owner = _ownerWindow
-            };
-
-            if (dialog.ShowDialog() != true)
-            {
-                return;
-            }
-
-            settings = dialog.Settings;
-        }
-
-        try
-        {
-            await _progressDialogService.RunAsync(
-                new EditorProgressRequest("Regenerating Face", "Regenerating selected Face from Face Source Shape...", EditorProgressMode.Determinate),
-                (progress, _) =>
-                {
-                    _documentWorkspace.RegenerateSelectedFace(settings, progress);
-                    return Task.CompletedTask;
-                });
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = ex.Message;
-            AddOutputEntry($"Regenerate Face failed: {ex.Message}", OutputLogStatus.Error);
-            MessageBox.Show(ex.Message, "Regenerate Face Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
-
-    private bool CanOpenFaceGenerationSettings()
-    {
-        return CanGenerateFaceFromSourceShape() || SelectedDocument?.Document.DocumentType == EditorDocumentType.Face;
-    }
-
-    private async void OpenFaceGenerationSettings()
-    {
-        if (SelectedDocument?.Document.DocumentType == EditorDocumentType.Face)
-        {
-            var canRegenerate = CanRegenerateFace();
-            var existingFace = SelectedDocument.GetFaceDocument();
-            var dialog = new FaceGenerationSettingsDialog(existingFace.GenerationSettings, canRegenerate ? "Regenerate" : "Save")
-            {
-                Owner = _ownerWindow
-            };
-
-            if (dialog.ShowDialog() == true)
-            {
-                if (canRegenerate)
-                {
-                    try
-                    {
-                        await _progressDialogService.RunAsync(
-                            new EditorProgressRequest("Regenerating Face", "Regenerating selected Face from Face Source Shape...", EditorProgressMode.Determinate),
-                            (progress, _) =>
-                            {
-                                _documentWorkspace.RegenerateSelectedFace(dialog.Settings, progress);
-                                return Task.CompletedTask;
-                            });
-                    }
-                    catch (Exception ex)
-                    {
-                        StatusMessage = ex.Message;
-                        AddOutputEntry($"Regenerate Face failed: {ex.Message}", OutputLogStatus.Error);
-                        MessageBox.Show(ex.Message, "Regenerate Face Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    }
-                }
-                else
-                {
-                    SaveSelectedFaceGenerationSettings(dialog.Settings);
-                }
-            }
-
-            return;
-        }
-
-        if (!CanGenerateFaceFromSourceShape())
-        {
-            return;
-        }
-
-        var generateDialog = new FaceGenerationSettingsDialog(_defaultFaceGenerationSettings, "Create Face from Face Source Shape")
-        {
-            Owner = _ownerWindow
-        };
-
-        if (generateDialog.ShowDialog() != true)
-        {
-            return;
-        }
-
-        var faceNameDialog = new HierarchyRenameDialog("New Face", "Create Face Asset", "Face asset name")
-        {
-            Owner = _ownerWindow
-        };
-
-        if (faceNameDialog.ShowDialog() != true)
-        {
-            return;
-        }
-
-        var faceAssetName = faceNameDialog.NameText;
-        _defaultFaceGenerationSettings = generateDialog.Settings;
-        SavePreferences();
-        try
-        {
-            await _progressDialogService.RunAsync(
-                new EditorProgressRequest("Creating Face", "Creating Face from Face Source Shape...", EditorProgressMode.Determinate),
-                (progress, _) =>
-                {
-                    _documentWorkspace.GenerateFaceFromSelectedFaceSourceShape(faceAssetName, generateDialog.Settings, progress);
-                    return Task.CompletedTask;
-                });
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = ex.Message;
-            AddOutputEntry($"Create Face from Face Source Shape failed: {ex.Message}", OutputLogStatus.Error);
-            MessageBox.Show(ex.Message, "Create Face from Face Source Shape Failed", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
-
-
-    private void SaveSelectedFaceGenerationSettings(FaceGenerationSettingsModel settings)
-    {
-        if (SelectedDocument?.Document.DocumentType != EditorDocumentType.Face)
-        {
-            return;
-        }
-
-        var faceDocument = SelectedDocument.GetFaceDocument();
-        var previousSettings = faceDocument.GenerationSettings;
-        var normalizedSettings = (settings ?? FaceGenerationSettingsModel.Default).Normalize();
-        SelectedDocument.SetFaceDocument(new FaceDocumentModel
-        {
-            Id = faceDocument.Id,
-            Title = faceDocument.Title,
-            Summary = faceDocument.Summary,
-            SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
-            SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
-            SourceFaceShapeId = faceDocument.SourceFaceShapeId,
-            AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
-            AssignedCabinetAssetPath = faceDocument.AssignedCabinetAssetPath,
-            SourceRegion = faceDocument.SourceRegion,
-            LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
-            GenerationSettings = normalizedSettings,
-            Provenance = faceDocument.Provenance,
-            BuildState = faceDocument.BuildState,
-            Artwork = faceDocument.Artwork,
-            RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
-            MaskLayer = faceDocument.MaskLayer,
-            Trays = faceDocument.Trays,
-            LampEmitters = faceDocument.LampEmitters,
-            Layers = faceDocument.Layers,
-            Elements = faceDocument.Elements
-        },
-        new PanelChangeEvent(
-            SelectedDocument.DocumentId,
-            null,
-            PanelChangeProperties.Metadata,
-            AffectsCanvas: false,
-            AffectsHierarchy: false,
-            AffectsInspectorRows: true,
-            AffectsPersistence: true));
-        SelectedDocument.MarkDirty();
-        if (previousSettings.PostWarpSharpeningEnabled != normalizedSettings.PostWarpSharpeningEnabled
-            || previousSettings.PostWarpSharpeningAmount != normalizedSettings.PostWarpSharpeningAmount
-            || previousSettings.PostWarpSharpeningRadiusPixels != normalizedSettings.PostWarpSharpeningRadiusPixels
-            || previousSettings.PostWarpSharpeningThreshold != normalizedSettings.PostWarpSharpeningThreshold)
-        {
-            SelectedDocument.InvalidateFaceBuild(FaceBuildInput.ArtworkPreprocessing);
-        }
-        if (previousSettings.MaskExtractionThreshold != normalizedSettings.MaskExtractionThreshold)
-        {
-            SelectedDocument.InvalidateFaceBuild(FaceBuildInput.MaskSettings);
-        }
-        if (previousSettings.TrayBoundsInflationPercent != normalizedSettings.TrayBoundsInflationPercent
-            || previousSettings.TrayBoundsPaddingPixels != normalizedSettings.TrayBoundsPaddingPixels
-            || previousSettings.ClampTrayBoundsToLampWindow != normalizedSettings.ClampTrayBoundsToLampWindow)
-        {
-            SelectedDocument.InvalidateFaceBuild(FaceBuildInput.TraySettings);
-        }
-        AddOutputEntry($"Updated face generation settings for '{SelectedDocument.Title}'.", OutputLogStatus.Info);
     }
 
     private bool CanValidateFace()
@@ -1991,9 +1778,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 PreviewWidth = OasisPlayerPreviewWidth,
                 PreviewHeight = OasisPlayerPreviewHeight
             },
-            FaceGeneration = FaceGenerationPreferences.FromSettings(
-                _defaultFaceGenerationSettings,
-                _showFaceGenerationSettingsBeforeRegenerate),
+            FaceGeneration = FaceGenerationPreferences.FromSettings(_defaultFaceGenerationSettings),
             OutputLog = new OutputLogPreferences
             {
                 ShowInfoLogs = _outputLog.ShowInfoLogs,
@@ -3425,16 +3210,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (GenerateFaceFromSourceShapeCommand is RelayCommand generateFaceFromSourceShapeRelayCommand)
         {
             generateFaceFromSourceShapeRelayCommand.RaiseCanExecuteChanged();
-        }
-
-        if (RegenerateFaceCommand is RelayCommand regenerateFaceRelayCommand)
-        {
-            regenerateFaceRelayCommand.RaiseCanExecuteChanged();
-        }
-
-        if (OpenFaceGenerationSettingsCommand is RelayCommand faceGenerationSettingsRelayCommand)
-        {
-            faceGenerationSettingsRelayCommand.RaiseCanExecuteChanged();
         }
 
         if (ValidateFaceCommand is RelayCommand validateFaceRelayCommand)

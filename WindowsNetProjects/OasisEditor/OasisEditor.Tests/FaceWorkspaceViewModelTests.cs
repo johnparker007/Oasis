@@ -17,7 +17,7 @@ public sealed class FaceWorkspaceViewModelTests
     [InlineData(FaceWorkspaceDestination.Artwork)]
     [InlineData(FaceWorkspaceDestination.Components)]
     [InlineData(FaceWorkspaceDestination.Illumination)]
-    [InlineData(FaceWorkspaceDestination.FaceEditor)]
+    [InlineData(FaceWorkspaceDestination.LayoutView)]
     public void NavigateFromOverview_ChangesDestination(FaceWorkspaceDestination destination)
     {
         var (_, workspace) = CreateWorkspace();
@@ -59,12 +59,12 @@ public sealed class FaceWorkspaceViewModelTests
     }
 
     [Fact]
-    public void FaceEditor_FallbackRemainsAvailable()
+    public void LayoutView_RemainsAvailableForWholeFaceReview()
     {
         var (_, workspace) = CreateWorkspace();
-        workspace.NavigateToFaceEditorCommand.Execute(null);
-        Assert.Equal(FaceWorkspaceDestination.FaceEditor, workspace.Destination);
-        Assert.Equal(["Upper Glass", "Face Editor"], workspace.Breadcrumbs.Select(item => item.Label));
+        workspace.NavigateToLayoutViewCommand.Execute(null);
+        Assert.Equal(FaceWorkspaceDestination.LayoutView, workspace.Destination);
+        Assert.Equal(["Upper Glass", "Layout View"], workspace.Breadcrumbs.Select(item => item.Label));
     }
 
     [Fact]
