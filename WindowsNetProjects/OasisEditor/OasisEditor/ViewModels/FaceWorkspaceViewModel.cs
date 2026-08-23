@@ -242,7 +242,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
 
     internal void RefreshSummaries()
     {
-        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkOutputSummary)); Raise(nameof(ArtworkCalibrationSummary));
+        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkOutputSummary)); Raise(nameof(ArtworkCalibrationSummary));
         Raise(nameof(ComponentsSummary)); Raise(nameof(IlluminationSummary));
         Raise(nameof(BuildStatusSummary)); Raise(nameof(ArtworkBuildSummary));
         Raise(nameof(ComponentsProvenanceSummary)); Raise(nameof(IlluminationBuildSummary));

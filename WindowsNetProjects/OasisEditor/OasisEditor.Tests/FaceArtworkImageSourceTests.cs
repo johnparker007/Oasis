@@ -58,6 +58,71 @@ public sealed class FaceArtworkImageSourceTests
         Assert.False(new FacePerspectiveRegistrationModel { TopLeft=P(0,0),TopRight=P(1,1),BottomRight=P(1,0),BottomLeft=P(0,1) }.IsValid());
     }
 
+    [Fact]
+    public void RegistrationCommand_UndoRedoRestoresModelAndRaisesRefreshSignal()
+    {
+        var initial = Registration(.1, .1, .9, .1, .9, .9, .1, .9);
+        var changed = Registration(.2, .15, .85, .1, .9, .85, .1, .9);
+        var (document, workspace) = CreateImageWorkspace(initial);
+        var notifications = new List<string?>();
+        workspace.PropertyChanged += (_, args) => notifications.Add(args.PropertyName);
+
+        workspace.CommitRegistration(changed);
+        AssertRegistration(document, changed);
+
+        notifications.Clear();
+        Assert.True(document.CommandService.TryUndo());
+        AssertRegistration(document, initial);
+        Assert.Contains(nameof(FaceWorkspaceViewModel.ArtworkRegistration), notifications);
+
+        notifications.Clear();
+        Assert.True(document.CommandService.TryRedo());
+        AssertRegistration(document, changed);
+        Assert.Contains(nameof(FaceWorkspaceViewModel.ArtworkRegistration), notifications);
+    }
+
+    [Fact]
+    public void ResetRegistration_UndoRestoresCustomRegistration()
+    {
+        var custom = Registration(.1, .2, .9, .15, .85, .9, .05, .8);
+        var (document, workspace) = CreateImageWorkspace(custom);
+
+        workspace.ResetRegistration();
+        AssertRegistration(document, FacePerspectiveRegistrationModel.FullImage);
+
+        Assert.True(document.CommandService.TryUndo());
+        AssertRegistration(document, custom);
+    }
+
+    private static (DocumentTabViewModel Document, FaceWorkspaceViewModel Workspace) CreateImageWorkspace(FacePerspectiveRegistrationModel registration)
+    {
+        var model = new FaceDocumentModel
+        {
+            Title = "Upper Glass",
+            Artwork = new FaceArtworkModel
+            {
+                Source = new FaceArtworkSourceModel { Kind = FaceArtworkSourceKind.Image, AssetPath = "Assets/source.png", PixelWidth = 1000, PixelHeight = 1000 },
+                Geometry = new FaceArtworkGeometryModel { PerspectiveRegistration = registration }
+            }
+        };
+        var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Upper Glass"), faceDocumentJson: FaceDocumentStorage.Serialize(model));
+        return (document, Assert.IsType<FaceWorkspaceViewModel>(document.FaceWorkspace));
+    }
+
+    private static FacePerspectiveRegistrationModel Registration(double tlx, double tly, double trx, double try_, double brx, double bry, double blx, double bly) => new()
+    {
+        TopLeft = P(tlx, tly), TopRight = P(trx, try_), BottomRight = P(brx, bry), BottomLeft = P(blx, bly)
+    };
+
+    private static void AssertRegistration(DocumentTabViewModel document, FacePerspectiveRegistrationModel expected)
+    {
+        var actual = document.GetFaceDocument().Artwork!.Geometry.PerspectiveRegistration;
+        AssertPoint(actual.TopLeft, expected.TopLeft.X, expected.TopLeft.Y);
+        AssertPoint(actual.TopRight, expected.TopRight.X, expected.TopRight.Y);
+        AssertPoint(actual.BottomRight, expected.BottomRight.X, expected.BottomRight.Y);
+        AssertPoint(actual.BottomLeft, expected.BottomLeft.X, expected.BottomLeft.Y);
+    }
+
     private static NormalizedFacePointModel P(double x,double y)=>new(){X=x,Y=y};
     private static void AssertPoint(NormalizedFacePointModel p,double x,double y){Assert.Equal(x,p.X,6);Assert.Equal(y,p.Y,6);}
 }
