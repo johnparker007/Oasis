@@ -45,8 +45,11 @@ public sealed class FaceArtworkImageSourceTests
     {
         var size=FaceSourceShapeTransformService.EstimateRegisteredImageOutputSize(4000,3000,new FacePerspectiveRegistrationModel {
             TopLeft=P(.1,.1),TopRight=P(.9,.1),BottomRight=P(.85,.9),BottomLeft=P(.15,.9) });
-        Assert.InRange(size.Width,3199,3201); Assert.InRange(size.Height,2399,2401);
-        Assert.True(size.Width<=4000);Assert.True(size.Height<=3000);
+        Assert.Equal(3200, size.Width);
+        // The registered side is diagonal in source-pixel space: ceil(sqrt(200^2 + 2400^2)).
+        Assert.Equal(2409, size.Height);
+        Assert.True(size.Width <= 4000);
+        Assert.True(size.Height <= 3000);
     }
 
     [Fact]
