@@ -90,15 +90,15 @@ internal static class FaceMutationCommands
         private readonly Guid _id; private readonly DocumentTabViewModel _document; private readonly FaceElementModel[] _components; private readonly string _sourcePath;
         private FaceElementModel[]? _previousElements; private FaceSubsystemProvenanceModel? _previousProvenance;
         public RebuildComponentsMutationCommand(Guid id,DocumentTabViewModel document,IReadOnlyList<FaceElementModel> components,string sourcePath)
-        { _id=id;_document=document;_components=components.Select(FaceElementModelCloner.Clone).ToArray();_sourcePath=sourcePath; }
+        { _id=id;_document=document;_components=components.Select(element => FaceElementModelCloner.Clone(element)).ToArray();_sourcePath=sourcePath; }
         public Guid DocumentId=>_id; public string Description=>"Rebuild Face Components From Source"; public bool WasExecuted{get;private set;}
         public void Execute()
         {
-            var face=_document.GetFaceDocument();_previousElements??=face.Elements.Select(FaceElementModelCloner.Clone).ToArray();_previousProvenance??=face.Provenance.Components;
-            var retained=face.Elements.Where(e=>!FaceElementClassification.IsComponent(e)).Select(FaceElementModelCloner.Clone);
-            Set(retained.Concat(_components.Select(FaceElementModelCloner.Clone)).ToArray(),new FaceSubsystemProvenanceModel{Origin=FaceSubsystemOrigin.Derived,SourceDocumentPath=_sourcePath});WasExecuted=true;
+            var face=_document.GetFaceDocument();_previousElements??=face.Elements.Select(element => FaceElementModelCloner.Clone(element)).ToArray();_previousProvenance??=face.Provenance.Components;
+            var retained=face.Elements.Where(e=>!FaceElementClassification.IsComponent(e)).Select(element => FaceElementModelCloner.Clone(element));
+            Set(retained.Concat(_components.Select(element => FaceElementModelCloner.Clone(element))).ToArray(),new FaceSubsystemProvenanceModel{Origin=FaceSubsystemOrigin.Derived,SourceDocumentPath=_sourcePath});WasExecuted=true;
         }
-        public void Undo(){if(_previousElements is null||_previousProvenance is null)return;Set(_previousElements.Select(FaceElementModelCloner.Clone).ToArray(),_previousProvenance);}
+        public void Undo(){if(_previousElements is null||_previousProvenance is null)return;Set(_previousElements.Select(element => FaceElementModelCloner.Clone(element)).ToArray(),_previousProvenance);}
         private void Set(IReadOnlyList<FaceElementModel> elements,FaceSubsystemProvenanceModel provenance)
         { _document.SetFaceDocument(FaceDocumentCopy.WithElementsAndComponents(_document.GetFaceDocument(),elements,provenance),CreateChange(_document,null,PanelChangeProperties.Structure|PanelChangeProperties.Geometry|PanelChangeProperties.Metadata,true));_document.InvalidateFaceBuild(FaceBuildInput.Components);_document.MarkDirty(); }
     }
