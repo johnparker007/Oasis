@@ -545,6 +545,24 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         return false;
     }
 
+    internal bool TryConvertComponentsFromSource(out IReadOnlyList<FaceElementModel> components, out string error)
+    {
+        components=[];
+        if(!TryResolveSourcePanel(out var panel,out error))return false;
+        var shape=panel.FaceSourceShapes.FirstOrDefault(value=>string.Equals(value.Id,_faceDocumentModel.SourceFaceShapeId,StringComparison.Ordinal));
+        if(shape is null){error=$"Face Source Shape '{_faceDocumentModel.SourceFaceShapeId}' was not found in the source Panel2D.";return false;}
+        var estimated=FaceSourceShapeTransformService.EstimateOutputSize(shape,null);
+        // Component geometry stays in the established Face logical space. It must not follow a replacement
+        // artwork bitmap's pixel dimensions (Phase 5 deliberately makes artwork resolution independent).
+        var logicalArtwork=_faceDocumentModel.Elements.OfType<FaceArtworkElement>().FirstOrDefault();
+        var width=logicalArtwork?.Width>0?(int)Math.Round(logicalArtwork.Width):estimated.Width;
+        var height=logicalArtwork?.Height>0?(int)Math.Round(logicalArtwork.Height):estimated.Height;
+        var projectDirectory=_projectAccessor?.Invoke()?.ProjectDirectory;
+        components=new FaceSemanticElementConversionService().ConvertSupportedElements(panel,shape,width,height,projectDirectory)
+            .Where(FaceElementClassification.IsComponent).ToArray();
+        return true;
+    }
+
     private void PersistBuildStateWhenDocumentIsClean(FaceBuildResult result)
     {
         if (IsDirty) return; // The next normal Save persists authored changes and build state together.

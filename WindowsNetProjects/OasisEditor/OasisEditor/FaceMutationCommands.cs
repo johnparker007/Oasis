@@ -79,6 +79,30 @@ internal static class FaceMutationCommands
         return new AddFaceElementMutationCommand(documentId, document, element);
     }
 
+    public static Commands.ICommand CreateAddComponentCommand(Guid documentId, DocumentTabViewModel document, FaceElementModel element) =>
+        new AddFaceComponentMutationCommand(documentId, document, element);
+
+    public static Commands.ICommand CreateRebuildComponentsCommand(Guid documentId, DocumentTabViewModel document,
+        IReadOnlyList<FaceElementModel> components, string sourcePath) => new RebuildComponentsMutationCommand(documentId,document,components,sourcePath);
+
+    private sealed class RebuildComponentsMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _id; private readonly DocumentTabViewModel _document; private readonly FaceElementModel[] _components; private readonly string _sourcePath;
+        private FaceElementModel[]? _previousElements; private FaceSubsystemProvenanceModel? _previousProvenance;
+        public RebuildComponentsMutationCommand(Guid id,DocumentTabViewModel document,IReadOnlyList<FaceElementModel> components,string sourcePath)
+        { _id=id;_document=document;_components=components.Select(element => FaceElementModelCloner.Clone(element)).ToArray();_sourcePath=sourcePath; }
+        public Guid DocumentId=>_id; public string Description=>"Rebuild Face Components From Source"; public bool WasExecuted{get;private set;}
+        public void Execute()
+        {
+            var face=_document.GetFaceDocument();_previousElements??=face.Elements.Select(element => FaceElementModelCloner.Clone(element)).ToArray();_previousProvenance??=face.Provenance.Components;
+            var retained=face.Elements.Where(e=>!FaceElementClassification.IsComponent(e)).Select(element => FaceElementModelCloner.Clone(element));
+            Set(retained.Concat(_components.Select(element => FaceElementModelCloner.Clone(element))).ToArray(),new FaceSubsystemProvenanceModel{Origin=FaceSubsystemOrigin.Derived,SourceDocumentPath=_sourcePath});WasExecuted=true;
+        }
+        public void Undo(){if(_previousElements is null||_previousProvenance is null)return;Set(_previousElements.Select(element => FaceElementModelCloner.Clone(element)).ToArray(),_previousProvenance);}
+        private void Set(IReadOnlyList<FaceElementModel> elements,FaceSubsystemProvenanceModel provenance)
+        { _document.SetFaceDocument(FaceDocumentCopy.WithElementsAndComponents(_document.GetFaceDocument(),elements,provenance),CreateChange(_document,null,PanelChangeProperties.Structure|PanelChangeProperties.Geometry|PanelChangeProperties.Metadata,true));_document.InvalidateFaceBuild(FaceBuildInput.Components);_document.MarkDirty(); }
+    }
+
     public static Commands.ICommand CreateUpdateElementCommand(
         Guid documentId,
         DocumentTabViewModel document,
@@ -285,6 +309,30 @@ internal static class FaceMutationCommands
         left.Select(sample => (sample.Id, sample.X, sample.Y, sample.SamplingMode, sample.RadiusNormalized))
             .SequenceEqual(right.Select(sample => (sample.Id, sample.X, sample.Y, sample.SamplingMode, sample.RadiusNormalized)));
 
+    private sealed class AddFaceComponentMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _id; private readonly DocumentTabViewModel _document; private readonly FaceElementModel _element;
+        private int? _index; private FaceSubsystemProvenanceModel? _previousProvenance;
+        public AddFaceComponentMutationCommand(Guid id, DocumentTabViewModel document, FaceElementModel element)
+        { if (!FaceElementClassification.IsComponent(element)) throw new ArgumentException("Only component elements can be added here.", nameof(element)); _id=id; _document=document; _element=FaceElementModelCloner.Clone(element); }
+        public Guid DocumentId=>_id; public string Description=>$"Add {_element.Name}"; public bool WasExecuted{get;private set;}
+        public void Execute()
+        {
+            WasExecuted=false; var face=_document.GetFaceDocument(); if(face.Elements.Any(e=>e.ObjectId==_element.ObjectId))return;
+            _previousProvenance ??= face.Provenance.Components; var elements=face.Elements.ToList();
+            var index=Math.Clamp(_index??elements.Count,0,elements.Count); elements.Insert(index,FaceElementModelCloner.Clone(_element)); _index=index;
+            SetComponents(elements,FaceDocumentCopy.MarkComponentsModified(face.Provenance.Components));
+            _document.HierarchySelectedPanelSelection=FaceSelectionService.ToSelectionInfo(_element); WasExecuted=true;
+        }
+        public void Undo()
+        {
+            if(_previousProvenance is null)return; var elements=_document.GetFaceElements().Where(e=>e.ObjectId!=_element.ObjectId).ToArray();
+            SetComponents(elements,_previousProvenance); if(_document.HierarchySelectedPanelSelection?.ObjectId==_element.ObjectId)_document.HierarchySelectedPanelSelection=null;
+        }
+        private void SetComponents(IReadOnlyList<FaceElementModel> elements,FaceSubsystemProvenanceModel provenance)
+        { _document.SetFaceDocument(FaceDocumentCopy.WithElementsAndComponents(_document.GetFaceDocument(),elements,provenance),CreateChange(_document,_element.ObjectId,PanelChangeProperties.Structure,structure:true)); _document.InvalidateFaceBuild(FaceBuildInput.Components); _document.MarkDirty(); }
+    }
+
     private sealed class AddFaceElementMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
@@ -347,6 +395,7 @@ internal static class FaceMutationCommands
         private readonly FaceElementModel _updatedElement;
         private readonly string _description;
         private FaceElementModel? _originalElement;
+        private FaceSubsystemProvenanceModel? _originalComponentsProvenance;
 
         public UpdateFaceElementMutationCommand(Guid documentId, DocumentTabViewModel document, string objectId, FaceElementModel updatedElement, string description)
         {
@@ -372,9 +421,10 @@ internal static class FaceMutationCommands
             }
 
             _originalElement ??= elements[index];
+            _originalComponentsProvenance ??= _document.GetFaceDocument().Provenance.Components;
             elements[index] = _updatedElement;
-            _document.SetFaceElements(elements, CreateChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
-            _document.InvalidateFaceBuild(_updatedElement is FaceLampWindowElement ? FaceBuildInput.LampInformation : FaceBuildInput.RuntimeAssetsSettings);
+            SetMutatedElements(elements, _updatedElement, FaceElementClassification.IsComponent(_updatedElement)
+                ? FaceDocumentCopy.MarkComponentsModified(_document.GetFaceDocument().Provenance.Components) : null);
             _document.HierarchySelectedPanelSelection = FaceSelectionService.ToSelectionInfo(_updatedElement);
             _document.MarkDirty();
             WasExecuted = true;
@@ -395,10 +445,17 @@ internal static class FaceMutationCommands
             }
 
             elements[index] = _originalElement;
-            _document.SetFaceElements(elements, CreateChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
-            _document.InvalidateFaceBuild(_originalElement is FaceLampWindowElement ? FaceBuildInput.LampInformation : FaceBuildInput.RuntimeAssetsSettings);
+            SetMutatedElements(elements, _originalElement, FaceElementClassification.IsComponent(_originalElement) ? _originalComponentsProvenance : null);
             _document.HierarchySelectedPanelSelection = FaceSelectionService.ToSelectionInfo(_originalElement);
             _document.MarkDirty();
+        }
+
+        private void SetMutatedElements(IReadOnlyList<FaceElementModel> elements, FaceElementModel element, FaceSubsystemProvenanceModel? provenance)
+        {
+            var change=CreateChange(_document,_objectId,PanelChangeProperties.Geometry|PanelChangeProperties.Name|PanelChangeProperties.Visibility|PanelChangeProperties.TransformLockState|PanelChangeProperties.Metadata);
+            if(provenance is null)_document.SetFaceElements(elements,change);
+            else _document.SetFaceDocument(FaceDocumentCopy.WithElementsAndComponents(_document.GetFaceDocument(),elements,provenance),change);
+            _document.InvalidateFaceBuild(element is FaceLampWindowElement ? FaceBuildInput.LampInformation : FaceElementClassification.IsComponent(element) ? FaceBuildInput.Components : FaceBuildInput.RuntimeAssetsSettings);
         }
     }
 
@@ -410,6 +467,7 @@ internal static class FaceMutationCommands
         private readonly Dictionary<string, FaceElementModel> _originalElements;
         private readonly string _description;
         private Dictionary<string, FaceElementModel>? _previousElements;
+        private FaceSubsystemProvenanceModel? _previousComponentsProvenance;
 
         public BulkUpdateFaceElementsMutationCommand(Guid documentId, DocumentTabViewModel document, IReadOnlyDictionary<string, FaceElementModel> updatedElements, IReadOnlyDictionary<string, FaceElementModel> originalElements, string description)
         {
@@ -468,7 +526,12 @@ internal static class FaceMutationCommands
             }
 
             _previousElements = previous;
-            _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
+            _previousComponentsProvenance ??= _document.GetFaceDocument().Provenance.Components;
+            var componentChanged=previous.Keys.Any(id=>elements.FirstOrDefault(e=>e.ObjectId==id) is { } e&&FaceElementClassification.IsComponent(e));
+            var change=CreateChange(_document,null,PanelChangeProperties.Geometry|PanelChangeProperties.Name|PanelChangeProperties.Visibility|PanelChangeProperties.TransformLockState|PanelChangeProperties.Metadata);
+            if(componentChanged)_document.SetFaceDocument(FaceDocumentCopy.WithElementsAndComponents(_document.GetFaceDocument(),elements,FaceDocumentCopy.MarkComponentsModified(_document.GetFaceDocument().Provenance.Components)),change);
+            else _document.SetFaceElements(elements,change);
+            if(componentChanged)_document.InvalidateFaceBuild(FaceBuildInput.Components);
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -494,7 +557,9 @@ internal static class FaceMutationCommands
 
             if (changed)
             {
-                _document.SetFaceElements(elements, CreateChange(_document, null, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
+                var change=CreateChange(_document,null,PanelChangeProperties.Geometry|PanelChangeProperties.Name|PanelChangeProperties.Visibility|PanelChangeProperties.TransformLockState|PanelChangeProperties.Metadata);
+                if(_previousComponentsProvenance is not null)_document.SetFaceDocument(FaceDocumentCopy.WithElementsAndComponents(_document.GetFaceDocument(),elements,_previousComponentsProvenance),change); else _document.SetFaceElements(elements,change);
+                if(_previousElements.Values.Any(FaceElementClassification.IsComponent))_document.InvalidateFaceBuild(FaceBuildInput.Components);
                 _document.MarkDirty();
             }
         }

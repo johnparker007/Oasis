@@ -7,6 +7,7 @@ public sealed class BulkDeleteSelectionCommand : Commands.IDocumentCommand, Comm
     private readonly EditorSelectionItem[] _selectionSnapshot;
     private readonly List<DeletedPanelElement> _deletedPanelElements = [];
     private readonly List<DeletedFaceElement> _deletedFaceElements = [];
+    private FaceSubsystemProvenanceModel? _previousComponentsProvenance;
 
     public BulkDeleteSelectionCommand(Guid documentId, DocumentTabViewModel document, IEnumerable<EditorSelectionItem> selectionSnapshot)
     {
@@ -42,12 +43,19 @@ public sealed class BulkDeleteSelectionCommand : Commands.IDocumentCommand, Comm
 
         if (_deletedFaceElements.Count > 0)
         {
+            _previousComponentsProvenance ??= _document.GetFaceDocument().Provenance.Components;
             var ids = _deletedFaceElements.Select(item => item.Element.ObjectId).ToHashSet(StringComparer.Ordinal);
             var elements = _document.GetFaceElements()
                 .Where(element => !ids.Contains(element.ObjectId))
                 .Select(element => FaceElementModelCloner.Clone(element))
                 .ToArray();
-            _document.SetFaceElements(elements, CreateStructureChange(_document));
+            var componentDeleted=_deletedFaceElements.Any(item=>FaceElementClassification.IsComponent(item.Element));
+            if(componentDeleted)
+            {
+                _document.SetFaceDocument(FaceDocumentCopy.WithElementsAndComponents(_document.GetFaceDocument(),elements,FaceDocumentCopy.MarkComponentsModified(_document.GetFaceDocument().Provenance.Components)),CreateStructureChange(_document));
+                _document.InvalidateFaceBuild(FaceBuildInput.Components);
+            }
+            else _document.SetFaceElements(elements, CreateStructureChange(_document));
             changed = true;
         }
 
@@ -96,7 +104,12 @@ public sealed class BulkDeleteSelectionCommand : Commands.IDocumentCommand, Comm
             }
             if (faceChanged)
             {
-                _document.SetFaceElements(elements, CreateStructureChange(_document));
+                if(_previousComponentsProvenance is not null && _deletedFaceElements.Any(item=>FaceElementClassification.IsComponent(item.Element)))
+                {
+                    _document.SetFaceDocument(FaceDocumentCopy.WithElementsAndComponents(_document.GetFaceDocument(),elements,_previousComponentsProvenance),CreateStructureChange(_document));
+                    _document.InvalidateFaceBuild(FaceBuildInput.Components);
+                }
+                else _document.SetFaceElements(elements, CreateStructureChange(_document));
             }
         }
 
