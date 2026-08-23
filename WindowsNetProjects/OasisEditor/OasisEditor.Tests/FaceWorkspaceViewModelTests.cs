@@ -126,7 +126,8 @@ public sealed class FaceWorkspaceViewModelTests
 
         document.InvalidateFaceBuild(FaceBuildInput.ArtworkCorrection);
 
-        Assert.Equal("Build status: 1 output needs building", workspace.BuildStatusSummary);
+        Assert.Equal("Build status: 2 outputs need building", workspace.BuildStatusSummary);
+        Assert.Contains("Base: Stale", workspace.ArtworkBuildSummary);
         Assert.Contains("Output: Stale", workspace.ArtworkBuildSummary);
     }
 

@@ -129,9 +129,16 @@ internal sealed class FaceGenerationService
             OutputHeight = output.Height
         };
         var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
-        var basePath = FaceArtworkGeneratedPathService.GetBasePathFromOutput(faceArtworkPath);
-        var generatedBasePath = new FaceArtworkRebuildService().RebuildBase(artworkState, sourcePanel, sourceShape, projectDirectory, basePath, settings);
-        var assetPath = string.IsNullOrWhiteSpace(projectDirectory) ? null : FaceArtworkGeneratedPathService.ToProjectRelative(faceArtworkPath, projectDirectory);
+        string? generatedBasePath = null;
+        if (!string.IsNullOrWhiteSpace(faceArtworkPath) && !string.IsNullOrWhiteSpace(projectDirectory))
+        {
+            var basePath = FaceArtworkGeneratedPathService.GetBasePathFromOutput(faceArtworkPath);
+            generatedBasePath = new FaceArtworkRebuildService().RebuildBase(
+                artworkState, sourcePanel, sourceShape, projectDirectory, basePath, settings);
+        }
+        var assetPath = string.IsNullOrWhiteSpace(projectDirectory) || string.IsNullOrWhiteSpace(generatedBasePath)
+            ? null
+            : FaceArtworkGeneratedPathService.ToProjectRelative(faceArtworkPath, projectDirectory);
         artworkState = new FaceArtworkModel
         {
             Id = artworkState.Id,
@@ -142,7 +149,9 @@ internal sealed class FaceGenerationService
             OutputWidth = artworkState.OutputWidth,
             OutputHeight = artworkState.OutputHeight
         };
-        if (!string.IsNullOrWhiteSpace(projectDirectory))
+        if (!string.IsNullOrWhiteSpace(projectDirectory)
+            && !string.IsNullOrWhiteSpace(artworkState.BaseAssetPath)
+            && !string.IsNullOrWhiteSpace(artworkState.OutputAssetPath))
         {
             var finalized = new FaceArtworkRebuildService().FinalizeOutput(artworkState, projectDirectory);
             if (!finalized.Succeeded) throw new InvalidOperationException(finalized.ErrorMessage);
@@ -195,7 +204,8 @@ internal sealed class FaceGenerationService
             LastRegeneratedAtUtc = DateTime.UtcNow,
             GenerationSettings = settings,
             Provenance = FaceBuildStateFactory.CreateDerivedProvenance(sourcePanel2DDocumentPath),
-            BuildState = FaceBuildStateFactory.CreateGeneratedState(artwork: true,
+            BuildState = FaceBuildStateFactory.CreateGeneratedState(artwork: !string.IsNullOrWhiteSpace(artworkState.BaseAssetPath)
+                    && !string.IsNullOrWhiteSpace(artworkState.OutputAssetPath),
                 mask: maskLayer is not null && lampWindows.Length > 0,
                 trays: maskLayer is not null && lampWindows.Length > 0 && autoAuthored.Trays.Count > 0,
                 runtimeAssetsCurrent: false,
