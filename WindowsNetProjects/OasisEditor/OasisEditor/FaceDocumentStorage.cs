@@ -286,7 +286,7 @@ public static class FaceDocumentStorage
         };
     }
 
-    private static FacePerspectiveRegistrationModel ToModel(FacePerspectiveRegistrationFile file) => new()
+    private static FacePerspectiveRegistrationModel ToModel(FacePerspectiveRegistrationFile file) => new FacePerspectiveRegistrationModel
     {
         TopLeft = ToModel(file.TopLeft), TopRight = ToModel(file.TopRight),
         BottomRight = ToModel(file.BottomRight), BottomLeft = ToModel(file.BottomLeft)
