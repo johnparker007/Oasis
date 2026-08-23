@@ -79,7 +79,7 @@ public sealed class FaceBuildStateModel
 public enum FaceArtworkSourceKind
 {
     Panel2DFaceSourceShape,
-    IndependentImage
+    Image
 }
 
 /// <summary>Authored artwork recipe plus the unambiguous generated Base and final Output stage paths.</summary>
@@ -87,6 +87,7 @@ public sealed class FaceArtworkModel
 {
     public string Id { get; init; } = Guid.NewGuid().ToString("N");
     public FaceArtworkSourceModel Source { get; init; } = new();
+    public FaceArtworkGeometryModel Geometry { get; init; } = new();
     public ImageProcessingPipelineModel ProcessingPipeline { get; init; } = new();
     public string? CorrectionInputAssetPath { get; init; }
     public string? BaseAssetPath { get; init; }
@@ -102,6 +103,43 @@ public sealed class FaceArtworkSourceModel
     public string? Panel2DDocumentId { get; init; }
     public string? Panel2DDocumentPath { get; init; }
     public string? FaceSourceShapeId { get; init; }
+    public int PixelWidth { get; init; }
+    public int PixelHeight { get; init; }
+}
+
+public sealed class FaceArtworkGeometryModel
+{
+    public FacePerspectiveRegistrationModel PerspectiveRegistration { get; init; } = FacePerspectiveRegistrationModel.FullImage;
+}
+
+public sealed class FacePerspectiveRegistrationModel
+{
+    public static FacePerspectiveRegistrationModel FullImage { get; } = new();
+    public NormalizedFacePointModel TopLeft { get; init; } = new();
+    public NormalizedFacePointModel TopRight { get; init; } = new() { X = 1d };
+    public NormalizedFacePointModel BottomRight { get; init; } = new() { X = 1d, Y = 1d };
+    public NormalizedFacePointModel BottomLeft { get; init; } = new() { Y = 1d };
+
+    public FacePerspectiveRegistrationModel Normalize() => new()
+    {
+        TopLeft = TopLeft.Normalize(), TopRight = TopRight.Normalize(),
+        BottomRight = BottomRight.Normalize(), BottomLeft = BottomLeft.Normalize()
+    };
+
+    public bool IsValid()
+    {
+        var points = new[] { TopLeft, TopRight, BottomRight, BottomLeft };
+        if (points.Any(point => !double.IsFinite(point.X) || !double.IsFinite(point.Y))) return false;
+        double sign = 0d;
+        for (var i = 0; i < points.Length; i++)
+        {
+            var a = points[i]; var b = points[(i + 1) % 4]; var c = points[(i + 2) % 4];
+            var cross = ((b.X - a.X) * (c.Y - b.Y)) - ((b.Y - a.Y) * (c.X - b.X));
+            if (Math.Abs(cross) < 1e-9) return false;
+            if (sign == 0d) sign = Math.Sign(cross); else if (Math.Sign(cross) != sign) return false;
+        }
+        return true;
+    }
 }
 
 public sealed class ImageProcessingPipelineModel

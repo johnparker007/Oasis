@@ -136,7 +136,7 @@ internal sealed class FaceRegenerationService
             addedElementCount++;
         }
 
-        if (existingFace.Artwork?.Source.Kind == FaceArtworkSourceKind.IndependentImage)
+        if (existingFace.Artwork?.Source.Kind == FaceArtworkSourceKind.Image)
         {
             var existingArtworkElement = existingFace.Elements.OfType<FaceArtworkElement>().FirstOrDefault();
             if (existingArtworkElement is not null)
@@ -181,7 +181,9 @@ internal sealed class FaceRegenerationService
             SourceRegion = generated.Document.SourceRegion ?? sourceRegion,
             LastRegeneratedAtUtc = DateTime.UtcNow,
             GenerationSettings = settings,
-            Provenance = FaceBuildStateFactory.CreateDerivedProvenance(existingFace.SourcePanel2DDocumentPath),
+            Provenance = artwork?.Source.Kind == FaceArtworkSourceKind.Image
+                ? new FaceProvenanceModel { Artwork = existingFace.Provenance.Artwork, Components = existingFace.Provenance.Components, Illumination = existingFace.Provenance.Illumination }
+                : FaceBuildStateFactory.CreateDerivedProvenance(existingFace.SourcePanel2DDocumentPath),
             BuildState = FaceBuildStateFactory.CreateGeneratedState(artwork: generated.Document.Artwork is not null,
                 mask: generated.Document.MaskLayer is not null && mergedElements.OfType<FaceLampWindowElement>().Any(),
                 trays: generated.Document.MaskLayer is not null
@@ -209,7 +211,7 @@ internal sealed class FaceRegenerationService
     private static FaceArtworkModel? PreserveArtwork(FaceArtworkModel? existing, FaceArtworkModel? generated)
     {
         if (existing is null) return generated;
-        if (generated is null || existing.Source.Kind == FaceArtworkSourceKind.IndependentImage) return existing;
+        if (generated is null || existing.Source.Kind == FaceArtworkSourceKind.Image) return existing;
 
         return new FaceArtworkModel
         {
@@ -222,6 +224,7 @@ internal sealed class FaceRegenerationService
                 Panel2DDocumentPath = generated.Source.Panel2DDocumentPath,
                 FaceSourceShapeId = generated.Source.FaceSourceShapeId
             },
+            Geometry = existing.Geometry,
             ProcessingPipeline = existing.ProcessingPipeline,
             CorrectionInputAssetPath = generated.CorrectionInputAssetPath,
             BaseAssetPath = generated.BaseAssetPath,

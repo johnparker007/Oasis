@@ -223,6 +223,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
         {
             Id = artwork.Id,
             Source = artwork.Source,
+            Geometry = artwork.Geometry,
             ProcessingPipeline = artwork.ProcessingPipeline,
             CorrectionInputAssetPath = FaceArtworkGeneratedPathService.GetCorrectionInputPathFromOutput(generatedAssetPath).Replace('\\', '/'),
             BaseAssetPath = FaceArtworkGeneratedPathService.GetBasePathFromOutput(generatedAssetPath).Replace('\\', '/'),

@@ -270,6 +270,53 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         return _faceDocumentModel;
     }
 
+    internal string? GetArtworkSourceAbsolutePath()
+    {
+        var path=_faceDocumentModel.Artwork?.Source.AssetPath; var project=_projectAccessor?.Invoke();
+        return string.IsNullOrWhiteSpace(path) || project is null ? null : ResolveGeneratedPath(path, project.ProjectDirectory);
+    }
+
+    public bool ImportArtworkImage(string externalPath, out string? error)
+    {
+        error = null; var project = _projectAccessor?.Invoke(); var current = _faceDocumentModel.Artwork;
+        if (project is null || current is null) { error = "Artwork or project is unavailable."; return false; }
+        try
+        {
+            var imported = FaceArtworkImageImportService.Import(externalPath, project, _faceDocumentModel.Title);
+            var artwork = new FaceArtworkModel
+            {
+                Id=current.Id, Source=new FaceArtworkSourceModel { Kind=FaceArtworkSourceKind.Image, AssetPath=imported.AssetPath,
+                    PixelWidth=imported.Width, PixelHeight=imported.Height }, Geometry=new FaceArtworkGeometryModel(),
+                ProcessingPipeline=current.ProcessingPipeline, CorrectionInputAssetPath=current.CorrectionInputAssetPath,
+                BaseAssetPath=current.BaseAssetPath, OutputAssetPath=current.OutputAssetPath,
+                OutputWidth=imported.Width, OutputHeight=imported.Height
+            };
+            CommandService.Execute(FaceMutationCommands.CreateSetArtworkRecipeCommand(DocumentId, this, artwork,
+                new FaceSubsystemProvenanceModel { Origin=FaceSubsystemOrigin.Authored }, "Change artwork source to image"));
+            return true;
+        }
+        catch (Exception exception) { error=exception.Message; return false; }
+    }
+
+    public bool SetArtworkRegistration(FacePerspectiveRegistrationModel registration, string description="Edit artwork registration")
+    {
+        var current=_faceDocumentModel.Artwork; if (current?.Source.Kind != FaceArtworkSourceKind.Image) return false;
+        var normalized=registration.Normalize(); if (!normalized.IsValid()) return false;
+        var size=FaceSourceShapeTransformService.EstimateRegisteredImageOutputSize(current.Source.PixelWidth, current.Source.PixelHeight, normalized);
+        var artwork=new FaceArtworkModel { Id=current.Id, Source=current.Source,
+            Geometry=new FaceArtworkGeometryModel { PerspectiveRegistration=normalized }, ProcessingPipeline=current.ProcessingPipeline,
+            CorrectionInputAssetPath=current.CorrectionInputAssetPath, BaseAssetPath=current.BaseAssetPath, OutputAssetPath=current.OutputAssetPath,
+            OutputWidth=size.Width, OutputHeight=size.Height };
+        CommandService.Execute(FaceMutationCommands.CreateSetArtworkRecipeCommand(DocumentId, this, artwork,
+            _faceDocumentModel.Provenance.Artwork, description)); return true;
+    }
+
+    public void ReloadArtworkImage()
+    {
+        if (_faceDocumentModel.Artwork?.Source.Kind != FaceArtworkSourceKind.Image) return;
+        InvalidateFaceBuild(FaceBuildInput.ArtworkSource);
+    }
+
     public FaceBuildResult BuildFace(bool force = false)
     {
         ReconcileRuntimeAssetsConfiguration();
@@ -497,12 +544,21 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var artwork = _faceDocumentModel.Artwork;
         var project = _projectAccessor?.Invoke();
         if (artwork is null || project is null) return new(FaceGeneratedProduct.ArtworkCorrectionInput, false, "Artwork or project is unavailable.");
-        if (!TryResolveSourcePanel(out var panel, out var error)) return new(FaceGeneratedProduct.ArtworkCorrectionInput, false, error);
-        var shape = panel.FaceSourceShapes.FirstOrDefault(candidate => string.Equals(candidate.Id, artwork.Source.FaceSourceShapeId ?? _faceDocumentModel.SourceFaceShapeId, StringComparison.Ordinal));
-        if (shape is null) return new(FaceGeneratedProduct.ArtworkCorrectionInput, false, "The linked Face Source Shape is unavailable.");
         if (string.IsNullOrWhiteSpace(artwork.CorrectionInputAssetPath)) return new(FaceGeneratedProduct.ArtworkCorrectionInput, false, "The correction-input path is not configured.");
-        var built = new FaceArtworkRebuildService().RebuildCorrectionInput(artwork, panel, shape,
-            project.ProjectDirectory, artwork.CorrectionInputAssetPath, _faceDocumentModel.GenerationSettings);
+        string? built;
+        if (artwork.Source.Kind == FaceArtworkSourceKind.Image)
+        {
+            built = new FaceArtworkRebuildService().RebuildImageCorrectionInput(artwork, project.ProjectDirectory,
+                artwork.CorrectionInputAssetPath, _faceDocumentModel.GenerationSettings);
+        }
+        else
+        {
+            if (!TryResolveSourcePanel(out var panel, out var error)) return new(FaceGeneratedProduct.ArtworkCorrectionInput, false, error);
+            var shape = panel.FaceSourceShapes.FirstOrDefault(candidate => string.Equals(candidate.Id, artwork.Source.FaceSourceShapeId ?? _faceDocumentModel.SourceFaceShapeId, StringComparison.Ordinal));
+            if (shape is null) return new(FaceGeneratedProduct.ArtworkCorrectionInput, false, "The linked Face Source Shape is unavailable.");
+            built = new FaceArtworkRebuildService().RebuildCorrectionInput(artwork, panel, shape,
+                project.ProjectDirectory, artwork.CorrectionInputAssetPath, _faceDocumentModel.GenerationSettings);
+        }
         InvalidateCorrectionInputCache();
         return string.IsNullOrWhiteSpace(built)
             ? new(FaceGeneratedProduct.ArtworkCorrectionInput, false, "Correction input generation failed.")
