@@ -72,7 +72,8 @@ public sealed class FaceBuildService
                 result.Skipped.Add(product);
                 continue;
             }
-            if (s_dependencies[product].Any(failed.Contains))
+            if (s_dependencies[product].Any(dependency => failed.Contains(dependency)
+                    || state.Get(dependency).Status == FaceBuildStatus.Error))
             {
                 node.Status = FaceBuildStatus.Stale;
                 node.ErrorMessage = null;
@@ -115,13 +116,16 @@ public static class FaceBuildStateFactory
         Artwork = Derived(sourcePath), Components = Derived(sourcePath), Illumination = Derived(sourcePath)
     };
 
-    public static FaceBuildStateModel CreateGeneratedState(bool artwork, bool mask, bool trays, bool runtimeLighting)
+    public static FaceBuildStateModel CreateGeneratedState(bool artwork, bool mask, bool trays,
+        bool runtimeLighting, bool runtimeLightingConfigured)
     {
         var state = new FaceBuildStateModel();
         Configure(state, FaceGeneratedProduct.ArtworkOutput, artwork);
         Configure(state, FaceGeneratedProduct.LampMask, mask);
         Configure(state, FaceGeneratedProduct.Trays, trays);
-        Configure(state, FaceGeneratedProduct.RuntimeLighting, runtimeLighting);
+        state.Get(FaceGeneratedProduct.RuntimeLighting).Status = runtimeLighting
+            ? FaceBuildStatus.Current
+            : runtimeLightingConfigured ? FaceBuildStatus.Stale : FaceBuildStatus.NotConfigured;
         return state;
     }
 

@@ -1,4 +1,5 @@
 using OasisEditor;
+using SkiaSharp;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -8,7 +9,7 @@ public sealed class FaceBuildServiceTests
     [Fact]
     public void ArtworkCorrection_InvalidatesArtworkAndRuntimeOnly()
     {
-        var state = FaceBuildStateFactory.CreateGeneratedState(true, true, true, true);
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, true, true, true, true);
         new FaceBuildService().Invalidate(state, FaceBuildInput.ArtworkCorrection);
         Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.ArtworkOutput).Status);
         Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.RuntimeLighting).Status);
@@ -16,9 +17,22 @@ public sealed class FaceBuildServiceTests
     }
 
     [Fact]
+    public void MaskSettings_InvalidatesIlluminationChainButNotArtwork()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, true, true, true, true);
+
+        new FaceBuildService().Invalidate(state, FaceBuildInput.MaskSettings);
+
+        Assert.Equal(FaceBuildStatus.Current, state.Get(FaceGeneratedProduct.ArtworkOutput).Status);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.LampMask).Status);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.Trays).Status);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.RuntimeLighting).Status);
+    }
+
+    [Fact]
     public void Build_InvokesOnlyStaleConfiguredProducts()
     {
-        var state = FaceBuildStateFactory.CreateGeneratedState(true, false, true, false);
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, false, true, false, false);
         state.Get(FaceGeneratedProduct.ArtworkOutput).Status = FaceBuildStatus.Stale;
         var calls = new List<FaceGeneratedProduct>();
         var result = new FaceBuildService().Build(state, Builders(calls));
@@ -29,7 +43,7 @@ public sealed class FaceBuildServiceTests
     [Fact]
     public void Rebuild_InvokesEveryConfiguredProduct()
     {
-        var state = FaceBuildStateFactory.CreateGeneratedState(true, true, true, true);
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, true, true, true, true);
         var calls = new List<FaceGeneratedProduct>();
         var result = new FaceBuildService().Build(state, Builders(calls), force: true);
         Assert.True(result.Succeeded);
@@ -39,7 +53,7 @@ public sealed class FaceBuildServiceTests
     [Fact]
     public void Failure_RetainsErrorAndSkipsDependentProducts()
     {
-        var state = FaceBuildStateFactory.CreateGeneratedState(false, true, true, true);
+        var state = FaceBuildStateFactory.CreateGeneratedState(false, true, true, true, true);
         state.Get(FaceGeneratedProduct.LampMask).Status = FaceBuildStatus.Stale;
         state.Get(FaceGeneratedProduct.Trays).Status = FaceBuildStatus.Stale;
         var builders = Builders([]).ToDictionary(pair => pair.Key, pair => pair.Value);
@@ -54,7 +68,7 @@ public sealed class FaceBuildServiceTests
     [Fact]
     public void RelevantChange_RecoversErrorToStale_ThenBuildToCurrent()
     {
-        var state = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false);
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false);
         state.Get(FaceGeneratedProduct.ArtworkOutput).Status = FaceBuildStatus.Error;
         state.Get(FaceGeneratedProduct.ArtworkOutput).ErrorMessage = "old failure";
         var service = new FaceBuildService();
@@ -73,10 +87,135 @@ public sealed class FaceBuildServiceTests
         Assert.Empty(result.Built);
     }
 
+    [Fact]
+    public void StaleIlluminationChain_BuildsMaskThenTraysThenRuntime()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(false, true, true, true, true);
+        new FaceBuildService().Invalidate(state, FaceBuildInput.MaskSettings);
+        var calls = new List<FaceGeneratedProduct>();
+
+        var result = new FaceBuildService().Build(state, Builders(calls));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal([FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeLighting], calls);
+        Assert.All(calls, product => Assert.Equal(FaceBuildStatus.Current, state.Get(product).Status));
+    }
+
+    [Fact]
+    public void LampMaskFailure_DoesNotInvokeDependentBuilders()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(false, true, true, true, true);
+        new FaceBuildService().Invalidate(state, FaceBuildInput.MaskSettings);
+        var calls = new List<FaceGeneratedProduct>();
+        var builders = Builders(calls).ToDictionary(pair => pair.Key, pair => pair.Value);
+        builders[FaceGeneratedProduct.LampMask] = () =>
+        {
+            calls.Add(FaceGeneratedProduct.LampMask);
+            return new(FaceGeneratedProduct.LampMask, false, "source unavailable");
+        };
+
+        new FaceBuildService().Build(state, builders);
+
+        Assert.Equal([FaceGeneratedProduct.LampMask], calls);
+        Assert.Equal(FaceBuildStatus.Error, state.Get(FaceGeneratedProduct.LampMask).Status);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.Trays).Status);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.RuntimeLighting).Status);
+    }
+
+    [Fact]
+    public void ForcedDocumentRebuild_UsesLampMaskExecutorRatherThanMissingBuilderFailure()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(false, true, false, false, false);
+        var model = new FaceDocumentModel
+        {
+            Title = "Mask Face", SourcePanel2DDocumentPath = "Assets/source.panel2d",
+            SourceFaceShapeId = "shape-1", BuildState = state
+        };
+        var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Mask Face"),
+            faceDocumentJson: FaceDocumentStorage.Serialize(model));
+
+        var result = document.BuildFace(force: true);
+
+        var failure = Assert.Single(result.Failed);
+        Assert.Equal(FaceGeneratedProduct.LampMask, failure.Product);
+        Assert.Contains("no project is open", failure.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("No builder is available", failure.ErrorMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DocumentBuild_ReusesSourceShapeMaskGeneratorAndUpdatesMaskLayer()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-mask-build-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var sourcePath = Path.Combine(directory, "source.panel2d");
+            var lampPath = Path.Combine(directory, "lamp.png");
+            var facePath = Path.Combine(directory, "asset.face");
+            WriteOpaquePng(lampPath);
+            var sourceLamp = new PanelElementModel
+            {
+                ObjectId = "lamp-1", Name = "Lamp", Kind = PanelElementKind.Lamp,
+                X = 0, Y = 0, Width = 10, Height = 10, AssetPath = "lamp.png", IsVisible = true
+            };
+            var shape = new PanelFaceSourceShapeModel
+            {
+                Id = "shape-1", Name = "Face", TopLeft = new() { X = 0, Y = 0 },
+                TopRight = new() { X = 10, Y = 0 }, BottomRight = new() { X = 10, Y = 10 },
+                BottomLeft = new() { X = 0, Y = 10 }
+            };
+            File.WriteAllText(sourcePath, Panel2DDocumentStorage.Serialize("Source", string.Empty,
+                [Panel2DDocumentStorage.ToStorageElement(sourceLamp)],
+                [Panel2DDocumentStorage.ToStorageFaceSourceShape(shape)]));
+            var state = FaceBuildStateFactory.CreateGeneratedState(false, true, false, false, false);
+            state.Get(FaceGeneratedProduct.LampMask).Status = FaceBuildStatus.Stale;
+            var model = new FaceDocumentModel
+            {
+                Title = "Mask Face", SourcePanel2DDocumentPath = sourcePath, SourceFaceShapeId = shape.Id,
+                Artwork = new FaceArtworkModel { OutputWidth = 4, OutputHeight = 4 }, BuildState = state,
+                MaskLayer = new FaceMaskLayerModel { AssetPath = "Generated/Faces/Mask Face/mask.png", Width = 4, Height = 4 },
+                Elements = [new FaceLampWindowElement { ObjectId = "window-1", LinkedPanel2DElementId = sourceLamp.ObjectId, X = 0, Y = 0, Width = 4, Height = 4, IsVisible = true }]
+            };
+            File.WriteAllText(facePath, FaceDocumentStorage.Serialize(model));
+            var document = new DocumentTabViewModel(EditorDocument.CreateFromFile(facePath, "Mask Face"),
+                faceDocumentJson: File.ReadAllText(facePath));
+            document.SetProjectAccessor(() => Project(directory));
+
+            var result = document.BuildFace();
+
+            Assert.True(result.Succeeded);
+            Assert.Equal([FaceGeneratedProduct.LampMask], result.Built);
+            Assert.Equal(FaceBuildStatus.Current, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.LampMask).Status);
+            Assert.Single(document.GetFaceDocument().MaskLayer!.Contributions);
+            Assert.True(File.Exists(Path.Combine(directory, "Generated", "Faces", "Mask Face", "mask.png")));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private static IReadOnlyDictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>> Builders(IList<FaceGeneratedProduct> calls) =>
         Enum.GetValues<FaceGeneratedProduct>().ToDictionary(product => product, product => (Func<FaceBuildNodeResult>)(() =>
         {
             calls.Add(product);
             return new FaceBuildNodeResult(product, true);
         }));
+
+    private static EditorProject Project(string directory) => new()
+    {
+        Name = "Test", ProjectFilePath = Path.Combine(directory, "test.oasis"), ProjectDirectory = directory,
+        AssetsDirectory = Path.Combine(directory, "Assets"), MachinesDirectory = Path.Combine(directory, "Machines"),
+        GeneratedDirectory = Path.Combine(directory, "Generated")
+    };
+
+    private static void WriteOpaquePng(string path)
+    {
+        using var bitmap = new SKBitmap(2, 2);
+        bitmap.Erase(SKColors.White);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = File.Create(path);
+        data.SaveTo(stream);
+    }
 }

@@ -183,8 +183,12 @@ internal sealed class FaceRegenerationService
             GenerationSettings = settings,
             Provenance = FaceBuildStateFactory.CreateDerivedProvenance(existingFace.SourcePanel2DDocumentPath),
             BuildState = FaceBuildStateFactory.CreateGeneratedState(artwork: generated.Document.Artwork is not null,
-                mask: generated.Document.MaskLayer is not null, trays: autoAuthored.Trays.Count > 0,
-                runtimeLighting: existingFace.RuntimeRenderAssets is not null),
+                mask: generated.Document.MaskLayer is not null && mergedElements.OfType<FaceLampWindowElement>().Any(),
+                trays: generated.Document.MaskLayer is not null
+                    && mergedElements.OfType<FaceLampWindowElement>().Any() && autoAuthored.Trays.Count > 0,
+                runtimeLighting: existingFace.RuntimeRenderAssets is not null,
+                runtimeLightingConfigured: generated.Document.MaskLayer is not null
+                    && mergedElements.OfType<FaceLampWindowElement>().Any()),
             Artwork = artwork,
             MaskLayer = generated.Document.MaskLayer,
             Trays = autoAuthored.Trays,

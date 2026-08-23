@@ -81,6 +81,10 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public string ArtworkBuildSummary => $"{FormatProvenance(_document.GetFaceDocument().Provenance.Artwork)} • Output: {Status(FaceGeneratedProduct.ArtworkOutput)}";
     public string ComponentsProvenanceSummary => FormatProvenance(_document.GetFaceDocument().Provenance.Components);
     public string IlluminationBuildSummary => $"{FormatProvenance(_document.GetFaceDocument().Provenance.Illumination)} • Mask: {Status(FaceGeneratedProduct.LampMask)} • Trays: {Status(FaceGeneratedProduct.Trays)} • Runtime: {Status(FaceGeneratedProduct.RuntimeLighting)}";
+    public string BuildErrorSummary => string.Join(Environment.NewLine,
+        _document.GetFaceDocument().BuildState.Products
+            .Where(pair => pair.Value.Status == FaceBuildStatus.Error && !string.IsNullOrWhiteSpace(pair.Value.ErrorMessage))
+            .Select(pair => $"{DisplayName(pair.Key)}: {pair.Value.ErrorMessage}"));
 
     private ICommand Command(FaceWorkspaceDestination destination) => new RelayCommand(() => NavigateTo(destination));
 
@@ -93,6 +97,13 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     private string Status(FaceGeneratedProduct product) => _document.GetFaceDocument().BuildState.Get(product).Status.ToString();
     private static string FormatProvenance(FaceSubsystemProvenanceModel value) =>
         value.IsLocallyModified ? $"{value.Origin} • locally modified" : value.Origin.ToString();
+    private static string DisplayName(FaceGeneratedProduct product) => product switch
+    {
+        FaceGeneratedProduct.ArtworkOutput => "Artwork Output",
+        FaceGeneratedProduct.LampMask => "Lamp Mask",
+        FaceGeneratedProduct.RuntimeLighting => "Runtime Lighting",
+        _ => product.ToString()
+    };
 
     public string ArtworkSourceSummary
     {
@@ -185,5 +196,6 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         Raise(nameof(ComponentsSummary)); Raise(nameof(IlluminationSummary));
         Raise(nameof(BuildStatusSummary)); Raise(nameof(ArtworkBuildSummary));
         Raise(nameof(ComponentsProvenanceSummary)); Raise(nameof(IlluminationBuildSummary));
+        Raise(nameof(BuildErrorSummary));
     }
 }

@@ -16,7 +16,7 @@ public sealed class FaceDocumentRoundTripTests
             Title = "Front Face",
             Summary = "Physical face summary",
             Provenance = FaceBuildStateFactory.CreateDerivedProvenance("Assets/Panel2D/Glass/asset.panel2d"),
-            BuildState = FaceBuildStateFactory.CreateGeneratedState(true, true, true, false),
+            BuildState = FaceBuildStateFactory.CreateGeneratedState(true, true, true, false, false),
             Artwork = new FaceArtworkModel
             {
                 Id = "artwork-state-1",
@@ -235,7 +235,7 @@ public sealed class FaceDocumentRoundTripTests
             var model = new FaceDocumentModel
             {
                 Title = "Stale Face",
-                BuildState = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false)
+                BuildState = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false)
             };
             new FaceBuildService().Invalidate(model.BuildState, FaceBuildInput.ArtworkCorrection);
             var current = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Stale Face").MarkDirty(),
@@ -251,6 +251,40 @@ public sealed class FaceDocumentRoundTripTests
         finally
         {
             if (File.Exists(tempPath)) File.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public void BuildOnCleanDocument_PersistsCurrentStateWithoutMarkingAuthoredDocumentDirty()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-build-state-{Guid.NewGuid():N}");
+        var facePath = Path.Combine(directory, "asset.face");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var state = FaceBuildStateFactory.CreateGeneratedState(false, false, true, false, false);
+            state.Get(FaceGeneratedProduct.Trays).Status = FaceBuildStatus.Stale;
+            var model = new FaceDocumentModel { Title = "Build State", BuildState = state };
+            File.WriteAllText(facePath, FaceDocumentStorage.Serialize(model));
+            var document = new DocumentTabViewModel(EditorDocument.CreateFromFile(facePath, "Build State"),
+                faceDocumentJson: File.ReadAllText(facePath));
+            document.SetProjectAccessor(() => new EditorProject
+            {
+                Name = "Test", ProjectFilePath = Path.Combine(directory, "test.oasis"), ProjectDirectory = directory,
+                AssetsDirectory = Path.Combine(directory, "Assets"), MachinesDirectory = Path.Combine(directory, "Machines"),
+                GeneratedDirectory = Path.Combine(directory, "Generated")
+            });
+
+            var result = document.BuildFace();
+
+            Assert.True(result.Succeeded);
+            Assert.False(document.IsDirty);
+            Assert.True(FaceDocumentStorage.TryRead(File.ReadAllText(facePath), out var reloaded));
+            Assert.Equal(FaceBuildStatus.Current, reloaded.BuildState.Get(FaceGeneratedProduct.Trays).Status);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
         }
     }
 

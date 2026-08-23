@@ -95,6 +95,12 @@ public sealed class FaceRuntimeExportService
             Height = height,
             GeneratedUtc = generatedUtc
         };
+        var runtimeBuildState = faceDocument.BuildState.Get(FaceGeneratedProduct.RuntimeLighting);
+        if (runtimeBuildState.Status != FaceBuildStatus.NotConfigured)
+        {
+            runtimeBuildState.Status = FaceBuildStatus.Current;
+            runtimeBuildState.ErrorMessage = null;
+        }
 
         var updatedDocument = new FaceDocumentModel
         {

@@ -1147,6 +1147,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var faceDocument = SelectedDocument.GetFaceDocument();
+        var previousSettings = faceDocument.GenerationSettings;
+        var normalizedSettings = (settings ?? FaceGenerationSettingsModel.Default).Normalize();
         SelectedDocument.SetFaceDocument(new FaceDocumentModel
         {
             Id = faceDocument.Id,
@@ -1159,7 +1161,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AssignedCabinetAssetPath = faceDocument.AssignedCabinetAssetPath,
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
-            GenerationSettings = (settings ?? FaceGenerationSettingsModel.Default).Normalize(),
+            GenerationSettings = normalizedSettings,
             Provenance = faceDocument.Provenance,
             BuildState = faceDocument.BuildState,
             Artwork = faceDocument.Artwork,
@@ -1179,9 +1181,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AffectsInspectorRows: true,
             AffectsPersistence: true));
         SelectedDocument.MarkDirty();
-        SelectedDocument.InvalidateFaceBuild(FaceBuildInput.ArtworkCorrection);
-        SelectedDocument.InvalidateFaceBuild(FaceBuildInput.MaskSettings);
-        SelectedDocument.InvalidateFaceBuild(FaceBuildInput.TraySettings);
+        if (previousSettings.PostWarpSharpeningEnabled != normalizedSettings.PostWarpSharpeningEnabled
+            || previousSettings.PostWarpSharpeningAmount != normalizedSettings.PostWarpSharpeningAmount
+            || previousSettings.PostWarpSharpeningRadiusPixels != normalizedSettings.PostWarpSharpeningRadiusPixels
+            || previousSettings.PostWarpSharpeningThreshold != normalizedSettings.PostWarpSharpeningThreshold)
+        {
+            SelectedDocument.InvalidateFaceBuild(FaceBuildInput.ArtworkCorrection);
+        }
+        if (previousSettings.MaskExtractionThreshold != normalizedSettings.MaskExtractionThreshold)
+        {
+            SelectedDocument.InvalidateFaceBuild(FaceBuildInput.MaskSettings);
+        }
+        if (previousSettings.TrayBoundsInflationPercent != normalizedSettings.TrayBoundsInflationPercent
+            || previousSettings.TrayBoundsPaddingPixels != normalizedSettings.TrayBoundsPaddingPixels
+            || previousSettings.ClampTrayBoundsToLampWindow != normalizedSettings.ClampTrayBoundsToLampWindow)
+        {
+            SelectedDocument.InvalidateFaceBuild(FaceBuildInput.TraySettings);
+        }
         AddOutputEntry($"Updated face generation settings for '{SelectedDocument.Title}'.", OutputLogStatus.Info);
     }
 
