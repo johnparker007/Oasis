@@ -7,6 +7,26 @@ internal sealed record FaceArtworkImageImportResult(string AssetPath, int Width,
 
 internal static class FaceArtworkImageImportService
 {
+    public static FaceArtworkModel CreateArtwork(FaceArtworkImageImportResult imported, string faceName)
+    {
+        var safeFace = new ProjectAssetPathService().SanitizePathSegment(faceName);
+        var output = $"Generated/Faces/{safeFace}/Artwork/{FaceArtworkGeneratedPathService.OutputFileName}";
+        return new FaceArtworkModel
+        {
+            Source = new FaceArtworkSourceModel
+            {
+                Kind = FaceArtworkSourceKind.Image, AssetPath = imported.AssetPath,
+                PixelWidth = imported.Width, PixelHeight = imported.Height
+            },
+            Geometry = new FaceArtworkGeometryModel(),
+            CorrectionInputAssetPath = FaceArtworkGeneratedPathService.GetCorrectionInputPathFromOutput(output).Replace('\\', '/'),
+            BaseAssetPath = FaceArtworkGeneratedPathService.GetBasePathFromOutput(output).Replace('\\', '/'),
+            OutputAssetPath = output,
+            OutputWidth = imported.Width,
+            OutputHeight = imported.Height
+        };
+    }
+
     public static FaceArtworkImageImportResult Import(string externalPath, EditorProject project, string faceName)
     {
         if (!File.Exists(externalPath)) throw new FileNotFoundException("Artwork source image was not found.", externalPath);

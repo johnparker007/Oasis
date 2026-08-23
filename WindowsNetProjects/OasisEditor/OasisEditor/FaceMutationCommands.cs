@@ -14,23 +14,23 @@ internal static class FaceMutationCommands
     {
         private readonly Guid _id; private readonly DocumentTabViewModel _document; private readonly FaceArtworkModel _next;
         private readonly FaceSubsystemProvenanceModel _nextProvenance; private readonly string _description; private readonly FaceBuildInput _buildInput;
-        private FaceArtworkModel? _previous; private FaceSubsystemProvenanceModel? _previousProvenance;
+        private FaceDocumentModel? _previousFace;
         public SetArtworkRecipeMutationCommand(Guid id, DocumentTabViewModel document, FaceArtworkModel next,
             FaceSubsystemProvenanceModel provenance, string description, FaceBuildInput buildInput)
         { _id=id; _document=document; _next=next; _nextProvenance=provenance; _description=description; _buildInput=buildInput; }
         public Guid DocumentId => _id; public string Description => _description; public bool WasExecuted { get; private set; }
         public void Execute()
         {
-            var face=_document.GetFaceDocument(); if (face.Artwork is null) return;
-            _previous ??= face.Artwork; _previousProvenance ??= face.Provenance.Artwork;
+            var face=_document.GetFaceDocument();
+            _previousFace ??= face;
             if (ReferenceEquals(face.Artwork, _next)) return;
-            _document.SetFaceDocument(FaceDocumentCopy.WithArtwork(face, _next, _nextProvenance));
+            _document.SetFaceDocument(FaceDocumentCopy.WithArtworkAndVisual(face, _next, _nextProvenance));
             _document.InvalidateFaceBuild(_buildInput); _document.MarkDirty(); WasExecuted=true;
         }
         public void Undo()
         {
-            if (_previous is null || _previousProvenance is null) return;
-            _document.SetFaceDocument(FaceDocumentCopy.WithArtwork(_document.GetFaceDocument(), _previous, _previousProvenance));
+            if (_previousFace is null) return;
+            _document.SetFaceDocument(_previousFace);
             _document.InvalidateFaceBuild(_buildInput); _document.MarkDirty();
         }
     }

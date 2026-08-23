@@ -59,6 +59,32 @@ internal static class FaceDocumentCopy
         Trays=value.Trays, LampEmitters=value.LampEmitters, Layers=value.Layers, Elements=value.Elements
     };
 
+    public static FaceDocumentModel WithArtworkAndVisual(FaceDocumentModel value, FaceArtworkModel artwork,
+        FaceSubsystemProvenanceModel artworkProvenance)
+    {
+        var existing = value.Elements.OfType<FaceArtworkElement>().FirstOrDefault();
+        var logicalWidth = value.SourceRegion?.Width is > 0 ? value.SourceRegion.Width : FaceDocumentStorage.DefaultNativeLogicalWidth;
+        var logicalHeight = value.SourceRegion?.Height is > 0 ? value.SourceRegion.Height : FaceDocumentStorage.DefaultNativeLogicalHeight;
+        var visual = new FaceArtworkElement
+        {
+            ObjectId = existing?.ObjectId ?? $"face-artwork-{Guid.NewGuid():N}", Name = existing?.Name ?? "Face artwork",
+            X = existing?.X ?? 0, Y = existing?.Y ?? 0, Width = existing?.Width ?? logicalWidth,
+            Height = existing?.Height ?? logicalHeight, IsVisible = existing?.IsVisible ?? true,
+            IsTransformLocked = true, AssetPath = artwork.OutputAssetPath
+        };
+        var elements = value.Elements.Where(element => element is not FaceArtworkElement).Prepend(visual).ToArray();
+        var copy = WithArtwork(value, artwork, artworkProvenance);
+        return new FaceDocumentModel
+        {
+            Id=copy.Id, Title=copy.Title, Summary=copy.Summary, SourcePanel2DDocumentId=copy.SourcePanel2DDocumentId,
+            SourcePanel2DDocumentPath=copy.SourcePanel2DDocumentPath, SourceFaceShapeId=copy.SourceFaceShapeId,
+            AssignedCabinetFaceTargetId=copy.AssignedCabinetFaceTargetId, AssignedCabinetAssetPath=copy.AssignedCabinetAssetPath,
+            SourceRegion=copy.SourceRegion, LastRegeneratedAtUtc=copy.LastRegeneratedAtUtc, GenerationSettings=copy.GenerationSettings,
+            Provenance=copy.Provenance, BuildState=copy.BuildState, Artwork=copy.Artwork, RuntimeRenderAssets=copy.RuntimeRenderAssets,
+            MaskLayer=copy.MaskLayer, Trays=copy.Trays, LampEmitters=copy.LampEmitters, Layers=copy.Layers, Elements=elements
+        };
+    }
+
     public static FaceDocumentModel WithGeneratedIllumination(FaceDocumentModel value,
         IReadOnlyList<FaceTrayModel> trays, IReadOnlyList<FaceLampEmitterElement> emitters) =>
         Copy(value, value.MaskLayer, trays, emitters);

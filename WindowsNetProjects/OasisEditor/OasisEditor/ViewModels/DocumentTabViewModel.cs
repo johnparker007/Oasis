@@ -282,17 +282,17 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public bool ImportArtworkImage(string externalPath, out string? error)
     {
         error = null; var project = _projectAccessor?.Invoke(); var current = _faceDocumentModel.Artwork;
-        if (project is null || current is null) { error = "Artwork or project is unavailable."; return false; }
+        if (project is null) { error = "No project is open."; return false; }
         try
         {
             var imported = FaceArtworkImageImportService.Import(externalPath, project, _faceDocumentModel.Title);
-            var artwork = new FaceArtworkModel
+            var initialized = FaceArtworkImageImportService.CreateArtwork(imported, _faceDocumentModel.Title);
+            var artwork = current is null ? initialized : new FaceArtworkModel
             {
-                Id=current.Id, Source=new FaceArtworkSourceModel { Kind=FaceArtworkSourceKind.Image, AssetPath=imported.AssetPath,
-                    PixelWidth=imported.Width, PixelHeight=imported.Height }, Geometry=new FaceArtworkGeometryModel(),
-                ProcessingPipeline=current.ProcessingPipeline, CorrectionInputAssetPath=current.CorrectionInputAssetPath,
-                BaseAssetPath=current.BaseAssetPath, OutputAssetPath=current.OutputAssetPath,
-                OutputWidth=imported.Width, OutputHeight=imported.Height, Override=current.Override,
+                Id=current.Id, Source=initialized.Source, Geometry=initialized.Geometry,
+                ProcessingPipeline=current.ProcessingPipeline, CorrectionInputAssetPath=initialized.CorrectionInputAssetPath,
+                BaseAssetPath=initialized.BaseAssetPath, OutputAssetPath=initialized.OutputAssetPath,
+                OutputWidth=initialized.OutputWidth, OutputHeight=initialized.OutputHeight, Override=current.Override,
                 FinalOutputWidth=current.FinalOutputWidth, FinalOutputHeight=current.FinalOutputHeight
             };
             CommandService.Execute(FaceMutationCommands.CreateSetArtworkRecipeCommand(DocumentId, this, artwork,

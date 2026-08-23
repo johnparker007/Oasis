@@ -491,6 +491,24 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry($"Opened face document stub: {document.Title}", OutputLogStatus.Info);
     }
 
+    public string NextFaceDefaultName => $"Face {_faceDocumentCounter}";
+    public int NextFaceIndex => _faceDocumentCounter;
+
+    public Automation.FaceDocumentCreationResult CreateNativeFace(Automation.FaceDocumentCreationOptions options)
+    {
+        var project = _getLoadedProject();
+        if (project is null) return Automation.FaceDocumentCreationResult.Failure("No project is open.");
+        var result = _faceCreationService.CreateFaceDocument(options, project);
+        if (result.Document is not { } document) return result;
+        document.SetOpenDocumentsAccessor(() => _openDocuments);
+        document.SetProjectAccessor(_getLoadedProject);
+        ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
+        _faceDocumentCounter++;
+        _setStatusMessage($"Created native face: {document.Title}");
+        _addOutputEntry($"Created native face '{document.Title}'.", OutputLogStatus.Info);
+        return result;
+    }
+
     public void OpenCabinet3DStubDocument()
     {
         if (_getLoadedProject() is null)
