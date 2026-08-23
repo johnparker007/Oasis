@@ -1,7 +1,7 @@
 <Window x:Class="OasisEditor.NewFaceDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Create Face" Width="460" Height="330" ResizeMode="NoResize"
+        Title="Create Face" Width="460" MinWidth="420" SizeToContent="Height" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource PanelBackgroundBrush}" Foreground="{DynamicResource TextPrimaryBrush}">
     <Grid Margin="20">
