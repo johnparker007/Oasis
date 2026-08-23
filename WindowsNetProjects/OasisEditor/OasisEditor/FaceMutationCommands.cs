@@ -364,7 +364,7 @@ internal static class FaceMutationCommands
             _originalElement ??= elements[index];
             elements[index] = _updatedElement;
             _document.SetFaceElements(elements, CreateChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
-            _document.InvalidateFaceBuild(_updatedElement is FaceLampWindowElement ? FaceBuildInput.LampInformation : FaceBuildInput.RuntimeLightingSettings);
+            _document.InvalidateFaceBuild(_updatedElement is FaceLampWindowElement ? FaceBuildInput.LampInformation : FaceBuildInput.RuntimeAssetsSettings);
             _document.HierarchySelectedPanelSelection = FaceSelectionService.ToSelectionInfo(_updatedElement);
             _document.MarkDirty();
             WasExecuted = true;
@@ -386,7 +386,7 @@ internal static class FaceMutationCommands
 
             elements[index] = _originalElement;
             _document.SetFaceElements(elements, CreateChange(_document, _objectId, PanelChangeProperties.Geometry | PanelChangeProperties.Name | PanelChangeProperties.Visibility | PanelChangeProperties.TransformLockState | PanelChangeProperties.Metadata));
-            _document.InvalidateFaceBuild(_originalElement is FaceLampWindowElement ? FaceBuildInput.LampInformation : FaceBuildInput.RuntimeLightingSettings);
+            _document.InvalidateFaceBuild(_originalElement is FaceLampWindowElement ? FaceBuildInput.LampInformation : FaceBuildInput.RuntimeAssetsSettings);
             _document.HierarchySelectedPanelSelection = FaceSelectionService.ToSelectionInfo(_originalElement);
             _document.MarkDirty();
         }
@@ -528,6 +528,7 @@ internal static class FaceMutationCommands
             _document.SetFaceDocument(
                 WithAssignedCabinetFaceTarget(faceDocument, _assignedTargetId, _assignedCabinetAssetPath),
                 CreateChange(_document, null, PanelChangeProperties.Metadata));
+            _document.ReconcileRuntimeAssetsConfiguration();
             _document.MarkDirty();
             WasExecuted = true;
         }
@@ -538,6 +539,7 @@ internal static class FaceMutationCommands
             _document.SetFaceDocument(
                 WithAssignedCabinetFaceTarget(faceDocument, _originalTargetId, _originalCabinetAssetPath),
                 CreateChange(_document, null, PanelChangeProperties.Metadata));
+            _document.ReconcileRuntimeAssetsConfiguration();
             _document.MarkDirty();
         }
     }

@@ -1,4 +1,5 @@
 using OasisEditor;
+using OasisEditor.Features.CabinetEditor.Models;
 using SkiaSharp;
 using Xunit;
 
@@ -12,7 +13,7 @@ public sealed class FaceBuildServiceTests
         var state = FaceBuildStateFactory.CreateGeneratedState(true, true, true, true, true);
         new FaceBuildService().Invalidate(state, FaceBuildInput.ArtworkCorrection);
         Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.ArtworkOutput).Status);
-        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.RuntimeLighting).Status);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.RuntimeAssets).Status);
         Assert.Equal(FaceBuildStatus.Current, state.Get(FaceGeneratedProduct.Trays).Status);
     }
 
@@ -26,7 +27,7 @@ public sealed class FaceBuildServiceTests
         Assert.Equal(FaceBuildStatus.Current, state.Get(FaceGeneratedProduct.ArtworkOutput).Status);
         Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.LampMask).Status);
         Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.Trays).Status);
-        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.RuntimeLighting).Status);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.RuntimeAssets).Status);
     }
 
     [Fact]
@@ -88,6 +89,19 @@ public sealed class FaceBuildServiceTests
     }
 
     [Fact]
+    public void ForcedRebuild_SkipsNotConfiguredRuntimeAssets()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false);
+        var calls = new List<FaceGeneratedProduct>();
+
+        var result = new FaceBuildService().Build(state, Builders(calls), force: true);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal([FaceGeneratedProduct.ArtworkOutput], calls);
+        Assert.Equal(FaceBuildStatus.NotConfigured, state.Get(FaceGeneratedProduct.RuntimeAssets).Status);
+    }
+
+    [Fact]
     public void StaleIlluminationChain_BuildsMaskThenTraysThenRuntime()
     {
         var state = FaceBuildStateFactory.CreateGeneratedState(false, true, true, true, true);
@@ -97,7 +111,7 @@ public sealed class FaceBuildServiceTests
         var result = new FaceBuildService().Build(state, Builders(calls));
 
         Assert.True(result.Succeeded);
-        Assert.Equal([FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeLighting], calls);
+        Assert.Equal([FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets], calls);
         Assert.All(calls, product => Assert.Equal(FaceBuildStatus.Current, state.Get(product).Status));
     }
 
@@ -119,7 +133,7 @@ public sealed class FaceBuildServiceTests
         Assert.Equal([FaceGeneratedProduct.LampMask], calls);
         Assert.Equal(FaceBuildStatus.Error, state.Get(FaceGeneratedProduct.LampMask).Status);
         Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.Trays).Status);
-        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.RuntimeLighting).Status);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.RuntimeAssets).Status);
     }
 
     [Fact]
@@ -188,6 +202,78 @@ public sealed class FaceBuildServiceTests
             Assert.Equal(FaceBuildStatus.Current, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.LampMask).Status);
             Assert.Single(document.GetFaceDocument().MaskLayer!.Contributions);
             Assert.True(File.Exists(Path.Combine(directory, "Generated", "Faces", "Mask Face", "mask.png")));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ArtworkCorrection_StandaloneFaceWithoutCabinetBuildsArtworkAndSkipsRuntimeAssets()
+    {
+        var face = new FaceDocumentModel
+        {
+            Artwork = new FaceArtworkModel { OutputWidth = 4, OutputHeight = 4 },
+            MaskLayer = new FaceMaskLayerModel { Width = 4, Height = 4 },
+            Trays = [new FaceTrayModel { ObjectId = "tray-1" }],
+            Elements = [new FaceReelDisplayElement { ObjectId = "reel-1", ReelSpecificationId = "standard" }],
+            BuildState = FaceBuildStateFactory.CreateGeneratedState(true, true, true, false, false)
+        };
+        var configuration = new FaceRuntimeAssetsConfigurationService();
+        configuration.Reconcile(face, configuration.Evaluate(face, Project(Path.GetTempPath()), []));
+        new FaceBuildService().Invalidate(face.BuildState, FaceBuildInput.ArtworkCorrection);
+        var runtimeInvoked = false;
+        var executors = new Dictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>>
+        {
+            [FaceGeneratedProduct.ArtworkOutput] = () => new(FaceGeneratedProduct.ArtworkOutput, true),
+            [FaceGeneratedProduct.RuntimeAssets] = () =>
+            {
+                runtimeInvoked = true;
+                return new(FaceGeneratedProduct.RuntimeAssets, true);
+            }
+        };
+
+        var result = new FaceBuildService().Build(face.BuildState, executors);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(FaceBuildStatus.Current, face.BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
+        Assert.Equal(FaceBuildStatus.NotConfigured, face.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
+        Assert.False(runtimeInvoked);
+    }
+
+    [Fact]
+    public void StandaloneCabinetCapability_ConfiguresRuntimeAssetsAndRemovalReturnsToNotConfigured()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-runtime-capability-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var cabinetPath = Path.Combine(directory, "cabinet.cabinet3d");
+            File.WriteAllText(cabinetPath, CabinetDocumentStorage.Serialize(new CabinetDocument(
+                5, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default,
+                [new CabinetReelSpecification("standard", "Standard", 210, 50)], "standard")));
+            var face = new FaceDocumentModel
+            {
+                AssignedCabinetAssetPath = "cabinet.cabinet3d",
+                Artwork = new FaceArtworkModel { OutputWidth = 4, OutputHeight = 4 },
+                Elements = [new FaceReelDisplayElement { ObjectId = "reel-1", ReelSpecificationId = "standard" }],
+                BuildState = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false)
+            };
+            var service = new FaceRuntimeAssetsConfigurationService();
+
+            var configured = service.Evaluate(face, Project(directory), []);
+            service.Reconcile(face, configured);
+
+            Assert.True(configured.IsConfigured, configured.Reason);
+            Assert.Equal(FaceBuildStatus.Stale, face.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
+
+            var removed = new FaceDocumentModel
+            {
+                Artwork = face.Artwork, BuildState = face.BuildState, RuntimeRenderAssets = face.RuntimeRenderAssets
+            };
+            service.Reconcile(removed, service.Evaluate(removed, Project(directory), []));
+            Assert.Equal(FaceBuildStatus.NotConfigured, removed.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
         }
         finally
         {

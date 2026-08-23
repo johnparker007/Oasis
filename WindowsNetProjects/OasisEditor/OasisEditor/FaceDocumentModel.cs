@@ -51,7 +51,7 @@ public sealed class FaceProvenanceModel
     public FaceSubsystemProvenanceModel Illumination { get; init; } = new();
 }
 
-public enum FaceGeneratedProduct { ArtworkOutput, LampMask, Trays, RuntimeLighting }
+public enum FaceGeneratedProduct { ArtworkOutput, LampMask, Trays, RuntimeAssets }
 public enum FaceBuildStatus { NotConfigured, Current, Stale, Error }
 
 public sealed class FaceGeneratedProductStateModel

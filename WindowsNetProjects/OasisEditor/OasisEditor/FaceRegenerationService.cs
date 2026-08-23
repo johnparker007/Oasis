@@ -186,9 +186,8 @@ internal sealed class FaceRegenerationService
                 mask: generated.Document.MaskLayer is not null && mergedElements.OfType<FaceLampWindowElement>().Any(),
                 trays: generated.Document.MaskLayer is not null
                     && mergedElements.OfType<FaceLampWindowElement>().Any() && autoAuthored.Trays.Count > 0,
-                runtimeLighting: existingFace.RuntimeRenderAssets is not null,
-                runtimeLightingConfigured: generated.Document.MaskLayer is not null
-                    && mergedElements.OfType<FaceLampWindowElement>().Any()),
+                runtimeAssetsCurrent: false,
+                runtimeAssetsConfigured: false),
             Artwork = artwork,
             MaskLayer = generated.Document.MaskLayer,
             Trays = autoAuthored.Trays,

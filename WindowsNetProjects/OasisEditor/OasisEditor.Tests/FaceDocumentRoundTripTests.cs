@@ -146,7 +146,7 @@ public sealed class FaceDocumentRoundTripTests
         Assert.Equal("Physical face summary", savedDocument.Summary);
         Assert.Equal(FaceSubsystemOrigin.Derived, savedDocument.Provenance.Artwork.Origin);
         Assert.Equal(FaceBuildStatus.Current, savedDocument.BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
-        Assert.Equal(FaceBuildStatus.NotConfigured, savedDocument.BuildState.Get(FaceGeneratedProduct.RuntimeLighting).Status);
+        Assert.Equal(FaceBuildStatus.NotConfigured, savedDocument.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
         Assert.Equal("artwork-state-1", savedDocument.Artwork!.Id);
         Assert.Equal(FaceArtworkSourceKind.Panel2DFaceSourceShape, savedDocument.Artwork.Source.Kind);
         Assert.Equal("shape-1", savedDocument.Artwork.Source.FaceSourceShapeId);

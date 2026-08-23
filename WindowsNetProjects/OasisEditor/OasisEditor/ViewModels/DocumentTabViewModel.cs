@@ -39,6 +39,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
     private Func<EditorProject?>? _projectAccessor;
     private readonly FaceWorkspaceViewModel? _faceWorkspace;
+    private readonly FaceRuntimeAssetsConfigurationService _runtimeAssetsConfiguration = new();
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -151,11 +152,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public void SetOpenDocumentsAccessor(Func<IReadOnlyList<DocumentTabViewModel>> openDocumentsAccessor)
     {
         _openDocumentsAccessor = openDocumentsAccessor;
+        ReconcileRuntimeAssetsConfiguration();
     }
 
     public void SetProjectAccessor(Func<EditorProject?> projectAccessor)
     {
         _projectAccessor = projectAccessor;
+        ReconcileRuntimeAssetsConfiguration();
         _cabinetViewer?.ReflectionEditor.RefreshProjectContext();
     }
 
@@ -272,6 +275,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     public FaceBuildResult BuildFace(bool force = false)
     {
+        ReconcileRuntimeAssetsConfiguration();
         var service = new FaceBuildService();
         var executors = new Dictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>>
         {
@@ -280,7 +284,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                 : new(FaceGeneratedProduct.ArtworkOutput, false, error),
             [FaceGeneratedProduct.LampMask] = BuildLampMask,
             [FaceGeneratedProduct.Trays] = BuildTrays,
-            [FaceGeneratedProduct.RuntimeLighting] = BuildRuntimeLighting
+            [FaceGeneratedProduct.RuntimeAssets] = BuildRuntimeAssets
         };
         var result = service.Build(_faceDocumentModel.BuildState, executors, force);
         _faceDocumentJson = GetFaceDocumentJson();
@@ -432,13 +436,31 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         return new(FaceGeneratedProduct.Trays, true);
     }
 
-    private FaceBuildNodeResult BuildRuntimeLighting()
+    private FaceBuildNodeResult BuildRuntimeAssets()
     {
         var project = _projectAccessor?.Invoke();
-        if (project is null) return new(FaceGeneratedProduct.RuntimeLighting, false, "No project is open.");
-        var exported = new FaceRuntimeExportService().Export(_faceDocumentModel, project, FilePath);
+        if (project is null) return new(FaceGeneratedProduct.RuntimeAssets, false, "No project is open.");
+        var capability = _runtimeAssetsConfiguration.Evaluate(
+            _faceDocumentModel, project, _openDocumentsAccessor?.Invoke() ?? []);
+        if (!capability.IsConfigured || capability.CabinetContext is null)
+        {
+            return new(FaceGeneratedProduct.RuntimeAssets, false,
+                capability.Reason ?? "Standalone Face runtime assets are not configured.");
+        }
+        var exported = new FaceRuntimeExportService().Export(
+            _faceDocumentModel, project, capability.CabinetContext, FilePath);
         _faceDocumentModel = exported.Document;
-        return new(FaceGeneratedProduct.RuntimeLighting, true);
+        return new(FaceGeneratedProduct.RuntimeAssets, true);
+    }
+
+    internal void ReconcileRuntimeAssetsConfiguration()
+    {
+        if (Document.DocumentType != EditorDocumentType.Face) return;
+        var capability = _runtimeAssetsConfiguration.Evaluate(
+            _faceDocumentModel, _projectAccessor?.Invoke(), _openDocumentsAccessor?.Invoke() ?? []);
+        _runtimeAssetsConfiguration.Reconcile(_faceDocumentModel, capability);
+        _faceDocumentJson = GetFaceDocumentJson();
+        _faceWorkspace?.RefreshSummaries();
     }
 
     internal void InvalidateFaceBuild(FaceBuildInput input)

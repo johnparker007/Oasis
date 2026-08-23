@@ -80,7 +80,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
 
     public string ArtworkBuildSummary => $"{FormatProvenance(_document.GetFaceDocument().Provenance.Artwork)} • Output: {Status(FaceGeneratedProduct.ArtworkOutput)}";
     public string ComponentsProvenanceSummary => FormatProvenance(_document.GetFaceDocument().Provenance.Components);
-    public string IlluminationBuildSummary => $"{FormatProvenance(_document.GetFaceDocument().Provenance.Illumination)} • Mask: {Status(FaceGeneratedProduct.LampMask)} • Trays: {Status(FaceGeneratedProduct.Trays)} • Runtime: {Status(FaceGeneratedProduct.RuntimeLighting)}";
+    public string IlluminationBuildSummary => $"{FormatProvenance(_document.GetFaceDocument().Provenance.Illumination)} • Mask: {Status(FaceGeneratedProduct.LampMask)} • Trays: {Status(FaceGeneratedProduct.Trays)} • Runtime: {Status(FaceGeneratedProduct.RuntimeAssets)}";
     public string BuildErrorSummary => string.Join(Environment.NewLine,
         _document.GetFaceDocument().BuildState.Products
             .Where(pair => pair.Value.Status == FaceBuildStatus.Error && !string.IsNullOrWhiteSpace(pair.Value.ErrorMessage))
@@ -101,7 +101,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     {
         FaceGeneratedProduct.ArtworkOutput => "Artwork Output",
         FaceGeneratedProduct.LampMask => "Lamp Mask",
-        FaceGeneratedProduct.RuntimeLighting => "Runtime Lighting",
+        FaceGeneratedProduct.RuntimeAssets => "Runtime Assets",
         _ => product.ToString()
     };
 

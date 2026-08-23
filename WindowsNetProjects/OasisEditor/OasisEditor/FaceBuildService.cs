@@ -7,7 +7,7 @@ public enum FaceBuildInput
     LampInformation,
     MaskSettings,
     TraySettings,
-    RuntimeLightingSettings
+    RuntimeAssetsSettings
 }
 
 public sealed record FaceBuildNodeResult(FaceGeneratedProduct Product, bool Succeeded, string? ErrorMessage = null);
@@ -24,25 +24,25 @@ public sealed class FaceBuildResult
 public sealed class FaceBuildService
 {
     private static readonly FaceGeneratedProduct[] s_order =
-        [FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeLighting];
+        [FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets];
     private static readonly IReadOnlyDictionary<FaceGeneratedProduct, FaceGeneratedProduct[]> s_dependencies =
         new Dictionary<FaceGeneratedProduct, FaceGeneratedProduct[]>
         {
             [FaceGeneratedProduct.ArtworkOutput] = [],
             [FaceGeneratedProduct.LampMask] = [],
             [FaceGeneratedProduct.Trays] = [FaceGeneratedProduct.LampMask],
-            [FaceGeneratedProduct.RuntimeLighting] = [FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays]
+            [FaceGeneratedProduct.RuntimeAssets] = [FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays]
         };
 
     private static readonly IReadOnlyDictionary<FaceBuildInput, FaceGeneratedProduct[]> s_invalidations =
         new Dictionary<FaceBuildInput, FaceGeneratedProduct[]>
         {
-            [FaceBuildInput.ArtworkSource] = [FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.RuntimeLighting],
-            [FaceBuildInput.ArtworkCorrection] = [FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.RuntimeLighting],
-            [FaceBuildInput.LampInformation] = [FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeLighting],
-            [FaceBuildInput.MaskSettings] = [FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeLighting],
-            [FaceBuildInput.TraySettings] = [FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeLighting],
-            [FaceBuildInput.RuntimeLightingSettings] = [FaceGeneratedProduct.RuntimeLighting]
+            [FaceBuildInput.ArtworkSource] = [FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.RuntimeAssets],
+            [FaceBuildInput.ArtworkCorrection] = [FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.RuntimeAssets],
+            [FaceBuildInput.LampInformation] = [FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
+            [FaceBuildInput.MaskSettings] = [FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
+            [FaceBuildInput.TraySettings] = [FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
+            [FaceBuildInput.RuntimeAssetsSettings] = [FaceGeneratedProduct.RuntimeAssets]
         };
 
     public void Invalidate(FaceBuildStateModel state, FaceBuildInput input)
@@ -117,15 +117,15 @@ public static class FaceBuildStateFactory
     };
 
     public static FaceBuildStateModel CreateGeneratedState(bool artwork, bool mask, bool trays,
-        bool runtimeLighting, bool runtimeLightingConfigured)
+        bool runtimeAssetsCurrent, bool runtimeAssetsConfigured)
     {
         var state = new FaceBuildStateModel();
         Configure(state, FaceGeneratedProduct.ArtworkOutput, artwork);
         Configure(state, FaceGeneratedProduct.LampMask, mask);
         Configure(state, FaceGeneratedProduct.Trays, trays);
-        state.Get(FaceGeneratedProduct.RuntimeLighting).Status = runtimeLighting
+        state.Get(FaceGeneratedProduct.RuntimeAssets).Status = runtimeAssetsCurrent
             ? FaceBuildStatus.Current
-            : runtimeLightingConfigured ? FaceBuildStatus.Stale : FaceBuildStatus.NotConfigured;
+            : runtimeAssetsConfigured ? FaceBuildStatus.Stale : FaceBuildStatus.NotConfigured;
         return state;
     }
 
