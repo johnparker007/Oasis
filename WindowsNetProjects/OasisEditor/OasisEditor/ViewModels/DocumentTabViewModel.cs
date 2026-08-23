@@ -470,8 +470,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             if(string.IsNullOrWhiteSpace(destination))return new(FaceGeneratedProduct.LampMask,false,"The generated lamp-mask path is not configured.");
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
             using var bitmap=SkiaSharp.SKBitmap.Decode(source);if(bitmap is null)return new(FaceGeneratedProduct.LampMask,false,"The authored lamp-mask image could not be decoded.");
-            var width=_faceDocumentModel.Artwork?.OutputWidth??bitmap.Width;var height=_faceDocumentModel.Artwork?.OutputHeight??bitmap.Height;
-            using var normalized=bitmap.Width==width&&bitmap.Height==height?bitmap.Copy():bitmap.Resize(new SkiaSharp.SKImageInfo(width,height),SkiaSharp.SKFilterQuality.High);
+            var authoredWidth=_faceDocumentModel.Artwork?.OutputWidth??bitmap.Width;var authoredHeight=_faceDocumentModel.Artwork?.OutputHeight??bitmap.Height;
+            using var normalized=bitmap.Width==authoredWidth&&bitmap.Height==authoredHeight?bitmap.Copy():bitmap.Resize(new SkiaSharp.SKImageInfo(authoredWidth,authoredHeight),SkiaSharp.SKFilterQuality.High);
             if(normalized is null)return new(FaceGeneratedProduct.LampMask,false,"The authored lamp-mask image could not be normalized.");
             using var image=SkiaSharp.SKImage.FromBitmap(normalized);using var data=image.Encode(SkiaSharp.SKEncodedImageFormat.Png,100);using var stream=File.Open(destination,FileMode.Create,FileAccess.Write);data.SaveTo(stream);
             return new(FaceGeneratedProduct.LampMask,true);
