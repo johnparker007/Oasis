@@ -510,7 +510,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             if(string.IsNullOrWhiteSpace(destination))return new(FaceGeneratedProduct.LampMask,false,"The generated lamp-mask path is not configured.");
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
             using var bitmap=SkiaSharp.SKBitmap.Decode(source);if(bitmap is null)return new(FaceGeneratedProduct.LampMask,false,"The authored lamp-mask image could not be decoded.");
-            var authoredWidth=_faceDocumentModel.Artwork is { } artwork ? (artwork.FinalOutputWidth > 0 ? artwork.FinalOutputWidth : artwork.OutputWidth) : bitmap.Width;var authoredHeight=_faceDocumentModel.Artwork is { } artworkHeight ? (artworkHeight.FinalOutputHeight > 0 ? artworkHeight.FinalOutputHeight : artworkHeight.OutputHeight) : bitmap.Height;
+            var authoredWidth=_faceDocumentModel.Artwork is { } authoredArtworkWidth ? (authoredArtworkWidth.FinalOutputWidth > 0 ? authoredArtworkWidth.FinalOutputWidth : authoredArtworkWidth.OutputWidth) : bitmap.Width;
+            var authoredHeight=_faceDocumentModel.Artwork is { } authoredArtworkHeight ? (authoredArtworkHeight.FinalOutputHeight > 0 ? authoredArtworkHeight.FinalOutputHeight : authoredArtworkHeight.OutputHeight) : bitmap.Height;
             using var normalized=bitmap.Width==authoredWidth&&bitmap.Height==authoredHeight?bitmap.Copy():bitmap.Resize(new SkiaSharp.SKImageInfo(authoredWidth,authoredHeight),SkiaSharp.SKFilterQuality.High);
             if(normalized is null)return new(FaceGeneratedProduct.LampMask,false,"The authored lamp-mask image could not be normalized.");
             using var image=SkiaSharp.SKImage.FromBitmap(normalized);using var data=image.Encode(SkiaSharp.SKEncodedImageFormat.Png,100);using var stream=File.Open(destination,FileMode.Create,FileAccess.Write);data.SaveTo(stream);

@@ -12,7 +12,8 @@ public sealed class FaceArtworkOverrideTests : IDisposable
     public void Serialization_RoundTripsOverrideRecipe()
     {
         var expected=new FaceArtworkOverrideModel{Enabled=false,AssetPath="Assets/Faces/Glass/ArtworkOverride/override.png",PixelWidth=4000,PixelHeight=6000,X=-.01,Y=.005,Width=1.025,Height=.995,ContentRevision=7};
-        var model=FaceDocumentStorage.DeserializeModel(FaceDocumentStorage.Serialize(new FaceDocumentModel{Title="Glass",Artwork=new FaceArtworkModel{Override=expected}}));
+        Assert.True(FaceDocumentStorage.TryRead(FaceDocumentStorage.Serialize(new FaceDocumentModel{Title="Glass",Artwork=new FaceArtworkModel{Override=expected}}),out var file));
+        var model=FaceDocumentStorage.ToModel(file);
         var actual=Assert.IsType<FaceArtworkOverrideModel>(model.Artwork!.Override);
         Assert.Equal(expected.Enabled,actual.Enabled);Assert.Equal(expected.AssetPath,actual.AssetPath);Assert.Equal(expected.PixelWidth,actual.PixelWidth);Assert.Equal(expected.PixelHeight,actual.PixelHeight);
         Assert.Equal(expected.X,actual.X);Assert.Equal(expected.Y,actual.Y);Assert.Equal(expected.Width,actual.Width);Assert.Equal(expected.Height,actual.Height);Assert.Equal(7,actual.ContentRevision);
