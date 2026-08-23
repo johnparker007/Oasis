@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace OasisEditor.Automation;
 
 public interface IProjectContainerCreationService
