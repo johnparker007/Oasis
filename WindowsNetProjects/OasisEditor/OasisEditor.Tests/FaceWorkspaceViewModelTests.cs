@@ -124,7 +124,7 @@ public sealed class FaceWorkspaceViewModelTests
         var workspace = Assert.IsType<FaceWorkspaceViewModel>(document.FaceWorkspace);
         Assert.Equal("Build status: Current", workspace.BuildStatusSummary);
 
-        document.InvalidateFaceBuild(FaceBuildInput.ArtworkCorrection);
+        document.InvalidateFaceBuild(FaceBuildInput.ArtworkProcessing);
 
         Assert.Equal("Build status: 2 outputs need building", workspace.BuildStatusSummary);
         Assert.Contains("Base: Stale", workspace.ArtworkBuildSummary);

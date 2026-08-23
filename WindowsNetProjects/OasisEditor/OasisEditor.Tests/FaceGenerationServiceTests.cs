@@ -87,6 +87,7 @@ public sealed class FaceGenerationServiceTests
             var generatedPath = Path.Combine(directory, result.Document.Artwork!.OutputAssetPath!.Replace('/', Path.DirectorySeparatorChar));
             Assert.Equal(Path.Combine(directory, "Generated", "Faces", "Test Face", "Artwork", "artwork.png"), generatedPath);
             Assert.True(File.Exists(generatedPath));
+            Assert.True(File.Exists(FaceArtworkGeneratedPathService.GetCorrectionInputPathFromOutput(generatedPath)));
             Assert.True(File.Exists(FaceArtworkGeneratedPathService.GetBasePathFromOutput(generatedPath)));
             Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(generatedPath)!, "original.png")));
             Assert.False(Directory.Exists(Path.Combine(faceDirectory, "generated")));

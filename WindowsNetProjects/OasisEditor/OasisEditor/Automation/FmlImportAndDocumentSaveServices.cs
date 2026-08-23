@@ -136,6 +136,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
 
         CopyOrCreatePng(project, faceDocument.Elements.OfType<FaceArtworkElement>().FirstOrDefault()?.AssetPath, artworkPath, faceDocument);
         EnsureCanonicalArtwork(project, faceDocument.Artwork, artworkPath);
+        EnsureCorrectionInput(project, faceDocument.Artwork, artworkPath);
         CopyOrCreatePng(project, faceDocument.MaskLayer?.AssetPath, maskPath, faceDocument);
 
         var artworkRelative = pathService.ToProjectRelativePath(project, artworkPath);
@@ -223,6 +224,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
             Id = artwork.Id,
             Source = artwork.Source,
             ProcessingPipeline = artwork.ProcessingPipeline,
+            CorrectionInputAssetPath = FaceArtworkGeneratedPathService.GetCorrectionInputPathFromOutput(generatedAssetPath).Replace('\\', '/'),
             BaseAssetPath = FaceArtworkGeneratedPathService.GetBasePathFromOutput(generatedAssetPath).Replace('\\', '/'),
             OutputAssetPath = generatedAssetPath,
             OutputWidth = artwork.OutputWidth > 0 ? artwork.OutputWidth : Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Width ?? 1)),
@@ -263,6 +265,15 @@ public sealed class DocumentSaveService : IDocumentSaveService
         }
         else if (!string.Equals(Path.GetFullPath(outputArtworkPath), Path.GetFullPath(destinationBase), StringComparison.OrdinalIgnoreCase))
             File.Copy(outputArtworkPath, destinationBase, overwrite: true);
+    }
+
+    private static void EnsureCorrectionInput(EditorProject project, FaceArtworkModel? artwork, string outputArtworkPath)
+    {
+        var destination = FaceArtworkGeneratedPathService.GetCorrectionInputPathFromOutput(outputArtworkPath);
+        var source = ResolveExistingProjectPath(project, artwork?.CorrectionInputAssetPath);
+        if (!string.IsNullOrWhiteSpace(source) && File.Exists(source)
+            && !string.Equals(Path.GetFullPath(source), Path.GetFullPath(destination), StringComparison.OrdinalIgnoreCase))
+            File.Copy(source, destination, overwrite: true);
     }
 
     private static string? ResolveExistingProjectPath(EditorProject project, string? assetPath)

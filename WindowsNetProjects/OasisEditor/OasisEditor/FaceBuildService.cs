@@ -3,7 +3,8 @@ namespace OasisEditor;
 public enum FaceBuildInput
 {
     ArtworkSource,
-    ArtworkCorrection,
+    ArtworkPreprocessing,
+    ArtworkProcessing,
     LampInformation,
     MaskSettings,
     TraySettings,
@@ -24,11 +25,12 @@ public sealed class FaceBuildResult
 public sealed class FaceBuildService
 {
     private static readonly FaceGeneratedProduct[] s_order =
-        [FaceGeneratedProduct.BaseArtwork, FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets];
+        [FaceGeneratedProduct.ArtworkCorrectionInput, FaceGeneratedProduct.BaseArtwork, FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets];
     private static readonly IReadOnlyDictionary<FaceGeneratedProduct, FaceGeneratedProduct[]> s_dependencies =
         new Dictionary<FaceGeneratedProduct, FaceGeneratedProduct[]>
         {
-            [FaceGeneratedProduct.BaseArtwork] = [],
+            [FaceGeneratedProduct.ArtworkCorrectionInput] = [],
+            [FaceGeneratedProduct.BaseArtwork] = [FaceGeneratedProduct.ArtworkCorrectionInput],
             [FaceGeneratedProduct.ArtworkOutput] = [FaceGeneratedProduct.BaseArtwork],
             [FaceGeneratedProduct.LampMask] = [],
             [FaceGeneratedProduct.Trays] = [FaceGeneratedProduct.LampMask],
@@ -38,8 +40,9 @@ public sealed class FaceBuildService
     private static readonly IReadOnlyDictionary<FaceBuildInput, FaceGeneratedProduct[]> s_invalidations =
         new Dictionary<FaceBuildInput, FaceGeneratedProduct[]>
         {
-            [FaceBuildInput.ArtworkSource] = [FaceGeneratedProduct.BaseArtwork],
-            [FaceBuildInput.ArtworkCorrection] = [FaceGeneratedProduct.BaseArtwork],
+            [FaceBuildInput.ArtworkSource] = [FaceGeneratedProduct.ArtworkCorrectionInput],
+            [FaceBuildInput.ArtworkPreprocessing] = [FaceGeneratedProduct.ArtworkCorrectionInput],
+            [FaceBuildInput.ArtworkProcessing] = [FaceGeneratedProduct.BaseArtwork],
             [FaceBuildInput.LampInformation] = [FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
             [FaceBuildInput.MaskSettings] = [FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
             [FaceBuildInput.TraySettings] = [FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets],
@@ -129,6 +132,7 @@ public static class FaceBuildStateFactory
         bool runtimeAssetsCurrent, bool runtimeAssetsConfigured)
     {
         var state = new FaceBuildStateModel();
+        Configure(state, FaceGeneratedProduct.ArtworkCorrectionInput, artwork);
         Configure(state, FaceGeneratedProduct.BaseArtwork, artwork);
         Configure(state, FaceGeneratedProduct.ArtworkOutput, artwork);
         Configure(state, FaceGeneratedProduct.LampMask, mask);

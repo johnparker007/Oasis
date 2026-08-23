@@ -9,20 +9,22 @@ internal sealed record FaceArtworkProcessingResult(bool Succeeded, string? Error
     public static FaceArtworkProcessingResult Failure(string message) => new(false, message);
 }
 
-/// <summary>Builds Base from the authoritative Panel2D recipe, then finalizes Output from Base.</summary>
+/// <summary>Builds the generated correction input, Base and Output stages.</summary>
 internal sealed class FaceArtworkRebuildService
 {
-    public string? RebuildBase(FaceArtworkModel artwork, Panel2DDocumentModel panel, PanelFaceSourceShapeModel shape,
-        string? projectDirectory, string basePath, FaceGenerationSettingsModel? generationSettings = null)
+    /// <summary>Rectifies and sharpens source artwork, without applying any processing operations.</summary>
+    public string? RebuildCorrectionInput(FaceArtworkModel artwork, Panel2DDocumentModel panel,
+        PanelFaceSourceShapeModel shape, string? projectDirectory, string correctionInputPath,
+        FaceGenerationSettingsModel? generationSettings = null)
     {
         ArgumentNullException.ThrowIfNull(artwork);
         if (artwork.Source.Kind != FaceArtworkSourceKind.Panel2DFaceSourceShape)
             throw new NotSupportedException("Independent artwork sources are not rebuildable until Phase 5.");
         if (string.IsNullOrWhiteSpace(projectDirectory)) return null;
 
-        var absoluteBase = FaceArtworkGeneratedPathService.Resolve(basePath, projectDirectory);
-        Directory.CreateDirectory(Path.GetDirectoryName(absoluteBase)!);
-        var geometryPath = Path.Combine(Path.GetDirectoryName(absoluteBase)!, $".geometry-{Guid.NewGuid():N}.png");
+        var absoluteInput = FaceArtworkGeneratedPathService.Resolve(correctionInputPath, projectDirectory);
+        Directory.CreateDirectory(Path.GetDirectoryName(absoluteInput)!);
+        var geometryPath = Path.Combine(Path.GetDirectoryName(absoluteInput)!, $".geometry-{Guid.NewGuid():N}.png");
         try
         {
             var generated = FaceSourceShapeTransformService.TryGenerateBackground(panel, shape, artwork.OutputWidth,
@@ -32,11 +34,29 @@ internal sealed class FaceArtworkRebuildService
             if (geometry is null) return null;
             using var sharpened = FaceArtworkSharpeningService.Apply(geometry,
                 generationSettings ?? FaceGenerationSettingsModel.Default);
-            using var corrected = new FaceArtworkProcessingPipeline().Evaluate(sharpened, artwork.ProcessingPipeline);
-            WriteVerified(corrected, absoluteBase);
-            return FaceArtworkGeneratedPathService.ToProjectRelative(absoluteBase, projectDirectory);
+            WriteVerified(sharpened, absoluteInput);
+            return FaceArtworkGeneratedPathService.ToProjectRelative(absoluteInput, projectDirectory);
         }
         finally { if (File.Exists(geometryPath)) File.Delete(geometryPath); }
+    }
+
+    /// <summary>Applies the authored processing stack to the cached correction input.</summary>
+    public FaceArtworkProcessingResult BuildBaseFromCorrectionInput(FaceArtworkModel artwork, string projectDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(artwork.CorrectionInputAssetPath) || string.IsNullOrWhiteSpace(artwork.BaseAssetPath))
+            return FaceArtworkProcessingResult.Failure("The Face has no generated Correction Input/Base artwork paths.");
+        var inputPath = FaceArtworkGeneratedPathService.Resolve(artwork.CorrectionInputAssetPath, projectDirectory);
+        var basePath = FaceArtworkGeneratedPathService.Resolve(artwork.BaseAssetPath, projectDirectory);
+        if (!File.Exists(inputPath)) return FaceArtworkProcessingResult.Failure($"Correction input was not found at '{inputPath}'.");
+        try
+        {
+            using var input = SKBitmap.Decode(inputPath);
+            if (input is null) return FaceArtworkProcessingResult.Failure($"Correction input could not be decoded: '{inputPath}'.");
+            using var corrected = new FaceArtworkProcessingPipeline().Evaluate(input, artwork.ProcessingPipeline);
+            WriteVerified(corrected, basePath);
+            return FaceArtworkProcessingResult.Success;
+        }
+        catch (Exception exception) { return FaceArtworkProcessingResult.Failure($"Base artwork failed: {exception.Message}"); }
     }
 
     public FaceArtworkProcessingResult FinalizeOutput(FaceArtworkModel artwork, string projectDirectory)
@@ -54,20 +74,6 @@ internal sealed class FaceArtworkRebuildService
             return FaceArtworkProcessingResult.Success;
         }
         catch (Exception exception) { return FaceArtworkProcessingResult.Failure($"Artwork output failed: {exception.Message}"); }
-    }
-
-    internal static SKBitmap? BuildCorrectionInput(FaceArtworkModel artwork, Panel2DDocumentModel panel,
-        PanelFaceSourceShapeModel shape, string projectDirectory, FaceGenerationSettingsModel settings)
-    {
-        var temp = Path.Combine(Path.GetTempPath(), $"oasis-geometry-{Guid.NewGuid():N}.png");
-        try
-        {
-            if (FaceSourceShapeTransformService.TryGenerateBackground(panel, shape, artwork.OutputWidth,
-                    artwork.OutputHeight, projectDirectory, temp) is null) return null;
-            using var geometry = SKBitmap.Decode(temp);
-            return geometry is null ? null : FaceArtworkSharpeningService.Apply(geometry, settings);
-        }
-        finally { if (File.Exists(temp)) File.Delete(temp); }
     }
 
     private static void WriteVerified(SKBitmap bitmap, string path)

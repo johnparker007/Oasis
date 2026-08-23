@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 16;
+    public const int CurrentSchemaVersion = 17;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -242,6 +242,7 @@ public static class FaceDocumentStorage
             {
                 Operations = file.ProcessingPipeline.Operations.Select(ToModel).ToArray()
             },
+            CorrectionInputAssetPath = NormalizeOptional(file.CorrectionInputAssetPath),
             BaseAssetPath = NormalizeOptional(file.BaseAssetPath),
             OutputAssetPath = NormalizeOptional(file.OutputAssetPath),
             OutputWidth = file.OutputWidth,
@@ -267,6 +268,7 @@ public static class FaceDocumentStorage
             {
                 Operations = model.ProcessingPipeline.Operations.Select(ToFile).ToArray()
             },
+            CorrectionInputAssetPath = model.CorrectionInputAssetPath,
             BaseAssetPath = model.BaseAssetPath,
             OutputAssetPath = model.OutputAssetPath,
             OutputWidth = model.OutputWidth,
@@ -894,6 +896,7 @@ public sealed record FaceArtworkFile
     public string Id { get; init; } = string.Empty;
     public FaceArtworkSourceFile Source { get; init; } = new();
     public ImageProcessingPipelineFile ProcessingPipeline { get; init; } = new();
+    public string? CorrectionInputAssetPath { get; init; }
     public string? BaseAssetPath { get; init; }
     public string? OutputAssetPath { get; init; }
     public int OutputWidth { get; init; }

@@ -1186,7 +1186,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             || previousSettings.PostWarpSharpeningRadiusPixels != normalizedSettings.PostWarpSharpeningRadiusPixels
             || previousSettings.PostWarpSharpeningThreshold != normalizedSettings.PostWarpSharpeningThreshold)
         {
-            SelectedDocument.InvalidateFaceBuild(FaceBuildInput.ArtworkCorrection);
+            SelectedDocument.InvalidateFaceBuild(FaceBuildInput.ArtworkPreprocessing);
         }
         if (previousSettings.MaskExtractionThreshold != normalizedSettings.MaskExtractionThreshold)
         {

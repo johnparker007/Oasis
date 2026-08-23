@@ -39,6 +39,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private Func<EditorProject?>? _projectAccessor;
     private readonly FaceWorkspaceViewModel? _faceWorkspace;
     private readonly FaceRuntimeAssetsConfigurationService _runtimeAssetsConfiguration = new();
+    private SKBitmap? _correctionInputBitmap;
+    private string? _correctionInputCacheKey;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -222,6 +224,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public void Dispose()
     {
         CancelCalibrationPlacement();
+        InvalidateCorrectionInputCache();
         DisposeCabinetViewer();
         SelectionState.SelectionChanged -= OnSelectionStateChanged;
     }
@@ -273,6 +276,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var service = new FaceBuildService();
         var executors = new Dictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>>
         {
+            [FaceGeneratedProduct.ArtworkCorrectionInput] = BuildArtworkCorrectionInput,
             [FaceGeneratedProduct.BaseArtwork] = BuildBaseArtwork,
             [FaceGeneratedProduct.ArtworkOutput] = () => TryFinalizeFaceArtwork(out var error)
                 ? new(FaceGeneratedProduct.ArtworkOutput, true)
@@ -461,9 +465,28 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     internal void InvalidateFaceBuild(FaceBuildInput input)
     {
         new FaceBuildService().Invalidate(_faceDocumentModel.BuildState, input);
+        if (input is FaceBuildInput.ArtworkSource or FaceBuildInput.ArtworkPreprocessing)
+            InvalidateCorrectionInputCache();
         _faceDocumentJson = GetFaceDocumentJson();
         _faceWorkspace?.RefreshSummaries();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
+    }
+
+    private FaceBuildNodeResult BuildArtworkCorrectionInput()
+    {
+        var artwork = _faceDocumentModel.Artwork;
+        var project = _projectAccessor?.Invoke();
+        if (artwork is null || project is null) return new(FaceGeneratedProduct.ArtworkCorrectionInput, false, "Artwork or project is unavailable.");
+        if (!TryResolveSourcePanel(out var panel, out var error)) return new(FaceGeneratedProduct.ArtworkCorrectionInput, false, error);
+        var shape = panel.FaceSourceShapes.FirstOrDefault(candidate => string.Equals(candidate.Id, artwork.Source.FaceSourceShapeId ?? _faceDocumentModel.SourceFaceShapeId, StringComparison.Ordinal));
+        if (shape is null) return new(FaceGeneratedProduct.ArtworkCorrectionInput, false, "The linked Face Source Shape is unavailable.");
+        if (string.IsNullOrWhiteSpace(artwork.CorrectionInputAssetPath)) return new(FaceGeneratedProduct.ArtworkCorrectionInput, false, "The correction-input path is not configured.");
+        var built = new FaceArtworkRebuildService().RebuildCorrectionInput(artwork, panel, shape,
+            project.ProjectDirectory, artwork.CorrectionInputAssetPath, _faceDocumentModel.GenerationSettings);
+        InvalidateCorrectionInputCache();
+        return string.IsNullOrWhiteSpace(built)
+            ? new(FaceGeneratedProduct.ArtworkCorrectionInput, false, "Correction input generation failed.")
+            : new(FaceGeneratedProduct.ArtworkCorrectionInput, true);
     }
 
     private FaceBuildNodeResult BuildBaseArtwork()
@@ -471,12 +494,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var artwork = _faceDocumentModel.Artwork;
         var project = _projectAccessor?.Invoke();
         if (artwork is null || project is null) return new(FaceGeneratedProduct.BaseArtwork, false, "Artwork or project is unavailable.");
-        if (!TryResolveSourcePanel(out var panel, out var error)) return new(FaceGeneratedProduct.BaseArtwork, false, error);
-        var shape = panel.FaceSourceShapes.FirstOrDefault(candidate => string.Equals(candidate.Id, artwork.Source.FaceSourceShapeId ?? _faceDocumentModel.SourceFaceShapeId, StringComparison.Ordinal));
-        if (shape is null) return new(FaceGeneratedProduct.BaseArtwork, false, "The linked Face Source Shape is unavailable.");
-        if (string.IsNullOrWhiteSpace(artwork.BaseAssetPath)) return new(FaceGeneratedProduct.BaseArtwork, false, "The Base artwork path is not configured.");
-        var built = new FaceArtworkRebuildService().RebuildBase(artwork, panel, shape, project.ProjectDirectory, artwork.BaseAssetPath, _faceDocumentModel.GenerationSettings);
-        return string.IsNullOrWhiteSpace(built) ? new(FaceGeneratedProduct.BaseArtwork, false, "Base artwork generation failed.") : new(FaceGeneratedProduct.BaseArtwork, true);
+        var result = new FaceArtworkRebuildService().BuildBaseFromCorrectionInput(artwork, project.ProjectDirectory);
+        return new FaceBuildNodeResult(FaceGeneratedProduct.BaseArtwork, result.Succeeded, result.ErrorMessage);
     }
 
     internal bool TryFinalizeFaceArtwork(out string? errorMessage)
@@ -548,14 +567,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         whiteColor = operation.WhiteReference.ManualEnabled ? operation.WhiteReference.ManualColor : null;
         var artwork = _faceDocumentModel.Artwork;
         var project = _projectAccessor?.Invoke();
-        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.OutputAssetPath)) return false;
-        if (!TryResolveSourcePanel(out var panel, out _)) return false;
-        var shape = panel.FaceSourceShapes.FirstOrDefault(candidate => string.Equals(candidate.Id, artwork.Source.FaceSourceShapeId, StringComparison.Ordinal));
-        if (shape is null) return false;
-        using var original = FaceArtworkRebuildService.BuildCorrectionInput(artwork, panel, shape, project.ProjectDirectory, _faceDocumentModel.GenerationSettings);
-        if (original is null) return false;
+        if (artwork is null || project is null || !TryGetCorrectionInputBitmap(out var original)) return false;
         var index = artwork.ProcessingPipeline.Operations.ToList().FindIndex(o => o.Id == operation.Id);
-        using var input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, Math.Max(0, index));
+        if (index <= 0)
+            return FaceArtworkProcessingPipeline.TryResolveReferenceColors(original, operation, out blackColor, out whiteColor);
+        using var input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, index);
         return FaceArtworkProcessingPipeline.TryResolveReferenceColors(input, operation, out blackColor, out whiteColor);
     }
 
@@ -563,15 +579,39 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         var artwork = _faceDocumentModel.Artwork;
         var project = _projectAccessor?.Invoke();
-        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.OutputAssetPath)) return null;
-        if (!TryResolveSourcePanel(out var panel, out _)) return null;
-        var shape = panel.FaceSourceShapes.FirstOrDefault(candidate => string.Equals(candidate.Id, artwork.Source.FaceSourceShapeId, StringComparison.Ordinal));
-        if (shape is null) return null;
-        using var original = FaceArtworkRebuildService.BuildCorrectionInput(artwork, panel, shape, project.ProjectDirectory, _faceDocumentModel.GenerationSettings);
-        if (original is null) return null;
+        if (artwork is null || project is null || !TryGetCorrectionInputBitmap(out var original)) return null;
         var index = artwork.ProcessingPipeline.Operations.ToList().FindIndex(o => o.Id == operation.Id);
-        using var input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, Math.Max(0, index));
+        if (index <= 0) return FaceArtworkProcessingPipeline.MeasureSampleHex(original, sample);
+        using var input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, index);
         return FaceArtworkProcessingPipeline.MeasureSampleHex(input, sample);
+    }
+
+    private bool TryGetCorrectionInputBitmap(out SKBitmap bitmap)
+    {
+        bitmap = null!;
+        var artwork = _faceDocumentModel.Artwork;
+        var project = _projectAccessor?.Invoke();
+        if (artwork is null || project is null || string.IsNullOrWhiteSpace(artwork.CorrectionInputAssetPath)
+            || _faceDocumentModel.BuildState.Get(FaceGeneratedProduct.ArtworkCorrectionInput).Status != FaceBuildStatus.Current)
+            return false;
+        var path = FaceArtworkGeneratedPathService.Resolve(artwork.CorrectionInputAssetPath, project.ProjectDirectory);
+        if (!File.Exists(path)) return false;
+        var key = $"{Path.GetFullPath(path)}|{File.GetLastWriteTimeUtc(path).Ticks}";
+        if (_correctionInputBitmap is null || !string.Equals(_correctionInputCacheKey, key, StringComparison.OrdinalIgnoreCase))
+        {
+            InvalidateCorrectionInputCache();
+            _correctionInputBitmap = SKBitmap.Decode(path);
+            _correctionInputCacheKey = _correctionInputBitmap is null ? null : key;
+        }
+        bitmap = _correctionInputBitmap!;
+        return bitmap is not null;
+    }
+
+    private void InvalidateCorrectionInputCache()
+    {
+        _correctionInputBitmap?.Dispose();
+        _correctionInputBitmap = null;
+        _correctionInputCacheKey = null;
     }
 
     public string GetFaceDocumentJson()

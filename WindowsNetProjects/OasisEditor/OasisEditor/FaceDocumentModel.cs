@@ -51,7 +51,7 @@ public sealed class FaceProvenanceModel
     public FaceSubsystemProvenanceModel Illumination { get; init; } = new();
 }
 
-public enum FaceGeneratedProduct { BaseArtwork, ArtworkOutput, LampMask, Trays, RuntimeAssets }
+public enum FaceGeneratedProduct { ArtworkCorrectionInput, BaseArtwork, ArtworkOutput, LampMask, Trays, RuntimeAssets }
 public enum FaceBuildStatus { NotConfigured, Current, Stale, Error }
 
 public sealed class FaceGeneratedProductStateModel
@@ -88,6 +88,7 @@ public sealed class FaceArtworkModel
     public string Id { get; init; } = Guid.NewGuid().ToString("N");
     public FaceArtworkSourceModel Source { get; init; } = new();
     public ImageProcessingPipelineModel ProcessingPipeline { get; init; } = new();
+    public string? CorrectionInputAssetPath { get; init; }
     public string? BaseAssetPath { get; init; }
     public string? OutputAssetPath { get; init; }
     public int OutputWidth { get; init; }

@@ -125,7 +125,7 @@ internal static class FaceMutationCommands
         var artwork = model.Artwork is null ? null : new FaceArtworkModel
         {
             Id = model.Artwork.Id, Source = model.Artwork.Source, ProcessingPipeline = pipeline,
-            BaseAssetPath = model.Artwork.BaseAssetPath, OutputAssetPath = model.Artwork.OutputAssetPath, OutputWidth = model.Artwork.OutputWidth, OutputHeight = model.Artwork.OutputHeight
+            CorrectionInputAssetPath = model.Artwork.CorrectionInputAssetPath, BaseAssetPath = model.Artwork.BaseAssetPath, OutputAssetPath = model.Artwork.OutputAssetPath, OutputWidth = model.Artwork.OutputWidth, OutputHeight = model.Artwork.OutputHeight
         };
         return new FaceDocumentModel
         {
@@ -155,7 +155,7 @@ internal static class FaceMutationCommands
                 ? PanelChangeProperties.Metadata | PanelChangeProperties.Structure | PanelChangeProperties.Ordering
                 : PanelChangeProperties.Metadata;
             _document.SetFaceDocument(WithPipeline(current, _next), CreateChange(_document, null, properties, structure: properties.HasFlag(PanelChangeProperties.Structure)));
-            _document.InvalidateFaceBuild(FaceBuildInput.ArtworkCorrection);
+            _document.InvalidateFaceBuild(FaceBuildInput.ArtworkProcessing);
             _document.MarkDirty(); WasExecuted = true;
         }
         public void Undo()
@@ -165,7 +165,7 @@ internal static class FaceMutationCommands
                 ? PanelChangeProperties.Metadata | PanelChangeProperties.Structure | PanelChangeProperties.Ordering
                 : PanelChangeProperties.Metadata;
             _document.SetFaceDocument(WithPipeline(current, _previous), CreateChange(_document, null, properties, structure: properties.HasFlag(PanelChangeProperties.Structure)));
-            _document.InvalidateFaceBuild(FaceBuildInput.ArtworkCorrection);
+            _document.InvalidateFaceBuild(FaceBuildInput.ArtworkProcessing);
             _document.MarkDirty();
         }
     }
