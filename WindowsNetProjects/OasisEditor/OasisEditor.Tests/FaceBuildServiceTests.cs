@@ -11,7 +11,9 @@ public sealed class FaceBuildServiceTests
     public void ArtworkCorrection_InvalidatesArtworkAndRuntimeOnly()
     {
         var state = FaceBuildStateFactory.CreateGeneratedState(true, true, true, true, true);
-        new FaceBuildService().Invalidate(state, FaceBuildInput.ArtworkCorrection);
+        new FaceBuildService().Invalidate(state, FaceBuildInput.ArtworkProcessing);
+        Assert.Equal(FaceBuildStatus.Current, state.Get(FaceGeneratedProduct.ArtworkCorrectionInput).Status);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.BaseArtwork).Status);
         Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.ArtworkOutput).Status);
         Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.RuntimeAssets).Status);
         Assert.Equal(FaceBuildStatus.Current, state.Get(FaceGeneratedProduct.Trays).Status);
@@ -48,7 +50,7 @@ public sealed class FaceBuildServiceTests
         var calls = new List<FaceGeneratedProduct>();
         var result = new FaceBuildService().Build(state, Builders(calls), force: true);
         Assert.True(result.Succeeded);
-        Assert.Equal(4, calls.Count);
+        Assert.Equal(6, calls.Count);
     }
 
     [Fact]
@@ -73,11 +75,27 @@ public sealed class FaceBuildServiceTests
         state.Get(FaceGeneratedProduct.ArtworkOutput).Status = FaceBuildStatus.Error;
         state.Get(FaceGeneratedProduct.ArtworkOutput).ErrorMessage = "old failure";
         var service = new FaceBuildService();
-        service.Invalidate(state, FaceBuildInput.ArtworkCorrection);
+        service.Invalidate(state, FaceBuildInput.ArtworkProcessing);
         Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.ArtworkOutput).Status);
         Assert.Null(state.Get(FaceGeneratedProduct.ArtworkOutput).ErrorMessage);
         service.Build(state, Builders([]));
         Assert.Equal(FaceBuildStatus.Current, state.Get(FaceGeneratedProduct.ArtworkOutput).Status);
+    }
+
+    [Fact]
+    public void BaseFailure_SkipsOutputAndLeavesItStale()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false);
+        new FaceBuildService().Invalidate(state, FaceBuildInput.ArtworkSource);
+        var builders = Builders([]).ToDictionary(pair => pair.Key, pair => pair.Value);
+        builders[FaceGeneratedProduct.BaseArtwork] = () => new(FaceGeneratedProduct.BaseArtwork, false, "source unavailable");
+
+        var result = new FaceBuildService().Build(state, builders);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(FaceBuildStatus.Error, state.Get(FaceGeneratedProduct.BaseArtwork).Status);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.ArtworkOutput).Status);
+        Assert.DoesNotContain(FaceGeneratedProduct.ArtworkOutput, result.Built);
     }
 
     [Fact]
@@ -97,8 +115,41 @@ public sealed class FaceBuildServiceTests
         var result = new FaceBuildService().Build(state, Builders(calls), force: true);
 
         Assert.True(result.Succeeded);
-        Assert.Equal([FaceGeneratedProduct.ArtworkOutput], calls);
+        Assert.Equal([FaceGeneratedProduct.ArtworkCorrectionInput, FaceGeneratedProduct.BaseArtwork, FaceGeneratedProduct.ArtworkOutput], calls);
         Assert.Equal(FaceBuildStatus.NotConfigured, state.Get(FaceGeneratedProduct.RuntimeAssets).Status);
+    }
+
+    [Fact]
+    public void SharpeningChange_InvalidatesCorrectionInputAndDownstreamArtwork()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false);
+
+        new FaceBuildService().Invalidate(state, FaceBuildInput.ArtworkPreprocessing);
+
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.ArtworkCorrectionInput).Status);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.BaseArtwork).Status);
+        Assert.Equal(FaceBuildStatus.Stale, state.Get(FaceGeneratedProduct.ArtworkOutput).Status);
+    }
+
+    [Fact]
+    public void ArtworkBranchBuild_RebuildsUpstreamStaleStagesInOrderAndSkipsOtherProducts()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, true, true, true, true);
+        new FaceBuildService().Invalidate(state, FaceBuildInput.ArtworkPreprocessing);
+        var calls = new List<FaceGeneratedProduct>();
+
+        var result = new FaceBuildService().Build(state, Builders(calls), includedProducts: new HashSet<FaceGeneratedProduct>
+        {
+            FaceGeneratedProduct.ArtworkCorrectionInput,
+            FaceGeneratedProduct.BaseArtwork,
+            FaceGeneratedProduct.ArtworkOutput
+        });
+
+        Assert.True(result.Succeeded);
+        Assert.Equal([FaceGeneratedProduct.ArtworkCorrectionInput, FaceGeneratedProduct.BaseArtwork, FaceGeneratedProduct.ArtworkOutput], calls);
+        Assert.DoesNotContain(FaceGeneratedProduct.LampMask, calls);
+        Assert.DoesNotContain(FaceGeneratedProduct.Trays, calls);
+        Assert.DoesNotContain(FaceGeneratedProduct.RuntimeAssets, calls);
     }
 
     [Fact]
@@ -222,10 +273,11 @@ public sealed class FaceBuildServiceTests
         };
         var configuration = new FaceRuntimeAssetsConfigurationService();
         configuration.Reconcile(face, configuration.Evaluate(face, Project(Path.GetTempPath()), []));
-        new FaceBuildService().Invalidate(face.BuildState, FaceBuildInput.ArtworkCorrection);
+        new FaceBuildService().Invalidate(face.BuildState, FaceBuildInput.ArtworkProcessing);
         var runtimeInvoked = false;
         var executors = new Dictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>>
         {
+            [FaceGeneratedProduct.BaseArtwork] = () => new(FaceGeneratedProduct.BaseArtwork, true),
             [FaceGeneratedProduct.ArtworkOutput] = () => new(FaceGeneratedProduct.ArtworkOutput, true),
             [FaceGeneratedProduct.RuntimeAssets] = () =>
             {

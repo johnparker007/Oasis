@@ -41,7 +41,7 @@ public sealed class FaceGenerationServiceTests
             var initial = new FaceGenerationService().GenerateFromPanelFaceSourceShape(
                 panel, shape, "Face", sourcePanel2DDocumentId: "panel-doc", projectDirectory: directory,
                 faceAssetName: "Face", generationSettings: SharpeningSettings(initiallyEnabled));
-            var initialPath = Path.Combine(directory, initial.Document.Artwork!.GeneratedAssetPath!.Replace('/', Path.DirectorySeparatorChar));
+            var initialPath = Path.Combine(directory, initial.Document.Artwork!.OutputAssetPath!.Replace('/', Path.DirectorySeparatorChar));
             var initialBytes = File.ReadAllBytes(initialPath);
             using var initialBitmap = SkiaSharp.SKBitmap.Decode(initialPath);
             var initialContrast = EdgeContrast(initialBitmap);
@@ -50,11 +50,11 @@ public sealed class FaceGenerationServiceTests
                 initial.Document, panel, directory, Path.Combine(directory, "Generated"),
                 generationSettings: SharpeningSettings(regeneratedEnabled),
                 documentPath: Path.Combine(directory, "Assets", "Faces", "Face", "asset.face"));
-            var regeneratedPath = Path.Combine(directory, regenerated.Document.Artwork!.GeneratedAssetPath!.Replace('/', Path.DirectorySeparatorChar));
+            var regeneratedPath = Path.Combine(directory, regenerated.Document.Artwork!.OutputAssetPath!.Replace('/', Path.DirectorySeparatorChar));
             using var regeneratedBitmap = SkiaSharp.SKBitmap.Decode(regeneratedPath);
             var regeneratedContrast = EdgeContrast(regeneratedBitmap);
 
-            Assert.Equal(initial.Document.Artwork.GeneratedAssetPath, regenerated.Document.Artwork.GeneratedAssetPath);
+            Assert.Equal(initial.Document.Artwork.OutputAssetPath, regenerated.Document.Artwork.OutputAssetPath);
             Assert.Equal(regeneratedEnabled, regenerated.Document.GenerationSettings.PostWarpSharpeningEnabled);
             Assert.False(initialBytes.SequenceEqual(File.ReadAllBytes(regeneratedPath)));
             if (regeneratedEnabled) Assert.True(regeneratedContrast > initialContrast);
@@ -84,10 +84,12 @@ public sealed class FaceGenerationServiceTests
             var result = new FaceGenerationService().GenerateFromPanelFaceSourceShape(
                 panel, CreateSourceShape(), "Test Face", projectDirectory: directory, faceAssetDirectory: faceDirectory);
 
-            var generatedPath = Path.Combine(directory, result.Document.Artwork!.GeneratedAssetPath!.Replace('/', Path.DirectorySeparatorChar));
+            var generatedPath = Path.Combine(directory, result.Document.Artwork!.OutputAssetPath!.Replace('/', Path.DirectorySeparatorChar));
             Assert.Equal(Path.Combine(directory, "Generated", "Faces", "Test Face", "Artwork", "artwork.png"), generatedPath);
             Assert.True(File.Exists(generatedPath));
-            Assert.True(File.Exists(FaceArtworkRebuildService.GetOriginalArtworkPath(generatedPath)));
+            Assert.True(File.Exists(FaceArtworkGeneratedPathService.GetCorrectionInputPathFromOutput(generatedPath)));
+            Assert.True(File.Exists(FaceArtworkGeneratedPathService.GetBasePathFromOutput(generatedPath)));
+            Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(generatedPath)!, "original.png")));
             Assert.False(Directory.Exists(Path.Combine(faceDirectory, "generated")));
         }
         finally { Directory.Delete(directory, recursive: true); }
@@ -402,14 +404,14 @@ public sealed class FaceGenerationServiceTests
             Assert.Equal("calibration-1", savedOperation.Id);
             Assert.Equal("sample-1", Assert.Single(savedOperation.BlackReference.Samples).Id);
             Assert.Equal("group-1", Assert.Single(savedOperation.SameColorGroups).Id);
-            var processedPath = Path.Combine(directory, artwork.GeneratedAssetPath!.Replace('/', Path.DirectorySeparatorChar));
-            var originalPath = FaceArtworkRebuildService.GetOriginalArtworkPath(processedPath);
-            Assert.True(File.Exists(originalPath));
-            using var original = SkiaSharp.SKBitmap.Decode(originalPath);
+            var processedPath = Path.Combine(directory, artwork.OutputAssetPath!.Replace('/', Path.DirectorySeparatorChar));
+            var basePath = FaceArtworkGeneratedPathService.GetBasePathFromOutput(processedPath);
+            Assert.True(File.Exists(basePath));
+            using var baseArtwork = SkiaSharp.SKBitmap.Decode(basePath);
             using var processed = SkiaSharp.SKBitmap.Decode(processedPath);
-            Assert.NotNull(original);
+            Assert.NotNull(baseArtwork);
             Assert.NotNull(processed);
-            Assert.NotEqual(original.GetPixel(50, 50), processed.GetPixel(50, 50));
+            Assert.Equal(baseArtwork.GetPixel(50, 50), processed.GetPixel(50, 50));
         }
         finally { Directory.Delete(directory, recursive: true); }
     }

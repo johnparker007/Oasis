@@ -114,7 +114,6 @@ public partial class SkiaFaceEditView : UserControl
         if (eventArgs.PropertyName is nameof(DocumentTabViewModel.FaceZoom)
             or nameof(DocumentTabViewModel.FacePanX)
             or nameof(DocumentTabViewModel.FacePanY)
-            or nameof(DocumentTabViewModel.FaceArtworkShowOriginal)
             or nameof(DocumentTabViewModel.CalibrationPlacement)
             or nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
         {
@@ -204,10 +203,7 @@ public partial class SkiaFaceEditView : UserControl
 
         foreach (var element in document.GetFaceElements().OfType<FaceArtworkElement>())
         {
-            var previewPath = document.FaceArtworkShowOriginal && !string.IsNullOrWhiteSpace(element.AssetPath)
-                ? FaceArtworkRebuildService.GetOriginalArtworkPath(element.AssetPath)
-                : element.AssetPath;
-            DrawArtworkElement(canvas, element, previewPath, viewport, hiddenPaint);
+            DrawArtworkElement(canvas, element, element.AssetPath, viewport, hiddenPaint);
         }
 
         foreach (var element in FaceArtworkEditingPresentation.GetViewportElements(document).Where(element => element is not FaceArtworkElement))

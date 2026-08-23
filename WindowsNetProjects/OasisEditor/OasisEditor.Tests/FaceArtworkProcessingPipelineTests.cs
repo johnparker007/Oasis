@@ -20,136 +20,162 @@ public sealed class FaceArtworkProcessingPipelineTests
     [Fact] public void StrengthZero_IsExactNoOp(){using var b=Bitmap(2,2,SKColors.CornflowerBlue);using var o=new FaceArtworkProcessingPipeline().Evaluate(b,new(){Operations=[new ArtworkCalibrationOperationModel{Strength=0}]});Assert.Equal(b.GetPixel(0,0),o.GetPixel(0,0));}
 
     [Fact]
-    public void ApplyProcessing_UsesCanonicalOriginalAndLeavesItUnchanged()
+    public void FinalizeOutput_CopiesBaseExactlyAndDoesNotReprocessIt()
     {
-        var directory = CreateTemporaryDirectory();
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-face-finalize-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
         try
         {
-            var generatedPath = Path.Combine(directory, "artwork.png");
-            var originalPath = FaceArtworkRebuildService.GetOriginalArtworkPath(generatedPath);
-            WriteBitmap(originalPath, new SKColor(80, 30, 10));
-            WriteBitmap(generatedPath, new SKColor(10, 200, 200));
-            var originalBytes = File.ReadAllBytes(originalPath);
-            var processedBefore = File.ReadAllBytes(generatedPath);
-            var result = new FaceArtworkRebuildService().ApplyProcessing(CalibratedArtwork(generatedPath), directory);
+            var basePath = Path.Combine(directory, "base.png");
+            var outputPath = Path.Combine(directory, "artwork.png");
+            using (var bitmap = Bitmap(4, 4, new SKColor(80, 30, 10)))
+            using (var image = SKImage.FromBitmap(bitmap))
+            using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
+            using (var stream = File.Create(basePath)) data.SaveTo(stream);
+            var artwork = new FaceArtworkModel { BaseAssetPath = basePath, OutputAssetPath = outputPath };
+
+            var result = new FaceArtworkRebuildService().FinalizeOutput(artwork, directory);
 
             Assert.True(result.Succeeded, result.ErrorMessage);
-            Assert.Equal(originalBytes, File.ReadAllBytes(originalPath));
-            Assert.False(processedBefore.SequenceEqual(File.ReadAllBytes(generatedPath)));
+            Assert.Equal(File.ReadAllBytes(basePath), File.ReadAllBytes(outputPath));
         }
-        finally { Directory.Delete(directory, recursive: true); }
+        finally { Directory.Delete(directory, true); }
     }
 
     [Fact]
-    public void ApplyProcessing_MissingCanonicalOriginalFailsWithoutUsingProcessedArtwork()
+    public void CalibrationSampling_ReusesGeneratedCorrectionInputWithoutSourceReconstruction()
     {
-        var directory = CreateTemporaryDirectory();
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-correction-input-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
         try
         {
-            var generatedPath = Path.Combine(directory, "artwork.png");
-            WriteBitmap(generatedPath, new SKColor(10, 20, 30));
-            var before = File.ReadAllBytes(generatedPath);
-
-            var result = new FaceArtworkRebuildService().ApplyProcessing(CalibratedArtwork(generatedPath), directory);
-
-            Assert.False(result.Succeeded);
-            Assert.Contains("Canonical original artwork was not found", result.ErrorMessage);
-            Assert.Equal(before, File.ReadAllBytes(generatedPath));
-        }
-        finally { Directory.Delete(directory, recursive: true); }
-    }
-
-    [Fact]
-    public void ApplyProcessingCommand_MissingCanonicalOriginalReportsSpecificFailure()
-    {
-        var directory = CreateTemporaryDirectory();
-        try
-        {
-            var generatedPath = Path.Combine(directory, "artwork.png");
-            WriteBitmap(generatedPath, new SKColor(10, 20, 30));
-            var face = new FaceDocumentModel { Artwork = CalibratedArtwork(generatedPath) };
-            var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"), faceDocumentJson: FaceDocumentStorage.Serialize(face));
+            var inputPath = Path.Combine(directory, "correction-input.png");
+            WriteBitmap(inputPath, new SKColor(40, 80, 120));
+            var operation = new ArtworkCalibrationOperationModel
+            {
+                Id = "calibration", CorrectSpatialBrightness = false, CorrectSpatialColor = false,
+                NeutralizeWhite = false, BlackReference = new() { ManualEnabled = true, ManualColor = "#FF202020" },
+                WhiteReference = new() { ManualEnabled = true, ManualColor = "#FF808080" }
+            };
+            var state = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false);
+            var face = new FaceDocumentModel
+            {
+                BuildState = state,
+                Artwork = new FaceArtworkModel
+                {
+                    CorrectionInputAssetPath = inputPath,
+                    BaseAssetPath = Path.Combine(directory, "base.png"),
+                    OutputAssetPath = Path.Combine(directory, "artwork.png"),
+                    ProcessingPipeline = new() { Operations = [operation] }
+                }
+            };
+            using var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"),
+                faceDocumentJson: FaceDocumentStorage.Serialize(face));
             document.SetProjectAccessor(() => new EditorProject
             {
-                Name = "Test",
-                ProjectFilePath = Path.Combine(directory, "test.oasisproj"),
-                ProjectDirectory = directory,
-                AssetsDirectory = Path.Combine(directory, "Assets"),
-                MachinesDirectory = Path.Combine(directory, "Machines"),
+                Name = "Test", ProjectDirectory = directory, ProjectFilePath = Path.Combine(directory, "test.oasisproj"),
+                AssetsDirectory = Path.Combine(directory, "Assets"), MachinesDirectory = Path.Combine(directory, "Machines"),
                 GeneratedDirectory = Path.Combine(directory, "Generated")
             });
+            var sample = new CalibrationSampleModel { X = .5, Y = .5 };
+
+            Assert.Equal("#FF285078", document.GetArtworkSampleColor(operation, sample));
+            Assert.Equal("#FF285078", document.GetArtworkSampleColor(operation, sample));
+            Assert.True(document.TryGetArtworkReferenceColors(operation, out _, out _));
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public void ApplyChanges_BuildsStaleBaseAndOutputWithoutRebuildingCurrentCorrectionInput()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-apply-processing-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var inputPath = Path.Combine(directory, "correction-input.png");
+            var basePath = Path.Combine(directory, "base.png");
+            var outputPath = Path.Combine(directory, "artwork.png");
+            WriteBitmap(inputPath, new SKColor(80, 40, 20));
+            WriteBitmap(basePath, SKColors.Black);
+            WriteBitmap(outputPath, SKColors.Black);
+            var inputBytes = File.ReadAllBytes(inputPath);
+            var operation = new ArtworkCalibrationOperationModel
+            {
+                CorrectSpatialBrightness = false, CorrectSpatialColor = false, NeutralizeWhite = false,
+                BlackReference = new() { ManualEnabled = true, ManualColor = "#FF202020" },
+                WhiteReference = new() { ManualEnabled = true, ManualColor = "#FF808080" }
+            };
+            var state = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false);
+            state.Get(FaceGeneratedProduct.BaseArtwork).Status = FaceBuildStatus.Stale;
+            state.Get(FaceGeneratedProduct.ArtworkOutput).Status = FaceBuildStatus.Stale;
+            using var document = CreateDocument(directory, inputPath, basePath, outputPath, operation, state);
+            var command = FaceMutationCommands.CreateApplyArtworkProcessingCommand(document.DocumentId, document);
+
+            document.CommandService.Execute(command);
+
+            Assert.True(Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command).WasExecuted);
+            Assert.Equal(FaceBuildStatus.Current, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.ArtworkCorrectionInput).Status);
+            Assert.Equal(FaceBuildStatus.Current, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.BaseArtwork).Status);
+            Assert.Equal(FaceBuildStatus.Current, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
+            Assert.Equal(inputBytes, File.ReadAllBytes(inputPath));
+            Assert.Equal(File.ReadAllBytes(basePath), File.ReadAllBytes(outputPath));
+            Assert.NotEqual(inputBytes, File.ReadAllBytes(basePath));
+            Assert.Equal(0, document.CommandService.History.Count);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public void ApplyChanges_BaseFailureDoesNotFinalizeStaleOutput()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-apply-failure-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var inputPath = Path.Combine(directory, "correction-input.png");
+            var outputPath = Path.Combine(directory, "artwork.png");
+            File.WriteAllText(inputPath, "not a png");
+            WriteBitmap(outputPath, SKColors.Magenta);
+            var outputBytes = File.ReadAllBytes(outputPath);
+            var state = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false);
+            state.Get(FaceGeneratedProduct.BaseArtwork).Status = FaceBuildStatus.Stale;
+            state.Get(FaceGeneratedProduct.ArtworkOutput).Status = FaceBuildStatus.Stale;
+            using var document = CreateDocument(directory, inputPath, Path.Combine(directory, "base.png"), outputPath,
+                new ArtworkCalibrationOperationModel(), state);
             var command = FaceMutationCommands.CreateApplyArtworkProcessingCommand(document.DocumentId, document);
 
             document.CommandService.Execute(command);
 
             Assert.False(Assert.IsAssignableFrom<Commands.IExecutionTrackedCommand>(command).WasExecuted);
-            Assert.Contains("Canonical original artwork was not found", Assert.IsAssignableFrom<Commands.IExecutionFailureDiagnostic>(command).ExecutionFailureMessage);
-            Assert.Equal(0, document.CommandService.History.Count);
+            Assert.Equal(FaceBuildStatus.Error, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.BaseArtwork).Status);
+            Assert.Equal(FaceBuildStatus.Stale, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
+            Assert.Equal(outputBytes, File.ReadAllBytes(outputPath));
         }
-        finally { Directory.Delete(directory, recursive: true); }
+        finally { Directory.Delete(directory, true); }
     }
 
-    [Fact]
-    public void ApplyProcessingCommand_AppliesAndUndoRedoOnlyReplaceProcessedArtwork()
+    private static DocumentTabViewModel CreateDocument(string directory, string inputPath, string basePath,
+        string outputPath, ArtworkCalibrationOperationModel operation, FaceBuildStateModel state)
     {
-        var directory = CreateTemporaryDirectory();
-        try
+        var face = new FaceDocumentModel
         {
-            var generatedPath = Path.Combine(directory, "artwork.png");
-            var originalPath = FaceArtworkRebuildService.GetOriginalArtworkPath(generatedPath);
-            WriteBitmap(originalPath, new SKColor(90, 35, 15));
-            WriteBitmap(generatedPath, new SKColor(25, 25, 25));
-            var originalBytes = File.ReadAllBytes(originalPath);
-            var previousProcessed = File.ReadAllBytes(generatedPath);
-            var face = new FaceDocumentModel { Artwork = CalibratedArtwork(generatedPath) };
-            var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"), faceDocumentJson: FaceDocumentStorage.Serialize(face));
-            document.SetProjectAccessor(() => new EditorProject
+            BuildState = state,
+            Artwork = new FaceArtworkModel
             {
-                Name = "Test",
-                ProjectFilePath = Path.Combine(directory, "test.oasisproj"),
-                ProjectDirectory = directory,
-                AssetsDirectory = Path.Combine(directory, "Assets"),
-                MachinesDirectory = Path.Combine(directory, "Machines"),
-                GeneratedDirectory = Path.Combine(directory, "Generated")
-            });
-
-            document.CommandService.Execute(FaceMutationCommands.CreateApplyArtworkProcessingCommand(document.DocumentId, document));
-            var applied = File.ReadAllBytes(generatedPath);
-            Assert.False(previousProcessed.SequenceEqual(applied));
-            Assert.True(document.CommandService.TryUndo());
-            Assert.Equal(previousProcessed, File.ReadAllBytes(generatedPath));
-            Assert.Equal(originalBytes, File.ReadAllBytes(originalPath));
-            Assert.True(document.CommandService.TryRedo());
-            Assert.Equal(applied, File.ReadAllBytes(generatedPath));
-            Assert.Equal(originalBytes, File.ReadAllBytes(originalPath));
-            document.CommandService.Execute(FaceMutationCommands.CreateApplyArtworkProcessingCommand(document.DocumentId, document));
-            Assert.Equal(applied, File.ReadAllBytes(generatedPath));
-            Assert.Equal(originalBytes, File.ReadAllBytes(originalPath));
-        }
-        finally { Directory.Delete(directory, recursive: true); }
-    }
-
-    private static FaceArtworkModel CalibratedArtwork(string generatedPath) => new()
-    {
-        GeneratedAssetPath = generatedPath,
-        ProcessingPipeline = new ImageProcessingPipelineModel
+                CorrectionInputAssetPath = inputPath, BaseAssetPath = basePath, OutputAssetPath = outputPath,
+                ProcessingPipeline = new() { Operations = [operation] }
+            }
+        };
+        var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"),
+            faceDocumentJson: FaceDocumentStorage.Serialize(face));
+        document.SetProjectAccessor(() => new EditorProject
         {
-            Operations = [new ArtworkCalibrationOperationModel
-            {
-                CorrectSpatialBrightness = false,
-                CorrectSpatialColor = false,
-                NeutralizeWhite = false,
-                BlackReference = new CalibrationReferenceModel { ManualEnabled = true, ManualColor = "#FF202020" },
-                WhiteReference = new CalibrationReferenceModel { ManualEnabled = true, ManualColor = "#FF707070" }
-            }]
-        }
-    };
-
-    private static string CreateTemporaryDirectory()
-    {
-        var path = Path.Combine(Path.GetTempPath(), $"oasis-face-calibration-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(path);
-        return path;
+            Name = "Test", ProjectDirectory = directory, ProjectFilePath = Path.Combine(directory, "test.oasisproj"),
+            AssetsDirectory = Path.Combine(directory, "Assets"), MachinesDirectory = Path.Combine(directory, "Machines"),
+            GeneratedDirectory = Path.Combine(directory, "Generated")
+        });
+        return document;
     }
 
     private static void WriteBitmap(string path, SKColor color)

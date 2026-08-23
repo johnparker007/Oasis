@@ -129,16 +129,43 @@ internal sealed class FaceGenerationService
             OutputHeight = output.Height
         };
         var settings = (generationSettings ?? FaceGenerationSettingsModel.Default).Normalize();
-        var assetPath = new FaceArtworkRebuildService().Rebuild(artworkState, sourcePanel, sourceShape, projectDirectory, faceArtworkPath, settings);
+        string? generatedCorrectionInputPath = null;
+        string? generatedBasePath = null;
+        if (!string.IsNullOrWhiteSpace(faceArtworkPath) && !string.IsNullOrWhiteSpace(projectDirectory))
+        {
+            var correctionInputPath = FaceArtworkGeneratedPathService.GetCorrectionInputPathFromOutput(faceArtworkPath);
+            var basePath = FaceArtworkGeneratedPathService.GetBasePathFromOutput(faceArtworkPath);
+            var builder = new FaceArtworkRebuildService();
+            generatedCorrectionInputPath = builder.RebuildCorrectionInput(
+                artworkState, sourcePanel, sourceShape, projectDirectory, correctionInputPath, settings);
+            generatedBasePath = string.IsNullOrWhiteSpace(generatedCorrectionInputPath)
+                ? null
+                : FaceArtworkGeneratedPathService.ToProjectRelative(basePath, projectDirectory);
+        }
+        var assetPath = string.IsNullOrWhiteSpace(projectDirectory) || string.IsNullOrWhiteSpace(generatedBasePath)
+            ? null
+            : FaceArtworkGeneratedPathService.ToProjectRelative(faceArtworkPath, projectDirectory);
         artworkState = new FaceArtworkModel
         {
             Id = artworkState.Id,
             Source = artworkState.Source,
             ProcessingPipeline = artworkState.ProcessingPipeline,
-            GeneratedAssetPath = assetPath,
+            CorrectionInputAssetPath = generatedCorrectionInputPath,
+            BaseAssetPath = generatedBasePath,
+            OutputAssetPath = assetPath,
             OutputWidth = artworkState.OutputWidth,
             OutputHeight = artworkState.OutputHeight
         };
+        if (!string.IsNullOrWhiteSpace(projectDirectory)
+            && !string.IsNullOrWhiteSpace(artworkState.BaseAssetPath)
+            && !string.IsNullOrWhiteSpace(artworkState.OutputAssetPath))
+        {
+            var builder = new FaceArtworkRebuildService();
+            var baseResult = builder.BuildBaseFromCorrectionInput(artworkState, projectDirectory);
+            if (!baseResult.Succeeded) throw new InvalidOperationException(baseResult.ErrorMessage);
+            var finalized = builder.FinalizeOutput(artworkState, projectDirectory);
+            if (!finalized.Succeeded) throw new InvalidOperationException(finalized.ErrorMessage);
+        }
         var faceDocumentId = Guid.NewGuid().ToString("N");
         progress?.Report(0.2, "Converting source-shape semantic components...");
         var semanticElements = _semanticElementConversionService.ConvertSupportedElements(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, inputDefinitions, cabinetDocument?.DefaultReelSpecificationId).ToArray();
@@ -187,7 +214,9 @@ internal sealed class FaceGenerationService
             LastRegeneratedAtUtc = DateTime.UtcNow,
             GenerationSettings = settings,
             Provenance = FaceBuildStateFactory.CreateDerivedProvenance(sourcePanel2DDocumentPath),
-            BuildState = FaceBuildStateFactory.CreateGeneratedState(artwork: true,
+            BuildState = FaceBuildStateFactory.CreateGeneratedState(artwork: !string.IsNullOrWhiteSpace(artworkState.CorrectionInputAssetPath)
+                    && !string.IsNullOrWhiteSpace(artworkState.BaseAssetPath)
+                    && !string.IsNullOrWhiteSpace(artworkState.OutputAssetPath),
                 mask: maskLayer is not null && lampWindows.Length > 0,
                 trays: maskLayer is not null && lampWindows.Length > 0 && autoAuthored.Trays.Count > 0,
                 runtimeAssetsCurrent: false,
