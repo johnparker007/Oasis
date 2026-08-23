@@ -43,3 +43,8 @@ public interface IExecutionFailureDiagnostic
 {
     string? ExecutionFailureMessage { get; }
 }
+
+/// <summary>Identifies an action over disposable generated state that must not enter authored undo history.</summary>
+public interface INonUndoableCommand : ICommand
+{
+}

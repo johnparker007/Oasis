@@ -44,7 +44,10 @@ public sealed class CommandService
             return;
         }
 
-        _history.RecordExecuted(command);
+        if (command is not INonUndoableCommand)
+        {
+            _history.RecordExecuted(command);
+        }
     }
 
     public bool TryUndo()

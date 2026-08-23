@@ -180,12 +180,11 @@ internal static class FaceMutationCommands
         return false;
     }
 
-    private sealed class ApplyArtworkProcessingCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand, Commands.IExecutionFailureDiagnostic
+    private sealed class ApplyArtworkProcessingCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand,
+        Commands.IExecutionFailureDiagnostic, Commands.INonUndoableCommand
     {
         private readonly Guid _documentId;
         private readonly DocumentTabViewModel _document;
-        private byte[]? _before;
-        private byte[]? _after;
 
         public ApplyArtworkProcessingCommand(Guid documentId, DocumentTabViewModel document) { _documentId = documentId; _document = document; }
         public Guid DocumentId => _documentId;
@@ -197,36 +196,17 @@ internal static class FaceMutationCommands
         {
             WasExecuted = false;
             ExecutionFailureMessage = null;
-            if (_after is not null)
+            var result = _document.BuildArtwork();
+            if (!result.Succeeded)
             {
-                WasExecuted = _document.TryRestoreGeneratedArtwork(_after);
-                if (!WasExecuted) ExecutionFailureMessage = "The previously applied artwork could not be restored during redo.";
+                ExecutionFailureMessage = string.Join(Environment.NewLine,
+                    result.Failed.Select(failure => failure.ErrorMessage).Where(message => !string.IsNullOrWhiteSpace(message)));
                 return;
             }
-            if (!_document.TryReadGeneratedArtwork(out var before, out var readBeforeError))
-            {
-                ExecutionFailureMessage = readBeforeError;
-                return;
-            }
-            if (!_document.TryFinalizeFaceArtwork(out var processingError))
-            {
-                ExecutionFailureMessage = processingError;
-                return;
-            }
-            if (!_document.TryReadGeneratedArtwork(out var after, out var readAfterError))
-            {
-                ExecutionFailureMessage = readAfterError ?? "Processed artwork could not be read back after Apply.";
-                return;
-            }
-            _before = before;
-            _after = after;
             WasExecuted = true;
         }
 
-        public void Undo()
-        {
-            if (_before is not null) _document.TryRestoreGeneratedArtwork(_before);
-        }
+        public void Undo() { }
     }
 
     private static bool PipelinesEquivalent(ImageProcessingPipelineModel left, ImageProcessingPipelineModel right)

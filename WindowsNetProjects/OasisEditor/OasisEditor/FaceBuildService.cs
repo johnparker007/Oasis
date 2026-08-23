@@ -70,7 +70,8 @@ public sealed class FaceBuildService
     }
 
     public FaceBuildResult Build(FaceBuildStateModel state,
-        IReadOnlyDictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>> executors, bool force = false)
+        IReadOnlyDictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>> executors, bool force = false,
+        IReadOnlySet<FaceGeneratedProduct>? includedProducts = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(executors);
@@ -78,6 +79,11 @@ public sealed class FaceBuildService
         var failed = new HashSet<FaceGeneratedProduct>();
         foreach (var product in s_order)
         {
+            if (includedProducts is not null && !includedProducts.Contains(product))
+            {
+                result.Skipped.Add(product);
+                continue;
+            }
             var node = state.Get(product);
             if (node.Status == FaceBuildStatus.NotConfigured || (!force && node.Status != FaceBuildStatus.Stale))
             {

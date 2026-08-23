@@ -132,6 +132,27 @@ public sealed class FaceBuildServiceTests
     }
 
     [Fact]
+    public void ArtworkBranchBuild_RebuildsUpstreamStaleStagesInOrderAndSkipsOtherProducts()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, true, true, true, true);
+        new FaceBuildService().Invalidate(state, FaceBuildInput.ArtworkPreprocessing);
+        var calls = new List<FaceGeneratedProduct>();
+
+        var result = new FaceBuildService().Build(state, Builders(calls), includedProducts: new HashSet<FaceGeneratedProduct>
+        {
+            FaceGeneratedProduct.ArtworkCorrectionInput,
+            FaceGeneratedProduct.BaseArtwork,
+            FaceGeneratedProduct.ArtworkOutput
+        });
+
+        Assert.True(result.Succeeded);
+        Assert.Equal([FaceGeneratedProduct.ArtworkCorrectionInput, FaceGeneratedProduct.BaseArtwork, FaceGeneratedProduct.ArtworkOutput], calls);
+        Assert.DoesNotContain(FaceGeneratedProduct.LampMask, calls);
+        Assert.DoesNotContain(FaceGeneratedProduct.Trays, calls);
+        Assert.DoesNotContain(FaceGeneratedProduct.RuntimeAssets, calls);
+    }
+
+    [Fact]
     public void StaleIlluminationChain_BuildsMaskThenTraysThenRuntime()
     {
         var state = FaceBuildStateFactory.CreateGeneratedState(false, true, true, true, true);

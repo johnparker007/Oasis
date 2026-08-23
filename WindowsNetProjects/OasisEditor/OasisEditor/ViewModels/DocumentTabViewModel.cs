@@ -274,7 +274,26 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         ReconcileRuntimeAssetsConfiguration();
         var service = new FaceBuildService();
-        var executors = new Dictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>>
+        var result = service.Build(_faceDocumentModel.BuildState, CreateFaceBuildExecutors(), force);
+        CompleteFaceBuild(result);
+        return result;
+    }
+
+    internal FaceBuildResult BuildArtwork()
+    {
+        var result = new FaceBuildService().Build(_faceDocumentModel.BuildState, CreateFaceBuildExecutors(),
+            includedProducts: new HashSet<FaceGeneratedProduct>
+            {
+                FaceGeneratedProduct.ArtworkCorrectionInput,
+                FaceGeneratedProduct.BaseArtwork,
+                FaceGeneratedProduct.ArtworkOutput
+            });
+        CompleteFaceBuild(result);
+        return result;
+    }
+
+    private IReadOnlyDictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>> CreateFaceBuildExecutors() =>
+        new Dictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>>
         {
             [FaceGeneratedProduct.ArtworkCorrectionInput] = BuildArtworkCorrectionInput,
             [FaceGeneratedProduct.BaseArtwork] = BuildBaseArtwork,
@@ -285,12 +304,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             [FaceGeneratedProduct.Trays] = BuildTrays,
             [FaceGeneratedProduct.RuntimeAssets] = BuildRuntimeAssets
         };
-        var result = service.Build(_faceDocumentModel.BuildState, executors, force);
+
+    private void CompleteFaceBuild(FaceBuildResult result)
+    {
         _faceDocumentJson = GetFaceDocumentJson();
         PersistBuildStateWhenDocumentIsClean(result);
         _faceWorkspace?.RefreshSummaries();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
-        return result;
     }
 
     private FaceBuildNodeResult BuildLampMask()
