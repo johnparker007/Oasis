@@ -74,6 +74,22 @@ internal static class FaceMutationCommands
         return CreateSetProcessingPipelineCommand(documentId, document, new ImageProcessingPipelineModel { Operations = operations }, description);
     }
 
+
+    public static Commands.ICommand CreateSetLampMaskCommand(Guid documentId, DocumentTabViewModel document,
+        FaceMaskLayerModel mask, string description) => new SetLampMaskMutationCommand(documentId, document, mask, description);
+
+    private sealed class SetLampMaskMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly Guid _id; private readonly DocumentTabViewModel _document; private readonly FaceMaskLayerModel _next; private readonly string _description;
+        private FaceMaskLayerModel? _previous; private FaceSubsystemProvenanceModel? _previousProvenance;
+        public SetLampMaskMutationCommand(Guid id, DocumentTabViewModel document, FaceMaskLayerModel next, string description)
+        { _id=id; _document=document; _next=next; _description=description; }
+        public Guid DocumentId=>_id; public string Description=>_description; public bool WasExecuted{get;private set;}
+        public void Execute(){var face=_document.GetFaceDocument();_previous??=face.MaskLayer;_previousProvenance??=face.Provenance.Illumination;Set(_next,FaceDocumentCopy.MarkIlluminationModified(face.Provenance.Illumination));WasExecuted=true;}
+        public void Undo(){if(_previous is null||_previousProvenance is null)return;Set(_previous,_previousProvenance);}
+        private void Set(FaceMaskLayerModel mask,FaceSubsystemProvenanceModel provenance){var face=_document.GetFaceDocument();_document.SetFaceDocument(FaceDocumentCopy.WithIllumination(face,face.Elements,mask,face.Trays,face.LampEmitters,provenance));_document.InvalidateFaceBuild(FaceBuildInput.LampMaskSource);_document.MarkDirty();}
+    }
+
     public static Commands.ICommand CreateAddLampWindowCommand(Guid documentId, DocumentTabViewModel document, FaceLampWindowElement element)
     {
         return new AddFaceElementMutationCommand(documentId, document, element);
@@ -339,6 +355,7 @@ internal static class FaceMutationCommands
         private readonly DocumentTabViewModel _document;
         private readonly FaceLampWindowElement _element;
         private int? _insertIndex;
+        private FaceSubsystemProvenanceModel? _previousProvenance;
 
         public AddFaceElementMutationCommand(Guid documentId, DocumentTabViewModel document, FaceLampWindowElement element)
         {
@@ -354,11 +371,13 @@ internal static class FaceMutationCommands
         public void Execute()
         {
             WasExecuted = false;
+            var face = _document.GetFaceDocument();
+            _previousProvenance ??= face.Provenance.Illumination;
             var elements = _document.GetFaceElements().ToList();
             var index = Math.Clamp(_insertIndex ?? elements.Count, 0, elements.Count);
             elements.Insert(index, _element);
             _insertIndex = index;
-            _document.SetFaceElements(elements, CreateChange(_document, _element.ObjectId, PanelChangeProperties.Structure, structure: true));
+            _document.SetFaceDocument(FaceDocumentCopy.WithIllumination(face, elements, face.MaskLayer, face.Trays, face.LampEmitters, FaceDocumentCopy.MarkIlluminationModified(face.Provenance.Illumination)), CreateChange(_document, _element.ObjectId, PanelChangeProperties.Structure, structure: true));
             _document.InvalidateFaceBuild(FaceBuildInput.LampInformation);
             _document.HierarchySelectedPanelSelection = FaceSelectionService.ToSelectionInfo(_element);
             _document.MarkDirty();
@@ -375,7 +394,8 @@ internal static class FaceMutationCommands
             }
 
             elements.RemoveAt(index);
-            _document.SetFaceElements(elements, CreateChange(_document, _element.ObjectId, PanelChangeProperties.Structure, structure: true));
+            var face = _document.GetFaceDocument();
+            _document.SetFaceDocument(FaceDocumentCopy.WithIllumination(face, elements, face.MaskLayer, face.Trays, face.LampEmitters, _previousProvenance ?? face.Provenance.Illumination), CreateChange(_document, _element.ObjectId, PanelChangeProperties.Structure, structure: true));
             _document.InvalidateFaceBuild(FaceBuildInput.LampInformation);
             if (_document.HierarchySelectedPanelSelection is PanelSelectionInfo selection
                 && string.Equals(selection.ObjectId, _element.ObjectId, StringComparison.Ordinal))
@@ -396,6 +416,7 @@ internal static class FaceMutationCommands
         private readonly string _description;
         private FaceElementModel? _originalElement;
         private FaceSubsystemProvenanceModel? _originalComponentsProvenance;
+        private FaceSubsystemProvenanceModel? _originalIlluminationProvenance;
 
         public UpdateFaceElementMutationCommand(Guid documentId, DocumentTabViewModel document, string objectId, FaceElementModel updatedElement, string description)
         {
@@ -422,6 +443,7 @@ internal static class FaceMutationCommands
 
             _originalElement ??= elements[index];
             _originalComponentsProvenance ??= _document.GetFaceDocument().Provenance.Components;
+            _originalIlluminationProvenance ??= _document.GetFaceDocument().Provenance.Illumination;
             elements[index] = _updatedElement;
             SetMutatedElements(elements, _updatedElement, FaceElementClassification.IsComponent(_updatedElement)
                 ? FaceDocumentCopy.MarkComponentsModified(_document.GetFaceDocument().Provenance.Components) : null);
@@ -453,8 +475,12 @@ internal static class FaceMutationCommands
         private void SetMutatedElements(IReadOnlyList<FaceElementModel> elements, FaceElementModel element, FaceSubsystemProvenanceModel? provenance)
         {
             var change=CreateChange(_document,_objectId,PanelChangeProperties.Geometry|PanelChangeProperties.Name|PanelChangeProperties.Visibility|PanelChangeProperties.TransformLockState|PanelChangeProperties.Metadata);
-            if(provenance is null)_document.SetFaceElements(elements,change);
-            else _document.SetFaceDocument(FaceDocumentCopy.WithElementsAndComponents(_document.GetFaceDocument(),elements,provenance),change);
+            var face = _document.GetFaceDocument();
+            if(element is FaceLampWindowElement)
+                _document.SetFaceDocument(FaceDocumentCopy.WithIllumination(face,elements,face.MaskLayer,face.Trays,face.LampEmitters,
+                    ReferenceEquals(element,_originalElement) ? (_originalIlluminationProvenance ?? face.Provenance.Illumination) : FaceDocumentCopy.MarkIlluminationModified(face.Provenance.Illumination)),change);
+            else if(provenance is null)_document.SetFaceElements(elements,change);
+            else _document.SetFaceDocument(FaceDocumentCopy.WithElementsAndComponents(face,elements,provenance),change);
             _document.InvalidateFaceBuild(element is FaceLampWindowElement ? FaceBuildInput.LampInformation : FaceElementClassification.IsComponent(element) ? FaceBuildInput.Components : FaceBuildInput.RuntimeAssetsSettings);
         }
     }

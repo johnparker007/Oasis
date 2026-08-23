@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 18;
+    public const int CurrentSchemaVersion = 19;
 
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
@@ -422,6 +422,8 @@ public static class FaceDocumentStorage
             Id = string.IsNullOrWhiteSpace(file.Id) ? "face-mask-layer" : file.Id.Trim(),
             Name = string.IsNullOrWhiteSpace(file.Name) ? "Face Mask" : file.Name.Trim(),
             AssetPath = file.AssetPath,
+            SourceKind = file.SourceKind,
+            AuthoredAssetPath = NormalizeOptional(file.AuthoredAssetPath),
             SourcePanel2DDocumentId = string.IsNullOrWhiteSpace(file.SourcePanel2DDocumentId) ? null : file.SourcePanel2DDocumentId.Trim(),
             SourceRegion = ToModel(file.SourceRegion),
             ExtractionThreshold = file.ExtractionThreshold,
@@ -463,6 +465,8 @@ public static class FaceDocumentStorage
             Id = model.Id,
             Name = model.Name,
             AssetPath = model.AssetPath,
+            SourceKind = model.SourceKind,
+            AuthoredAssetPath = NormalizeOptional(model.AuthoredAssetPath),
             SourcePanel2DDocumentId = model.SourcePanel2DDocumentId,
             SourceRegion = ToFile(model.SourceRegion),
             ExtractionThreshold = model.ExtractionThreshold,
@@ -1008,6 +1012,8 @@ public sealed record FaceMaskLayerFile
     public string? Id { get; init; }
     public string? Name { get; init; }
     public string? AssetPath { get; init; }
+    public FaceLampMaskSourceKind SourceKind { get; init; }
+    public string? AuthoredAssetPath { get; init; }
     public string? SourcePanel2DDocumentId { get; init; }
     public FaceSourceRegionFile? SourceRegion { get; init; }
     public byte ExtractionThreshold { get; init; }

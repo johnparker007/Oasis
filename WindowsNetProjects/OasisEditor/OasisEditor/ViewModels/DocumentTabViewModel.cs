@@ -298,6 +298,16 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         catch (Exception exception) { error=exception.Message; return false; }
     }
 
+    public bool ImportLampMaskImage(string externalPath, out string? error)
+    {
+        error=null;var project=_projectAccessor?.Invoke();if(project is null){error="No project is open.";return false;}
+        try{var imported=FaceLampMaskImageImportService.Import(externalPath,project,_faceDocumentModel.Title);var current=_faceDocumentModel.MaskLayer;
+            var generatedPath=current?.AssetPath ?? $"Generated/Faces/{new ProjectAssetPathService().SanitizePathSegment(_faceDocumentModel.Title)}/Illumination/lamp-mask.png";
+            var mask=new FaceMaskLayerModel{Id=current?.Id??"face-mask-layer",Name="Face Lamp Mask",AssetPath=generatedPath,SourceKind=FaceLampMaskSourceKind.AuthoredImage,AuthoredAssetPath=imported.AssetPath,Width=imported.Width,Height=imported.Height,SourcePanel2DDocumentId=current?.SourcePanel2DDocumentId,SourceRegion=current?.SourceRegion,Contributions=current?.Contributions??[]};
+            CommandService.Execute(FaceMutationCommands.CreateSetLampMaskCommand(DocumentId,this,mask,"Use authored lamp-mask image"));return true;
+        }catch(Exception exception){error=exception.Message;return false;}
+    }
+
     public bool CanUsePanel2DArtworkSource(out string? unavailableReason)
     {
         unavailableReason = null;
@@ -450,6 +460,21 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         if (project is null)
         {
             return new(FaceGeneratedProduct.LampMask, false, "The source Panel2D mask cannot be rebuilt because no project is open.");
+        }
+        var configuredMask=_faceDocumentModel.MaskLayer;
+        if(configuredMask?.SourceKind==FaceLampMaskSourceKind.AuthoredImage)
+        {
+            var source=ResolveGeneratedPath(configuredMask.AuthoredAssetPath,project.ProjectDirectory);
+            var destination=ResolveGeneratedPath(configuredMask.AssetPath,project.ProjectDirectory);
+            if(string.IsNullOrWhiteSpace(source)||!File.Exists(source))return new(FaceGeneratedProduct.LampMask,false,"The authored lamp-mask image is unavailable.");
+            if(string.IsNullOrWhiteSpace(destination))return new(FaceGeneratedProduct.LampMask,false,"The generated lamp-mask path is not configured.");
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            using var bitmap=SkiaSharp.SKBitmap.Decode(source);if(bitmap is null)return new(FaceGeneratedProduct.LampMask,false,"The authored lamp-mask image could not be decoded.");
+            var width=_faceDocumentModel.Artwork?.OutputWidth??bitmap.Width;var height=_faceDocumentModel.Artwork?.OutputHeight??bitmap.Height;
+            using var normalized=bitmap.Width==width&&bitmap.Height==height?bitmap.Copy():bitmap.Resize(new SkiaSharp.SKImageInfo(width,height),SkiaSharp.SKFilterQuality.High);
+            if(normalized is null)return new(FaceGeneratedProduct.LampMask,false,"The authored lamp-mask image could not be normalized.");
+            using var image=SkiaSharp.SKImage.FromBitmap(normalized);using var data=image.Encode(SkiaSharp.SKEncodedImageFormat.Png,100);using var stream=File.Open(destination,FileMode.Create,FileAccess.Write);data.SaveTo(stream);
+            return new(FaceGeneratedProduct.LampMask,true);
         }
         if (!TryResolveSourcePanel(out var panel, out var sourceError))
         {
