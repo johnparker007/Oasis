@@ -28,6 +28,7 @@ public sealed class DocumentWorkspaceViewModel
     private readonly FaceRuntimeExportService _faceRuntimeExportService = new();
     private readonly FaceValidationService _faceValidationService = new();
     private readonly FaceCabinetContextResolver _faceCabinetContextResolver = new();
+    private readonly IProgressDialogService _progressDialogService;
 
     private int _untitledDocumentCounter = 1;
     private int _panelDocumentCounter = 1;
@@ -44,7 +45,8 @@ public sealed class DocumentWorkspaceViewModel
         Action notifyUndoRedoStateChanged,
         Action<string> setStatusMessage,
         Action<string, OutputLogStatus> addOutputEntry,
-        Action<Guid>? onDocumentClosed = null)
+        Action<Guid>? onDocumentClosed = null,
+        IProgressDialogService? progressDialogService = null)
         : this(
             getLoadedProject,
             setLoadedProject,
@@ -57,7 +59,8 @@ public sealed class DocumentWorkspaceViewModel
             new MachineRuntimeStateStore(),
             new Automation.Panel2DDocumentCreationService(),
             onDocumentClosed,
-            new Automation.FaceDocumentCreationService())
+            new Automation.FaceDocumentCreationService(),
+            progressDialogService)
     {
     }
 
@@ -73,7 +76,8 @@ public sealed class DocumentWorkspaceViewModel
         MachineRuntimeStateStore runtimeStateStore,
         Automation.IPanel2DDocumentCreationService panel2dCreationService,
         Action<Guid>? onDocumentClosed = null,
-        Automation.IFaceDocumentCreationService? faceCreationService = null)
+        Automation.IFaceDocumentCreationService? faceCreationService = null,
+        IProgressDialogService? progressDialogService = null)
     {
         _getLoadedProject = getLoadedProject;
         _setLoadedProject = setLoadedProject;
@@ -87,6 +91,7 @@ public sealed class DocumentWorkspaceViewModel
         _runtimeStateStore = runtimeStateStore;
         _panel2dCreationService = panel2dCreationService;
         _faceCreationService = faceCreationService ?? new Automation.FaceDocumentCreationService();
+        _progressDialogService = progressDialogService ?? NoOpProgressDialogService.Instance;
     }
 
     public bool CanOpenUntitledDocument() => _getLoadedProject() is not null;
@@ -150,7 +155,24 @@ public sealed class DocumentWorkspaceViewModel
     }
 
 
-    public DocumentTabViewModel? GenerateFaceFromSelectedFaceSourceShape(string? faceAssetName = null, FaceGenerationSettingsModel? generationSettings = null, IEditorProgressReporter? progress = null)
+    internal sealed record FaceGenerationWorkItem(
+        Panel2DDocumentModel SourcePanel,
+        PanelFaceSourceShapeModel SourceShape,
+        string Title,
+        string SourceDocumentId,
+        string? SourceDocumentPath,
+        string? AssignedTargetId,
+        string? AssignedCabinetAssetPath,
+        double? TargetAspectRatio,
+        string ProjectDirectory,
+        string GeneratedDirectory,
+        string PendingFaceAssetDirectory,
+        FaceGenerationSettingsModel? Settings,
+        FaceCabinetContext CabinetContext);
+
+    internal sealed record PreparedFaceDocument(FaceDocumentModel Model, string Json, string SourceShapeName, FaceCabinetContext CabinetContext);
+
+    internal FaceGenerationWorkItem? PrepareFaceGeneration(string? faceAssetName, FaceGenerationSettingsModel? generationSettings)
     {
         var sourceDocument = _getSelectedDocument();
         var loadedProject = _getLoadedProject();
@@ -159,46 +181,55 @@ public sealed class DocumentWorkspaceViewModel
         if (selection is null || !string.Equals(selection.Value.Kind, PanelFaceSourceShapeCommands.SelectionKind, StringComparison.Ordinal)) return null;
         if (!sourceDocument.TryGetPanelFaceSourceShape(selection.Value.ObjectId, out var shape)) return null;
 
-        var selectedCabinet = _openDocuments
+        var target = _openDocuments
             .Where(d => d.Document.DocumentType == EditorDocumentType.Cabinet3D)
-            .Select(d => new { Document = d, Target = d.CabinetViewer?.SelectedFaceTarget?.Target })
-            .FirstOrDefault(entry => entry.Target is not null);
-        var target = selectedCabinet?.Target;
+            .Select(d => d.CabinetViewer?.SelectedFaceTarget?.Target)
+            .FirstOrDefault(candidate => candidate is not null);
         var cabinetContext = _faceCabinetContextResolver.ResolveForGeneration(loadedProject, _openDocuments, target?.Id);
         var targetAspect = target is null || target.Corners.Count < 4
             ? (double?)null
             : (target.Corners[1] - target.Corners[0]).Length / Math.Max(0.0001, (target.Corners[3] - target.Corners[0]).Length);
-        progress ??= NoOpEditorProgressReporter.Instance;
         var title = string.IsNullOrWhiteSpace(faceAssetName) ? $"{sourceDocument.Title} Face" : faceAssetName.Trim();
-        var pendingFaceAssetDirectory = Path.Combine(loadedProject.GeneratedDirectory, "Faces", "_unsaved", Guid.NewGuid().ToString("N"));
+        return new FaceGenerationWorkItem(
+            sourceDocument.GetPanelDocument(), shape, title, sourceDocument.DocumentId.ToString("N"), sourceDocument.FilePath,
+            target?.Id, cabinetContext.CabinetAssetPath, targetAspect, loadedProject.ProjectDirectory, loadedProject.GeneratedDirectory,
+            Path.Combine(loadedProject.GeneratedDirectory, "Faces", "_unsaved", Guid.NewGuid().ToString("N")), generationSettings, cabinetContext);
+    }
+
+    internal PreparedFaceDocument GenerateFace(FaceGenerationWorkItem workItem, IEditorProgressReporter progress, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         var result = _faceGenerationService.GenerateFromPanelFaceSourceShape(
-            sourceDocument.GetPanelDocument(),
-            shape,
-            title,
-            sourcePanel2DDocumentId: sourceDocument.DocumentId.ToString("N"),
-            assignedCabinetFaceTargetId: target?.Id,
-            assignedCabinetAssetPath: cabinetContext.CabinetAssetPath,
-            targetAspectRatio: targetAspect,
-            projectDirectory: loadedProject.ProjectDirectory,
-            generatedDirectory: loadedProject.GeneratedDirectory,
-            faceAssetName: title,
-            faceAssetDirectory: pendingFaceAssetDirectory,
-            generationSettings: generationSettings,
+            workItem.SourcePanel, workItem.SourceShape, workItem.Title,
+            sourcePanel2DDocumentId: workItem.SourceDocumentId,
+            assignedCabinetFaceTargetId: workItem.AssignedTargetId,
+            assignedCabinetAssetPath: workItem.AssignedCabinetAssetPath,
+            targetAspectRatio: workItem.TargetAspectRatio,
+            projectDirectory: workItem.ProjectDirectory,
+            generatedDirectory: workItem.GeneratedDirectory,
+            faceAssetName: workItem.Title,
+            faceAssetDirectory: workItem.PendingFaceAssetDirectory,
+            generationSettings: workItem.Settings,
             progress: progress.CreateChild(0.0, 0.8),
-            sourcePanel2DDocumentPath: sourceDocument.FilePath,
-            cabinetDocument: cabinetContext.CabinetDocument);
-        var generatedFaceDocument = result.Document;
-        var faceJson = FaceDocumentStorage.Serialize(generatedFaceDocument);
-        var faceEditorDocument = EditorDocument.CreateFaceStub(title).MarkDirty();
-        var document = CreateDocumentTab(faceEditorDocument, faceDocumentJson: faceJson);
-        ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
-        _setStatusMessage($"Generated face document from Face Source Shape '{shape.Name}'.");
-        _addOutputEntry($"Generated face '{document.Title}' from Face Source Shape '{shape.Name}'.", OutputLogStatus.Info);
-        if (!cabinetContext.HasCabinet)
-        {
-            _addOutputEntry($"Face generation did not resolve a Cabinet reel specification context: {cabinetContext.DiagnosticMessage}", OutputLogStatus.Warning);
-        }
+            sourcePanel2DDocumentPath: workItem.SourceDocumentPath,
+            cabinetDocument: workItem.CabinetContext.CabinetDocument,
+            cancellationToken: cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         progress.Report(1.0, "Face creation from Face Source Shape complete.");
+        return new PreparedFaceDocument(result.Document, FaceDocumentStorage.Serialize(result.Document), workItem.SourceShape.Name, workItem.CabinetContext);
+    }
+
+    internal DocumentTabViewModel CompleteFaceGeneration(PreparedFaceDocument prepared)
+    {
+        var faceEditorDocument = EditorDocument.CreateFaceStub(prepared.Model.Title).MarkDirty();
+        var document = CreateDocumentTab(faceEditorDocument, faceDocumentJson: prepared.Json);
+        ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
+        _setStatusMessage($"Generated face document from Face Source Shape '{prepared.SourceShapeName}'.");
+        _addOutputEntry($"Generated face '{document.Title}' from Face Source Shape '{prepared.SourceShapeName}'.", OutputLogStatus.Info);
+        if (!prepared.CabinetContext.HasCabinet)
+        {
+            _addOutputEntry($"Face generation did not resolve a Cabinet reel specification context: {prepared.CabinetContext.DiagnosticMessage}", OutputLogStatus.Warning);
+        }
         return document;
     }
 
@@ -406,6 +437,9 @@ public sealed class DocumentWorkspaceViewModel
         }
 
         var document = _faceCreationService.CreateFaceStubDocument($"Face {_faceDocumentCounter++}", _faceDocumentCounter - 1);
+        document.SetOpenDocumentsAccessor(() => _openDocuments);
+        document.SetProjectAccessor(_getLoadedProject);
+        document.SetProgressDialogService(_progressDialogService);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Opened face document stub: {document.Title}");
         _addOutputEntry($"Opened face document stub: {document.Title}", OutputLogStatus.Info);
@@ -422,6 +456,7 @@ public sealed class DocumentWorkspaceViewModel
         if (result.Document is not { } document) return result;
         document.SetOpenDocumentsAccessor(() => _openDocuments);
         document.SetProjectAccessor(_getLoadedProject);
+        document.SetProgressDialogService(_progressDialogService);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _faceDocumentCounter++;
         _setStatusMessage($"Created native face: {document.Title}");
@@ -486,6 +521,7 @@ public sealed class DocumentWorkspaceViewModel
     {
         updated.SetOpenDocumentsAccessor(() => _openDocuments);
         updated.SetProjectAccessor(_getLoadedProject);
+        updated.SetProgressDialogService(_progressDialogService);
         ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, original, updated));
     }
 
@@ -582,6 +618,7 @@ public sealed class DocumentWorkspaceViewModel
         };
         updated.SetOpenDocumentsAccessor(() => _openDocuments);
         updated.SetProjectAccessor(_getLoadedProject);
+        updated.SetProgressDialogService(_progressDialogService);
 
         ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, selectedDocument, updated));
         _setStatusMessage($"Updated inspector summary for {updated.Title}");
@@ -603,6 +640,7 @@ public sealed class DocumentWorkspaceViewModel
             cabinetDocumentJson: cabinetDocumentJson);
         tab.SetOpenDocumentsAccessor(() => _openDocuments);
         tab.SetProjectAccessor(_getLoadedProject);
+        tab.SetProgressDialogService(_progressDialogService);
         return tab;
     }
 

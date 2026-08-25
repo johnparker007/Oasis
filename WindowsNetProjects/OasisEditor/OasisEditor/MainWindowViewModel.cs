@@ -301,7 +301,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 _activeDocumentContext.ClearDocumentState(documentId);
                 _machineRuntimeStates.ClearDocumentState(documentId);
-            });
+            },
+            progressDialogService: _progressDialogService);
         AssetBrowserItems = _assetBrowser.AssetBrowserItems;
         AssetBrowserItems.CollectionChanged += OnAssetBrowserItemsChanged;
         OutputEntries = _outputLog.OutputEntries;
@@ -1000,13 +1001,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (!CanGenerateFaceFromSourceShape()) return;
         try
         {
-            await _progressDialogService.RunAsync(
-                new EditorProgressRequest("Creating Face", "Creating Face from Face Source Shape...", EditorProgressMode.Determinate),
-                (progress, _) =>
+            var workItem = _documentWorkspace.PrepareFaceGeneration(null, _defaultFaceGenerationSettings);
+            if (workItem is null) return;
+            var prepared = await _progressDialogService.RunAsync(
+                new EditorProgressRequest("Creating Face", "Creating Face from Face Source Shape...", EditorProgressMode.Determinate, CanCancel: true),
+                (progress, token) =>
                 {
-                    _documentWorkspace.GenerateFaceFromSelectedFaceSourceShape(null, _defaultFaceGenerationSettings, progress);
-                    return Task.CompletedTask;
+                    return Task.FromResult(_documentWorkspace.GenerateFace(workItem, progress, token));
                 });
+            _documentWorkspace.CompleteFaceGeneration(prepared);
         }
         catch (Exception ex)
         {
@@ -1256,16 +1259,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ReportEditorProgress("Decoding FML and copying assets...", 0.15);
             var result = await _progressDialogService.RunAsync(
                 new EditorProgressRequest("Importing MFME FML", "Decoding FML and copying assets...", EditorProgressMode.Determinate),
-                async (progress, _) =>
+                (progress, _) =>
                 {
                     progress.Report(0.1, "Decoding FML layout...");
-                    var importResult = await Task.Run(() => _fmlImportService.ImportFromFml(
+                    var importResult = _fmlImportService.ImportFromFml(
                         fmlPath,
                         projectDirectory,
                         assetsDirectory,
-                        copyAssets: true));
+                        copyAssets: true);
                     progress.Report(0.6, "Processing import diagnostics...");
-                    return importResult;
+                    return Task.FromResult(importResult);
                 });
 
             ReportEditorProgress("Processing import diagnostics...", 0.6);
@@ -1530,7 +1533,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             var documentTitle = current.Title;
             var updatedDocument = await _progressDialogService.RunAsync(
                 new EditorProgressRequest($"Saving {documentTitle}", "Saving document...", EditorProgressMode.Determinate, ShowDelay: TimeSpan.Zero),
-                (progress, _) => Task.Run(() => _documentSaveService.SaveDocument(current, savePath, LoadedProject, progress)));
+                (progress, _) => Task.FromResult(_documentSaveService.SaveDocument(current, savePath, LoadedProject, progress)));
             _documentWorkspace.ReplaceDocument(current, updatedDocument);
             _assetBrowser.ScheduleRefreshFromDisk();
             StatusMessage = $"Saved document: {updatedDocument.Title}";

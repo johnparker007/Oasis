@@ -6,7 +6,8 @@ public sealed record EditorProgressRequest(
     EditorProgressMode InitialMode = EditorProgressMode.Indeterminate,
     bool CanCancel = false,
     TimeSpan? ShowDelay = null,
-    TimeSpan? MinimumDisplayDuration = null)
+    TimeSpan? MinimumDisplayDuration = null,
+    EditorProgressExecutionMode ExecutionMode = EditorProgressExecutionMode.Background)
 {
     public static readonly TimeSpan DefaultShowDelay = TimeSpan.FromMilliseconds(250);
     public static readonly TimeSpan DefaultMinimumDisplayDuration = TimeSpan.FromMilliseconds(300);

@@ -18,6 +18,13 @@ public sealed class NoOpProgressDialogService : IProgressDialogService
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(operation);
 
+        var normalized = request.Normalize();
+        if (normalized.ExecutionMode == EditorProgressExecutionMode.Background)
+        {
+            await Task.Run(() => operation(NoOpEditorProgressReporter.Instance, cancellationToken), cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
         await operation(NoOpEditorProgressReporter.Instance, cancellationToken).ConfigureAwait(false);
     }
 
@@ -29,6 +36,9 @@ public sealed class NoOpProgressDialogService : IProgressDialogService
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(operation);
 
-        return await operation(NoOpEditorProgressReporter.Instance, cancellationToken).ConfigureAwait(false);
+        var normalized = request.Normalize();
+        return normalized.ExecutionMode == EditorProgressExecutionMode.Background
+            ? await Task.Run(() => operation(NoOpEditorProgressReporter.Instance, cancellationToken), cancellationToken).ConfigureAwait(false)
+            : await operation(NoOpEditorProgressReporter.Instance, cancellationToken).ConfigureAwait(false);
     }
 }

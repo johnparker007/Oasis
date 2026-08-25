@@ -4,6 +4,7 @@ using System.Windows.Input;
 using Microsoft.Win32;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using OasisEditor.Progress;
 
 namespace OasisEditor;
 
@@ -35,6 +36,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     private BitmapImage? _overridePreview;
     private string? _basePreviewPath;
     private string? _overridePreviewKey;
+    private bool _isBuildInProgress;
 
     public FaceWorkspaceViewModel(DocumentTabViewModel document)
     {
@@ -53,8 +55,8 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         UsePanel2DSourceCommand = new RelayCommand(UsePanel2DSource, () => CanUsePanel2DSource);
         ReloadImageCommand = new RelayCommand(() => { _document.ReloadArtworkImage(); RefreshSummaries(); });
         ResetRegistrationCommand = new RelayCommand(ResetRegistration);
-        BuildFaceCommand = new RelayCommand(() => RunBuild(false));
-        RebuildFaceCommand = new RelayCommand(() => RunBuild(true));
+        BuildFaceCommand = new RelayCommand(() => RunBuild(false), () => !_isBuildInProgress);
+        RebuildFaceCommand = new RelayCommand(() => RunBuild(true), () => !_isBuildInProgress);
         OpenGenerationSettingsCommand = new RelayCommand(OpenGenerationSettings);
         AddReelCommand = Placement(FaceComponentKind.Reel);
         AddButtonCommand = Placement(FaceComponentKind.Button);
@@ -219,10 +221,44 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         _document.CommandService.Execute(FaceMutationCommands.CreateRebuildComponentsCommand(_document.DocumentId,_document,components,source)); RefreshSummaries();
     }
 
-    private void RunBuild(bool force)
+    private async void RunBuild(bool force)
     {
-        _document.BuildFace(force);
-        RefreshSummaries();
+        if (_isBuildInProgress) return;
+        _isBuildInProgress = true;
+        RaiseBuildCanExecuteChanged();
+        try
+        {
+            var workItem = _document.PrepareFaceBuild(force);
+            var prepared = await _document.ProgressDialogService.RunAsync(
+                new EditorProgressRequest(
+                    force ? "Rebuilding Face" : "Building Face",
+                    force ? "Rebuilding Face outputs..." : "Building stale Face outputs...",
+                    EditorProgressMode.Determinate,
+                    CanCancel: true),
+                (progress, token) => Task.FromResult(DocumentTabViewModel.ExecutePreparedFaceBuild(workItem, progress, token)));
+            _document.CommitPreparedFaceBuild(prepared);
+            RefreshSummaries();
+        }
+        catch (OperationCanceledException)
+        {
+            // Completed files may remain on disk, but no detached build state is committed.
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(exception.Message, force ? "Rebuild Face Failed" : "Build Face Failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _isBuildInProgress = false;
+            RaiseBuildCanExecuteChanged();
+        }
+    }
+
+    private void RaiseBuildCanExecuteChanged()
+    {
+        if (BuildFaceCommand is RelayCommand build) build.RaiseCanExecuteChanged();
+        if (RebuildFaceCommand is RelayCommand rebuild) rebuild.RaiseCanExecuteChanged();
     }
 
     private void OpenGenerationSettings()

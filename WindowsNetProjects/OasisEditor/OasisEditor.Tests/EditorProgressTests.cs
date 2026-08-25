@@ -89,6 +89,78 @@ public sealed class EditorProgressTests
     }
 
     [Fact]
+    public async Task NoOpService_DefaultExecutionStartsOnBackgroundThread()
+    {
+        var callerThread = Environment.CurrentManagedThreadId;
+        using var operationStarted = new ManualResetEventSlim();
+        using var releaseOperation = new ManualResetEventSlim();
+        var operationThread = -1;
+
+        var operationTask = NoOpProgressDialogService.Instance.RunAsync(
+            new EditorProgressRequest("Work"),
+            (_, _) =>
+            {
+                operationThread = Environment.CurrentManagedThreadId;
+                operationStarted.Set();
+                releaseOperation.Wait();
+                return Task.CompletedTask;
+            });
+
+        Assert.True(operationStarted.Wait(TimeSpan.FromSeconds(5)));
+        Assert.NotEqual(callerThread, operationThread);
+        releaseOperation.Set();
+        await operationTask;
+    }
+
+    [Fact]
+    public async Task NoOpService_ExplicitUiExecutionStartsOnCallerThread()
+    {
+        var callerThread = Environment.CurrentManagedThreadId;
+
+        var operationThread = await NoOpProgressDialogService.Instance.RunAsync(
+            new EditorProgressRequest("Work", ExecutionMode: EditorProgressExecutionMode.UiThread),
+            (_, _) => Task.FromResult(Environment.CurrentManagedThreadId));
+
+        Assert.Equal(callerThread, operationThread);
+    }
+
+    [Fact]
+    public async Task NoOpService_PropagatesCancellation()
+    {
+        using var cancellationSource = new CancellationTokenSource();
+        cancellationSource.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => NoOpProgressDialogService.Instance.RunAsync(
+            new EditorProgressRequest("Work"),
+            (_, token) =>
+            {
+                token.ThrowIfCancellationRequested();
+                return Task.CompletedTask;
+            },
+            cancellationSource.Token));
+    }
+
+    [Fact]
+    public async Task Reporter_CanDeliverBackgroundProgressToStateConsumer()
+    {
+        var delivered = new TaskCompletionSource<EditorProgressState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var initial = EditorProgressState.FromRequest(new EditorProgressRequest("Work"));
+        var reporter = new EditorProgressReporter(initial, state =>
+        {
+            if (state.Message == "Working")
+            {
+                delivered.TrySetResult(state);
+            }
+        });
+
+        await Task.Run(() => reporter.Report(0.5, "Working"));
+        var state = await delivered.Task;
+
+        Assert.Equal(0.5, state.Value);
+        Assert.Equal("Working", state.Message);
+    }
+
+    [Fact]
     public async Task NoOpService_PropagatesOperationFailure()
     {
         var service = NoOpProgressDialogService.Instance;

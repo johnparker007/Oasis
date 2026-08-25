@@ -104,10 +104,12 @@ internal sealed class FaceGenerationService
         IEditorProgressReporter? progress = null,
         string? sourcePanel2DDocumentPath = null,
         IReadOnlyList<InputDefinitionModel>? inputDefinitions = null,
-        CabinetDocument? cabinetDocument = null)
+        CabinetDocument? cabinetDocument = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceShape);
+        cancellationToken.ThrowIfCancellationRequested();
         var output = FaceSourceShapeTransformService.EstimateOutputSize(sourceShape, targetAspectRatio);
         var pathService = new ProjectAssetPathService();
         var resolvedFaceAssetName = pathService.SanitizePathSegment(string.IsNullOrWhiteSpace(faceAssetName) ? title : faceAssetName);
@@ -138,6 +140,7 @@ internal sealed class FaceGenerationService
             var builder = new FaceArtworkRebuildService();
             generatedCorrectionInputPath = builder.RebuildCorrectionInput(
                 artworkState, sourcePanel, sourceShape, projectDirectory, correctionInputPath, settings);
+            cancellationToken.ThrowIfCancellationRequested();
             generatedBasePath = string.IsNullOrWhiteSpace(generatedCorrectionInputPath)
                 ? null
                 : FaceArtworkGeneratedPathService.ToProjectRelative(basePath, projectDirectory);
@@ -167,6 +170,7 @@ internal sealed class FaceGenerationService
             if (!baseResult.Succeeded) throw new InvalidOperationException(baseResult.ErrorMessage);
             var finalized = builder.FinalizeOutput(artworkState, projectDirectory);
             if (!finalized.Succeeded) throw new InvalidOperationException(finalized.ErrorMessage);
+            cancellationToken.ThrowIfCancellationRequested();
         }
         var faceDocumentId = Guid.NewGuid().ToString("N");
         progress?.Report(0.2, "Converting source-shape semantic components...");
@@ -184,6 +188,7 @@ internal sealed class FaceGenerationService
             resolvedFaceAssetName,
             ResolveFaceAuthoredAssetPath(projectDirectory, generatedDirectory, faceAssetDirectory, resolvedFaceAssetName, ProjectAssetPathService.FaceMaskFileName),
             settings.MaskExtractionThreshold);
+        cancellationToken.ThrowIfCancellationRequested();
         var artwork = new FaceArtworkElement
         {
             ObjectId = $"face-artwork-{Guid.NewGuid():N}",
@@ -202,6 +207,7 @@ internal sealed class FaceGenerationService
         var elements = new FaceElementModel[] { artwork }.Concat(semanticElements).ToArray();
         progress?.Report(0.9, "Auto-authoring trays/emitters...");
         var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { GenerationSettings = settings, MaskLayer = maskLayer, Elements = elements }, projectDirectory);
+        cancellationToken.ThrowIfCancellationRequested();
         var document = new FaceDocumentModel
         {
             Id = faceDocumentId,

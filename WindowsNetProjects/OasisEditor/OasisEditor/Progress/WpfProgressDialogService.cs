@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -76,14 +77,12 @@ public sealed class WpfProgressDialogService : IProgressDialogService
             if (_dispatcher.CheckAccess())
             {
                 viewModel.UpdateState(state);
-                PumpPendingProgressRender();
             }
             else
             {
                 _dispatcher.BeginInvoke(() =>
                 {
                     viewModel.UpdateState(state);
-                    PumpPendingProgressRender();
                 }, DispatcherPriority.Normal);
             }
         });
@@ -112,7 +111,9 @@ public sealed class WpfProgressDialogService : IProgressDialogService
             try
             {
                 await _dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                result = await operation(reporter, linkedCancellation.Token).ConfigureAwait(true);
+                result = request.ExecutionMode == EditorProgressExecutionMode.Background
+                    ? await Task.Run(() => operation(reporter, linkedCancellation.Token), linkedCancellation.Token).ConfigureAwait(true)
+                    : await operation(reporter, linkedCancellation.Token).ConfigureAwait(true);
             }
             catch (Exception exception)
             {
@@ -131,25 +132,11 @@ public sealed class WpfProgressDialogService : IProgressDialogService
 
         if (operationException is not null)
         {
-            throw operationException;
+            ExceptionDispatchInfo.Capture(operationException).Throw();
         }
 
         await Task.CompletedTask;
         return result!;
-    }
-
-    private void PumpPendingProgressRender()
-    {
-        if (!_dispatcher.CheckAccess())
-        {
-            return;
-        }
-
-        var frame = new DispatcherFrame();
-        _dispatcher.BeginInvoke(
-            DispatcherPriority.ContextIdle,
-            new Action(() => frame.Continue = false));
-        Dispatcher.PushFrame(frame);
     }
 
     private Window? ResolveOwnerWindow()

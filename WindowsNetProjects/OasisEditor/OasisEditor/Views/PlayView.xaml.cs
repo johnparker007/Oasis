@@ -152,7 +152,7 @@ public partial class PlayView : UserControl
             }
 
             await viewModel.RunEditorProgressAsync(
-                new EditorProgressRequest("Generating Face Play View", "Generating Face Play View...", EditorProgressMode.Indeterminate, ShowDelay: TimeSpan.Zero),
+                new EditorProgressRequest("Generating Face Play View", "Generating Face Play View...", EditorProgressMode.Indeterminate, ShowDelay: TimeSpan.Zero, ExecutionMode: EditorProgressExecutionMode.UiThread),
                 async (progress, token) =>
                 {
                     token.ThrowIfCancellationRequested();
