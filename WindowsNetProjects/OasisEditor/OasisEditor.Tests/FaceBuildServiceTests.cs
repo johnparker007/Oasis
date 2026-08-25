@@ -1,6 +1,7 @@
 using OasisEditor;
 using OasisEditor.Features.CabinetEditor.Models;
 using SkiaSharp;
+using OasisEditor.Progress;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -73,6 +74,95 @@ public sealed class FaceBuildServiceTests
         var result = new FaceBuildService().Build(state, Builders(calls), force: true);
         Assert.True(result.Succeeded);
         Assert.Equal(6, calls.Count);
+    }
+
+    [Fact]
+    public void Build_ReportsOnlyProductsEligibleForBuild()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, true, true, true, true);
+        state.Get(FaceGeneratedProduct.BaseArtwork).Status = FaceBuildStatus.Stale;
+        state.Get(FaceGeneratedProduct.ArtworkOutput).Status = FaceBuildStatus.Stale;
+        var progress = new RecordingProgressReporter();
+
+        var result = new FaceBuildService().Build(state, Builders([]), progress: progress);
+
+        Assert.True(result.Succeeded);
+        Assert.Contains(progress.Messages, message => message.Contains("processed artwork", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(progress.Messages, message => message.Contains("artwork output", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(progress.Messages, message => message.Contains("lamp mask", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(progress.Messages, message => message.Contains("runtime assets", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(1d, progress.Values[^1]);
+    }
+
+    [Fact]
+    public void Build_WithNoStaleProductsReportsAlreadyCurrentWithoutExecutingBuilders()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, true, true, true, true);
+        var calls = new List<FaceGeneratedProduct>();
+        var progress = new RecordingProgressReporter();
+
+        var result = new FaceBuildService().Build(state, Builders(calls), progress: progress);
+
+        Assert.True(result.Succeeded);
+        Assert.Empty(result.Built);
+        Assert.Empty(calls);
+        Assert.Contains(progress.Messages, message => message.Contains("already current", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Build_CancellationBetweenProductsPropagates()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false);
+        new FaceBuildService().Invalidate(state, FaceBuildInput.ArtworkSource);
+        using var cancellationSource = new CancellationTokenSource();
+        var calls = new List<FaceGeneratedProduct>();
+        var progress = new RecordingProgressReporter((value, _) =>
+        {
+            if (value > 0d) cancellationSource.Cancel();
+        });
+
+        Assert.Throws<OperationCanceledException>(() => new FaceBuildService().Build(
+            state,
+            Builders(calls),
+            progress: progress,
+            cancellationToken: cancellationSource.Token));
+
+        Assert.Equal([FaceGeneratedProduct.ArtworkCorrectionInput], calls);
+    }
+
+    [Fact]
+    public void CancelledPreparedBuildDoesNotMutateSourceDocument()
+    {
+        var state = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false);
+        state.Get(FaceGeneratedProduct.BaseArtwork).Status = FaceBuildStatus.Stale;
+        var model = new FaceDocumentModel
+        {
+            Title = "Face",
+            Artwork = new FaceArtworkModel
+            {
+                Source = new FaceArtworkSourceModel { Kind = FaceArtworkSourceKind.Image, AssetPath = "source.png" },
+                CorrectionInputAssetPath = "correction.png",
+                BaseAssetPath = "base.png",
+                OutputAssetPath = "output.png",
+                OutputWidth = 4,
+                OutputHeight = 4
+            },
+            BuildState = state
+        };
+        var document = new DocumentTabViewModel(
+            EditorDocument.CreateFaceStub("Face"),
+            faceDocumentJson: FaceDocumentStorage.Serialize(model));
+        var workItem = document.PrepareFaceBuild(force: false);
+        var originalJson = document.FaceDocumentJson;
+        using var cancellationSource = new CancellationTokenSource();
+        cancellationSource.Cancel();
+
+        Assert.Throws<OperationCanceledException>(() => DocumentTabViewModel.ExecutePreparedFaceBuild(
+            workItem,
+            NoOpEditorProgressReporter.Instance,
+            cancellationSource.Token));
+        Assert.Equal(originalJson, document.FaceDocumentJson);
+        Assert.Equal(FaceBuildStatus.Stale, document.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.BaseArtwork).Status);
     }
 
     [Fact]
@@ -361,6 +451,30 @@ public sealed class FaceBuildServiceTests
             calls.Add(product);
             return new FaceBuildNodeResult(product, true);
         }));
+
+    private sealed class RecordingProgressReporter : IEditorProgressReporter
+    {
+        private readonly Action<double, string>? _onReport;
+
+        public RecordingProgressReporter(Action<double, string>? onReport = null)
+        {
+            _onReport = onReport;
+        }
+
+        public List<double> Values { get; } = [];
+        public List<string> Messages { get; } = [];
+
+        public void Report(double normalizedProgress, string message)
+        {
+            Values.Add(normalizedProgress);
+            Messages.Add(message);
+            _onReport?.Invoke(normalizedProgress, message);
+        }
+
+        public void ReportIndeterminate(string message) => Messages.Add(message);
+        public void ReportMessage(string message) => Messages.Add(message);
+        public IEditorProgressReporter CreateChild(double start, double end, string? defaultMessagePrefix = null) => this;
+    }
 
     private static EditorProject Project(string directory) => new()
     {

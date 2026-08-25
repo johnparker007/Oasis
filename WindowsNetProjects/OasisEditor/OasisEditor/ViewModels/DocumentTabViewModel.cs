@@ -5,6 +5,7 @@ using OasisEditor.Commands;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
 using OasisEditor.Features.CabinetEditor.ViewModels;
+using OasisEditor.Progress;
 using SkiaSharp;
 
 namespace OasisEditor;
@@ -41,6 +42,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private readonly FaceRuntimeAssetsConfigurationService _runtimeAssetsConfiguration = new();
     private SKBitmap? _correctionInputBitmap;
     private string? _correctionInputCacheKey;
+    private IProgressDialogService _progressDialogService = NoOpProgressDialogService.Instance;
+    private bool _isDetachedFaceBuildWorker;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -107,6 +110,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public MachineRuntimeState RuntimeState => _runtimeState;
     public DocumentSelectionState SelectionState { get; } = new();
     public FaceWorkspaceViewModel? FaceWorkspace => _faceWorkspace;
+    internal IProgressDialogService ProgressDialogService => _progressDialogService;
     public string Title => Document.IsDirty ? $"{Document.Title}*" : Document.Title;
     public string TypeLabel => Document.DocumentType switch
     {
@@ -156,6 +160,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _projectAccessor = projectAccessor;
         ReconcileRuntimeAssetsConfiguration();
         _cabinetViewer?.ReflectionEditor.RefreshProjectContext();
+    }
+
+    internal void SetProgressDialogService(IProgressDialogService progressDialogService)
+    {
+        _progressDialogService = progressDialogService ?? throw new ArgumentNullException(nameof(progressDialogService));
     }
 
     public void MarkDirty()
@@ -459,6 +468,115 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var result = service.Build(_faceDocumentModel.BuildState, CreateFaceBuildExecutors(), force);
         CompleteFaceBuild(result);
         return result;
+    }
+
+    internal sealed record FaceBuildDocumentSnapshot(
+        EditorDocument Document,
+        string? PanelLayoutJson,
+        string? FaceDocumentJson,
+        string? CabinetDocumentJson);
+
+    internal sealed record FaceBuildWorkItem(
+        EditorDocument Document,
+        string FaceDocumentJson,
+        EditorProject? Project,
+        IReadOnlyList<FaceBuildDocumentSnapshot> OpenDocuments,
+        bool Force);
+
+    internal sealed record PreparedFaceBuild(
+        EditorDocument Document,
+        FaceDocumentModel FaceDocument,
+        FaceBuildResult Result);
+
+    internal FaceBuildWorkItem PrepareFaceBuild(bool force)
+    {
+        FaceBuildConfigurationService.ReconcileArtwork(_faceDocumentModel);
+        ReconcileRuntimeAssetsConfiguration();
+        var snapshots = (_openDocumentsAccessor?.Invoke() ?? [])
+            .Select(document => new FaceBuildDocumentSnapshot(
+                document.Document,
+                document.PanelLayoutJson,
+                document.FaceDocumentJson,
+                document.CabinetDocumentJson))
+            .ToArray();
+        return new FaceBuildWorkItem(_document, GetFaceDocumentJson(), _projectAccessor?.Invoke(), snapshots, force);
+    }
+
+    internal static PreparedFaceBuild ExecutePreparedFaceBuild(
+        FaceBuildWorkItem workItem,
+        IEditorProgressReporter progress,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var openDocuments = workItem.OpenDocuments.Select(snapshot => new DocumentTabViewModel(
+            snapshot.Document,
+            snapshot.PanelLayoutJson,
+            faceDocumentJson: snapshot.FaceDocumentJson,
+            cabinetDocumentJson: snapshot.CabinetDocumentJson)).ToArray();
+        try
+        {
+            foreach (var openDocument in openDocuments)
+            {
+                openDocument._isDetachedFaceBuildWorker = true;
+                openDocument.SetProjectAccessor(() => workItem.Project);
+                openDocument.SetOpenDocumentsAccessor(() => openDocuments);
+            }
+
+            using var worker = new DocumentTabViewModel(workItem.Document, faceDocumentJson: workItem.FaceDocumentJson)
+            {
+                _isDetachedFaceBuildWorker = true
+            };
+            worker.SetProjectAccessor(() => workItem.Project);
+            worker.SetOpenDocumentsAccessor(() => openDocuments);
+            FaceBuildConfigurationService.ReconcileArtwork(worker._faceDocumentModel);
+            worker.ReconcileRuntimeAssetsConfiguration();
+            var result = new FaceBuildService().Build(
+                worker._faceDocumentModel.BuildState,
+                worker.CreateFaceBuildExecutors(),
+                workItem.Force,
+                progress: progress,
+                cancellationToken: cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            worker.CompleteFaceBuild(result);
+            return new PreparedFaceBuild(worker.Document, worker._faceDocumentModel, result);
+        }
+        finally
+        {
+            foreach (var openDocument in openDocuments) openDocument.Dispose();
+        }
+    }
+
+    internal void CommitPreparedFaceBuild(PreparedFaceBuild prepared)
+    {
+        ArgumentNullException.ThrowIfNull(prepared);
+        _document = prepared.Document;
+        _faceDocumentModel = prepared.FaceDocument;
+        _faceDocumentJson = GetFaceDocumentJson();
+        InvalidateCorrectionInputCache();
+        if (prepared.Result.Built.Contains(FaceGeneratedProduct.BaseArtwork))
+        {
+            _faceWorkspace?.RefreshArtworkPreviews(true, false);
+        }
+        if (prepared.Result.Built.Contains(FaceGeneratedProduct.ArtworkOutput)
+            && _faceDocumentModel.Artwork is { } artwork)
+        {
+            NotifyGeneratedArtworkChanged(artwork);
+        }
+        if (prepared.Result.Built.Count > 0 || prepared.Result.Failed.Count > 0)
+        {
+            PanelChanged?.Invoke(new PanelChangeEvent(
+                DocumentId,
+                null,
+                PanelChangeProperties.Metadata | PanelChangeProperties.Structure,
+                AffectsCanvas: prepared.Result.Built.Count > 0,
+                AffectsHierarchy: true,
+                AffectsInspectorRows: true,
+                AffectsPersistence: false));
+        }
+        _faceWorkspace?.RefreshSummaries();
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
     }
 
     internal FaceBuildResult BuildArtwork()
@@ -807,6 +925,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     private void NotifyGeneratedArtworkChanged(FaceArtworkModel artwork)
     {
+        if (_isDetachedFaceBuildWorker) return;
         Views.SkiaFaceEditView.InvalidateArtworkImage(artwork.OutputAssetPath);
         PanelChanged?.Invoke(new PanelChangeEvent(DocumentId, artwork.Id, PanelChangeProperties.Metadata, AffectsCanvas: true, AffectsHierarchy: false, AffectsInspectorRows: false, AffectsPersistence: false));
     }

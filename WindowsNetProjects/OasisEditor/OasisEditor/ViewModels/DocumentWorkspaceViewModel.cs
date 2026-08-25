@@ -28,6 +28,7 @@ public sealed class DocumentWorkspaceViewModel
     private readonly FaceRuntimeExportService _faceRuntimeExportService = new();
     private readonly FaceValidationService _faceValidationService = new();
     private readonly FaceCabinetContextResolver _faceCabinetContextResolver = new();
+    private readonly IProgressDialogService _progressDialogService;
 
     private int _untitledDocumentCounter = 1;
     private int _panelDocumentCounter = 1;
@@ -44,7 +45,8 @@ public sealed class DocumentWorkspaceViewModel
         Action notifyUndoRedoStateChanged,
         Action<string> setStatusMessage,
         Action<string, OutputLogStatus> addOutputEntry,
-        Action<Guid>? onDocumentClosed = null)
+        Action<Guid>? onDocumentClosed = null,
+        IProgressDialogService? progressDialogService = null)
         : this(
             getLoadedProject,
             setLoadedProject,
@@ -57,7 +59,8 @@ public sealed class DocumentWorkspaceViewModel
             new MachineRuntimeStateStore(),
             new Automation.Panel2DDocumentCreationService(),
             onDocumentClosed,
-            new Automation.FaceDocumentCreationService())
+            new Automation.FaceDocumentCreationService(),
+            progressDialogService)
     {
     }
 
@@ -73,7 +76,8 @@ public sealed class DocumentWorkspaceViewModel
         MachineRuntimeStateStore runtimeStateStore,
         Automation.IPanel2DDocumentCreationService panel2dCreationService,
         Action<Guid>? onDocumentClosed = null,
-        Automation.IFaceDocumentCreationService? faceCreationService = null)
+        Automation.IFaceDocumentCreationService? faceCreationService = null,
+        IProgressDialogService? progressDialogService = null)
     {
         _getLoadedProject = getLoadedProject;
         _setLoadedProject = setLoadedProject;
@@ -87,6 +91,7 @@ public sealed class DocumentWorkspaceViewModel
         _runtimeStateStore = runtimeStateStore;
         _panel2dCreationService = panel2dCreationService;
         _faceCreationService = faceCreationService ?? new Automation.FaceDocumentCreationService();
+        _progressDialogService = progressDialogService ?? NoOpProgressDialogService.Instance;
     }
 
     public bool CanOpenUntitledDocument() => _getLoadedProject() is not null;
@@ -432,6 +437,9 @@ public sealed class DocumentWorkspaceViewModel
         }
 
         var document = _faceCreationService.CreateFaceStubDocument($"Face {_faceDocumentCounter++}", _faceDocumentCounter - 1);
+        document.SetOpenDocumentsAccessor(() => _openDocuments);
+        document.SetProjectAccessor(_getLoadedProject);
+        document.SetProgressDialogService(_progressDialogService);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Opened face document stub: {document.Title}");
         _addOutputEntry($"Opened face document stub: {document.Title}", OutputLogStatus.Info);
@@ -448,6 +456,7 @@ public sealed class DocumentWorkspaceViewModel
         if (result.Document is not { } document) return result;
         document.SetOpenDocumentsAccessor(() => _openDocuments);
         document.SetProjectAccessor(_getLoadedProject);
+        document.SetProgressDialogService(_progressDialogService);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _faceDocumentCounter++;
         _setStatusMessage($"Created native face: {document.Title}");
@@ -512,6 +521,7 @@ public sealed class DocumentWorkspaceViewModel
     {
         updated.SetOpenDocumentsAccessor(() => _openDocuments);
         updated.SetProjectAccessor(_getLoadedProject);
+        updated.SetProgressDialogService(_progressDialogService);
         ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, original, updated));
     }
 
@@ -608,6 +618,7 @@ public sealed class DocumentWorkspaceViewModel
         };
         updated.SetOpenDocumentsAccessor(() => _openDocuments);
         updated.SetProjectAccessor(_getLoadedProject);
+        updated.SetProgressDialogService(_progressDialogService);
 
         ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, selectedDocument, updated));
         _setStatusMessage($"Updated inspector summary for {updated.Title}");
@@ -629,6 +640,7 @@ public sealed class DocumentWorkspaceViewModel
             cabinetDocumentJson: cabinetDocumentJson);
         tab.SetOpenDocumentsAccessor(() => _openDocuments);
         tab.SetProjectAccessor(_getLoadedProject);
+        tab.SetProgressDialogService(_progressDialogService);
         return tab;
     }
 

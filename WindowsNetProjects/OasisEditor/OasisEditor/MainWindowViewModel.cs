@@ -301,7 +301,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 _activeDocumentContext.ClearDocumentState(documentId);
                 _machineRuntimeStates.ClearDocumentState(documentId);
-            });
+            },
+            progressDialogService: _progressDialogService);
         AssetBrowserItems = _assetBrowser.AssetBrowserItems;
         AssetBrowserItems.CollectionChanged += OnAssetBrowserItemsChanged;
         OutputEntries = _outputLog.OutputEntries;
