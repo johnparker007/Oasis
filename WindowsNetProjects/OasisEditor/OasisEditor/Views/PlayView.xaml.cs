@@ -772,6 +772,7 @@ public partial class PlayView : UserControl
         {
             _subscribedDocument.PanelVisualStateChanged -= OnSelectedDocumentPanelVisualStateChanged;
             _subscribedDocument.FaceVisualStateChanged -= OnSelectedDocumentFaceVisualStateChanged;
+            _subscribedDocument.FacePreviewChanged -= OnSelectedDocumentFacePreviewChanged;
             _subscribedDocument.PropertyChanged -= OnSelectedDocumentPropertyChanged;
         }
 
@@ -780,6 +781,7 @@ public partial class PlayView : UserControl
         {
             _subscribedDocument.PanelVisualStateChanged += OnSelectedDocumentPanelVisualStateChanged;
             _subscribedDocument.FaceVisualStateChanged += OnSelectedDocumentFaceVisualStateChanged;
+            _subscribedDocument.FacePreviewChanged += OnSelectedDocumentFacePreviewChanged;
             _subscribedDocument.PropertyChanged += OnSelectedDocumentPropertyChanged;
         }
     }
@@ -807,9 +809,19 @@ public partial class PlayView : UserControl
         Dispatcher.Invoke(RefreshCanvasFromSelection);
     }
 
+    private void OnSelectedDocumentFacePreviewChanged(FacePreviewChangedEvent previewChanged)
+    {
+        if (_subscribedDocument is null || previewChanged.DocumentId != _subscribedDocument.DocumentId)
+        {
+            return;
+        }
+
+        Dispatcher.Invoke(RefreshCanvasFromSelection);
+    }
+
     private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(DocumentTabViewModel.PanelLayoutJson) or nameof(DocumentTabViewModel.FaceDocumentJson))
+        if (e.PropertyName == nameof(DocumentTabViewModel.PanelLayoutJson))
         {
             Dispatcher.Invoke(RefreshCanvasFromSelection);
         }

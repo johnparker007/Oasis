@@ -4,6 +4,7 @@ using System.Windows.Media;
 using OasisEditor.Features.CabinetEditor.Models;
 using EditorCommands = OasisEditor.Commands;
 using Xunit;
+using System.Collections.Specialized;
 
 namespace OasisEditor.Tests;
 
@@ -26,6 +27,8 @@ public sealed class InspectorViewModelTests
         var viewModel = CreateInspectorViewModel(document, context, Execute);
         document.PanelChanged += viewModel.NotifyPanelChanged;
         viewModel.NotifyContextChanged();
+        var collectionNotifications = 0;
+        ((INotifyCollectionChanged)viewModel.InspectorPropertyRows).CollectionChanged += (_, _) => collectionNotifications++;
 
         var add = Assert.IsType<InspectorActionPropertyViewModel>(
             viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "+ Add Artwork Calibration"));
@@ -40,6 +43,9 @@ public sealed class InspectorViewModelTests
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Add White Sample");
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Add Black Sample");
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "+ Add Colour Group");
+        Assert.All(viewModel.InspectorPropertyRows
+            .OfType<InspectorColorPropertyViewModel>(), row => Assert.False(row.UsesColorPicker));
+        Assert.Equal(1, collectionNotifications);
 
         Assert.True(document.CommandService.TryUndo());
         Assert.Empty(document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations);
@@ -105,6 +111,8 @@ public sealed class InspectorViewModelTests
         var rows = viewModel.InspectorPropertyRows;
         var black = Assert.IsType<InspectorColorPropertyViewModel>(rows.Single(row => row.DisplayName == "Black Reference"));
         var white = Assert.IsType<InspectorColorPropertyViewModel>(rows.Single(row => row.DisplayName == "White Reference"));
+        Assert.True(black.UsesColorPicker);
+        Assert.True(white.UsesColorPicker);
         var blackSelectedColorNotifications = 0;
         var whiteSelectedColorNotifications = 0;
         black.PropertyChanged += (_, args) =>

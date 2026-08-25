@@ -10,6 +10,20 @@
              d:DesignWidth="260">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <DataTemplate x:Key="ReadOnlyColorSwatchTemplate">
+            <Border Width="36"
+                    Height="20"
+                    Background="{Binding SelectedBrush}"
+                    BorderBrush="{DynamicResource BorderStrongBrush}"
+                    BorderThickness="1"
+                    CornerRadius="2" />
+        </DataTemplate>
+        <DataTemplate x:Key="EditableColorPickerTemplate">
+            <colorPicker:PortableColorPicker Width="36"
+                                             Height="20"
+                                             LostKeyboardFocus="OnColorPickerLostKeyboardFocus"
+                                             SelectedColor="{Binding SelectedColor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:InspectorTextPropertyViewModel}">
             <Grid Margin="0,3,0,0">
                 <Grid.ColumnDefinitions>
@@ -69,13 +83,18 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock VerticalAlignment="Center"
                            Text="{Binding DisplayName}" />
-                <colorPicker:PortableColorPicker Grid.Column="1"
-                                                 Width="36"
-                                                 Height="20"
-                                                 IsHitTestVisible="{Binding IsEditable}"
-                                                 Focusable="{Binding IsEditable}"
-                                                 LostKeyboardFocus="OnColorPickerLostKeyboardFocus"
-                                                 SelectedColor="{Binding SelectedColor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <ContentControl Grid.Column="1" Content="{Binding}">
+                    <ContentControl.Style>
+                        <Style TargetType="ContentControl">
+                            <Setter Property="ContentTemplate" Value="{StaticResource ReadOnlyColorSwatchTemplate}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding UsesColorPicker}" Value="True">
+                                    <Setter Property="ContentTemplate" Value="{StaticResource EditableColorPickerTemplate}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ContentControl.Style>
+                </ContentControl>
                 <TextBox Grid.Column="3"
                          IsReadOnly="{Binding IsReadOnly}"
                          LostFocus="OnEditableTextBoxLostFocus"

@@ -1454,8 +1454,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             foreach (DocumentTabViewModel document in e.OldItems)
             {
-                document.PropertyChanged -= OnOpenDocumentPropertyChanged;
                 document.FaceVisualStateChanged -= OnOpenDocumentFaceVisualStateChanged;
+                document.FacePreviewChanged -= OnOpenDocumentFacePreviewChanged;
             }
         }
 
@@ -1463,22 +1463,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             foreach (DocumentTabViewModel document in e.NewItems)
             {
-                document.PropertyChanged += OnOpenDocumentPropertyChanged;
                 document.FaceVisualStateChanged += OnOpenDocumentFaceVisualStateChanged;
+                document.FacePreviewChanged += OnOpenDocumentFacePreviewChanged;
             }
         }
 
         RefreshCabinetFacePreviews();
     }
 
-    private void OnOpenDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnOpenDocumentFacePreviewChanged(FacePreviewChangedEvent _)
     {
-        if (sender is DocumentTabViewModel document
-            && document.Document.DocumentType == EditorDocumentType.Face
-            && string.Equals(e.PropertyName, nameof(DocumentTabViewModel.FaceDocumentJson), StringComparison.Ordinal))
-        {
-            RefreshCabinetFacePreviews();
-        }
+        RefreshCabinetFacePreviews();
     }
 
     private void OnOpenDocumentFaceVisualStateChanged(FaceVisualStateChangedEvent visualStateChanged)

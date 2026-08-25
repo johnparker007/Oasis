@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
@@ -24,7 +23,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private readonly Func<Guid, EditorCommands.ICommand, bool> _executeCanvasCommand;
     private readonly Func<DocumentTabViewModel, string, DocumentTabViewModel?> _applySummary;
     private readonly ICommand? _generateFaceFromSourceShapeCommand;
-    private readonly ObservableCollection<InspectorPropertyRowViewModel> _propertyRows = [];
+    private readonly BatchedObservableCollection<InspectorPropertyRowViewModel> _propertyRows = [];
     private readonly FaceCabinetContextResolver _faceCabinetContextResolver = new();
     private string _inspectorEditableSummary = string.Empty;
     private DateTime _suppressPropertyRowRefreshUntilUtc;
@@ -35,6 +34,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private string? _lastObservedAssetPath;
     private string? _lastObservedDocumentSelectionKey;
     private bool _hadInspectorSelection;
+    private bool _avoidCalibrationInputEvaluation;
 
     private enum InspectorSelectionSource
     {
@@ -427,7 +427,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         if (panelChange.ChangedProperties.HasFlag(PanelChangeProperties.Structure))
         {
-            RebuildPropertyRows();
+            _avoidCalibrationInputEvaluation = true;
+            try
+            {
+                RebuildPropertyRows();
+            }
+            finally
+            {
+                _avoidCalibrationInputEvaluation = false;
+            }
             return;
         }
 
@@ -465,10 +473,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     private void RebuildPropertyRows()
     {
+        var selectedDocument = _selectedDocumentAccessor();
         CommitDeferredColorEdits();
+        using var propertyRowsUpdate = _propertyRows.BeginUpdate();
         _propertyRows.Clear();
 
-        var selectedDocument = _selectedDocumentAccessor();
         var selection = _activeDocumentContext.ActivePanelSelection;
         if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
@@ -1610,7 +1619,10 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 _propertyRows.Add(new InspectorBoolPropertyViewModel("Correct Colour Cast",group,calibration.CorrectSpatialColor,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Toggle spatial colour",c=>CopyCalibration(c,correctColor:v))));
                 _propertyRows.Add(new InspectorBoolPropertyViewModel("Normalize Black / White",group,calibration.NormalizeBlackWhite,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Toggle tonal normalization",c=>CopyCalibration(c,normalize:v))));
                 _propertyRows.Add(new InspectorBoolPropertyViewModel("Neutralize White",group,calibration.NeutralizeWhite,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Toggle white neutralization",c=>CopyCalibration(c,neutralize:v))));
-                selectedDocument.TryGetArtworkReferenceColors(calibration,out var black,out var white);
+                var measurements = selectedDocument.GetArtworkCalibrationMeasurements(
+                    calibration, allowInputEvaluation: !_avoidCalibrationInputEvaluation);
+                var black = measurements.BlackColor;
+                var white = measurements.WhiteColor;
                 AddReference("Black",calibration.BlackReference,black,CalibrationPlacementTargetKind.BlackReference);
                 AddReference("White",calibration.WhiteReference,white,CalibrationPlacementTargetKind.WhiteReference);
                 foreach(var colourGroup in calibration.SameColorGroups)
@@ -1634,7 +1646,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 }
                 void AddSamples(IReadOnlyList<CalibrationSampleModel> samples,CalibrationPlacementTargetKind kind,string target,string label)
                 { for(var i=0;i<samples.Count;i++){var sample=samples[i];var title=$"{label} Sample {i+1}";
-                    _propertyRows.Add(new InspectorColorPropertyViewModel(title,group,selectedDocument.GetArtworkSampleColor(calibration,sample),isReadOnly:true,allowEmpty:true,commit:_=>null));
+                    measurements.SampleColors.TryGetValue(sample.Id, out var sampleColor);
+                    _propertyRows.Add(new InspectorColorPropertyViewModel(title,group,sampleColor,isReadOnly:true,allowEmpty:true,commit:_=>null));
                     _propertyRows.Add(new InspectorChoicePropertyViewModel($"{title} Type",group,["Pixel","Area"],sample.SamplingMode.ToString(),commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Change sample type",c=>ReplaceSample(c,kind,target,sample.Id,s=>new CalibrationSampleModel{Id=s.Id,X=s.X,Y=s.Y,SamplingMode=v=="Area"?CalibrationSamplingMode.Area:CalibrationSamplingMode.Pixel,RadiusNormalized=s.RadiusNormalized}))));
                     if(sample.SamplingMode==CalibrationSamplingMode.Area)_propertyRows.Add(new InspectorDoublePropertyViewModel($"{title} Radius (px)",group,sample.RadiusPixels(authoredArtwork.OutputWidth,authoredArtwork.OutputHeight),commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Change sample radius",c=>ReplaceSample(c,kind,target,sample.Id,s=>s.WithRadiusPixels(v,authoredArtwork.OutputWidth,authoredArtwork.OutputHeight)),true)));
                     _propertyRows.Add(new InspectorActionPropertyViewModel($"Delete {title}",group,new RelayCommand(()=>TryUpdateCalibration(selectedDocument,calibration.Id,"Delete calibration sample",c=>RemoveSample(c,kind,target,sample.Id)))));}}
@@ -1955,7 +1968,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             if (operations[index] is not ArtworkCalibrationOperationModel levels) continue;
             var group = $"Processing Stack · {index + 1}. Artwork Calibration";
-            document.TryGetArtworkReferenceColors(levels, out var derivedBlack, out var derivedWhite);
+            var measurements = document.GetArtworkCalibrationMeasurements(levels, allowInputEvaluation: false);
+            var derivedBlack = measurements.BlackColor;
+            var derivedWhite = measurements.WhiteColor;
             foreach (var row in _propertyRows.Where(row => string.Equals(row.GroupName, group, StringComparison.Ordinal)))
             {
                 switch (row.DisplayName)

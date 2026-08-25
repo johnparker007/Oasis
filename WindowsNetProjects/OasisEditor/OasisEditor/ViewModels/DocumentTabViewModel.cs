@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using OasisEditor.Commands;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
@@ -16,6 +17,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private EditorDocument _document;
     private string? _panelLayoutJson;
     private string? _faceDocumentJson;
+    private bool _faceDocumentJsonIsCurrent = true;
     private string? _cabinetDocumentJson;
     private CabinetDocument _cabinetDocumentModel;
     private Panel2DDocumentModel _panelDocumentModel;
@@ -42,6 +44,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private readonly FaceRuntimeAssetsConfigurationService _runtimeAssetsConfiguration = new();
     private SKBitmap? _correctionInputBitmap;
     private string? _correctionInputCacheKey;
+    private readonly Dictionary<string, CalibrationOperationInputCacheEntry> _calibrationOperationInputs = new(StringComparer.Ordinal);
     private IProgressDialogService _progressDialogService = NoOpProgressDialogService.Instance;
     private bool _isDetachedFaceBuildWorker;
 
@@ -49,6 +52,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public event Action<PanelChangeEvent>? PanelChanged;
     public event Action<PanelVisualStateChangedEvent>? PanelVisualStateChanged;
     public event Action<FaceVisualStateChangedEvent>? FaceVisualStateChanged;
+    public event Action<FacePreviewChangedEvent>? FacePreviewChanged;
     public event EventHandler<DocumentSelectionChangedEventArgs>? SelectionChanged;
 
     public DocumentTabViewModel(
@@ -240,20 +244,23 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     public string? FaceDocumentJson
     {
-        get => _faceDocumentJson;
+        get => Document.DocumentType == EditorDocumentType.Face ? GetFaceDocumentJson() : _faceDocumentJson;
         set
         {
-            if (string.Equals(_faceDocumentJson, value, StringComparison.Ordinal))
+            if (_faceDocumentJsonIsCurrent && string.Equals(_faceDocumentJson, value, StringComparison.Ordinal))
             {
                 return;
             }
 
             _faceDocumentJson = value;
+            _faceDocumentJsonIsCurrent = true;
+            InvalidateCorrectionInputCache();
             _faceDocumentModel = FaceDocumentStorage.TryRead(value, out var faceDocumentFile)
                 ? FaceDocumentStorage.ToModel(faceDocumentFile)
                 : new FaceDocumentModel();
             _faceWorkspace?.RefreshSummaries();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
+            FacePreviewChanged?.Invoke(new FacePreviewChangedEvent(DocumentId));
         }
     }
 
@@ -329,13 +336,39 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             unavailableReason = "Panel2D artwork is already active.";
             return false;
         }
-        if (!TryResolvePanel2DArtworkSource(out _, out _, out var error))
+        if (!CanAttemptPanel2DArtworkSource(out var error))
         {
             unavailableReason = error;
             return false;
         }
         return true;
     }
+
+    private bool CanAttemptPanel2DArtworkSource(out string error)
+    {
+        error = string.Empty;
+        if (string.IsNullOrWhiteSpace(_faceDocumentModel.SourceFaceShapeId))
+        {
+            error = "The Face has no retained Face Source Shape linkage.";
+            return false;
+        }
+        var sourcePath = _faceDocumentModel.SourcePanel2DDocumentPath?.Trim();
+        var sourceId = _faceDocumentModel.SourcePanel2DDocumentId?.Trim();
+        var open = (_openDocumentsAccessor?.Invoke() ?? []).Any(document =>
+            document.Document.DocumentType == EditorDocumentType.Panel2D
+            && ((!string.IsNullOrWhiteSpace(sourcePath) && PathsEqual(document.FilePath, sourcePath))
+                || (!string.IsNullOrWhiteSpace(sourceId)
+                    && (string.Equals(document.DocumentId.ToString("N"), sourceId, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(document.DocumentId.ToString("D"), sourceId, StringComparison.OrdinalIgnoreCase)
+                        || PathsEqual(document.FilePath, sourceId)))));
+        if (open) return true;
+        var fullPath = ResolveGeneratedPath(sourcePath, _projectAccessor?.Invoke()?.ProjectDirectory);
+        if (!string.IsNullOrWhiteSpace(fullPath) && File.Exists(fullPath)) return true;
+        error = $"The source Panel2D '{sourcePath ?? sourceId}' is unavailable. Open it or restore the linked file, then retry.";
+        return false;
+    }
+
+    internal bool CanAttemptSourcePanel() => CanAttemptPanel2DArtworkSource(out _);
 
     public bool UsePanel2DArtworkSource(out string? error)
     {
@@ -551,6 +584,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         ArgumentNullException.ThrowIfNull(prepared);
         _document = prepared.Document;
         _faceDocumentModel = prepared.FaceDocument;
+        _faceDocumentJsonIsCurrent = false;
         _faceDocumentJson = GetFaceDocumentJson();
         InvalidateCorrectionInputCache();
         if (prepared.Result.Built.Contains(FaceGeneratedProduct.BaseArtwork))
@@ -607,6 +641,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     private void CompleteFaceBuild(FaceBuildResult result)
     {
+        _faceDocumentJsonIsCurrent = false;
         _faceDocumentJson = GetFaceDocumentJson();
         PersistBuildStateWhenDocumentIsClean(result);
         if(result.Built.Contains(FaceGeneratedProduct.BaseArtwork))_faceWorkspace?.RefreshArtworkPreviews(true,false);
@@ -724,7 +759,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var fullPath = ResolveGeneratedPath(sourcePath, project?.ProjectDirectory);
         if (!string.IsNullOrWhiteSpace(fullPath) && File.Exists(fullPath))
         {
-            panel = Panel2DDocumentStorage.DeserializeModel(File.ReadAllText(fullPath));
+            var json = File.ReadAllText(fullPath);
+            panel = Panel2DDocumentStorage.DeserializeModel(json);
             return true;
         }
         error = $"The source Panel2D '{sourcePath ?? sourceId}' is unavailable. Open it or restore the linked file, then retry.";
@@ -766,6 +802,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                     result.Built.Remove(product);
                     result.Failed.Add(new FaceBuildNodeResult(product, false, message));
                 }
+                _faceDocumentJsonIsCurrent = false;
                 _faceDocumentJson = GetFaceDocumentJson();
             }
             return;
@@ -813,8 +850,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var capability = _runtimeAssetsConfiguration.Evaluate(
             _faceDocumentModel, _projectAccessor?.Invoke(), _openDocumentsAccessor?.Invoke() ?? []);
         _runtimeAssetsConfiguration.Reconcile(_faceDocumentModel, capability);
-        _faceDocumentJson = GetFaceDocumentJson();
-        _faceWorkspace?.RefreshSummaries();
+        _faceDocumentJsonIsCurrent = false;
+        _faceWorkspace?.RefreshBuildState();
     }
 
     internal void InvalidateFaceBuild(FaceBuildInput input)
@@ -822,9 +859,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         new FaceBuildService().Invalidate(_faceDocumentModel.BuildState, input);
         if (input is FaceBuildInput.ArtworkSource or FaceBuildInput.ArtworkPreprocessing)
             InvalidateCorrectionInputCache();
-        _faceDocumentJson = GetFaceDocumentJson();
-        _faceWorkspace?.RefreshSummaries();
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
+        _faceDocumentJsonIsCurrent = false;
+        _faceWorkspace?.RefreshBuildState();
     }
 
     private FaceBuildNodeResult BuildArtworkCorrectionInput()
@@ -927,32 +963,55 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         if (_isDetachedFaceBuildWorker) return;
         Views.SkiaFaceEditView.InvalidateArtworkImage(artwork.OutputAssetPath);
+        FacePreviewChanged?.Invoke(new FacePreviewChangedEvent(DocumentId));
         PanelChanged?.Invoke(new PanelChangeEvent(DocumentId, artwork.Id, PanelChangeProperties.Metadata, AffectsCanvas: true, AffectsHierarchy: false, AffectsInspectorRows: false, AffectsPersistence: false));
     }
 
-    internal bool TryGetArtworkReferenceColors(ArtworkCalibrationOperationModel operation, out string? blackColor, out string? whiteColor)
+    internal ArtworkCalibrationMeasurements GetArtworkCalibrationMeasurements(
+        ArtworkCalibrationOperationModel operation,
+        bool allowInputEvaluation = true)
     {
-        blackColor = operation.BlackReference.ManualEnabled ? operation.BlackReference.ManualColor : null;
-        whiteColor = operation.WhiteReference.ManualEnabled ? operation.WhiteReference.ManualColor : null;
+        var sampleColors = new Dictionary<string, string?>(StringComparer.Ordinal);
+        string? blackColor = operation.BlackReference.ManualEnabled ? operation.BlackReference.ManualColor : null;
+        string? whiteColor = operation.WhiteReference.ManualEnabled ? operation.WhiteReference.ManualColor : null;
         var artwork = _faceDocumentModel.Artwork;
-        var project = _projectAccessor?.Invoke();
-        if (artwork is null || project is null || !TryGetCorrectionInputBitmap(out var original)) return false;
-        var index = artwork.ProcessingPipeline.Operations.ToList().FindIndex(o => o.Id == operation.Id);
-        if (index <= 0)
-            return FaceArtworkProcessingPipeline.TryResolveReferenceColors(original, operation, out blackColor, out whiteColor);
-        using var input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, index);
-        return FaceArtworkProcessingPipeline.TryResolveReferenceColors(input, operation, out blackColor, out whiteColor);
-    }
+        if (artwork is null || _projectAccessor?.Invoke() is null || !TryGetCorrectionInputBitmap(out var original))
+            return new ArtworkCalibrationMeasurements(blackColor, whiteColor, sampleColors);
 
-    internal string? GetArtworkSampleColor(ArtworkCalibrationOperationModel operation, CalibrationSampleModel sample)
-    {
-        var artwork = _faceDocumentModel.Artwork;
-        var project = _projectAccessor?.Invoke();
-        if (artwork is null || project is null || !TryGetCorrectionInputBitmap(out var original)) return null;
-        var index = artwork.ProcessingPipeline.Operations.ToList().FindIndex(o => o.Id == operation.Id);
-        if (index <= 0) return FaceArtworkProcessingPipeline.MeasureSampleHex(original, sample);
-        using var input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, index);
-        return FaceArtworkProcessingPipeline.MeasureSampleHex(input, sample);
+        var index = artwork.ProcessingPipeline.Operations.ToList().FindIndex(candidate => candidate.Id == operation.Id);
+        var input = original;
+        if (index > 0)
+        {
+            var prefixFingerprint = CreateProcessingPrefixFingerprint(artwork.ProcessingPipeline, index);
+            if (_calibrationOperationInputs.TryGetValue(operation.Id, out var cached)
+                && string.Equals(cached.PrefixFingerprint, prefixFingerprint, StringComparison.Ordinal))
+            {
+                input = cached.Bitmap;
+            }
+            else
+            {
+                if (cached is not null)
+                {
+                    cached.Bitmap.Dispose();
+                    _calibrationOperationInputs.Remove(operation.Id);
+                }
+
+                if (!allowInputEvaluation)
+                    return new ArtworkCalibrationMeasurements(blackColor, whiteColor, sampleColors);
+
+                input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, index);
+                _calibrationOperationInputs[operation.Id] = new CalibrationOperationInputCacheEntry(prefixFingerprint, input);
+            }
+        }
+        FaceArtworkProcessingPipeline.TryResolveReferenceColors(input, operation, out blackColor, out whiteColor);
+        foreach (var sample in operation.BlackReference.Samples
+                     .Concat(operation.WhiteReference.Samples)
+                     .Concat(operation.SameColorGroups.SelectMany(group => group.Samples)))
+        {
+            sampleColors[sample.Id] = FaceArtworkProcessingPipeline.MeasureSampleHex(input, sample);
+        }
+
+        return new ArtworkCalibrationMeasurements(blackColor, whiteColor, sampleColors);
     }
 
     private bool TryGetCorrectionInputBitmap(out SKBitmap bitmap)
@@ -978,15 +1037,48 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     private void InvalidateCorrectionInputCache()
     {
+        foreach (var cached in _calibrationOperationInputs.Values)
+            cached.Bitmap.Dispose();
+        _calibrationOperationInputs.Clear();
         _correctionInputBitmap?.Dispose();
         _correctionInputBitmap = null;
         _correctionInputCacheKey = null;
     }
 
+    internal static string CreateProcessingPrefixFingerprint(ImageProcessingPipelineModel pipeline, int operationCount)
+    {
+        return string.Join('\n', pipeline.Operations.Take(operationCount)
+            .Select(operation => $"{operation.GetType().FullName}:{JsonSerializer.Serialize(operation, operation.GetType())}"));
+    }
+
+    private void ReconcileCalibrationOperationInputCache(ImageProcessingPipelineModel? pipeline)
+    {
+        foreach (var (operationId, cached) in _calibrationOperationInputs.ToArray())
+        {
+            var index = pipeline?.Operations.ToList().FindIndex(operation => operation.Id == operationId) ?? -1;
+            var stillValid = index > 0
+                && string.Equals(cached.PrefixFingerprint,
+                    CreateProcessingPrefixFingerprint(pipeline!, index), StringComparison.Ordinal);
+            if (stillValid)
+                continue;
+
+            cached.Bitmap.Dispose();
+            _calibrationOperationInputs.Remove(operationId);
+        }
+    }
+
     public string GetFaceDocumentJson()
     {
-        return FaceDocumentStorage.Serialize(_faceDocumentModel);
+        if (_faceDocumentJsonIsCurrent && _faceDocumentJson is not null)
+            return _faceDocumentJson;
+
+        var json = FaceDocumentStorage.Serialize(_faceDocumentModel);
+        _faceDocumentJson = json;
+        _faceDocumentJsonIsCurrent = true;
+        return json;
     }
+
+    internal void RefreshFaceArtworkProcessingState() => _faceWorkspace?.RefreshArtworkProcessingState();
 
     internal IReadOnlyList<FaceElementModel> GetFaceElements()
     {
@@ -1008,17 +1100,29 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         return true;
     }
 
-    internal void SetFaceDocument(FaceDocumentModel model, PanelChangeEvent? faceChange = null, bool updateSerializedDocument = true)
+    internal void SetFaceDocument(
+        FaceDocumentModel model,
+        PanelChangeEvent? faceChange = null,
+        bool updateSerializedDocument = true,
+        bool affectsFacePreview = true,
+        bool? affectsPersistence = null,
+        bool refreshWorkspaceSummaries = true)
     {
         ArgumentNullException.ThrowIfNull(model);
 
+        ReconcileCalibrationOperationInputCache(model.Artwork?.ProcessingPipeline);
         _faceDocumentModel = model;
-        _faceWorkspace?.RefreshSummaries();
+        if (affectsPersistence ?? updateSerializedDocument)
+            _faceDocumentJsonIsCurrent = false;
+        if (refreshWorkspaceSummaries)
+            _faceWorkspace?.RefreshSummaries();
         if (updateSerializedDocument)
         {
-            _faceDocumentJson = GetFaceDocumentJson();
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
             ReconcileSelection();
+            if (affectsFacePreview)
+            {
+                FacePreviewChanged?.Invoke(new FacePreviewChangedEvent(DocumentId));
+            }
         }
 
         if (faceChange is PanelChangeEvent change)
@@ -1501,3 +1605,12 @@ public sealed record PanelVisualStateChangedEvent(
 public sealed record FaceVisualStateChangedEvent(
     Guid DocumentId,
     IReadOnlyCollection<string> ObjectIds);
+
+public sealed record FacePreviewChangedEvent(Guid DocumentId);
+
+internal sealed record ArtworkCalibrationMeasurements(
+    string? BlackColor,
+    string? WhiteColor,
+    IReadOnlyDictionary<string, string?> SampleColors);
+
+internal sealed record CalibrationOperationInputCacheEntry(string PrefixFingerprint, SKBitmap Bitmap);

@@ -16,6 +16,8 @@ public sealed class InspectorColorTests
         row.SelectedColor = Color.FromRgb(0xAA, 0xBB, 0xCC);
 
         Assert.False(row.IsEditable);
+        Assert.False(row.UsesColorPicker);
+        Assert.Equal(Color.FromRgb(0x1A, 0x2B, 0x3C), Assert.IsType<SolidColorBrush>(row.SelectedBrush).Color);
         Assert.Equal("#1A2B3C", row.HexValue);
         Assert.Equal(Color.FromRgb(0x1A, 0x2B, 0x3C), row.SelectedColor);
         Assert.Empty(commits);
@@ -26,6 +28,8 @@ public sealed class InspectorColorTests
     {
         var commits = new List<string?>();
         var row = new InspectorColorPropertyViewModel("Reference", "Processing", "#112233", commit: value => { commits.Add(value); return null; }, commitMode: InspectorColorCommitMode.Deferred);
+
+        Assert.True(row.UsesColorPicker);
 
         row.SelectedColor = Colors.Red;
         Assert.Equal("#FF0000", row.HexValue);
