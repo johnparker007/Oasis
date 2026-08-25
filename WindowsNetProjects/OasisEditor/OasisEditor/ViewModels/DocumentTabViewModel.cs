@@ -1128,7 +1128,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         FaceDocumentModel model,
         PanelChangeEvent? faceChange = null,
         bool updateSerializedDocument = true,
-        bool affectsFacePreview = true)
+        bool affectsFacePreview = true,
+        bool? affectsPersistence = null)
     {
         var total = Stopwatch.StartNew();
         ArgumentNullException.ThrowIfNull(model);
@@ -1137,7 +1138,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         ReconcileCalibrationOperationInputCache(model.Artwork?.ProcessingPipeline);
         reconcile.Stop();
         _faceDocumentModel = model;
-        _faceDocumentJsonIsCurrent = false;
+        if (affectsPersistence ?? updateSerializedDocument)
+            _faceDocumentJsonIsCurrent = false;
         _faceWorkspace?.RefreshSummaries();
         if (updateSerializedDocument)
         {

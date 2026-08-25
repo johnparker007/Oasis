@@ -264,7 +264,7 @@ internal static class FaceMutationCommands
             var properties = RequiresInspectorRebuild(_previous, _next)
                 ? PanelChangeProperties.Metadata | PanelChangeProperties.Structure | PanelChangeProperties.Ordering
                 : PanelChangeProperties.Metadata;
-            _document.SetFaceDocument(WithPipeline(current, _next), CreateChange(_document, null, properties), updateSerializedDocument: false, affectsFacePreview: false);
+            _document.SetFaceDocument(WithPipeline(current, _next), CreateChange(_document, null, properties), updateSerializedDocument: false, affectsFacePreview: false, affectsPersistence: true);
             _document.InvalidateFaceBuild(FaceBuildInput.ArtworkProcessing);
             _document.MarkDirty(); WasExecuted = true;
         }
@@ -275,7 +275,7 @@ internal static class FaceMutationCommands
             var properties = RequiresInspectorRebuild(current.Artwork?.ProcessingPipeline ?? new(), _previous)
                 ? PanelChangeProperties.Metadata | PanelChangeProperties.Structure | PanelChangeProperties.Ordering
                 : PanelChangeProperties.Metadata;
-            _document.SetFaceDocument(WithPipeline(current, _previous), CreateChange(_document, null, properties), updateSerializedDocument: false, affectsFacePreview: false);
+            _document.SetFaceDocument(WithPipeline(current, _previous), CreateChange(_document, null, properties), updateSerializedDocument: false, affectsFacePreview: false, affectsPersistence: true);
             _document.InvalidateFaceBuild(FaceBuildInput.ArtworkProcessing);
             _document.MarkDirty();
         }
