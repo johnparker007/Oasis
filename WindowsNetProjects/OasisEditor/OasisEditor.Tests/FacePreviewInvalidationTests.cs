@@ -10,12 +10,7 @@ public sealed class FacePreviewInvalidationTests
     {
         var (document, calibration) = CreateCalibrationDocument();
         var previewChanges = 0;
-        var jsonChanges = 0;
         document.FacePreviewChanged += _ => previewChanges++;
-        document.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName == nameof(DocumentTabViewModel.FaceDocumentJson)) jsonChanges++;
-        };
         var sample = new CalibrationSampleModel { Id = "added", X = .25, Y = .75 };
         var updated = CopyWithBlackSamples(calibration, [.. calibration.BlackReference.Samples, sample]);
 
@@ -28,13 +23,14 @@ public sealed class FacePreviewInvalidationTests
         AssertArtworkProductsAreStale(document);
         Assert.True(document.IsDirty);
         Assert.True(document.CommandService.CanUndo);
-        Assert.True(jsonChanges > 0);
+        Assert.Equal(0, document.FaceDocumentSerializationCount);
         Assert.Equal(0, previewChanges);
 
         Assert.True(document.CommandService.TryUndo());
         authored = Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(
             document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations));
         Assert.Empty(authored.BlackReference.Samples);
+        Assert.Equal(0, document.FaceDocumentSerializationCount);
         Assert.Equal(0, previewChanges);
     }
 
@@ -113,8 +109,46 @@ public sealed class FacePreviewInvalidationTests
         Assert.True(change.AffectsHierarchy);
     }
 
+    [Fact]
+    public void CalibrationMutations_SerializeLazilyAndReuseCurrentJson()
+    {
+        var (document, calibration) = CreateCalibrationDocument(elementCount: 1000);
+        var first = CopyWithBlackSamples(calibration,
+            [new CalibrationSampleModel { Id = "first", X = .25, Y = .25 }]);
+        document.CommandService.Execute(FaceMutationCommands.CreateUpdateProcessingOperationCommand(
+            document.DocumentId, document, first, "Add first sample"));
+        var second = CopyWithBlackSamples(first,
+            [.. first.BlackReference.Samples, new CalibrationSampleModel { Id = "second", X = .75, Y = .75 }]);
+        document.CommandService.Execute(FaceMutationCommands.CreateUpdateProcessingOperationCommand(
+            document.DocumentId, document, second, "Add second sample"));
+
+        Assert.Equal(0, document.FaceDocumentSerializationCount);
+        var json = document.GetFaceDocumentJson();
+        Assert.Equal(1, document.FaceDocumentSerializationCount);
+        Assert.Same(json, document.GetFaceDocumentJson());
+        Assert.Equal(1, document.FaceDocumentSerializationCount);
+        Assert.True(FaceDocumentStorage.TryRead(json, out var file));
+        var saved = Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(
+            FaceDocumentStorage.ToModel(file).Artwork!.ProcessingPipeline.Operations));
+        Assert.Equal(2, saved.BlackReference.Samples.Count);
+
+        Assert.True(document.CommandService.TryUndo());
+        Assert.Equal(1, document.FaceDocumentSerializationCount);
+        Assert.Single(Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(
+            FaceDocumentStorage.ToModel(AssertSerialization(document)).Artwork!.ProcessingPipeline.Operations))
+            .BlackReference.Samples);
+        Assert.Equal(2, document.FaceDocumentSerializationCount);
+    }
+
+    private static FaceDocumentFile AssertSerialization(DocumentTabViewModel document)
+    {
+        Assert.True(FaceDocumentStorage.TryRead(document.FaceDocumentJson, out var file));
+        return file;
+    }
+
     private static (DocumentTabViewModel Document, ArtworkCalibrationOperationModel Calibration) CreateCalibrationDocument(
-        IReadOnlyList<CalibrationSampleModel>? blackSamples = null)
+        IReadOnlyList<CalibrationSampleModel>? blackSamples = null,
+        int elementCount = 0)
     {
         var calibration = new ArtworkCalibrationOperationModel
         {
@@ -127,7 +161,12 @@ public sealed class FacePreviewInvalidationTests
             Artwork = new FaceArtworkModel
             {
                 ProcessingPipeline = new ImageProcessingPipelineModel { Operations = [calibration] }
-            }
+            },
+            Elements = Enumerable.Range(0, elementCount)
+                .Select(index => (FaceElementModel)new FaceLampWindowElement
+                {
+                    ObjectId = $"lamp-{index}", Name = $"Lamp {index}", Width = 10, Height = 10
+                }).ToArray()
         };
         return (new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"),
             faceDocumentJson: FaceDocumentStorage.Serialize(face)), calibration);

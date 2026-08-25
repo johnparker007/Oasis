@@ -17,6 +17,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private EditorDocument _document;
     private string? _panelLayoutJson;
     private string? _faceDocumentJson;
+    private bool _faceDocumentJsonIsCurrent = true;
     private string? _cabinetDocumentJson;
     private CabinetDocument _cabinetDocumentModel;
     private Panel2DDocumentModel _panelDocumentModel;
@@ -52,6 +53,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public event Action<PanelVisualStateChangedEvent>? PanelVisualStateChanged;
     public event Action<FaceVisualStateChangedEvent>? FaceVisualStateChanged;
     public event Action<FacePreviewChangedEvent>? FacePreviewChanged;
+    public event Action<string>? CalibrationPerformanceReported;
     public event EventHandler<DocumentSelectionChangedEventArgs>? SelectionChanged;
 
     public DocumentTabViewModel(
@@ -243,15 +245,16 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     public string? FaceDocumentJson
     {
-        get => _faceDocumentJson;
+        get => Document.DocumentType == EditorDocumentType.Face ? GetFaceDocumentJson() : _faceDocumentJson;
         set
         {
-            if (string.Equals(_faceDocumentJson, value, StringComparison.Ordinal))
+            if (_faceDocumentJsonIsCurrent && string.Equals(_faceDocumentJson, value, StringComparison.Ordinal))
             {
                 return;
             }
 
             _faceDocumentJson = value;
+            _faceDocumentJsonIsCurrent = true;
             InvalidateCorrectionInputCache();
             _faceDocumentModel = FaceDocumentStorage.TryRead(value, out var faceDocumentFile)
                 ? FaceDocumentStorage.ToModel(faceDocumentFile)
@@ -556,6 +559,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         ArgumentNullException.ThrowIfNull(prepared);
         _document = prepared.Document;
         _faceDocumentModel = prepared.FaceDocument;
+        _faceDocumentJsonIsCurrent = false;
         _faceDocumentJson = GetFaceDocumentJson();
         InvalidateCorrectionInputCache();
         if (prepared.Result.Built.Contains(FaceGeneratedProduct.BaseArtwork))
@@ -612,6 +616,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     private void CompleteFaceBuild(FaceBuildResult result)
     {
+        _faceDocumentJsonIsCurrent = false;
         _faceDocumentJson = GetFaceDocumentJson();
         PersistBuildStateWhenDocumentIsClean(result);
         if(result.Built.Contains(FaceGeneratedProduct.BaseArtwork))_faceWorkspace?.RefreshArtworkPreviews(true,false);
@@ -771,6 +776,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                     result.Built.Remove(product);
                     result.Failed.Add(new FaceBuildNodeResult(product, false, message));
                 }
+                _faceDocumentJsonIsCurrent = false;
                 _faceDocumentJson = GetFaceDocumentJson();
             }
             return;
@@ -818,18 +824,23 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var capability = _runtimeAssetsConfiguration.Evaluate(
             _faceDocumentModel, _projectAccessor?.Invoke(), _openDocumentsAccessor?.Invoke() ?? []);
         _runtimeAssetsConfiguration.Reconcile(_faceDocumentModel, capability);
-        _faceDocumentJson = GetFaceDocumentJson();
+        _faceDocumentJsonIsCurrent = false;
         _faceWorkspace?.RefreshSummaries();
     }
 
     internal void InvalidateFaceBuild(FaceBuildInput input)
     {
+        var total = Stopwatch.StartNew();
+        var invalidate = Stopwatch.StartNew();
         new FaceBuildService().Invalidate(_faceDocumentModel.BuildState, input);
+        invalidate.Stop();
         if (input is FaceBuildInput.ArtworkSource or FaceBuildInput.ArtworkPreprocessing)
             InvalidateCorrectionInputCache();
-        _faceDocumentJson = GetFaceDocumentJson();
+        _faceDocumentJsonIsCurrent = false;
         _faceWorkspace?.RefreshSummaries();
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
+        total.Stop();
+        ReportCalibrationPerformance($"FaceBuildService.Invalidate={invalidate.Elapsed.TotalMilliseconds:0.###}ms input={input}");
+        ReportCalibrationPerformance($"InvalidateFaceBuild total={total.Elapsed.TotalMilliseconds:0.###}ms serializedCacheCurrent={_faceDocumentJsonIsCurrent}");
     }
 
     private FaceBuildNodeResult BuildArtworkCorrectionInput()
@@ -1067,8 +1078,30 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     public string GetFaceDocumentJson()
     {
-        return FaceDocumentStorage.Serialize(_faceDocumentModel);
+        if (_faceDocumentJsonIsCurrent && _faceDocumentJson is not null)
+            return _faceDocumentJson;
+
+        var total = Stopwatch.StartNew();
+        var serialize = Stopwatch.StartNew();
+        var json = FaceDocumentStorage.Serialize(_faceDocumentModel);
+        serialize.Stop();
+        _faceDocumentJson = json;
+        _faceDocumentJsonIsCurrent = true;
+        FaceDocumentSerializationCount++;
+        total.Stop();
+        var artwork = _faceDocumentModel.Artwork;
+        ReportCalibrationPerformance(
+            $"FaceDocumentStorage.Serialize={serialize.Elapsed.TotalMilliseconds:0.###}ms GetFaceDocumentJson={total.Elapsed.TotalMilliseconds:0.###}ms chars={json.Length} elements={_faceDocumentModel.Elements.Count} lamps={_faceDocumentModel.Elements.Count(element => element is FaceLampWindowElement)} operations={artwork?.ProcessingPipeline.Operations.Count ?? 0} trays={_faceDocumentModel.Trays.Count} emitters={_faceDocumentModel.LampEmitters.Count} runtimeAssets={(_faceDocumentModel.RuntimeRenderAssets is null ? 0 : 1)}");
+        return json;
     }
+
+    internal int FaceDocumentSerializationCount { get; private set; }
+
+    internal void ReportCalibrationPerformance(string message) =>
+        CalibrationPerformanceReported?.Invoke($"[CalibrationPerf] {message}");
+
+    internal IDisposable MeasureCalibrationPerformance(string operation) =>
+        new CalibrationPerformanceScope(this, operation);
 
     internal IReadOnlyList<FaceElementModel> GetFaceElements()
     {
@@ -1096,15 +1129,17 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         bool updateSerializedDocument = true,
         bool affectsFacePreview = true)
     {
+        var total = Stopwatch.StartNew();
         ArgumentNullException.ThrowIfNull(model);
 
+        var reconcile = Stopwatch.StartNew();
         ReconcileCalibrationOperationInputCache(model.Artwork?.ProcessingPipeline);
+        reconcile.Stop();
         _faceDocumentModel = model;
+        _faceDocumentJsonIsCurrent = false;
         _faceWorkspace?.RefreshSummaries();
         if (updateSerializedDocument)
         {
-            _faceDocumentJson = GetFaceDocumentJson();
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
             ReconcileSelection();
             if (affectsFacePreview)
             {
@@ -1114,8 +1149,14 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
         if (faceChange is PanelChangeEvent change)
         {
+            var dispatch = Stopwatch.StartNew();
             PanelChanged?.Invoke(change);
+            dispatch.Stop();
+            ReportCalibrationPerformance($"PanelChanged subscriber dispatch={dispatch.Elapsed.TotalMilliseconds:0.###}ms");
         }
+        total.Stop();
+        ReportCalibrationPerformance($"ReconcileCalibrationOperationInputCache={reconcile.Elapsed.TotalMilliseconds:0.###}ms");
+        ReportCalibrationPerformance($"SetFaceDocument={total.Elapsed.TotalMilliseconds:0.###}ms");
     }
 
     internal void SetFaceElements(IReadOnlyList<FaceElementModel> elements, PanelChangeEvent? faceChange = null, bool updateSerializedDocument = true)
@@ -1601,3 +1642,22 @@ internal sealed record ArtworkCalibrationMeasurements(
     IReadOnlyDictionary<string, string?> SampleColors);
 
 internal sealed record CalibrationOperationInputCacheEntry(string PrefixFingerprint, SKBitmap Bitmap);
+
+internal sealed class CalibrationPerformanceScope : IDisposable
+{
+    private readonly DocumentTabViewModel _document;
+    private readonly string _operation;
+    private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
+
+    public CalibrationPerformanceScope(DocumentTabViewModel document, string operation)
+    {
+        _document = document;
+        _operation = operation;
+    }
+
+    public void Dispose()
+    {
+        _stopwatch.Stop();
+        _document.ReportCalibrationPerformance($"{_operation}={_stopwatch.Elapsed.TotalMilliseconds:0.###}ms");
+    }
+}

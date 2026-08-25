@@ -1,5 +1,9 @@
 namespace OasisEditor;
 
+internal interface ICalibrationPerformanceCommand
+{
+}
+
 internal static class FaceMutationCommands
 {
     public static Commands.ICommand CreateSetGenerationSettingsCommand(Guid documentId, DocumentTabViewModel document,
@@ -244,7 +248,7 @@ internal static class FaceMutationCommands
         };
     }
 
-    private sealed class SetProcessingPipelineMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    private sealed class SetProcessingPipelineMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand, ICalibrationPerformanceCommand
     {
         private readonly Guid _documentId; private readonly DocumentTabViewModel _document; private readonly ImageProcessingPipelineModel _next; private readonly string _description;
         private ImageProcessingPipelineModel? _previous;
@@ -253,6 +257,7 @@ internal static class FaceMutationCommands
         public Guid DocumentId => _documentId; public string Description => _description; public bool WasExecuted { get; private set; }
         public void Execute()
         {
+            using var performance = _document.MeasureCalibrationPerformance("Calibration command total");
             WasExecuted = false; var current = _document.GetFaceDocument(); if (current.Artwork is null) return;
             _previous ??= current.Artwork.ProcessingPipeline;
             if (PipelinesEquivalent(_previous, _next)) return;
@@ -265,6 +270,7 @@ internal static class FaceMutationCommands
         }
         public void Undo()
         {
+            using var performance = _document.MeasureCalibrationPerformance("Calibration undo total");
             if (_previous is null) return; var current = _document.GetFaceDocument();
             var properties = RequiresInspectorRebuild(current.Artwork?.ProcessingPipeline ?? new(), _previous)
                 ? PanelChangeProperties.Metadata | PanelChangeProperties.Structure | PanelChangeProperties.Ordering
