@@ -205,7 +205,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             NotifyInspectorChanged,
             AddOutputEntry,
             OpenAssetDocument,
-            PromptForAssetRename);
+            PromptForAssetRename,
+            ConfirmAssetDelete);
         _assetBrowser.StateChanged += OnAssetBrowserStateChanged;
         _inspector = new InspectorViewModel(
             () => SelectedAsset,
@@ -762,6 +763,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         _inspector.ActivateAssetInspection();
         NotifyInspectorChanged();
+    }
+
+    public void SetSelectedAssets(IEnumerable<AssetBrowserItemViewModel> assets)
+    {
+        _assetBrowser.SetSelectedAssets(assets);
+        OnPropertyChanged(nameof(SelectedAsset));
+    }
+
+    private bool ConfirmAssetDelete(IReadOnlyList<AssetBrowserItemViewModel> assets)
+    {
+        var message = assets.Count == 1
+            ? $"Delete '{assets[0].DisplayPath}'? This cannot be undone."
+            : $"Delete the {assets.Count} selected assets and folders? This cannot be undone.";
+        return MessageBox.Show(
+            _ownerWindow,
+            message,
+            "Delete Assets",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
     }
 
     public AssetDirectoryNodeViewModel? SelectedAssetDirectory
