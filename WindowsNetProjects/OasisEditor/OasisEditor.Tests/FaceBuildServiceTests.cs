@@ -140,7 +140,17 @@ public sealed class FaceBuildServiceTests
             Title = "Face",
             Artwork = new FaceArtworkModel
             {
-                Source = new FaceArtworkSourceModel { Kind = FaceArtworkSourceKind.Image, AssetPath = "source.png" },
+                Source = new FaceArtworkSourceModel
+                {
+                    Kind = FaceArtworkSourceKind.Image,
+                    AssetPath = "source.png",
+                    PixelWidth = 4,
+                    PixelHeight = 4
+                },
+                Geometry = new FaceArtworkGeometryModel
+                {
+                    PerspectiveRegistration = FacePerspectiveRegistrationModel.FullImage
+                },
                 CorrectionInputAssetPath = "correction.png",
                 BaseAssetPath = "base.png",
                 OutputAssetPath = "output.png",
