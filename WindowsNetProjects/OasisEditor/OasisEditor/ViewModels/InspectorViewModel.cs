@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
@@ -24,7 +23,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private readonly Func<Guid, EditorCommands.ICommand, bool> _executeCanvasCommand;
     private readonly Func<DocumentTabViewModel, string, DocumentTabViewModel?> _applySummary;
     private readonly ICommand? _generateFaceFromSourceShapeCommand;
-    private readonly ObservableCollection<InspectorPropertyRowViewModel> _propertyRows = [];
+    private readonly BatchedObservableCollection<InspectorPropertyRowViewModel> _propertyRows = [];
     private readonly FaceCabinetContextResolver _faceCabinetContextResolver = new();
     private string _inspectorEditableSummary = string.Empty;
     private DateTime _suppressPropertyRowRefreshUntilUtc;
@@ -35,6 +34,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private string? _lastObservedAssetPath;
     private string? _lastObservedDocumentSelectionKey;
     private bool _hadInspectorSelection;
+    private bool _avoidCalibrationInputEvaluation;
 
     private enum InspectorSelectionSource
     {
@@ -427,7 +427,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         if (panelChange.ChangedProperties.HasFlag(PanelChangeProperties.Structure))
         {
-            RebuildPropertyRows();
+            _avoidCalibrationInputEvaluation = true;
+            try
+            {
+                RebuildPropertyRows();
+            }
+            finally
+            {
+                _avoidCalibrationInputEvaluation = false;
+            }
             return;
         }
 
@@ -466,6 +474,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private void RebuildPropertyRows()
     {
         CommitDeferredColorEdits();
+        using var propertyRowsUpdate = _propertyRows.BeginUpdate();
         _propertyRows.Clear();
 
         var selectedDocument = _selectedDocumentAccessor();
@@ -1610,7 +1619,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 _propertyRows.Add(new InspectorBoolPropertyViewModel("Correct Colour Cast",group,calibration.CorrectSpatialColor,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Toggle spatial colour",c=>CopyCalibration(c,correctColor:v))));
                 _propertyRows.Add(new InspectorBoolPropertyViewModel("Normalize Black / White",group,calibration.NormalizeBlackWhite,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Toggle tonal normalization",c=>CopyCalibration(c,normalize:v))));
                 _propertyRows.Add(new InspectorBoolPropertyViewModel("Neutralize White",group,calibration.NeutralizeWhite,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Toggle white neutralization",c=>CopyCalibration(c,neutralize:v))));
-                var measurements = selectedDocument.GetArtworkCalibrationMeasurements(calibration);
+                var measurements = selectedDocument.GetArtworkCalibrationMeasurements(
+                    calibration, allowInputEvaluation: !_avoidCalibrationInputEvaluation);
                 var black = measurements.BlackColor;
                 var white = measurements.WhiteColor;
                 AddReference("Black",calibration.BlackReference,black,CalibrationPlacementTargetKind.BlackReference);
@@ -1958,7 +1968,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         {
             if (operations[index] is not ArtworkCalibrationOperationModel levels) continue;
             var group = $"Processing Stack · {index + 1}. Artwork Calibration";
-            document.TryGetArtworkReferenceColors(levels, out var derivedBlack, out var derivedWhite);
+            var measurements = document.GetArtworkCalibrationMeasurements(levels, allowInputEvaluation: false);
+            var derivedBlack = measurements.BlackColor;
+            var derivedWhite = measurements.WhiteColor;
             foreach (var row in _propertyRows.Where(row => string.Equals(row.GroupName, group, StringComparison.Ordinal)))
             {
                 switch (row.DisplayName)

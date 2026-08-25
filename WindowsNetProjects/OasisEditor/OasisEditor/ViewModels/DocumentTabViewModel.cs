@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using OasisEditor.Commands;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
@@ -42,6 +43,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private readonly FaceRuntimeAssetsConfigurationService _runtimeAssetsConfiguration = new();
     private SKBitmap? _correctionInputBitmap;
     private string? _correctionInputCacheKey;
+    private readonly Dictionary<string, CalibrationOperationInputCacheEntry> _calibrationOperationInputs = new(StringComparer.Ordinal);
     private IProgressDialogService _progressDialogService = NoOpProgressDialogService.Instance;
     private bool _isDetachedFaceBuildWorker;
 
@@ -250,6 +252,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             }
 
             _faceDocumentJson = value;
+            InvalidateCorrectionInputCache();
             _faceDocumentModel = FaceDocumentStorage.TryRead(value, out var faceDocumentFile)
                 ? FaceDocumentStorage.ToModel(faceDocumentFile)
                 : new FaceDocumentModel();
@@ -958,7 +961,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         return FaceArtworkProcessingPipeline.MeasureSampleHex(input, sample);
     }
 
-    internal ArtworkCalibrationMeasurements GetArtworkCalibrationMeasurements(ArtworkCalibrationOperationModel operation)
+    internal ArtworkCalibrationMeasurements GetArtworkCalibrationMeasurements(
+        ArtworkCalibrationOperationModel operation,
+        bool allowInputEvaluation = true)
     {
         var sampleColors = new Dictionary<string, string?>(StringComparer.Ordinal);
         string? blackColor = operation.BlackReference.ManualEnabled ? operation.BlackReference.ManualColor : null;
@@ -968,10 +973,31 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             return new ArtworkCalibrationMeasurements(blackColor, whiteColor, sampleColors);
 
         var index = artwork.ProcessingPipeline.Operations.ToList().FindIndex(candidate => candidate.Id == operation.Id);
-        using var evaluatedInput = index > 0
-            ? new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, index)
-            : null;
-        var input = evaluatedInput ?? original;
+        var input = original;
+        if (index > 0)
+        {
+            var prefixFingerprint = CreateProcessingPrefixFingerprint(artwork.ProcessingPipeline, index);
+            if (_calibrationOperationInputs.TryGetValue(operation.Id, out var cached)
+                && string.Equals(cached.PrefixFingerprint, prefixFingerprint, StringComparison.Ordinal))
+            {
+                input = cached.Bitmap;
+            }
+            else
+            {
+                if (cached is not null)
+                {
+                    cached.Bitmap.Dispose();
+                    _calibrationOperationInputs.Remove(operation.Id);
+                }
+
+                if (!allowInputEvaluation)
+                    return new ArtworkCalibrationMeasurements(blackColor, whiteColor, sampleColors);
+
+                input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, index);
+                _calibrationOperationInputs[operation.Id] = new CalibrationOperationInputCacheEntry(prefixFingerprint, input);
+                CalibrationInputEvaluationCount++;
+            }
+        }
         FaceArtworkProcessingPipeline.TryResolveReferenceColors(input, operation, out blackColor, out whiteColor);
         foreach (var sample in operation.BlackReference.Samples
                      .Concat(operation.WhiteReference.Samples)
@@ -1006,9 +1032,37 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     private void InvalidateCorrectionInputCache()
     {
+        foreach (var cached in _calibrationOperationInputs.Values)
+            cached.Bitmap.Dispose();
+        _calibrationOperationInputs.Clear();
         _correctionInputBitmap?.Dispose();
         _correctionInputBitmap = null;
         _correctionInputCacheKey = null;
+    }
+
+    internal int CalibrationInputEvaluationCount { get; private set; }
+    internal int CachedCalibrationInputCount => _calibrationOperationInputs.Count;
+
+    internal static string CreateProcessingPrefixFingerprint(ImageProcessingPipelineModel pipeline, int operationCount)
+    {
+        return string.Join('\n', pipeline.Operations.Take(operationCount)
+            .Select(operation => $"{operation.GetType().FullName}:{JsonSerializer.Serialize(operation, operation.GetType())}"));
+    }
+
+    private void ReconcileCalibrationOperationInputCache(ImageProcessingPipelineModel? pipeline)
+    {
+        foreach (var (operationId, cached) in _calibrationOperationInputs.ToArray())
+        {
+            var index = pipeline?.Operations.ToList().FindIndex(operation => operation.Id == operationId) ?? -1;
+            var stillValid = index > 0
+                && string.Equals(cached.PrefixFingerprint,
+                    CreateProcessingPrefixFingerprint(pipeline!, index), StringComparison.Ordinal);
+            if (stillValid)
+                continue;
+
+            cached.Bitmap.Dispose();
+            _calibrationOperationInputs.Remove(operationId);
+        }
     }
 
     public string GetFaceDocumentJson()
@@ -1044,6 +1098,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         ArgumentNullException.ThrowIfNull(model);
 
+        ReconcileCalibrationOperationInputCache(model.Artwork?.ProcessingPipeline);
         _faceDocumentModel = model;
         _faceWorkspace?.RefreshSummaries();
         if (updateSerializedDocument)
@@ -1544,3 +1599,5 @@ internal sealed record ArtworkCalibrationMeasurements(
     string? BlackColor,
     string? WhiteColor,
     IReadOnlyDictionary<string, string?> SampleColors);
+
+internal sealed record CalibrationOperationInputCacheEntry(string PrefixFingerprint, SKBitmap Bitmap);
