@@ -22,6 +22,8 @@ public enum FaceWorkspaceDestination
     LayoutView
 }
 
+internal enum FaceWorkspaceRefreshKind { All, ArtworkProcessing }
+
 public sealed record FaceWorkspaceBreadcrumb(string Label, ICommand? Command);
 
 /// <summary>Document-local, non-persisted navigation and read-only presentation for a Face.</summary>
@@ -126,7 +128,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public double OverridePreviewOpacity { get=>_overridePreviewOpacity; set { _overridePreviewOpacity=Math.Clamp(value,0d,1d);Raise(nameof(OverridePreviewOpacity)); } }
     public bool IsLampPlacementActive => _isLampPlacementActive;
     public string LampEditorStatus => _isLampPlacementActive ? "Place Lamp: click and drag bounds; Escape cancels." : "Select lamps in the viewport or Hierarchy, or choose Add Lamp.";
-    public bool CanRebuildComponentsFromSource => _document.GetFaceDocument().Provenance.Components.Origin==FaceSubsystemOrigin.Derived && _document.TryConvertComponentsFromSource(out _,out _);
+    public bool CanRebuildComponentsFromSource => _document.GetFaceDocument().Provenance.Components.Origin==FaceSubsystemOrigin.Derived && _document.CanAttemptSourcePanel();
     public FaceComponentKind? ComponentPlacementKind => _componentPlacementKind;
     public bool IsComponentPlacementActive => _componentPlacementKind.HasValue;
     public string ComponentEditorStatus => _componentPlacementKind is { } kind ? $"Place {DisplayComponentKind(kind)}: click and drag bounds; Escape cancels." : "Select components in the viewport or Hierarchy, or choose an Add tool.";
@@ -316,10 +318,24 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         }
     }
     public bool CanShowUsePanel2DSource => IsImageArtworkSource && HasRetainedPanel2DArtworkSource;
-    public bool CanUsePanel2DSource => _document.CanUsePanel2DArtworkSource(out _);
-    public string Panel2DSourceAvailability => _document.CanUsePanel2DArtworkSource(out var reason)
-        ? string.Empty
-        : IsImageArtworkSource && HasRetainedPanel2DArtworkSource ? reason ?? "The retained Panel2D source is unavailable." : string.Empty;
+    public bool CanUsePanel2DSource
+    {
+        get
+        {
+            using var performance = _document.MeasureCalibrationPerformance("CanUsePanel2DSource property");
+            return _document.CanUsePanel2DArtworkSource(out _);
+        }
+    }
+    public string Panel2DSourceAvailability
+    {
+        get
+        {
+            using var performance = _document.MeasureCalibrationPerformance("Panel2DSourceAvailability property");
+            return _document.CanUsePanel2DArtworkSource(out var reason)
+                ? string.Empty
+                : IsImageArtworkSource && HasRetainedPanel2DArtworkSource ? reason ?? "The retained Panel2D source is unavailable." : string.Empty;
+        }
+    }
     public string? ArtworkRawImagePath => _document.GetArtworkSourceAbsolutePath();
     public int ArtworkSourcePixelWidth => _document.GetFaceDocument().Artwork?.Source.PixelWidth ?? 0;
     public int ArtworkSourcePixelHeight => _document.GetFaceDocument().Artwork?.Source.PixelHeight ?? 0;
@@ -464,12 +480,47 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
 
     internal void RefreshSummaries()
     {
-        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(OverridePreviewMargin)); Raise(nameof(OverridePreviewWidth)); Raise(nameof(OverridePreviewHeight)); Raise(nameof(ArtworkOverride)); Raise(nameof(HasArtworkOverride)); Raise(nameof(ArtworkOverrideSummary)); Raise(nameof(OverrideToggleLabel)); Raise(nameof(ArtworkBaseAbsolutePath)); Raise(nameof(ArtworkOverrideAbsolutePath)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(IsPanel2DArtworkSource)); Raise(nameof(CanChooseImageArtwork)); Raise(nameof(HasRetainedPanel2DArtworkSource)); Raise(nameof(CanShowUsePanel2DSource)); Raise(nameof(CanUsePanel2DSource)); Raise(nameof(Panel2DSourceAvailability)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkGeometrySummary)); Raise(nameof(ArtworkOutputSummary)); Raise(nameof(ArtworkCalibrationSummary));
-        if (UsePanel2DSourceCommand is RelayCommand usePanel2D) usePanel2D.RaiseCanExecuteChanged();
-        if (RebuildComponentsFromSourceCommand is RelayCommand rebuildComponents) rebuildComponents.RaiseCanExecuteChanged();
+        using var performance = _document.MeasureCalibrationPerformance("FaceWorkspace.RefreshSummaries total");
+        RefreshArtworkSourceState();
+        RefreshArtworkProcessingState();
+        RefreshBuildState();
         Raise(nameof(ComponentsSummary)); Raise(nameof(IlluminationSummary));
-        Raise(nameof(BuildStatusSummary)); Raise(nameof(ArtworkBuildSummary));
         Raise(nameof(ComponentsProvenanceSummary)); Raise(nameof(IlluminationBuildSummary));
+        if (RebuildComponentsFromSourceCommand is RelayCommand rebuildComponents) rebuildComponents.RaiseCanExecuteChanged();
+    }
+
+    internal void Refresh(FaceWorkspaceRefreshKind kind)
+    {
+        if (kind == FaceWorkspaceRefreshKind.ArtworkProcessing)
+        {
+            var resolutions = _document.SourcePanelResolutionCount;
+            using var performance = _document.MeasureCalibrationPerformance("FaceWorkspace.RefreshArtworkProcessingState");
+            RefreshArtworkProcessingState();
+            _document.ReportCalibrationPerformance($"TryResolveSourcePanel calls={_document.SourcePanelResolutionCount - resolutions} during artwork-processing refresh");
+            return;
+        }
+        RefreshSummaries();
+    }
+
+    private void RefreshArtworkSourceState()
+    {
+        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(OverridePreviewMargin)); Raise(nameof(OverridePreviewWidth)); Raise(nameof(OverridePreviewHeight)); Raise(nameof(ArtworkOverride)); Raise(nameof(HasArtworkOverride)); Raise(nameof(ArtworkOverrideSummary)); Raise(nameof(OverrideToggleLabel)); Raise(nameof(ArtworkBaseAbsolutePath)); Raise(nameof(ArtworkOverrideAbsolutePath)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(IsPanel2DArtworkSource)); Raise(nameof(CanChooseImageArtwork)); Raise(nameof(HasRetainedPanel2DArtworkSource)); Raise(nameof(CanShowUsePanel2DSource)); Raise(nameof(CanUsePanel2DSource)); Raise(nameof(Panel2DSourceAvailability)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkGeometrySummary));
+        if (UsePanel2DSourceCommand is RelayCommand usePanel2D)
+        {
+            using var performance = _document.MeasureCalibrationPerformance("UsePanel2DSourceCommand.RaiseCanExecuteChanged");
+            usePanel2D.RaiseCanExecuteChanged();
+        }
+    }
+
+    internal void RefreshArtworkProcessingState()
+    {
+        Raise(nameof(ArtworkCalibrationSummary)); Raise(nameof(ArtworkCorrectionSummary)); Raise(nameof(ArtworkOutputSummary));
+    }
+
+    internal void RefreshBuildState()
+    {
+        Raise(nameof(BuildStatusSummary)); Raise(nameof(ArtworkBuildSummary));
+        Raise(nameof(IlluminationBuildSummary));
         Raise(nameof(BuildErrorSummary));
     }
 }

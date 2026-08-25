@@ -48,6 +48,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private readonly Dictionary<string, CalibrationOperationInputCacheEntry> _calibrationOperationInputs = new(StringComparer.Ordinal);
     private IProgressDialogService _progressDialogService = NoOpProgressDialogService.Instance;
     private bool _isDetachedFaceBuildWorker;
+    private int _sourcePanelResolutionCount;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -332,19 +333,47 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     public bool CanUsePanel2DArtworkSource(out string? unavailableReason)
     {
+        using var performance = MeasureCalibrationPerformance("DocumentTabViewModel.CanUsePanel2DArtworkSource");
         unavailableReason = null;
         if (_faceDocumentModel.Artwork?.Source.Kind != FaceArtworkSourceKind.Image)
         {
             unavailableReason = "Panel2D artwork is already active.";
             return false;
         }
-        if (!TryResolvePanel2DArtworkSource(out _, out _, out var error))
+        if (!CanAttemptPanel2DArtworkSource(out var error))
         {
             unavailableReason = error;
             return false;
         }
         return true;
     }
+
+    private bool CanAttemptPanel2DArtworkSource(out string error)
+    {
+        error = string.Empty;
+        if (string.IsNullOrWhiteSpace(_faceDocumentModel.SourceFaceShapeId))
+        {
+            error = "The Face has no retained Face Source Shape linkage.";
+            return false;
+        }
+        var sourcePath = _faceDocumentModel.SourcePanel2DDocumentPath?.Trim();
+        var sourceId = _faceDocumentModel.SourcePanel2DDocumentId?.Trim();
+        var open = (_openDocumentsAccessor?.Invoke() ?? []).Any(document =>
+            document.Document.DocumentType == EditorDocumentType.Panel2D
+            && ((!string.IsNullOrWhiteSpace(sourcePath) && PathsEqual(document.FilePath, sourcePath))
+                || (!string.IsNullOrWhiteSpace(sourceId)
+                    && (string.Equals(document.DocumentId.ToString("N"), sourceId, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(document.DocumentId.ToString("D"), sourceId, StringComparison.OrdinalIgnoreCase)
+                        || PathsEqual(document.FilePath, sourceId)))));
+        if (open) return true;
+        var fullPath = ResolveGeneratedPath(sourcePath, _projectAccessor?.Invoke()?.ProjectDirectory);
+        if (!string.IsNullOrWhiteSpace(fullPath) && File.Exists(fullPath)) return true;
+        error = $"The source Panel2D '{sourcePath ?? sourceId}' is unavailable. Open it or restore the linked file, then retry.";
+        return false;
+    }
+
+    internal bool CanAttemptSourcePanel() => CanAttemptPanel2DArtworkSource(out _);
+    internal int SourcePanelResolutionCount => _sourcePanelResolutionCount;
 
     public bool UsePanel2DArtworkSource(out string? error)
     {
@@ -389,6 +418,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private bool TryResolvePanel2DArtworkSource(out Panel2DDocumentModel panel,
         out PanelFaceSourceShapeModel shape, out string error)
     {
+        using var performance = MeasureCalibrationPerformance("TryResolvePanel2DArtworkSource");
         shape = new PanelFaceSourceShapeModel();
         if (!TryResolveSourcePanel(out panel, out error)) return false;
         shape = panel.FaceSourceShapes.FirstOrDefault(candidate =>
@@ -709,6 +739,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     private bool TryResolveSourcePanel(out Panel2DDocumentModel panel, out string error)
     {
+        using var performance = MeasureCalibrationPerformance("TryResolveSourcePanel");
+        _sourcePanelResolutionCount++;
         panel = new Panel2DDocumentModel();
         error = string.Empty;
         var sourcePath = _faceDocumentModel.SourcePanel2DDocumentPath?.Trim();
@@ -735,7 +767,14 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var fullPath = ResolveGeneratedPath(sourcePath, project?.ProjectDirectory);
         if (!string.IsNullOrWhiteSpace(fullPath) && File.Exists(fullPath))
         {
-            panel = Panel2DDocumentStorage.DeserializeModel(File.ReadAllText(fullPath));
+            var read = Stopwatch.StartNew();
+            var json = File.ReadAllText(fullPath);
+            read.Stop();
+            ReportCalibrationPerformance($"File.ReadAllText Panel2D={read.Elapsed.TotalMilliseconds:0.###}ms chars={json.Length}");
+            var deserialize = Stopwatch.StartNew();
+            panel = Panel2DDocumentStorage.DeserializeModel(json);
+            deserialize.Stop();
+            ReportCalibrationPerformance($"Panel2DDocumentStorage.DeserializeModel={deserialize.Elapsed.TotalMilliseconds:0.###}ms");
             return true;
         }
         error = $"The source Panel2D '{sourcePath ?? sourceId}' is unavailable. Open it or restore the linked file, then retry.";
@@ -826,7 +865,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             _faceDocumentModel, _projectAccessor?.Invoke(), _openDocumentsAccessor?.Invoke() ?? []);
         _runtimeAssetsConfiguration.Reconcile(_faceDocumentModel, capability);
         _faceDocumentJsonIsCurrent = false;
-        _faceWorkspace?.RefreshSummaries();
+        _faceWorkspace?.RefreshBuildState();
     }
 
     internal void InvalidateFaceBuild(FaceBuildInput input)
@@ -838,7 +877,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         if (input is FaceBuildInput.ArtworkSource or FaceBuildInput.ArtworkPreprocessing)
             InvalidateCorrectionInputCache();
         _faceDocumentJsonIsCurrent = false;
-        _faceWorkspace?.RefreshSummaries();
+        _faceWorkspace?.RefreshBuildState();
         total.Stop();
         ReportCalibrationPerformance($"FaceBuildService.Invalidate={invalidate.Elapsed.TotalMilliseconds:0.###}ms input={input}");
         ReportCalibrationPerformance($"InvalidateFaceBuild total={total.Elapsed.TotalMilliseconds:0.###}ms serializedCacheCurrent={_faceDocumentJsonIsCurrent}");
@@ -1129,7 +1168,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         PanelChangeEvent? faceChange = null,
         bool updateSerializedDocument = true,
         bool affectsFacePreview = true,
-        bool? affectsPersistence = null)
+        bool? affectsPersistence = null,
+        FaceWorkspaceRefreshKind workspaceRefresh = FaceWorkspaceRefreshKind.All)
     {
         var total = Stopwatch.StartNew();
         ArgumentNullException.ThrowIfNull(model);
@@ -1140,7 +1180,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _faceDocumentModel = model;
         if (affectsPersistence ?? updateSerializedDocument)
             _faceDocumentJsonIsCurrent = false;
-        _faceWorkspace?.RefreshSummaries();
+        _faceWorkspace?.Refresh(workspaceRefresh);
         if (updateSerializedDocument)
         {
             ReconcileSelection();
