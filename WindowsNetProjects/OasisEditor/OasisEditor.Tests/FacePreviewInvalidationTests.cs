@@ -76,6 +76,43 @@ public sealed class FacePreviewInvalidationTests
         Assert.Equal(1, previewChanges);
     }
 
+    [Fact]
+    public void CalibrationStructureChange_RefreshesInspectorButNotHierarchy()
+    {
+        var (document, calibration) = CreateCalibrationDocument();
+        PanelChangeEvent? published = null;
+        document.PanelChanged += change => published = change;
+        var updated = CopyWithBlackSamples(calibration,
+            [new CalibrationSampleModel { Id = "sample", X = .5, Y = .5 }]);
+
+        document.CommandService.Execute(FaceMutationCommands.CreateUpdateProcessingOperationCommand(
+            document.DocumentId, document, updated, "Add calibration sample"));
+
+        Assert.True(published.HasValue);
+        var change = published.Value;
+        Assert.True(change.ChangedProperties.HasFlag(PanelChangeProperties.Structure));
+        Assert.True(change.AffectsInspectorRows);
+        Assert.False(change.AffectsHierarchy);
+    }
+
+    [Fact]
+    public void FaceElementStructureChange_StillRefreshesHierarchy()
+    {
+        var (document, _) = CreateCalibrationDocument();
+        PanelChangeEvent? published = null;
+        document.PanelChanged += change => published = change;
+
+        document.CommandService.Execute(FaceMutationCommands.CreateAddLampWindowCommand(
+            document.DocumentId, document,
+            new FaceLampWindowElement { ObjectId = "lamp", Width = 10, Height = 10 }));
+
+        Assert.True(published.HasValue);
+        var change = published.Value;
+        Assert.True(change.ChangedProperties.HasFlag(PanelChangeProperties.Structure));
+        Assert.True(change.AffectsInspectorRows);
+        Assert.True(change.AffectsHierarchy);
+    }
+
     private static (DocumentTabViewModel Document, ArtworkCalibrationOperationModel Calibration) CreateCalibrationDocument(
         IReadOnlyList<CalibrationSampleModel>? blackSamples = null)
     {

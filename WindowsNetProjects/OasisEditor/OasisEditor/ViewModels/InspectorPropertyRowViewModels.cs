@@ -362,11 +362,14 @@ public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyR
 
             _hexValue = InspectorColorHex.Format(value);
             RaisePropertyChanged(nameof(HexValue));
+            RaisePropertyChanged(nameof(SelectedBrush));
             if (_commitMode == InspectorColorCommitMode.Immediate) Commit();
         }
     }
 
     public InspectorColorCommitMode CommitMode => _commitMode;
+    public bool UsesColorPicker => IsEditable;
+    public Brush SelectedBrush => new SolidColorBrush(_selectedColor);
 
     public string HexValue
     {
@@ -395,6 +398,7 @@ public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyR
             _selectedColor = _committedColor;
             RaisePropertyChanged(nameof(HexValue));
             RaisePropertyChanged(nameof(SelectedColor));
+            RaisePropertyChanged(nameof(SelectedBrush));
             return;
         }
 
@@ -412,6 +416,7 @@ public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyR
             _selectedColor = _committedColor;
             RaisePropertyChanged(nameof(HexValue));
             RaisePropertyChanged(nameof(SelectedColor));
+            RaisePropertyChanged(nameof(SelectedBrush));
             return;
         }
 
@@ -423,6 +428,7 @@ public sealed class InspectorColorPropertyViewModel : InspectorEditablePropertyR
         {
             _selectedColor = parsedColor.Value;
             RaisePropertyChanged(nameof(SelectedColor));
+            RaisePropertyChanged(nameof(SelectedBrush));
             _committedColor = parsedColor.Value;
         }
 

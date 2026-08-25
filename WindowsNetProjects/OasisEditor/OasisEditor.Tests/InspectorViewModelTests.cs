@@ -43,6 +43,8 @@ public sealed class InspectorViewModelTests
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Add White Sample");
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Add Black Sample");
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "+ Add Colour Group");
+        Assert.All(viewModel.InspectorPropertyRows
+            .OfType<InspectorColorPropertyViewModel>(), row => Assert.False(row.UsesColorPicker));
         Assert.Equal(1, collectionNotifications);
 
         Assert.True(document.CommandService.TryUndo());
@@ -109,6 +111,8 @@ public sealed class InspectorViewModelTests
         var rows = viewModel.InspectorPropertyRows;
         var black = Assert.IsType<InspectorColorPropertyViewModel>(rows.Single(row => row.DisplayName == "Black Reference"));
         var white = Assert.IsType<InspectorColorPropertyViewModel>(rows.Single(row => row.DisplayName == "White Reference"));
+        Assert.True(black.UsesColorPicker);
+        Assert.True(white.UsesColorPicker);
         var blackSelectedColorNotifications = 0;
         var whiteSelectedColorNotifications = 0;
         black.PropertyChanged += (_, args) =>
