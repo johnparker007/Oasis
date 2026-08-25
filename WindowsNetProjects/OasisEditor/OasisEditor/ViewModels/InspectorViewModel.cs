@@ -383,7 +383,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     public void NotifyPanelChanged(PanelChangeEvent panelChange)
     {
         var selectedDocument = _selectedDocumentAccessor();
-        using var performance = selectedDocument?.MeasureCalibrationPerformance("Inspector NotifyPanelChanged");
         var selection = _activeDocumentContext.ActivePanelSelection;
         if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
@@ -475,7 +474,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private void RebuildPropertyRows()
     {
         var selectedDocument = _selectedDocumentAccessor();
-        using var performance = selectedDocument?.MeasureCalibrationPerformance("Inspector RebuildPropertyRows");
         CommitDeferredColorEdits();
         using var propertyRowsUpdate = _propertyRows.BeginUpdate();
         _propertyRows.Clear();

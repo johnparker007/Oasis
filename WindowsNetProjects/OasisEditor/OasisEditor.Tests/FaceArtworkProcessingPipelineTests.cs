@@ -51,10 +51,11 @@ public sealed class FaceArtworkProcessingPipelineTests
         {
             var inputPath = Path.Combine(directory, "correction-input.png");
             WriteBitmap(inputPath, new SKColor(40, 80, 120));
+            var sample = new CalibrationSampleModel { X = .5, Y = .5 };
             var operation = new ArtworkCalibrationOperationModel
             {
                 Id = "calibration", CorrectSpatialBrightness = false, CorrectSpatialColor = false,
-                NeutralizeWhite = false, BlackReference = new() { ManualEnabled = true, ManualColor = "#FF202020" },
+                NeutralizeWhite = false, BlackReference = new() { ManualEnabled = true, ManualColor = "#FF202020", Samples = [sample] },
                 WhiteReference = new() { ManualEnabled = true, ManualColor = "#FF808080" }
             };
             var state = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false);
@@ -77,11 +78,8 @@ public sealed class FaceArtworkProcessingPipelineTests
                 AssetsDirectory = Path.Combine(directory, "Assets"), MachinesDirectory = Path.Combine(directory, "Machines"),
                 GeneratedDirectory = Path.Combine(directory, "Generated")
             });
-            var sample = new CalibrationSampleModel { X = .5, Y = .5 };
-
-            Assert.Equal("#FF285078", document.GetArtworkSampleColor(operation, sample));
-            Assert.Equal("#FF285078", document.GetArtworkSampleColor(operation, sample));
-            Assert.True(document.TryGetArtworkReferenceColors(operation, out _, out _));
+            var measurements = document.GetArtworkCalibrationMeasurements(operation);
+            Assert.Equal("#FF285078", measurements.SampleColors[sample.Id]);
         }
         finally { Directory.Delete(directory, true); }
     }

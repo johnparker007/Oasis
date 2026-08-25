@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -48,14 +47,12 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private readonly Dictionary<string, CalibrationOperationInputCacheEntry> _calibrationOperationInputs = new(StringComparer.Ordinal);
     private IProgressDialogService _progressDialogService = NoOpProgressDialogService.Instance;
     private bool _isDetachedFaceBuildWorker;
-    private int _sourcePanelResolutionCount;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
     public event Action<PanelVisualStateChangedEvent>? PanelVisualStateChanged;
     public event Action<FaceVisualStateChangedEvent>? FaceVisualStateChanged;
     public event Action<FacePreviewChangedEvent>? FacePreviewChanged;
-    public event Action<string>? CalibrationPerformanceReported;
     public event EventHandler<DocumentSelectionChangedEventArgs>? SelectionChanged;
 
     public DocumentTabViewModel(
@@ -333,7 +330,6 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     public bool CanUsePanel2DArtworkSource(out string? unavailableReason)
     {
-        using var performance = MeasureCalibrationPerformance("DocumentTabViewModel.CanUsePanel2DArtworkSource");
         unavailableReason = null;
         if (_faceDocumentModel.Artwork?.Source.Kind != FaceArtworkSourceKind.Image)
         {
@@ -373,7 +369,6 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     }
 
     internal bool CanAttemptSourcePanel() => CanAttemptPanel2DArtworkSource(out _);
-    internal int SourcePanelResolutionCount => _sourcePanelResolutionCount;
 
     public bool UsePanel2DArtworkSource(out string? error)
     {
@@ -418,7 +413,6 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private bool TryResolvePanel2DArtworkSource(out Panel2DDocumentModel panel,
         out PanelFaceSourceShapeModel shape, out string error)
     {
-        using var performance = MeasureCalibrationPerformance("TryResolvePanel2DArtworkSource");
         shape = new PanelFaceSourceShapeModel();
         if (!TryResolveSourcePanel(out panel, out error)) return false;
         shape = panel.FaceSourceShapes.FirstOrDefault(candidate =>
@@ -739,8 +733,6 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     private bool TryResolveSourcePanel(out Panel2DDocumentModel panel, out string error)
     {
-        using var performance = MeasureCalibrationPerformance("TryResolveSourcePanel");
-        _sourcePanelResolutionCount++;
         panel = new Panel2DDocumentModel();
         error = string.Empty;
         var sourcePath = _faceDocumentModel.SourcePanel2DDocumentPath?.Trim();
@@ -767,14 +759,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var fullPath = ResolveGeneratedPath(sourcePath, project?.ProjectDirectory);
         if (!string.IsNullOrWhiteSpace(fullPath) && File.Exists(fullPath))
         {
-            var read = Stopwatch.StartNew();
             var json = File.ReadAllText(fullPath);
-            read.Stop();
-            ReportCalibrationPerformance($"File.ReadAllText Panel2D={read.Elapsed.TotalMilliseconds:0.###}ms chars={json.Length}");
-            var deserialize = Stopwatch.StartNew();
             panel = Panel2DDocumentStorage.DeserializeModel(json);
-            deserialize.Stop();
-            ReportCalibrationPerformance($"Panel2DDocumentStorage.DeserializeModel={deserialize.Elapsed.TotalMilliseconds:0.###}ms");
             return true;
         }
         error = $"The source Panel2D '{sourcePath ?? sourceId}' is unavailable. Open it or restore the linked file, then retry.";
@@ -870,17 +856,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     internal void InvalidateFaceBuild(FaceBuildInput input)
     {
-        var total = Stopwatch.StartNew();
-        var invalidate = Stopwatch.StartNew();
         new FaceBuildService().Invalidate(_faceDocumentModel.BuildState, input);
-        invalidate.Stop();
         if (input is FaceBuildInput.ArtworkSource or FaceBuildInput.ArtworkPreprocessing)
             InvalidateCorrectionInputCache();
         _faceDocumentJsonIsCurrent = false;
         _faceWorkspace?.RefreshBuildState();
-        total.Stop();
-        ReportCalibrationPerformance($"FaceBuildService.Invalidate={invalidate.Elapsed.TotalMilliseconds:0.###}ms input={input}");
-        ReportCalibrationPerformance($"InvalidateFaceBuild total={total.Elapsed.TotalMilliseconds:0.###}ms serializedCacheCurrent={_faceDocumentJsonIsCurrent}");
     }
 
     private FaceBuildNodeResult BuildArtworkCorrectionInput()
@@ -987,31 +967,6 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         PanelChanged?.Invoke(new PanelChangeEvent(DocumentId, artwork.Id, PanelChangeProperties.Metadata, AffectsCanvas: true, AffectsHierarchy: false, AffectsInspectorRows: false, AffectsPersistence: false));
     }
 
-    internal bool TryGetArtworkReferenceColors(ArtworkCalibrationOperationModel operation, out string? blackColor, out string? whiteColor)
-    {
-        blackColor = operation.BlackReference.ManualEnabled ? operation.BlackReference.ManualColor : null;
-        whiteColor = operation.WhiteReference.ManualEnabled ? operation.WhiteReference.ManualColor : null;
-        var artwork = _faceDocumentModel.Artwork;
-        var project = _projectAccessor?.Invoke();
-        if (artwork is null || project is null || !TryGetCorrectionInputBitmap(out var original)) return false;
-        var index = artwork.ProcessingPipeline.Operations.ToList().FindIndex(o => o.Id == operation.Id);
-        if (index <= 0)
-            return FaceArtworkProcessingPipeline.TryResolveReferenceColors(original, operation, out blackColor, out whiteColor);
-        using var input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, index);
-        return FaceArtworkProcessingPipeline.TryResolveReferenceColors(input, operation, out blackColor, out whiteColor);
-    }
-
-    internal string? GetArtworkSampleColor(ArtworkCalibrationOperationModel operation, CalibrationSampleModel sample)
-    {
-        var artwork = _faceDocumentModel.Artwork;
-        var project = _projectAccessor?.Invoke();
-        if (artwork is null || project is null || !TryGetCorrectionInputBitmap(out var original)) return null;
-        var index = artwork.ProcessingPipeline.Operations.ToList().FindIndex(o => o.Id == operation.Id);
-        if (index <= 0) return FaceArtworkProcessingPipeline.MeasureSampleHex(original, sample);
-        using var input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, index);
-        return FaceArtworkProcessingPipeline.MeasureSampleHex(input, sample);
-    }
-
     internal ArtworkCalibrationMeasurements GetArtworkCalibrationMeasurements(
         ArtworkCalibrationOperationModel operation,
         bool allowInputEvaluation = true)
@@ -1046,7 +1001,6 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
                 input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, index);
                 _calibrationOperationInputs[operation.Id] = new CalibrationOperationInputCacheEntry(prefixFingerprint, input);
-                CalibrationInputEvaluationCount++;
             }
         }
         FaceArtworkProcessingPipeline.TryResolveReferenceColors(input, operation, out blackColor, out whiteColor);
@@ -1091,9 +1045,6 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _correctionInputCacheKey = null;
     }
 
-    internal int CalibrationInputEvaluationCount { get; private set; }
-    internal int CachedCalibrationInputCount => _calibrationOperationInputs.Count;
-
     internal static string CreateProcessingPrefixFingerprint(ImageProcessingPipelineModel pipeline, int operationCount)
     {
         return string.Join('\n', pipeline.Operations.Take(operationCount)
@@ -1121,27 +1072,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         if (_faceDocumentJsonIsCurrent && _faceDocumentJson is not null)
             return _faceDocumentJson;
 
-        var total = Stopwatch.StartNew();
-        var serialize = Stopwatch.StartNew();
         var json = FaceDocumentStorage.Serialize(_faceDocumentModel);
-        serialize.Stop();
         _faceDocumentJson = json;
         _faceDocumentJsonIsCurrent = true;
-        FaceDocumentSerializationCount++;
-        total.Stop();
-        var artwork = _faceDocumentModel.Artwork;
-        ReportCalibrationPerformance(
-            $"FaceDocumentStorage.Serialize={serialize.Elapsed.TotalMilliseconds:0.###}ms GetFaceDocumentJson={total.Elapsed.TotalMilliseconds:0.###}ms chars={json.Length} elements={_faceDocumentModel.Elements.Count} lamps={_faceDocumentModel.Elements.Count(element => element is FaceLampWindowElement)} operations={artwork?.ProcessingPipeline.Operations.Count ?? 0} trays={_faceDocumentModel.Trays.Count} emitters={_faceDocumentModel.LampEmitters.Count} runtimeAssets={(_faceDocumentModel.RuntimeRenderAssets is null ? 0 : 1)}");
         return json;
     }
 
-    internal int FaceDocumentSerializationCount { get; private set; }
-
-    internal void ReportCalibrationPerformance(string message) =>
-        CalibrationPerformanceReported?.Invoke($"[CalibrationPerf] {message}");
-
-    internal IDisposable MeasureCalibrationPerformance(string operation) =>
-        new CalibrationPerformanceScope(this, operation);
+    internal void RefreshFaceArtworkProcessingState() => _faceWorkspace?.RefreshArtworkProcessingState();
 
     internal IReadOnlyList<FaceElementModel> GetFaceElements()
     {
@@ -1169,18 +1106,16 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         bool updateSerializedDocument = true,
         bool affectsFacePreview = true,
         bool? affectsPersistence = null,
-        FaceWorkspaceRefreshKind workspaceRefresh = FaceWorkspaceRefreshKind.All)
+        bool refreshWorkspaceSummaries = true)
     {
-        var total = Stopwatch.StartNew();
         ArgumentNullException.ThrowIfNull(model);
 
-        var reconcile = Stopwatch.StartNew();
         ReconcileCalibrationOperationInputCache(model.Artwork?.ProcessingPipeline);
-        reconcile.Stop();
         _faceDocumentModel = model;
         if (affectsPersistence ?? updateSerializedDocument)
             _faceDocumentJsonIsCurrent = false;
-        _faceWorkspace?.Refresh(workspaceRefresh);
+        if (refreshWorkspaceSummaries)
+            _faceWorkspace?.RefreshSummaries();
         if (updateSerializedDocument)
         {
             ReconcileSelection();
@@ -1192,14 +1127,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
         if (faceChange is PanelChangeEvent change)
         {
-            var dispatch = Stopwatch.StartNew();
             PanelChanged?.Invoke(change);
-            dispatch.Stop();
-            ReportCalibrationPerformance($"PanelChanged subscriber dispatch={dispatch.Elapsed.TotalMilliseconds:0.###}ms");
         }
-        total.Stop();
-        ReportCalibrationPerformance($"ReconcileCalibrationOperationInputCache={reconcile.Elapsed.TotalMilliseconds:0.###}ms");
-        ReportCalibrationPerformance($"SetFaceDocument={total.Elapsed.TotalMilliseconds:0.###}ms");
     }
 
     internal void SetFaceElements(IReadOnlyList<FaceElementModel> elements, PanelChangeEvent? faceChange = null, bool updateSerializedDocument = true)
@@ -1685,22 +1614,3 @@ internal sealed record ArtworkCalibrationMeasurements(
     IReadOnlyDictionary<string, string?> SampleColors);
 
 internal sealed record CalibrationOperationInputCacheEntry(string PrefixFingerprint, SKBitmap Bitmap);
-
-internal sealed class CalibrationPerformanceScope : IDisposable
-{
-    private readonly DocumentTabViewModel _document;
-    private readonly string _operation;
-    private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
-
-    public CalibrationPerformanceScope(DocumentTabViewModel document, string operation)
-    {
-        _document = document;
-        _operation = operation;
-    }
-
-    public void Dispose()
-    {
-        _stopwatch.Stop();
-        _document.ReportCalibrationPerformance($"{_operation}={_stopwatch.Elapsed.TotalMilliseconds:0.###}ms");
-    }
-}

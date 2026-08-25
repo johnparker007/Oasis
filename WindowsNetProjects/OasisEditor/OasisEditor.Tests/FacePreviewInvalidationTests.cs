@@ -23,14 +23,12 @@ public sealed class FacePreviewInvalidationTests
         AssertArtworkProductsAreStale(document);
         Assert.True(document.IsDirty);
         Assert.True(document.CommandService.CanUndo);
-        Assert.Equal(0, document.FaceDocumentSerializationCount);
         Assert.Equal(0, previewChanges);
 
         Assert.True(document.CommandService.TryUndo());
         authored = Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(
             document.GetFaceDocument().Artwork!.ProcessingPipeline.Operations));
         Assert.Empty(authored.BlackReference.Samples);
-        Assert.Equal(0, document.FaceDocumentSerializationCount);
         Assert.Equal(0, previewChanges);
     }
 
@@ -122,22 +120,17 @@ public sealed class FacePreviewInvalidationTests
         document.CommandService.Execute(FaceMutationCommands.CreateUpdateProcessingOperationCommand(
             document.DocumentId, document, second, "Add second sample"));
 
-        Assert.Equal(0, document.FaceDocumentSerializationCount);
         var json = document.GetFaceDocumentJson();
-        Assert.Equal(1, document.FaceDocumentSerializationCount);
         Assert.Same(json, document.GetFaceDocumentJson());
-        Assert.Equal(1, document.FaceDocumentSerializationCount);
         Assert.True(FaceDocumentStorage.TryRead(json, out var file));
         var saved = Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(
             FaceDocumentStorage.ToModel(file).Artwork!.ProcessingPipeline.Operations));
         Assert.Equal(2, saved.BlackReference.Samples.Count);
 
         Assert.True(document.CommandService.TryUndo());
-        Assert.Equal(1, document.FaceDocumentSerializationCount);
         Assert.Single(Assert.IsType<ArtworkCalibrationOperationModel>(Assert.Single(
             FaceDocumentStorage.ToModel(AssertSerialization(document)).Artwork!.ProcessingPipeline.Operations))
             .BlackReference.Samples);
-        Assert.Equal(2, document.FaceDocumentSerializationCount);
     }
 
     private static FaceDocumentFile AssertSerialization(DocumentTabViewModel document)

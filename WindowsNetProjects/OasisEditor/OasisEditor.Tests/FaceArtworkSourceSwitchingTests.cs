@@ -69,10 +69,8 @@ public sealed class FaceArtworkSourceSwitchingTests : IDisposable
         File.Delete(Path.Combine(_root, "Assets", "panel-background.png"));
 
         Assert.True(document.CanUsePanel2DArtworkSource(out var reason), reason);
-        Assert.Equal(0, document.SourcePanelResolutionCount);
         Assert.False(document.UsePanel2DArtworkSource(out var useError));
         Assert.Contains("background artwork", useError, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(1, document.SourcePanelResolutionCount);
         Assert.Equal(FaceArtworkSourceKind.Image, document.GetFaceDocument().Artwork!.Source.Kind);
         Assert.False(document.CommandService.TryUndo());
     }

@@ -171,7 +171,6 @@ public sealed class FaceWorkspaceViewModelTests
         Assert.Contains(nameof(FaceWorkspaceViewModel.BuildStatusSummary), changed);
         Assert.DoesNotContain(nameof(FaceWorkspaceViewModel.CanUsePanel2DSource), changed);
         Assert.DoesNotContain(nameof(FaceWorkspaceViewModel.Panel2DSourceAvailability), changed);
-        Assert.Equal(0, document.SourcePanelResolutionCount);
     }
 
     [Fact]
@@ -186,7 +185,6 @@ public sealed class FaceWorkspaceViewModelTests
         Assert.Contains(nameof(FaceWorkspaceViewModel.BuildStatusSummary), changed);
         Assert.DoesNotContain(nameof(FaceWorkspaceViewModel.CanUsePanel2DSource), changed);
         Assert.DoesNotContain(nameof(FaceWorkspaceViewModel.Panel2DSourceAvailability), changed);
-        Assert.Equal(0, document.SourcePanelResolutionCount);
     }
 
     [Fact]

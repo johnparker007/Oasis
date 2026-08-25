@@ -10,11 +10,10 @@ public sealed class FaceCalibrationInputCacheTests
     {
         using var fixture = CacheFixture.Create();
 
-        fixture.Document.GetArtworkCalibrationMeasurements(fixture.Target);
-        fixture.Document.GetArtworkCalibrationMeasurements(fixture.Target);
+        var first = fixture.Document.GetArtworkCalibrationMeasurements(fixture.Target);
+        var second = fixture.Document.GetArtworkCalibrationMeasurements(fixture.Target, allowInputEvaluation: false);
 
-        Assert.Equal(1, fixture.Document.CalibrationInputEvaluationCount);
-        Assert.Equal(1, fixture.Document.CachedCalibrationInputCount);
+        Assert.Equal(first.SampleColors["sample"], second.SampleColors["sample"]);
     }
 
     [Fact]
@@ -25,9 +24,9 @@ public sealed class FaceCalibrationInputCacheTests
         var editedTarget = Copy(fixture.Target, samples: [new CalibrationSampleModel { Id = "new", X = .5, Y = .5 }]);
         fixture.SetPipeline([fixture.Preceding, editedTarget]);
 
-        fixture.Document.GetArtworkCalibrationMeasurements(editedTarget);
+        var measurements = fixture.Document.GetArtworkCalibrationMeasurements(editedTarget, allowInputEvaluation: false);
 
-        Assert.Equal(1, fixture.Document.CalibrationInputEvaluationCount);
+        Assert.True(measurements.SampleColors.ContainsKey("new"));
     }
 
     [Fact]
@@ -38,10 +37,9 @@ public sealed class FaceCalibrationInputCacheTests
         var editedPreceding = Copy(fixture.Preceding, strength: 25);
         fixture.SetPipeline([editedPreceding, fixture.Target]);
 
-        fixture.Document.GetArtworkCalibrationMeasurements(fixture.Target);
+        var measurements = fixture.Document.GetArtworkCalibrationMeasurements(fixture.Target, allowInputEvaluation: false);
 
-        Assert.Equal(2, fixture.Document.CalibrationInputEvaluationCount);
-        Assert.Equal(1, fixture.Document.CachedCalibrationInputCount);
+        Assert.Empty(measurements.SampleColors);
     }
 
     [Fact]
@@ -52,9 +50,9 @@ public sealed class FaceCalibrationInputCacheTests
         var other = new ArtworkCalibrationOperationModel { Id = "other", Strength = 10 };
         fixture.SetPipeline([other, fixture.Target, fixture.Preceding]);
 
-        fixture.Document.GetArtworkCalibrationMeasurements(fixture.Target);
+        var measurements = fixture.Document.GetArtworkCalibrationMeasurements(fixture.Target, allowInputEvaluation: false);
 
-        Assert.Equal(2, fixture.Document.CalibrationInputEvaluationCount);
+        Assert.Empty(measurements.SampleColors);
     }
 
     [Fact]
@@ -62,22 +60,11 @@ public sealed class FaceCalibrationInputCacheTests
     {
         using var fixture = CacheFixture.Create();
         fixture.Document.GetArtworkCalibrationMeasurements(fixture.Target);
-        Assert.Equal(1, fixture.Document.CachedCalibrationInputCount);
 
         fixture.Document.InvalidateFaceBuild(FaceBuildInput.ArtworkPreprocessing);
 
-        Assert.Equal(0, fixture.Document.CachedCalibrationInputCount);
-    }
-
-    [Fact]
-    public void DocumentDisposal_DropsAllOwnedOperationInputs()
-    {
-        using var fixture = CacheFixture.Create();
-        fixture.Document.GetArtworkCalibrationMeasurements(fixture.Target);
-
-        fixture.Document.Dispose();
-
-        Assert.Equal(0, fixture.Document.CachedCalibrationInputCount);
+        Assert.Empty(fixture.Document.GetArtworkCalibrationMeasurements(
+            fixture.Target, allowInputEvaluation: false).SampleColors);
     }
 
     [Fact]
@@ -89,8 +76,6 @@ public sealed class FaceCalibrationInputCacheTests
             fixture.Target, allowInputEvaluation: false);
 
         Assert.Empty(measurements.SampleColors);
-        Assert.Equal(0, fixture.Document.CalibrationInputEvaluationCount);
-        Assert.Equal(0, fixture.Document.CachedCalibrationInputCount);
     }
 
     private static ArtworkCalibrationOperationModel Copy(

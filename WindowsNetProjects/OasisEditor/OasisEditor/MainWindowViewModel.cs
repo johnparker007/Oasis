@@ -1456,7 +1456,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 document.FaceVisualStateChanged -= OnOpenDocumentFaceVisualStateChanged;
                 document.FacePreviewChanged -= OnOpenDocumentFacePreviewChanged;
-                document.CalibrationPerformanceReported -= OnCalibrationPerformanceReported;
             }
         }
 
@@ -1466,7 +1465,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 document.FaceVisualStateChanged += OnOpenDocumentFaceVisualStateChanged;
                 document.FacePreviewChanged += OnOpenDocumentFacePreviewChanged;
-                document.CalibrationPerformanceReported += OnCalibrationPerformanceReported;
             }
         }
 
@@ -1477,9 +1475,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         RefreshCabinetFacePreviews();
     }
-
-    private void OnCalibrationPerformanceReported(string message) =>
-        AddOutputEntry(message, OutputLogStatus.Info);
 
     private void OnOpenDocumentFaceVisualStateChanged(FaceVisualStateChangedEvent visualStateChanged)
     {

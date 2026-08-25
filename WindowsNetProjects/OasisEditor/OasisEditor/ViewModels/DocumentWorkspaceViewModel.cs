@@ -583,9 +583,6 @@ public sealed class DocumentWorkspaceViewModel
             return false;
         }
 
-        using var performance = command is ICalibrationPerformanceCommand
-            ? activeDocument.MeasureCalibrationPerformance("Calibration execute + command history/undo UI total")
-            : null;
         activeDocument.CommandService.Execute(command);
 
         if (command is EditorCommands.IExecutionTrackedCommand executionTrackedCommand
