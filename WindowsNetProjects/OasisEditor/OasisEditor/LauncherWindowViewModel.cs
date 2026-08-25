@@ -204,7 +204,8 @@ public sealed class LauncherWindowViewModel : INotifyPropertyChanged
                     "Starting Editor...",
                     EditorProgressMode.Indeterminate,
                     CanCancel: false,
-                    ShowDelay: TimeSpan.Zero),
+                    ShowDelay: TimeSpan.Zero,
+                    ExecutionMode: EditorProgressExecutionMode.UiThread),
                 async (progress, token) =>
                 {
                     progress.ReportIndeterminate("Opening project...");
