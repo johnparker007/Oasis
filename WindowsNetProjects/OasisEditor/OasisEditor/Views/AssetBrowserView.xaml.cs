@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows;
@@ -20,8 +21,13 @@ public partial class AssetBrowserView : UserControl
             return;
         }
 
+        if (e.OriginalSource is not DependencyObject source)
+        {
+            return;
+        }
+
         var command = viewModel.OpenAssetCommand;
-        var selectedAsset = viewModel.SelectedAsset;
+        var selectedAsset = FindAncestor<ListBoxItem>(source)?.DataContext as AssetBrowserItemViewModel;
         if (command.CanExecute(selectedAsset))
         {
             command.Execute(selectedAsset);
@@ -31,25 +37,21 @@ public partial class AssetBrowserView : UserControl
 
     private void OnAssetListPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs eventArgs)
     {
-        if (DataContext is not MainWindowViewModel viewModel)
-        {
-            return;
-        }
-
-        if (eventArgs.OriginalSource is not DependencyObject source)
+        if (DataContext is not MainWindowViewModel viewModel
+            || eventArgs.OriginalSource is not DependencyObject source)
         {
             return;
         }
 
         var listBoxItem = FindAncestor<ListBoxItem>(source);
-        if (listBoxItem?.DataContext is not AssetBrowserItemViewModel asset || asset.IsDirectory)
+        if (listBoxItem?.DataContext is not AssetBrowserItemViewModel asset
+            || asset.IsDirectory
+            || Keyboard.Modifiers != ModifierKeys.None)
         {
             return;
         }
 
-        var wasAlreadySelected = ReferenceEquals(viewModel.SelectedAsset, asset);
-        viewModel.SelectedAsset = asset;
-        if (wasAlreadySelected)
+        if (listBoxItem.IsSelected)
         {
             viewModel.ActivateSelectedAssetInspector();
         }
@@ -73,8 +75,47 @@ public partial class AssetBrowserView : UserControl
             return;
         }
 
-        listBoxItem.IsSelected = true;
+        if (!listBoxItem.IsSelected)
+        {
+            listBox.UnselectAll();
+            listBoxItem.IsSelected = true;
+        }
         listBox.Focus();
+    }
+
+    private void OnAssetListSelectionChanged(object sender, SelectionChangedEventArgs eventArgs)
+    {
+        if (DataContext is MainWindowViewModel viewModel && sender is ListBox listBox)
+        {
+            viewModel.SetSelectedAssets(listBox.SelectedItems.Cast<AssetBrowserItemViewModel>().ToArray());
+        }
+    }
+
+    private void OnAssetListPreviewKeyDown(object sender, KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Key == Key.Delete && DataContext is MainWindowViewModel viewModel)
+        {
+            ExecuteDelete(viewModel, parameter: null, eventArgs);
+        }
+    }
+
+    private void OnDirectoryTreePreviewKeyDown(object sender, KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Key == Key.Delete
+            && DataContext is MainWindowViewModel viewModel
+            && sender is TreeView treeView)
+        {
+            ExecuteDelete(viewModel, treeView.SelectedItem, eventArgs);
+        }
+    }
+
+    private static void ExecuteDelete(MainWindowViewModel viewModel, object? parameter, KeyEventArgs eventArgs)
+    {
+        if (viewModel.DeleteAssetCommand.CanExecute(parameter))
+        {
+            viewModel.DeleteAssetCommand.Execute(parameter);
+            eventArgs.Handled = true;
+        }
     }
 
     private void OnDirectoryTreePreviewMouseRightButtonDown(object sender, MouseButtonEventArgs eventArgs)

@@ -17,6 +17,8 @@ public sealed class AssetBrowserViewModel : IDisposable
     private readonly Action<string, OutputLogStatus> _addOutputEntry;
     private readonly Action<AssetBrowserItemViewModel?> _openAsset;
     private readonly Func<string, string?> _requestAssetRename;
+    private readonly Func<IReadOnlyList<AssetBrowserItemViewModel>, bool> _confirmAssetDelete;
+    private readonly List<AssetBrowserItemViewModel> _selectedAssets = new();
     private AssetBrowserItemViewModel? _selectedAsset;
     private AssetDirectoryNodeViewModel? _selectedDirectory;
     private FileSystemWatcher? _assetsWatcher;
@@ -30,7 +32,8 @@ public sealed class AssetBrowserViewModel : IDisposable
         Action notifyInspectorChanged,
         Action<string, OutputLogStatus> addOutputEntry,
         Action<AssetBrowserItemViewModel?> openAsset,
-        Func<string, string?> requestAssetRename)
+        Func<string, string?> requestAssetRename,
+        Func<IReadOnlyList<AssetBrowserItemViewModel>, bool> confirmAssetDelete)
     {
         _loadedProjectAccessor = loadedProjectAccessor;
         _selectionChanged = selectionChanged;
@@ -38,6 +41,7 @@ public sealed class AssetBrowserViewModel : IDisposable
         _addOutputEntry = addOutputEntry;
         _openAsset = openAsset;
         _requestAssetRename = requestAssetRename;
+        _confirmAssetDelete = confirmAssetDelete;
         _refreshDebounceTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = TimeSpan.FromMilliseconds(200)
@@ -58,7 +62,7 @@ public sealed class AssetBrowserViewModel : IDisposable
         RenameAssetCommand = new PaneItemCommand<object>(
             GetSelectedAssetContext,
             RenameAsset,
-            CanOpenAssetContext);
+            CanRenameAssetContext);
         DeleteAssetCommand = new PaneItemCommand<object>(
             GetSelectedAssetContext,
             DeleteAsset,
@@ -72,6 +76,7 @@ public sealed class AssetBrowserViewModel : IDisposable
     public ICommand ShowInExplorerCommand { get; }
     public ICommand RenameAssetCommand { get; }
     public ICommand DeleteAssetCommand { get; }
+    public IReadOnlyList<AssetBrowserItemViewModel> SelectedAssets => _selectedAssets;
 
     public AssetDirectoryNodeViewModel? SelectedDirectory
     {
@@ -115,6 +120,20 @@ public sealed class AssetBrowserViewModel : IDisposable
         }
     }
 
+    public void SetSelectedAssets(IEnumerable<AssetBrowserItemViewModel> assets)
+    {
+        var selected = assets.Where(AssetBrowserItems.Contains).ToArray();
+        _selectedAssets.Clear();
+        _selectedAssets.AddRange(selected);
+
+        var primarySelection = _selectedAssets.Count == 0
+            ? null
+            : _selectedAssets.Contains(SelectedAsset!) ? SelectedAsset : _selectedAssets[^1];
+        SelectedAsset = primarySelection;
+        NotifyOpenAssetCommand();
+        NotifyAssetContextCommands();
+    }
+
     private bool CanRefreshAssetBrowser()
     {
         return _loadedProjectAccessor() is not null;
@@ -128,7 +147,7 @@ public sealed class AssetBrowserViewModel : IDisposable
     public void RefreshAssetBrowserPreservingState()
     {
         var selectedDirectoryPath = SelectedDirectory?.FullPath;
-        var selectedAssetPath = SelectedAsset?.FullPath;
+        var selectedAssetPaths = CaptureSelectedAssetPaths();
         var expandedDirectoryPaths = CaptureExpandedDirectoryPaths();
 
         var loadedProject = _loadedProjectAccessor();
@@ -159,7 +178,7 @@ public sealed class AssetBrowserViewModel : IDisposable
         SelectedDirectory = FindDirectoryByPath(rootNode, selectedDirectoryPath)
             ?? FindNearestExistingDirectory(rootNode, selectedDirectoryPath)
             ?? rootNode;
-        RestoreSelectedAsset(selectedAssetPath);
+        RestoreSelectedAssets(selectedAssetPaths);
         _notifyInspectorChanged();
         _addOutputEntry($"Asset browser refreshed ({AssetBrowserItems.Count} items).", OutputLogStatus.Info);
         StateChanged?.Invoke();
@@ -273,7 +292,7 @@ public sealed class AssetBrowserViewModel : IDisposable
 
     private void RefreshDirectoryContents()
     {
-        var selectedAssetPath = SelectedAsset?.FullPath;
+        var selectedAssetPaths = CaptureSelectedAssetPaths();
         AssetBrowserItems.Clear();
 
         var loadedProject = _loadedProjectAccessor();
@@ -313,13 +332,26 @@ public sealed class AssetBrowserViewModel : IDisposable
                 isDirectory: false));
         }
 
-        RestoreSelectedAsset(selectedAssetPath);
+        RestoreSelectedAssets(selectedAssetPaths);
         StateChanged?.Invoke();
     }
 
     private object? GetSelectedAssetContext()
     {
-        return SelectedAsset ?? (object?)SelectedDirectory;
+        return _selectedAssets.Count > 0
+            ? new AssetCommandSelection(_selectedAssets.ToArray())
+            : SelectedAsset ?? (object?)SelectedDirectory;
+    }
+
+    private static IReadOnlyList<AssetBrowserItemViewModel> ToAssetContextItems(object? context)
+    {
+        if (context is AssetCommandSelection selection)
+        {
+            return selection.Items;
+        }
+
+        var item = ToAssetContextItem(context);
+        return item is null ? Array.Empty<AssetBrowserItemViewModel>() : new[] { item };
     }
 
     private static AssetBrowserItemViewModel? ToAssetContextItem(object? context)
@@ -337,12 +369,15 @@ public sealed class AssetBrowserViewModel : IDisposable
 
     private void OpenAsset(object context)
     {
-        var asset = ToAssetContextItem(context);
-        if (asset is null)
+        var assets = ToAssetContextItems(context);
+        foreach (var asset in assets)
         {
-            return;
+            OpenSingleAsset(asset);
         }
+    }
 
+    private void OpenSingleAsset(AssetBrowserItemViewModel asset)
+    {
         if (asset.IsDirectory)
         {
             if (!Directory.Exists(asset.FullPath))
@@ -367,15 +402,10 @@ public sealed class AssetBrowserViewModel : IDisposable
 
     private static bool CanOpenAssetContext(object context)
     {
-        var asset = ToAssetContextItem(context);
-        if (asset is null)
-        {
-            return false;
-        }
-
-        return asset.IsDirectory
+        var assets = ToAssetContextItems(context);
+        return assets.Count > 0 && assets.All(asset => asset.IsDirectory
             ? Directory.Exists(asset.FullPath)
-            : File.Exists(asset.FullPath);
+            : File.Exists(asset.FullPath));
     }
 
     private void NotifyOpenAssetCommand()
@@ -406,11 +436,19 @@ public sealed class AssetBrowserViewModel : IDisposable
 
     private void ShowInExplorer(object context)
     {
-        var asset = ToAssetContextItem(context);
-        if (asset is null)
+        var assets = ToAssetContextItems(context);
+        if (assets.Count == 0)
         {
             return;
         }
+
+        if (assets.Count > 1)
+        {
+            ShowDirectoryInExplorer(Path.GetDirectoryName(assets[0].FullPath)!, "selected assets");
+            return;
+        }
+
+        var asset = assets[0];
 
         if (asset.IsDirectory)
         {
@@ -420,18 +458,7 @@ public sealed class AssetBrowserViewModel : IDisposable
                 return;
             }
 
-            try
-            {
-                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{asset.FullPath}\"")
-                {
-                    UseShellExecute = true
-                });
-                _addOutputEntry($"Opened folder in Explorer: {asset.DisplayPath}", OutputLogStatus.Info);
-            }
-            catch (Exception ex)
-            {
-                _addOutputEntry($"Failed to open folder in Explorer: {ex.Message}", OutputLogStatus.Warning);
-            }
+            ShowDirectoryInExplorer(asset.FullPath, asset.DisplayPath);
 
             return;
         }
@@ -456,13 +483,28 @@ public sealed class AssetBrowserViewModel : IDisposable
         }
     }
 
+    private void ShowDirectoryInExplorer(string directoryPath, string description)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{directoryPath}\"") { UseShellExecute = true });
+            _addOutputEntry($"Opened folder in Explorer: {description}", OutputLogStatus.Info);
+        }
+        catch (Exception ex)
+        {
+            _addOutputEntry($"Failed to open folder in Explorer: {ex.Message}", OutputLogStatus.Warning);
+        }
+    }
+
     private void RenameAsset(object context)
     {
-        var asset = ToAssetContextItem(context);
-        if (asset is null)
+        var assets = ToAssetContextItems(context);
+        if (assets.Count != 1)
         {
             return;
         }
+
+        var asset = assets[0];
 
         var requestedName = _requestAssetRename(asset.DisplayPath);
         if (string.IsNullOrWhiteSpace(requestedName))
@@ -541,49 +583,60 @@ public sealed class AssetBrowserViewModel : IDisposable
         }
     }
 
+    private static bool CanRenameAssetContext(object context)
+    {
+        var assets = ToAssetContextItems(context);
+        return assets.Count == 1 && CanOpenAssetContext(assets[0]);
+    }
+
     private void DeleteAsset(object context)
     {
-        var asset = ToAssetContextItem(context);
-        if (asset is null)
+        var assets = ToAssetContextItems(context);
+        if (assets.Count == 0 || !_confirmAssetDelete(assets))
         {
             return;
         }
 
         var loadedProject = _loadedProjectAccessor();
-        if (loadedProject is null || !IsPathInsideRoot(loadedProject.AssetsDirectory, asset.FullPath))
+        if (loadedProject is null || assets.Any(asset => !IsPathInsideRoot(loadedProject.AssetsDirectory, asset.FullPath)))
         {
             _addOutputEntry("Delete blocked: target path is outside the Assets root.", OutputLogStatus.Warning);
             return;
         }
 
-        var parentDirectory = Path.GetDirectoryName(asset.FullPath) ?? SelectedDirectory?.FullPath ?? loadedProject.AssetsDirectory;
+        var parentDirectory = Path.GetDirectoryName(assets[0].FullPath) ?? SelectedDirectory?.FullPath ?? loadedProject.AssetsDirectory;
         var selectedDirectoryPath = SelectedDirectory?.FullPath;
 
         try
         {
-            if (asset.IsDirectory)
+            foreach (var asset in assets)
             {
-                if (!Directory.Exists(asset.FullPath))
+                if (asset.IsDirectory)
                 {
-                    _addOutputEntry($"Delete skipped: folder not found '{asset.FullPath}'.", OutputLogStatus.Warning);
-                    return;
-                }
+                    if (!Directory.Exists(asset.FullPath))
+                    {
+                        _addOutputEntry($"Delete skipped: folder not found '{asset.FullPath}'.", OutputLogStatus.Warning);
+                        continue;
+                    }
 
-                Directory.Delete(asset.FullPath, recursive: true);
-                _addOutputEntry($"Deleted folder and contents: {asset.DisplayPath}", OutputLogStatus.Info);
-            }
-            else
-            {
-                if (!File.Exists(asset.FullPath))
+                    Directory.Delete(asset.FullPath, recursive: true);
+                    _addOutputEntry($"Deleted folder and contents: {asset.DisplayPath}", OutputLogStatus.Info);
+                }
+                else
                 {
-                    _addOutputEntry($"Delete skipped: file not found '{asset.FullPath}'.", OutputLogStatus.Warning);
-                    return;
-                }
+                    if (!File.Exists(asset.FullPath))
+                    {
+                        _addOutputEntry($"Delete skipped: file not found '{asset.FullPath}'.", OutputLogStatus.Warning);
+                        continue;
+                    }
 
-                File.Delete(asset.FullPath);
-                _addOutputEntry($"Deleted file: {asset.DisplayPath}", OutputLogStatus.Info);
+                    File.Delete(asset.FullPath);
+                    _addOutputEntry($"Deleted file: {asset.DisplayPath}", OutputLogStatus.Info);
+                }
             }
 
+            _selectedAssets.Clear();
+            SelectedAsset = null;
             var directoryToSelect = ResolvePostDeleteDirectoryPath(
                 loadedProject.AssetsDirectory,
                 selectedDirectoryPath,
@@ -634,21 +687,25 @@ public sealed class AssetBrowserViewModel : IDisposable
                && !Path.IsPathRooted(relativePath);
     }
 
-    private void RestoreSelectedAsset(string? selectedAssetPath)
+    private string[] CaptureSelectedAssetPaths()
     {
-        if (!string.IsNullOrWhiteSpace(selectedAssetPath))
-        {
-            var existing = AssetBrowserItems.FirstOrDefault(item =>
-                string.Equals(item.FullPath, selectedAssetPath, StringComparison.OrdinalIgnoreCase));
-            if (existing is not null)
-            {
-                SelectedAsset = existing;
-                return;
-            }
-        }
-
-        SelectedAsset = null;
+        return (_selectedAssets.Count > 0 ? _selectedAssets : SelectedAsset is null ? [] : [SelectedAsset])
+            .Select(asset => asset.FullPath)
+            .ToArray();
     }
+
+    private void RestoreSelectedAssets(IEnumerable<string> selectedAssetPaths)
+    {
+        var paths = selectedAssetPaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var restoredAssets = AssetBrowserItems.Where(item => paths.Contains(item.FullPath)).ToArray();
+        SetSelectedAssets(restoredAssets);
+        foreach (var asset in restoredAssets)
+        {
+            asset.IsSelected = true;
+        }
+    }
+
+    private sealed record AssetCommandSelection(IReadOnlyList<AssetBrowserItemViewModel> Items);
 
 
     private HashSet<string> CaptureExpandedDirectoryPaths()

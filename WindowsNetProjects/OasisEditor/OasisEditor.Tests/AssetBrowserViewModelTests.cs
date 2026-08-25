@@ -137,7 +137,8 @@ public sealed class AssetBrowserViewModelTests
             notifyInspectorChanged: () => { },
             addOutputEntry: (_, _) => { },
             openAsset: _ => { },
-            requestAssetRename: _ => "new-name.panel2d");
+            requestAssetRename: _ => "new-name.panel2d",
+            confirmAssetDelete: _ => true);
 
         viewModel.RefreshAssetBrowser();
         var fileItem = Assert.Single(viewModel.AssetBrowserItems, item => !item.IsDirectory && item.DisplayPath == "old-name.panel2d");
@@ -167,13 +168,74 @@ public sealed class AssetBrowserViewModelTests
             notifyInspectorChanged: () => { },
             addOutputEntry: (message, _) => outputEntries.Add(message),
             openAsset: _ => { },
-            requestAssetRename: _ => null);
+            requestAssetRename: _ => null,
+            confirmAssetDelete: _ => true);
 
         viewModel.RefreshAssetBrowser();
         viewModel.SelectedDirectory = new AssetDirectoryNodeViewModel("Outside", outsideDirectory);
 
         Assert.Empty(viewModel.AssetBrowserItems);
         Assert.Contains(outputEntries, message => message.Contains("outside the Assets root", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void OpenAssetCommand_WithMultipleSelectedFiles_OpensEveryFile()
+    {
+        using var temp = new TempProjectDirectory();
+        File.WriteAllText(Path.Combine(temp.AssetsDirectory, "one.panel2d"), "{}");
+        File.WriteAllText(Path.Combine(temp.AssetsDirectory, "two.png"), "png");
+        var openedPaths = new List<string>();
+        var viewModel = CreateViewModel(temp.Project, asset => openedPaths.Add(asset!.FullPath));
+        viewModel.RefreshAssetBrowser();
+        viewModel.SetSelectedAssets(viewModel.AssetBrowserItems);
+
+        viewModel.OpenAssetCommand.Execute(null);
+
+        Assert.Equal(2, openedPaths.Count);
+        Assert.Contains(Path.Combine(temp.AssetsDirectory, "one.panel2d"), openedPaths);
+        Assert.Contains(Path.Combine(temp.AssetsDirectory, "two.png"), openedPaths);
+    }
+
+    [Fact]
+    public void DeleteAssetCommand_WithMixedSelection_ConfirmsOnceAndDeletesEverything()
+    {
+        using var temp = new TempProjectDirectory();
+        var filePath = Path.Combine(temp.AssetsDirectory, "delete.txt");
+        var folderPath = Path.Combine(temp.AssetsDirectory, "Folder");
+        File.WriteAllText(filePath, "delete");
+        Directory.CreateDirectory(folderPath);
+        File.WriteAllText(Path.Combine(folderPath, "child.txt"), "delete");
+        var confirmationCount = 0;
+        var viewModel = new AssetBrowserViewModel(
+            () => temp.Project, () => { }, () => { }, (_, _) => { }, _ => { }, _ => null,
+            assets =>
+            {
+                confirmationCount++;
+                Assert.Equal(2, assets.Count);
+                return true;
+            });
+        viewModel.RefreshAssetBrowser();
+        viewModel.SetSelectedAssets(viewModel.AssetBrowserItems);
+
+        viewModel.DeleteAssetCommand.Execute(null);
+
+        Assert.Equal(1, confirmationCount);
+        Assert.False(File.Exists(filePath));
+        Assert.False(Directory.Exists(folderPath));
+        Assert.Empty(viewModel.SelectedAssets);
+    }
+
+    [Fact]
+    public void RenameAssetCommand_IsDisabledForMultipleSelection()
+    {
+        using var temp = new TempProjectDirectory();
+        File.WriteAllText(Path.Combine(temp.AssetsDirectory, "one.txt"), "one");
+        File.WriteAllText(Path.Combine(temp.AssetsDirectory, "two.txt"), "two");
+        var viewModel = CreateViewModel(temp.Project, _ => { });
+        viewModel.RefreshAssetBrowser();
+        viewModel.SetSelectedAssets(viewModel.AssetBrowserItems);
+
+        Assert.False(viewModel.RenameAssetCommand.CanExecute(null));
     }
 
     private static AssetBrowserViewModel CreateViewModel(EditorProject project, Action<AssetBrowserItemViewModel?> openAsset)
@@ -184,7 +246,8 @@ public sealed class AssetBrowserViewModelTests
             notifyInspectorChanged: () => { },
             addOutputEntry: (_, _) => { },
             openAsset: openAsset,
-            requestAssetRename: _ => null);
+            requestAssetRename: _ => null,
+            confirmAssetDelete: _ => true);
     }
 
     private sealed class TempProjectDirectory : IDisposable
