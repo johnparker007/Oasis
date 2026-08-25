@@ -1610,7 +1610,9 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 _propertyRows.Add(new InspectorBoolPropertyViewModel("Correct Colour Cast",group,calibration.CorrectSpatialColor,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Toggle spatial colour",c=>CopyCalibration(c,correctColor:v))));
                 _propertyRows.Add(new InspectorBoolPropertyViewModel("Normalize Black / White",group,calibration.NormalizeBlackWhite,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Toggle tonal normalization",c=>CopyCalibration(c,normalize:v))));
                 _propertyRows.Add(new InspectorBoolPropertyViewModel("Neutralize White",group,calibration.NeutralizeWhite,commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Toggle white neutralization",c=>CopyCalibration(c,neutralize:v))));
-                selectedDocument.TryGetArtworkReferenceColors(calibration,out var black,out var white);
+                var measurements = selectedDocument.GetArtworkCalibrationMeasurements(calibration);
+                var black = measurements.BlackColor;
+                var white = measurements.WhiteColor;
                 AddReference("Black",calibration.BlackReference,black,CalibrationPlacementTargetKind.BlackReference);
                 AddReference("White",calibration.WhiteReference,white,CalibrationPlacementTargetKind.WhiteReference);
                 foreach(var colourGroup in calibration.SameColorGroups)
@@ -1634,7 +1636,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 }
                 void AddSamples(IReadOnlyList<CalibrationSampleModel> samples,CalibrationPlacementTargetKind kind,string target,string label)
                 { for(var i=0;i<samples.Count;i++){var sample=samples[i];var title=$"{label} Sample {i+1}";
-                    _propertyRows.Add(new InspectorColorPropertyViewModel(title,group,selectedDocument.GetArtworkSampleColor(calibration,sample),isReadOnly:true,allowEmpty:true,commit:_=>null));
+                    measurements.SampleColors.TryGetValue(sample.Id, out var sampleColor);
+                    _propertyRows.Add(new InspectorColorPropertyViewModel(title,group,sampleColor,isReadOnly:true,allowEmpty:true,commit:_=>null));
                     _propertyRows.Add(new InspectorChoicePropertyViewModel($"{title} Type",group,["Pixel","Area"],sample.SamplingMode.ToString(),commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Change sample type",c=>ReplaceSample(c,kind,target,sample.Id,s=>new CalibrationSampleModel{Id=s.Id,X=s.X,Y=s.Y,SamplingMode=v=="Area"?CalibrationSamplingMode.Area:CalibrationSamplingMode.Pixel,RadiusNormalized=s.RadiusNormalized}))));
                     if(sample.SamplingMode==CalibrationSamplingMode.Area)_propertyRows.Add(new InspectorDoublePropertyViewModel($"{title} Radius (px)",group,sample.RadiusPixels(authoredArtwork.OutputWidth,authoredArtwork.OutputHeight),commit:v=>TryUpdateCalibration(selectedDocument,calibration.Id,"Change sample radius",c=>ReplaceSample(c,kind,target,sample.Id,s=>s.WithRadiusPixels(v,authoredArtwork.OutputWidth,authoredArtwork.OutputHeight)),true)));
                     _propertyRows.Add(new InspectorActionPropertyViewModel($"Delete {title}",group,new RelayCommand(()=>TryUpdateCalibration(selectedDocument,calibration.Id,"Delete calibration sample",c=>RemoveSample(c,kind,target,sample.Id)))));}}

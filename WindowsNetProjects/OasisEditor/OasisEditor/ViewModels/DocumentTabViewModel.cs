@@ -49,6 +49,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public event Action<PanelChangeEvent>? PanelChanged;
     public event Action<PanelVisualStateChangedEvent>? PanelVisualStateChanged;
     public event Action<FaceVisualStateChangedEvent>? FaceVisualStateChanged;
+    public event Action<FacePreviewChangedEvent>? FacePreviewChanged;
     public event EventHandler<DocumentSelectionChangedEventArgs>? SelectionChanged;
 
     public DocumentTabViewModel(
@@ -254,6 +255,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                 : new FaceDocumentModel();
             _faceWorkspace?.RefreshSummaries();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
+            FacePreviewChanged?.Invoke(new FacePreviewChangedEvent(DocumentId));
         }
     }
 
@@ -927,6 +929,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         if (_isDetachedFaceBuildWorker) return;
         Views.SkiaFaceEditView.InvalidateArtworkImage(artwork.OutputAssetPath);
+        FacePreviewChanged?.Invoke(new FacePreviewChangedEvent(DocumentId));
         PanelChanged?.Invoke(new PanelChangeEvent(DocumentId, artwork.Id, PanelChangeProperties.Metadata, AffectsCanvas: true, AffectsHierarchy: false, AffectsInspectorRows: false, AffectsPersistence: false));
     }
 
@@ -953,6 +956,31 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         if (index <= 0) return FaceArtworkProcessingPipeline.MeasureSampleHex(original, sample);
         using var input = new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, index);
         return FaceArtworkProcessingPipeline.MeasureSampleHex(input, sample);
+    }
+
+    internal ArtworkCalibrationMeasurements GetArtworkCalibrationMeasurements(ArtworkCalibrationOperationModel operation)
+    {
+        var sampleColors = new Dictionary<string, string?>(StringComparer.Ordinal);
+        string? blackColor = operation.BlackReference.ManualEnabled ? operation.BlackReference.ManualColor : null;
+        string? whiteColor = operation.WhiteReference.ManualEnabled ? operation.WhiteReference.ManualColor : null;
+        var artwork = _faceDocumentModel.Artwork;
+        if (artwork is null || _projectAccessor?.Invoke() is null || !TryGetCorrectionInputBitmap(out var original))
+            return new ArtworkCalibrationMeasurements(blackColor, whiteColor, sampleColors);
+
+        var index = artwork.ProcessingPipeline.Operations.ToList().FindIndex(candidate => candidate.Id == operation.Id);
+        using var evaluatedInput = index > 0
+            ? new FaceArtworkProcessingPipeline().Evaluate(original, artwork.ProcessingPipeline, index)
+            : null;
+        var input = evaluatedInput ?? original;
+        FaceArtworkProcessingPipeline.TryResolveReferenceColors(input, operation, out blackColor, out whiteColor);
+        foreach (var sample in operation.BlackReference.Samples
+                     .Concat(operation.WhiteReference.Samples)
+                     .Concat(operation.SameColorGroups.SelectMany(group => group.Samples)))
+        {
+            sampleColors[sample.Id] = FaceArtworkProcessingPipeline.MeasureSampleHex(input, sample);
+        }
+
+        return new ArtworkCalibrationMeasurements(blackColor, whiteColor, sampleColors);
     }
 
     private bool TryGetCorrectionInputBitmap(out SKBitmap bitmap)
@@ -1008,7 +1036,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         return true;
     }
 
-    internal void SetFaceDocument(FaceDocumentModel model, PanelChangeEvent? faceChange = null, bool updateSerializedDocument = true)
+    internal void SetFaceDocument(
+        FaceDocumentModel model,
+        PanelChangeEvent? faceChange = null,
+        bool updateSerializedDocument = true,
+        bool affectsFacePreview = true)
     {
         ArgumentNullException.ThrowIfNull(model);
 
@@ -1019,6 +1051,10 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             _faceDocumentJson = GetFaceDocumentJson();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FaceDocumentJson)));
             ReconcileSelection();
+            if (affectsFacePreview)
+            {
+                FacePreviewChanged?.Invoke(new FacePreviewChangedEvent(DocumentId));
+            }
         }
 
         if (faceChange is PanelChangeEvent change)
@@ -1501,3 +1537,10 @@ public sealed record PanelVisualStateChangedEvent(
 public sealed record FaceVisualStateChangedEvent(
     Guid DocumentId,
     IReadOnlyCollection<string> ObjectIds);
+
+public sealed record FacePreviewChangedEvent(Guid DocumentId);
+
+internal sealed record ArtworkCalibrationMeasurements(
+    string? BlackColor,
+    string? WhiteColor,
+    IReadOnlyDictionary<string, string?> SampleColors);
