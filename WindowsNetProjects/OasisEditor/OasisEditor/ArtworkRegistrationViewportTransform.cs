@@ -2,35 +2,30 @@ using System.Windows;
 
 namespace OasisEditor;
 
-/// <summary>Maps normalized raw-artwork coordinates through a fitted image rectangle and an editor-only viewport.</summary>
+/// <summary>Maps Geometry's normalized coordinates through the shared actual-pixel viewport.</summary>
 public readonly record struct ArtworkRegistrationViewportTransform(double Zoom, double PanX, double PanY)
 {
-    public const double MinZoom = PanelViewportTransform.MinZoom;
-    public const double MaxZoom = PanelViewportTransform.MaxZoom;
-    public const double ZoomStep = PanelViewportTransform.ZoomStep;
+    public const double MinZoom = EditorViewportTransform.MinZoom;
+    public const double MaxZoom = EditorViewportTransform.MaxZoom;
+    public const double ZoomStep = EditorViewportTransform.ZoomStep;
+    private EditorViewportTransform Core => new(Zoom, PanX, PanY);
 
-    public static ArtworkRegistrationViewportTransform Fit => new(1d, 0d, 0d);
-
-    public double NormalizedZoom => Math.Clamp(Zoom, MinZoom, MaxZoom);
-
-    public Rect ImageRect(Rect fittedImageRect)
+    public static ArtworkRegistrationViewportTransform FitTo(Rect viewport, double width, double height, double dpiX, double dpiY)
     {
-        var center = new Point(fittedImageRect.X + (fittedImageRect.Width / 2d), fittedImageRect.Y + (fittedImageRect.Height / 2d));
-        var width = fittedImageRect.Width * NormalizedZoom;
-        var height = fittedImageRect.Height * NormalizedZoom;
-        return new Rect(center.X - (width / 2d) + PanX, center.Y - (height / 2d) + PanY, width, height);
+        var fit = EditorViewportTransform.Fit(viewport, width, height, dpiX, dpiY);
+        return new(fit.Zoom, 0, 0);
     }
 
-    public Point NormalizedToScreen(Point normalizedPoint, Rect fittedImageRect)
-    {
-        var imageRect = ImageRect(fittedImageRect);
-        return new Point(imageRect.X + (normalizedPoint.X * imageRect.Width), imageRect.Y + (normalizedPoint.Y * imageRect.Height));
-    }
+    public Rect ImageRect(Rect viewport, double width, double height, double dpiX, double dpiY) =>
+        Core.ContentRect(viewport, width, height, dpiX, dpiY);
 
-    public Point ScreenToNormalized(Point screenPoint, Rect fittedImageRect)
+    public Point NormalizedToScreen(Point point, Rect viewport, double width, double height, double dpiX, double dpiY) =>
+        Core.ContentToScreen(new Point(point.X * width, point.Y * height), viewport, width, height, dpiX, dpiY);
+
+    public Point ScreenToNormalized(Point point, Rect viewport, double width, double height, double dpiX, double dpiY)
     {
-        var imageRect = ImageRect(fittedImageRect);
-        return new Point((screenPoint.X - imageRect.X) / imageRect.Width, (screenPoint.Y - imageRect.Y) / imageRect.Height);
+        var content = Core.ScreenToContent(point, viewport, width, height, dpiX, dpiY);
+        return new Point(content.X / width, content.Y / height);
     }
 
     public ArtworkRegistrationViewportTransform WithPannedBy(Vector delta) => this with
@@ -39,18 +34,9 @@ public readonly record struct ArtworkRegistrationViewportTransform(double Zoom, 
         PanY = PanY + delta.Y
     };
 
-    public ArtworkRegistrationViewportTransform WithZoomAt(Point pivotScreenPoint, double wheelDelta, Rect fittedImageRect)
+    public ArtworkRegistrationViewportTransform WithZoomAt(Point pivot, double newZoom, Rect viewport, double width, double height, double dpiX, double dpiY)
     {
-        var sourcePoint = ScreenToNormalized(pivotScreenPoint, fittedImageRect);
-        var factor = wheelDelta > 0 ? ZoomStep : 1d / ZoomStep;
-        var newZoom = Math.Clamp(NormalizedZoom * factor, MinZoom, MaxZoom);
-        if (Math.Abs(newZoom - NormalizedZoom) < 0.0001d) return this with { Zoom = newZoom };
-
-        var unpanned = new ArtworkRegistrationViewportTransform(newZoom, 0d, 0d)
-            .NormalizedToScreen(sourcePoint, fittedImageRect);
-        return new ArtworkRegistrationViewportTransform(
-            newZoom,
-            pivotScreenPoint.X - unpanned.X,
-            pivotScreenPoint.Y - unpanned.Y);
+        var next = Core.WithZoomAt(pivot, newZoom, viewport, width, height, dpiX, dpiY);
+        return new(next.Zoom, next.PanX, next.PanY);
     }
 }
