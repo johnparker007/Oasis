@@ -219,18 +219,12 @@ public sealed class DocumentSaveService : IDocumentSaveService
             return null;
         }
 
-        return new FaceArtworkModel
-        {
-            Id = artwork.Id,
-            Source = artwork.Source,
-            Geometry = artwork.Geometry,
-            ProcessingPipeline = artwork.ProcessingPipeline,
-            CorrectionInputAssetPath = FaceArtworkGeneratedPathService.GetCorrectionInputPathFromOutput(generatedAssetPath).Replace('\\', '/'),
-            BaseAssetPath = FaceArtworkGeneratedPathService.GetBasePathFromOutput(generatedAssetPath).Replace('\\', '/'),
-            OutputAssetPath = generatedAssetPath,
-            OutputWidth = artwork.OutputWidth > 0 ? artwork.OutputWidth : Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Width ?? 1)),
-            OutputHeight = artwork.OutputHeight > 0 ? artwork.OutputHeight : Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Height ?? 1))
-        };
+        return FaceDocumentCopy.WithGeneratedPaths(artwork,
+            FaceArtworkGeneratedPathService.GetCorrectionInputPathFromOutput(generatedAssetPath).Replace('\\', '/'),
+            FaceArtworkGeneratedPathService.GetBasePathFromOutput(generatedAssetPath).Replace('\\', '/'),
+            generatedAssetPath,
+            artwork.OutputWidth > 0 ? artwork.OutputWidth : Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Width ?? 1)),
+            artwork.OutputHeight > 0 ? artwork.OutputHeight : Math.Max(1, (int)Math.Ceiling(faceDocument.SourceRegion?.Height ?? 1)));
     }
 
     private static void CopyOrCreatePng(EditorProject project, string? sourceAssetPath, string destinationPath, FaceDocumentModel faceDocument)

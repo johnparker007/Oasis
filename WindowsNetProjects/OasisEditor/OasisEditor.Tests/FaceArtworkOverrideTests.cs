@@ -12,12 +12,79 @@ public sealed class FaceArtworkOverrideTests : IDisposable
     [Fact]
     public void Serialization_RoundTripsOverrideRecipe()
     {
-        var expected=new FaceArtworkOverrideModel{Enabled=false,AssetPath="Assets/Faces/Glass/ArtworkOverride/override.png",PixelWidth=4000,PixelHeight=6000,X=-.01,Y=.005,Width=1.025,Height=.995,ContentRevision=7};
+        var expected=new FaceArtworkOverrideModel{Enabled=false,AssetPath="Assets/Faces/Glass/ArtworkOverride/override.png",PixelWidth=4000,PixelHeight=6000,
+            PerspectiveRegistration=new FacePerspectiveRegistrationModel{TopLeft=P(.1,.2),TopRight=P(.9,.1),BottomRight=P(.8,.9),BottomLeft=P(.2,.8)},X=-.01,Y=.005,Width=1.025,Height=.995,ContentRevision=7};
         Assert.True(FaceDocumentStorage.TryRead(FaceDocumentStorage.Serialize(new FaceDocumentModel{Title="Glass",Artwork=new FaceArtworkModel{Override=expected}}),out var file));
         var model=FaceDocumentStorage.ToModel(file);
         var actual=Assert.IsType<FaceArtworkOverrideModel>(model.Artwork!.Override);
         Assert.Equal(expected.Enabled,actual.Enabled);Assert.Equal(expected.AssetPath,actual.AssetPath);Assert.Equal(expected.PixelWidth,actual.PixelWidth);Assert.Equal(expected.PixelHeight,actual.PixelHeight);
         Assert.Equal(expected.X,actual.X);Assert.Equal(expected.Y,actual.Y);Assert.Equal(expected.Width,actual.Width);Assert.Equal(expected.Height,actual.Height);Assert.Equal(7,actual.ContentRevision);
+        Assert.Equal((.1,.2),(actual.PerspectiveRegistration.TopLeft.X,actual.PerspectiveRegistration.TopLeft.Y));
+        Assert.Equal((.9,.1),(actual.PerspectiveRegistration.TopRight.X,actual.PerspectiveRegistration.TopRight.Y));
+        Assert.Equal((.8,.9),(actual.PerspectiveRegistration.BottomRight.X,actual.PerspectiveRegistration.BottomRight.Y));
+        Assert.Equal((.2,.8),(actual.PerspectiveRegistration.BottomLeft.X,actual.PerspectiveRegistration.BottomLeft.Y));
+        Assert.Equal(21,FaceDocumentStorage.CurrentSchemaVersion);
+    }
+
+    [Fact]
+    public void Override_DefaultsToFullImageAndRejectsCrossedRegistration()
+    {
+        var value=new FaceArtworkOverrideModel{AssetPath="override.png",PixelWidth=10,PixelHeight=10};
+        Assert.Equal((0d,0d),(value.PerspectiveRegistration.TopLeft.X,value.PerspectiveRegistration.TopLeft.Y));
+        Assert.True(value.IsValid());
+        var invalid=new FaceArtworkOverrideModel{AssetPath="override.png",PixelWidth=10,PixelHeight=10,
+            PerspectiveRegistration=new FacePerspectiveRegistrationModel{TopLeft=P(0,0),TopRight=P(1,1),BottomRight=P(1,0),BottomLeft=P(0,1)}};
+        Assert.False(invalid.IsValid());
+    }
+
+    [Fact]
+    public void Storage_RejectsPreviousSchema()
+    {
+        var json=FaceDocumentStorage.Serialize(new FaceDocumentModel()).Replace("\"SchemaVersion\": 21","\"SchemaVersion\": 20");
+        Assert.False(FaceDocumentStorage.TryRead(json,out _));
+    }
+
+    [Fact]
+    public void InteractivePreviewSize_IsBoundedWithoutChangingUsefulAspectRatio()
+    {
+        var registration=new FacePerspectiveRegistrationModel{TopLeft=P(.1,.2),TopRight=P(.8,.2),BottomRight=P(.8,.7),BottomLeft=P(.1,.7)};
+        var useful=FaceSourceShapeTransformService.EstimateRegisteredImageOutputSize(8000,6000,registration);
+        var preview=FaceArtworkOverridePreviewService.DeterminePreviewSize(8000,6000,registration);
+        Assert.True(Math.Max(preview.Width,preview.Height)<=FaceArtworkOverridePreviewService.MaximumPreviewDimension);
+        Assert.Equal(useful.Width/(double)useful.Height,preview.Width/(double)preview.Height,2);
+        Assert.True(useful.Width>preview.Width);
+    }
+
+    [Fact]
+    public void InteractivePreview_UsesExplicitDimensionsAndPreservesAlpha()
+    {
+        Directory.CreateDirectory(_root);var path=Path.Combine(_root,"preview.png");
+        Write(path,80,40,(x,_)=>x<40?new SKColor(255,0,0,128):SKColors.Transparent);
+        var value=new FaceArtworkOverrideModel{AssetPath=path,PixelWidth=80,PixelHeight=40};
+        var result=FaceArtworkOverridePreviewService.Generate(path,value,CancellationToken.None,20);
+        Assert.Equal((20,10),(result.Width,result.Height));
+        using var output=SKBitmap.Decode(result.PngBytes);Assert.InRange(output.GetPixel(2,5).Alpha,(byte)120,(byte)136);Assert.Equal((byte)0,output.GetPixel(18,5).Alpha);
+    }
+
+    [Fact]
+    public void InteractivePreview_HonoursSupersedingCancellation()
+    {
+        Directory.CreateDirectory(_root);var path=Path.Combine(_root,"cancel.png");Write(path,20,20,(_,_)=>SKColors.Red);
+        using var cancellation=new CancellationTokenSource();cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(()=>FaceArtworkOverridePreviewService.Generate(path,
+            new FaceArtworkOverrideModel{AssetPath=path,PixelWidth=20,PixelHeight=20},cancellation.Token,20));
+    }
+
+    [Fact]
+    public void PreviewIdentity_ExcludesAlignmentButIncludesGeometryRevisionAndCap()
+    {
+        var registration=new FacePerspectiveRegistrationModel{TopLeft=P(.1,.1),TopRight=P(.9,.1),BottomRight=P(.9,.9),BottomLeft=P(.1,.9)};
+        var first=FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,registration,1000);
+        var alignmentOnly=DocumentTabViewModel.CopyOverride(new FaceArtworkOverrideModel{AssetPath="override.png",PixelWidth=10,PixelHeight=10,PerspectiveRegistration=registration},x:.2,y:.3,width:.8,height:.7);
+        Assert.Equal(first,FaceArtworkOverridePreviewService.CreateCacheKey(alignmentOnly.AssetPath,4,alignmentOnly.PerspectiveRegistration,1000));
+        Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",5,registration,1000));
+        Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,FacePerspectiveRegistrationModel.FullImage,1000));
+        Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,registration,800));
     }
 
     [Fact]
@@ -45,14 +112,29 @@ public sealed class FaceArtworkOverrideTests : IDisposable
     }
 
     [Fact]
+    public void FinalizeOutput_RectifiesSelectedPhotographRegionBeforeCompositing()
+    {
+        Directory.CreateDirectory(_root);var basePath=Path.Combine(_root,"base.png");var sourcePath=Path.Combine(_root,"photo.png");var outputPath=Path.Combine(_root,"artwork.png");
+        Write(basePath,2,2,(_,_)=>SKColors.Black);
+        Write(sourcePath,12,10,(x,y)=>x>=2&&x<=9&&y>=2&&y<=7?SKColors.Red:SKColors.Lime);
+        var registration=new FacePerspectiveRegistrationModel{TopLeft=P(2d/12,2d/10),TopRight=P(10d/12,2d/10),BottomRight=P(10d/12,8d/10),BottomLeft=P(2d/12,8d/10)};
+        var recipe=new FaceArtworkModel{BaseAssetPath=basePath,OutputAssetPath=outputPath,Override=new FaceArtworkOverrideModel{AssetPath=sourcePath,PixelWidth=12,PixelHeight=10,PerspectiveRegistration=registration}};
+        Assert.True(new FaceArtworkRebuildService().FinalizeOutput(recipe,_root).Succeeded);
+        using var output=SKBitmap.Decode(outputPath);
+        Assert.Equal(8,output.Width);Assert.Equal(6,output.Height);Assert.Equal(SKColors.Red,output.GetPixel(output.Width/2,output.Height/2));
+        Assert.NotEqual(SKColors.Lime,output.GetPixel(0,0));
+    }
+
+    [Fact]
     public void AssetService_CreateFromBaseAndReloadAfterUpscale_PreservesAlignment()
     {
         var project=Project();var basePath=Path.Combine(project.GeneratedDirectory,"base.png");Directory.CreateDirectory(project.GeneratedDirectory);Write(basePath,2,3,(_,_)=>SKColors.Green);
         var recipe=new FaceArtworkModel{BaseAssetPath=Path.GetRelativePath(_root,basePath)};var created=FaceArtworkOverrideAssetService.CreateFromBase(recipe,project,"Top Glass");
         Assert.StartsWith("Assets/Faces/Top Glass/ArtworkOverride/",created.AssetPath);Assert.Equal((0d,0d,1d,1d),(created.X,created.Y,created.Width,created.Height));
         var authored=Path.Combine(_root,created.AssetPath.Replace('/',Path.DirectorySeparatorChar));Write(authored,8,12,(_,_)=>SKColors.Green);
-        var reloaded=FaceArtworkOverrideAssetService.Reload(new FaceArtworkOverrideModel{Enabled=true,AssetPath=created.AssetPath,PixelWidth=2,PixelHeight=3,X=-.1,Y=.2,Width=1.1,Height=.9,ContentRevision=8},project);
-        Assert.Equal((8,12),(reloaded.PixelWidth,reloaded.PixelHeight));Assert.Equal((-.1,.2,1.1,.9),(reloaded.X,reloaded.Y,reloaded.Width,reloaded.Height));Assert.Equal(9,reloaded.ContentRevision);
+        var retained=new FacePerspectiveRegistrationModel{TopLeft=P(.1,.1),TopRight=P(.9,.1),BottomRight=P(.9,.9),BottomLeft=P(.1,.9)};
+        var reloaded=FaceArtworkOverrideAssetService.Reload(new FaceArtworkOverrideModel{Enabled=true,AssetPath=created.AssetPath,PixelWidth=2,PixelHeight=3,PerspectiveRegistration=retained,X=-.1,Y=.2,Width=1.1,Height=.9,ContentRevision=8},project);
+        Assert.Equal((8,12),(reloaded.PixelWidth,reloaded.PixelHeight));Assert.Equal((-.1,.2,1.1,.9),(reloaded.X,reloaded.Y,reloaded.Width,reloaded.Height));Assert.Equal(9,reloaded.ContentRevision);Assert.Same(retained,reloaded.PerspectiveRegistration);
         var state=FaceBuildStateFactory.CreateGeneratedState(true,true,true,true,true);new FaceBuildService().Invalidate(state,FaceBuildInput.ArtworkOverride);
         Assert.Equal(FaceBuildStatus.Stale,state.Get(FaceGeneratedProduct.ArtworkOutput).Status);
     }
@@ -66,6 +148,14 @@ public sealed class FaceArtworkOverrideTests : IDisposable
         Write(path,2,2,(_,_)=>SKColors.Blue);
         var second=Assert.IsType<System.Windows.Media.Imaging.BitmapImage>(ReloadableBitmapImageLoader.Load(path));
         Assert.NotSame(first,second);Assert.Equal((byte)0,Red(second));
+    }
+
+    [Fact]
+    public void PreviewLoader_BoundsDecodeWhilePreservingAspectRatio()
+    {
+        var path=Path.Combine(_root,"large-preview.png");Write(path,400,100,(_,_)=>SKColors.Red);
+        var preview=Assert.IsType<System.Windows.Media.Imaging.BitmapImage>(ReloadableBitmapImageLoader.Load(path,100));
+        Assert.Equal((100,25),(preview.PixelWidth,preview.PixelHeight));
     }
 
     [Fact]
@@ -89,5 +179,6 @@ public sealed class FaceArtworkOverrideTests : IDisposable
     private EditorProject Project(){var assets=Path.Combine(_root,"Assets");var generated=Path.Combine(_root,"Generated");Directory.CreateDirectory(assets);return new EditorProject{Name="Test",ProjectDirectory=_root,ProjectFilePath=Path.Combine(_root,"test.oasisproj"),AssetsDirectory=assets,GeneratedDirectory=generated,MachinesDirectory=Path.Combine(_root,"Machines")};}
     private static void Write(string path,int width,int height,Func<int,int,SKColor> pixel){Directory.CreateDirectory(Path.GetDirectoryName(path)!);using var bitmap=new SKBitmap(width,height);for(var y=0;y<height;y++)for(var x=0;x<width;x++)bitmap.SetPixel(x,y,pixel(x,y));using var image=SKImage.FromBitmap(bitmap);using var data=image.Encode(SKEncodedImageFormat.Png,100);using var stream=File.Create(path);data.SaveTo(stream);}
     private static byte Red(System.Windows.Media.Imaging.BitmapSource source){var converted=new System.Windows.Media.Imaging.FormatConvertedBitmap(source,PixelFormats.Bgra32,null,0);var pixels=new byte[4];converted.CopyPixels(new System.Windows.Int32Rect(0,0,1,1),pixels,4,0);return pixels[2];}
+    private static NormalizedFacePointModel P(double x,double y)=>new(){X=x,Y=y};
     public void Dispose(){if(Directory.Exists(_root))Directory.Delete(_root,true);}
 }

@@ -207,6 +207,36 @@ public sealed class FaceWorkspaceViewModelTests
         Assert.Contains(nameof(FaceWorkspaceViewModel.Panel2DSourceAvailability), changed);
     }
 
+    [Fact]
+    public void OverrideGeometry_HasDedicatedBreadcrumbAndUndoableRecipeMutation()
+    {
+        var model = new FaceDocumentModel { Title="Upper Glass", Artwork=new FaceArtworkModel { Override=new FaceArtworkOverrideModel { AssetPath="override.png", PixelWidth=100, PixelHeight=50 } } };
+        var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Upper Glass"), faceDocumentJson:FaceDocumentStorage.Serialize(model));
+        var workspace = Assert.IsType<FaceWorkspaceViewModel>(document.FaceWorkspace);
+        workspace.NavigateToArtworkOverrideGeometryCommand.Execute(null);
+        Assert.Equal(["Upper Glass","Artwork","Override","Geometry"], workspace.Breadcrumbs.Select(item=>item.Label));
+        var changed = new FacePerspectiveRegistrationModel { TopLeft=new(){X=.1,Y=.1}, TopRight=new(){X=.9,Y=.1}, BottomRight=new(){X=.9,Y=.9}, BottomLeft=new(){X=.1,Y=.9} };
+        workspace.CommitGeometryRegistration(changed);
+        Assert.Null(workspace.ArtworkOverrideAbsolutePath); // Geometry commits invalidate only; preview work is deferred until Alignment.
+        Assert.Equal(.1,document.GetFaceDocument().Artwork!.Override!.PerspectiveRegistration.TopLeft.X);
+        Assert.True(document.CommandService.TryUndo());
+        Assert.Equal(0,document.GetFaceDocument().Artwork!.Override!.PerspectiveRegistration.TopLeft.X);
+        Assert.True(document.CommandService.TryRedo());
+        Assert.Equal(.1,document.GetFaceDocument().Artwork!.Override!.PerspectiveRegistration.TopLeft.X);
+    }
+
+    [Fact]
+    public void ImportedOverride_NavigatesToGeometryWithoutRequestingAlignmentPreview()
+    {
+        var model=new FaceDocumentModel{Title="Upper Glass",Artwork=new FaceArtworkModel{Override=new FaceArtworkOverrideModel{AssetPath="override.png",PixelWidth=100,PixelHeight=50}}};
+        var document=new DocumentTabViewModel(EditorDocument.CreateFaceStub(model.Title),faceDocumentJson:FaceDocumentStorage.Serialize(model));
+        var workspace=Assert.IsType<FaceWorkspaceViewModel>(document.FaceWorkspace);
+        workspace.NavigateToImportedOverrideGeometry();
+        Assert.Equal(FaceWorkspaceDestination.ArtworkOverrideGeometry,workspace.Destination);
+        Assert.Null(workspace.ArtworkOverrideAbsolutePath);
+        Assert.False(workspace.IsOverridePreviewLoading);
+    }
+
     private static CalibrationPlacementState Placement() =>
         new("calibration", CalibrationPlacementTargetKind.BlackReference, string.Empty, CalibrationSamplingMode.Pixel, .01);
 

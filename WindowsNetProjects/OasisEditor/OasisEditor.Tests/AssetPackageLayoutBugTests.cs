@@ -112,6 +112,51 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         Assert.Null(saved.GetFaceDocument().RuntimeRenderAssets);
     }
 
+    [Fact]
+    public void SaveDocument_PreservesCompleteArtworkOverrideRecipeAndAuthoredAsset()
+    {
+        var project=CreateProject();
+        var overridePath=Path.Combine(project.AssetsDirectory,"Faces","Source Face","ArtworkOverride","override.png");
+        WriteSolidPng(overridePath,40,20,SKColors.Magenta);
+        var registration=new FacePerspectiveRegistrationModel
+        {
+            TopLeft=new(){X=.1,Y=.2},TopRight=new(){X=.85,Y=.1},
+            BottomRight=new(){X=.9,Y=.8},BottomLeft=new(){X=.15,Y=.9}
+        };
+        var model=new FaceDocumentModel
+        {
+            Title="Source Face",SourceRegion=new FaceSourceRegionModel{Width=4,Height=2},
+            Artwork=new FaceArtworkModel
+            {
+                Source=new FaceArtworkSourceModel{Kind=FaceArtworkSourceKind.Image,AssetPath="Assets/source.png",PixelWidth=4,PixelHeight=2},
+                Geometry=new FaceArtworkGeometryModel{PerspectiveRegistration=FacePerspectiveRegistrationModel.FullImage},
+                ProcessingPipeline=new ImageProcessingPipelineModel(),OutputWidth=4,OutputHeight=2,
+                FinalOutputWidth=4000,FinalOutputHeight=2000,
+                Override=new FaceArtworkOverrideModel
+                {
+                    Enabled=false,AssetPath="Assets/Faces/Source Face/ArtworkOverride/override.png",PixelWidth=40,PixelHeight=20,
+                    PerspectiveRegistration=registration,X=-.05,Y=.07,Width=1.1,Height=.93,ContentRevision=12
+                }
+            }
+        };
+        var current=new DocumentTabViewModel(EditorDocument.CreateFaceStub(model.Title).MarkDirty(),faceDocumentJson:FaceDocumentStorage.Serialize(model));
+        var savePath=Path.Combine(project.AssetsDirectory,"Faces","Saved Override","asset.face");
+
+        var saved=new DocumentSaveService().SaveDocument(current,savePath,project);
+        Assert.True(FaceDocumentStorage.TryReadValidated(File.ReadAllText(savePath),out var file,out var error),error);
+        var persisted=FaceDocumentStorage.ToModel(file);var artwork=Assert.IsType<FaceArtworkModel>(persisted.Artwork);
+        var value=Assert.IsType<FaceArtworkOverrideModel>(artwork.Override);
+        Assert.False(value.Enabled);Assert.Equal((40,20),(value.PixelWidth,value.PixelHeight));Assert.Equal(12,value.ContentRevision);
+        Assert.Equal((-.05,.07,1.1,.93),(value.X,value.Y,value.Width,value.Height));
+        Assert.Equal((.1,.2),(value.PerspectiveRegistration.TopLeft.X,value.PerspectiveRegistration.TopLeft.Y));
+        Assert.Equal((.85,.1),(value.PerspectiveRegistration.TopRight.X,value.PerspectiveRegistration.TopRight.Y));
+        Assert.Equal((.9,.8),(value.PerspectiveRegistration.BottomRight.X,value.PerspectiveRegistration.BottomRight.Y));
+        Assert.Equal((.15,.9),(value.PerspectiveRegistration.BottomLeft.X,value.PerspectiveRegistration.BottomLeft.Y));
+        Assert.Equal((4000,2000),(artwork.FinalOutputWidth,artwork.FinalOutputHeight));
+        Assert.Equal("Assets/Faces/Source Face/ArtworkOverride/override.png",value.AssetPath);
+        Assert.True(File.Exists(overridePath));using(var source=SKBitmap.Decode(overridePath))Assert.Equal(SKColors.Magenta,source.GetPixel(0,0));Assert.NotNull(saved.GetFaceDocument().Artwork?.Override);
+    }
+
 
     [Fact]
     public void GenerateFaceFromSourceShape_WritesPendingArtworkWithSourcePixelsBeforeFirstSave()

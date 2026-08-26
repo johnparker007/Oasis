@@ -49,6 +49,30 @@ internal static class PerspectiveRasterizer
         return output;
     }
 
+    /// <summary>Responsive display-only warp using native Skia perspective drawing and bilinear filtering.</summary>
+    public static SKBitmap RectifyPreview(SKBitmap source, IReadOnlyList<FacePointModel> sourceQuad, int width, int height,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (sourceQuad.Count != 4) throw new ArgumentException("A perspective quad must have four corners.", nameof(sourceQuad));
+        if (width <= 0 || height <= 0) throw new ArgumentOutOfRangeException(nameof(width));
+        var output = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+        output.Erase(SKColors.Transparent);
+        if (!FaceSourceShapeTransformService.TryCreateHomography(sourceQuad,
+                FaceSourceShapeTransformService.CreateFaceCorners(width, height), out var sourceToDestination)) return output;
+        cancellationToken.ThrowIfCancellationRequested();
+        var matrix = new SKMatrix
+        {
+            ScaleX=(float)sourceToDestination[0], SkewX=(float)sourceToDestination[1], TransX=(float)sourceToDestination[2],
+            SkewY=(float)sourceToDestination[3], ScaleY=(float)sourceToDestination[4], TransY=(float)sourceToDestination[5],
+            Persp0=(float)sourceToDestination[6], Persp1=(float)sourceToDestination[7], Persp2=(float)sourceToDestination[8]
+        };
+        using(var canvas=new SKCanvas(output))using(var paint=new SKPaint{IsAntialias=true,FilterQuality=SKFilterQuality.Low})
+        {canvas.SetMatrix(matrix);canvas.DrawBitmap(source,0,0,paint);canvas.Flush();}
+        cancellationToken.ThrowIfCancellationRequested();
+        return output;
+    }
+
     internal static SKColor SampleBicubic(SKBitmap source, double x, double y)
     {
         var sample = SampleBicubicPremultiplied(source, x, y);

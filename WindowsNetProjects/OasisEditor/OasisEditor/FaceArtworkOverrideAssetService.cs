@@ -9,7 +9,9 @@ internal static class FaceArtworkOverrideAssetService
         FaceArtworkOverrideModel? alignment = null)
     {
         if (!File.Exists(sourcePath)) throw new FileNotFoundException("Artwork Override image was not found.", sourcePath);
-        using var bitmap = SKBitmap.Decode(sourcePath) ?? throw new InvalidDataException("Artwork Override image could not be decoded.");
+        int width;int height;
+        using (var codec = SKCodec.Create(sourcePath) ?? throw new InvalidDataException("Artwork Override image could not be inspected."))
+        {width=codec.Info.Width;height=codec.Info.Height;}
         var safeFace = new ProjectAssetPathService().SanitizePathSegment(faceName);
         var directory = Path.Combine(project.AssetsDirectory, "Faces", safeFace, "ArtworkOverride");
         Directory.CreateDirectory(directory);
@@ -17,7 +19,7 @@ internal static class FaceArtworkOverrideAssetService
         var destination = Path.Combine(directory, $"override{extension}");
         if (!Path.GetFullPath(sourcePath).Equals(Path.GetFullPath(destination), StringComparison.OrdinalIgnoreCase))
             File.Copy(sourcePath, destination, true);
-        return Create(destination, project, bitmap.Width, bitmap.Height, alignment);
+        return Create(destination, project, width, height, alignment);
     }
 
     public static FaceArtworkOverrideModel CreateFromBase(FaceArtworkModel artwork, EditorProject project, string faceName)
@@ -30,10 +32,11 @@ internal static class FaceArtworkOverrideAssetService
     public static FaceArtworkOverrideModel Reload(FaceArtworkOverrideModel value, EditorProject project)
     {
         var path = FaceArtworkGeneratedPathService.Resolve(value.AssetPath, project.ProjectDirectory);
-        using var bitmap = SKBitmap.Decode(path) ?? throw new InvalidDataException("Artwork Override image could not be decoded.");
+        using var codec = SKCodec.Create(path) ?? throw new InvalidDataException("Artwork Override image could not be inspected.");
         return new FaceArtworkOverrideModel
         {
-            Enabled=value.Enabled, AssetPath=value.AssetPath, PixelWidth=bitmap.Width, PixelHeight=bitmap.Height,
+            Enabled=value.Enabled, AssetPath=value.AssetPath, PixelWidth=codec.Info.Width, PixelHeight=codec.Info.Height,
+            PerspectiveRegistration=value.PerspectiveRegistration,
             X=value.X, Y=value.Y, Width=value.Width, Height=value.Height, ContentRevision=value.ContentRevision + 1
         };
     }
@@ -44,6 +47,7 @@ internal static class FaceArtworkOverrideAssetService
         Enabled=true,
         AssetPath=ProjectAssetPathService.NormalizeProjectRelativePath(Path.GetRelativePath(project.ProjectDirectory, path)),
         PixelWidth=width, PixelHeight=height, X=alignment?.X ?? 0d, Y=alignment?.Y ?? 0d,
+        PerspectiveRegistration=FacePerspectiveRegistrationModel.FullImage,
         Width=alignment?.Width ?? 1d, Height=alignment?.Height ?? 1d,
         ContentRevision=(alignment?.ContentRevision ?? 0) + 1
     };

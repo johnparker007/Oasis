@@ -21,6 +21,16 @@ internal static class FaceDocumentCopy
         Override=artworkOverride, FinalOutputWidth=finalWidth ?? value.FinalOutputWidth,
         FinalOutputHeight=finalHeight ?? value.FinalOutputHeight
     };
+
+    /// <summary>Rewrites generated package paths without dropping any authored or built Artwork state.</summary>
+    public static FaceArtworkModel WithGeneratedPaths(FaceArtworkModel value, string correctionInputAssetPath,
+        string baseAssetPath, string outputAssetPath, int outputWidth, int outputHeight) => new()
+    {
+        Id=value.Id, Source=value.Source, Geometry=value.Geometry, ProcessingPipeline=value.ProcessingPipeline,
+        CorrectionInputAssetPath=correctionInputAssetPath, BaseAssetPath=baseAssetPath, OutputAssetPath=outputAssetPath,
+        OutputWidth=outputWidth, OutputHeight=outputHeight, Override=value.Override,
+        FinalOutputWidth=value.FinalOutputWidth, FinalOutputHeight=value.FinalOutputHeight
+    };
     public static FaceDocumentModel WithElementsAndComponents(FaceDocumentModel value,
         IReadOnlyList<FaceElementModel> elements, FaceSubsystemProvenanceModel components) => new()
     {

@@ -34,3 +34,9 @@ A single focused settings dialog remains behind contextual entry points rather t
 ## Explicit future work
 
 Lens/fisheye correction, curved-edge/fine registration, multiple Overrides, AI integration, file watching, automatic detection, source-history management, and a large tray polygon editor are not part of this overhaul.
+
+## Post-overhaul workflow refinement: Override Geometry
+
+Artwork Override now supports a semantic four-corner perspective registration before its existing Face-space alignment. The dedicated `Artwork > Override > Geometry` route edits the raw authored image; Alignment previews the rectified result over Base. FullImage registration preserves the natural no-op workflow for already-rectified replacements and Create From Base.
+
+This remains downstream of Base: Override source/geometry/alignment changes stale Artwork Output and its true downstream products, but do not stale Artwork Correction Input or Base Artwork. Rectification uses the shared quality perspective rasterizer during output generation, with useful selected-quad resolution driving final output sizing and no additional persisted generated stage.

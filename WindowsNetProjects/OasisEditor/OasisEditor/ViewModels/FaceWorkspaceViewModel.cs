@@ -13,6 +13,7 @@ public enum FaceWorkspaceDestination
     Overview,
     Artwork,
     ArtworkGeometry,
+    ArtworkOverrideGeometry,
     ArtworkCalibration,
     ArtworkOverride,
     Components,
@@ -27,6 +28,7 @@ public sealed record FaceWorkspaceBreadcrumb(string Label, ICommand? Command);
 /// <summary>Document-local, non-persisted navigation and read-only presentation for a Face.</summary>
 public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
 {
+    internal const int GeometryPreviewMaximumDecodeDimension = 2560;
     private readonly DocumentTabViewModel _document;
     private FaceWorkspaceDestination _destination = FaceWorkspaceDestination.Overview;
     private FaceComponentKind? _componentPlacementKind;
@@ -36,7 +38,16 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     private BitmapImage? _overridePreview;
     private string? _basePreviewPath;
     private string? _overridePreviewKey;
+    private string? _overridePreviewInputKey;
+    private CancellationTokenSource? _overridePreviewCancellation;
+    private long _overridePreviewGeneration;
+    private readonly SemaphoreSlim _overridePreviewGate = new(1,1);
+    private BitmapImage? _geometryRawImage;
+    private string? _geometryRawImageKey;
+    private CancellationTokenSource? _geometryRawImageCancellation;
+    private long _geometryRawImageGeneration;
     private bool _isBuildInProgress;
+    private bool _isOverridePreviewLoading;
 
     public FaceWorkspaceViewModel(DocumentTabViewModel document)
     {
@@ -46,6 +57,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         NavigateToArtworkGeometryCommand = Command(FaceWorkspaceDestination.ArtworkGeometry);
         NavigateToArtworkCalibrationCommand = Command(FaceWorkspaceDestination.ArtworkCalibration);
         NavigateToArtworkOverrideCommand = Command(FaceWorkspaceDestination.ArtworkOverride);
+        NavigateToArtworkOverrideGeometryCommand = Command(FaceWorkspaceDestination.ArtworkOverrideGeometry);
         NavigateToComponentsCommand = Command(FaceWorkspaceDestination.Components);
         NavigateToComponentsEditorCommand = Command(FaceWorkspaceDestination.ComponentsEditor);
         NavigateToIlluminationCommand = Command(FaceWorkspaceDestination.Illumination);
@@ -53,7 +65,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         NavigateToLayoutViewCommand = Command(FaceWorkspaceDestination.LayoutView);
         UseImageCommand = new RelayCommand(ChooseImage);
         UsePanel2DSourceCommand = new RelayCommand(UsePanel2DSource, () => CanUsePanel2DSource);
-        ReloadImageCommand = new RelayCommand(() => { _document.ReloadArtworkImage(); RefreshSummaries(); });
+        ReloadImageCommand = new RelayCommand(() => { _document.ReloadArtworkImage(); InvalidateGeometryRawImage(); RefreshSummaries(); });
         ResetRegistrationCommand = new RelayCommand(ResetRegistration);
         BuildFaceCommand = new RelayCommand(() => RunBuild(false), () => !_isBuildInProgress);
         RebuildFaceCommand = new RelayCommand(() => RunBuild(true), () => !_isBuildInProgress);
@@ -67,7 +79,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         AddLampCommand = new RelayCommand(() => { NavigateTo(FaceWorkspaceDestination.IlluminationLamps); _isLampPlacementActive=true; Raise(nameof(IsLampPlacementActive)); Raise(nameof(LampEditorStatus)); });
         CreateOverrideFromBaseCommand=new RelayCommand(CreateOverrideFromBase);
         ImportOverrideCommand=new RelayCommand(()=>ChooseOverride(false)); ReplaceOverrideCommand=new RelayCommand(()=>ChooseOverride(true));
-        ReloadOverrideCommand=new RelayCommand(()=>{if(!_document.ReloadArtworkOverride(out var error))ShowOverrideError(error);else RefreshArtworkPreviews(false,true);RefreshSummaries();});
+        ReloadOverrideCommand=new RelayCommand(()=>{if(!_document.ReloadArtworkOverride(out var error))ShowOverrideError(error);RefreshSummaries();});
         ToggleOverrideCommand=new RelayCommand(ToggleOverride); RemoveOverrideCommand=new RelayCommand(()=>{_document.SetArtworkOverride(null,"Remove Artwork Override");RefreshSummaries();});
         ResetOverrideAlignmentCommand=new RelayCommand(()=>CommitOverrideAlignment(0,0,1,1,"Reset Artwork Override alignment"));
         DoneOverrideAlignmentCommand=NavigateToArtworkCommand;
@@ -82,13 +94,14 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         FaceWorkspaceDestination.ArtworkGeometry => "Geometry",
         FaceWorkspaceDestination.ArtworkCalibration => "Calibration",
         FaceWorkspaceDestination.ArtworkOverride => "Override",
+        FaceWorkspaceDestination.ArtworkOverrideGeometry => "Geometry",
         FaceWorkspaceDestination.ComponentsEditor => "Edit",
         FaceWorkspaceDestination.IlluminationLamps => "Lamps",
         FaceWorkspaceDestination.LayoutView => "Layout View",
         _ => _destination.ToString()
     };
     public IReadOnlyList<FaceWorkspaceBreadcrumb> Breadcrumbs => BuildBreadcrumbs();
-    public bool IsViewportDestination => _destination is FaceWorkspaceDestination.ArtworkGeometry or FaceWorkspaceDestination.ArtworkCalibration or FaceWorkspaceDestination.ArtworkOverride
+    public bool IsViewportDestination => _destination is FaceWorkspaceDestination.ArtworkGeometry or FaceWorkspaceDestination.ArtworkOverrideGeometry or FaceWorkspaceDestination.ArtworkCalibration or FaceWorkspaceDestination.ArtworkOverride
         or FaceWorkspaceDestination.ComponentsEditor or FaceWorkspaceDestination.IlluminationLamps
         or FaceWorkspaceDestination.LayoutView;
     public ICommand NavigateToOverviewCommand { get; }
@@ -96,6 +109,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public ICommand NavigateToArtworkGeometryCommand { get; }
     public ICommand NavigateToArtworkCalibrationCommand { get; }
     public ICommand NavigateToArtworkOverrideCommand { get; }
+    public ICommand NavigateToArtworkOverrideGeometryCommand { get; }
     public ICommand NavigateToComponentsCommand { get; }
     public ICommand NavigateToComponentsEditorCommand { get; }
     public ICommand NavigateToIlluminationCommand { get; }
@@ -123,6 +137,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public ICommand RemoveOverrideCommand { get; }
     public ICommand ResetOverrideAlignmentCommand { get; }
     public ICommand DoneOverrideAlignmentCommand { get; }
+    public ICommand DoneGeometryCommand => IsEditingOverrideGeometry ? NavigateToArtworkOverrideCommand : NavigateToArtworkCommand;
     public double OverridePreviewOpacity { get=>_overridePreviewOpacity; set { _overridePreviewOpacity=Math.Clamp(value,0d,1d);Raise(nameof(OverridePreviewOpacity)); } }
     public bool IsLampPlacementActive => _isLampPlacementActive;
     public string LampEditorStatus => _isLampPlacementActive ? "Place Lamp: click and drag bounds; Escape cancels." : "Select lamps in the viewport or Hierarchy, or choose Add Lamp.";
@@ -170,11 +185,12 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     }
 
     private void CreateOverrideFromBase(){if(!_document.CreateArtworkOverrideFromBase(out var error))ShowOverrideError(error);else NavigateTo(FaceWorkspaceDestination.ArtworkOverride);RefreshSummaries();}
-    private void ChooseOverride(bool replace){var dialog=new OpenFileDialog{Title=replace?"Replace Artwork Override":"Import Artwork Override",Filter="Image files|*.png;*.jpg;*.jpeg;*.webp;*.bmp|All files|*.*",CheckFileExists=true};if(dialog.ShowDialog()!=true)return;if(!_document.ImportArtworkOverride(dialog.FileName,replace,out var error))ShowOverrideError(error);else NavigateTo(FaceWorkspaceDestination.ArtworkOverride);RefreshSummaries();}
+    private void ChooseOverride(bool replace){var dialog=new OpenFileDialog{Title=replace?"Replace Artwork Override":"Import Artwork Override",Filter="Image files|*.png;*.jpg;*.jpeg;*.webp;*.bmp|All files|*.*",CheckFileExists=true};if(dialog.ShowDialog()!=true)return;if(!_document.ImportArtworkOverride(dialog.FileName,replace,out var error)){ShowOverrideError(error);return;}NavigateToImportedOverrideGeometry();}
+    internal void NavigateToImportedOverrideGeometry(){RefreshSummaries();NavigateTo(FaceWorkspaceDestination.ArtworkOverrideGeometry);}
     private static void ShowOverrideError(string? error)=>MessageBox.Show(error??"The Artwork Override operation failed.","Artwork Override",MessageBoxButton.OK,MessageBoxImage.Error);
-    private void ToggleOverride(){var value=ArtworkOverride;if(value is null)return;CommitOverride(new FaceArtworkOverrideModel{Enabled=!value.Enabled,AssetPath=value.AssetPath,PixelWidth=value.PixelWidth,PixelHeight=value.PixelHeight,X=value.X,Y=value.Y,Width=value.Width,Height=value.Height,ContentRevision=value.ContentRevision},value.Enabled?"Disable Artwork Override":"Enable Artwork Override");}
+    private void ToggleOverride(){var value=ArtworkOverride;if(value is null)return;CommitOverride(DocumentTabViewModel.CopyOverride(value,enabled:!value.Enabled),value.Enabled?"Disable Artwork Override":"Enable Artwork Override");}
     private void CommitOverride(FaceArtworkOverrideModel value,string description){_document.SetArtworkOverride(value,description);RefreshSummaries();}
-    public void CommitOverrideAlignment(double x,double y,double width,double height,string description="Align Artwork Override"){var value=ArtworkOverride;if(value is null)return;CommitOverride(new FaceArtworkOverrideModel{Enabled=value.Enabled,AssetPath=value.AssetPath,PixelWidth=value.PixelWidth,PixelHeight=value.PixelHeight,X=x,Y=y,Width=width,Height=height,ContentRevision=value.ContentRevision},description);}
+    public void CommitOverrideAlignment(double x,double y,double width,double height,string description="Align Artwork Override"){var value=ArtworkOverride;if(value is null)return;CommitOverride(DocumentTabViewModel.CopyOverride(value,x:x,y:y,width:width,height:height),description);}
 
     private void UsePanel2DSource()
     {
@@ -339,6 +355,25 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
     public void CommitRegistration(FacePerspectiveRegistrationModel value) { _document.SetArtworkRegistration(value); RefreshSummaries(); }
     public void ResetRegistration() { _document.SetArtworkRegistration(FacePerspectiveRegistrationModel.FullImage, "Reset artwork registration"); RefreshSummaries(); }
 
+    // One destination-sensitive editing surface lets the existing semantic-quad viewport edit either authored recipe.
+    public bool IsEditingOverrideGeometry => _destination == FaceWorkspaceDestination.ArtworkOverrideGeometry;
+    public string? GeometryRawImagePath => IsEditingOverrideGeometry ? _document.GetArtworkAssetAbsolutePath(ArtworkOverride?.AssetPath) : ArtworkRawImagePath;
+    public BitmapImage? GeometryRawImage => _geometryRawImage;
+    public int GeometrySourcePixelWidth => IsEditingOverrideGeometry ? ArtworkOverride?.PixelWidth ?? 0 : ArtworkSourcePixelWidth;
+    public int GeometrySourcePixelHeight => IsEditingOverrideGeometry ? ArtworkOverride?.PixelHeight ?? 0 : ArtworkSourcePixelHeight;
+    public FacePerspectiveRegistrationModel GeometryRegistration => IsEditingOverrideGeometry ? ArtworkOverride?.PerspectiveRegistration ?? FacePerspectiveRegistrationModel.FullImage : ArtworkRegistration;
+    public void CommitGeometryRegistration(FacePerspectiveRegistrationModel value)
+    {
+        if (IsEditingOverrideGeometry) { _document.SetArtworkOverrideRegistration(value); InvalidateOverrideAlignmentPreview(); } else _document.SetArtworkRegistration(value);
+        RefreshSummaries();
+    }
+    public void ResetGeometryRegistration()
+    {
+        if (IsEditingOverrideGeometry) { _document.SetArtworkOverrideRegistration(FacePerspectiveRegistrationModel.FullImage, "Reset Artwork Override geometry"); InvalidateOverrideAlignmentPreview(); }
+        else _document.SetArtworkRegistration(FacePerspectiveRegistrationModel.FullImage, "Reset artwork registration");
+        RefreshSummaries();
+    }
+
     public string ArtworkGeometrySummary => _document.GetFaceDocument().Artwork is null ? "Not configured" : IsImageArtworkSource
         ? $"Perspective registration • {_document.GetFaceDocument().Artwork?.OutputWidth} × {_document.GetFaceDocument().Artwork?.OutputHeight}"
         : $"Derived from Face Source Shape • {_document.GetFaceDocument().Artwork?.OutputWidth} × {_document.GetFaceDocument().Artwork?.OutputHeight}";
@@ -383,23 +418,79 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
             return _basePreview;
         }
     }
-    public BitmapImage? ArtworkOverrideAbsolutePath
+    /// <summary>A previously prepared frozen image only; binding evaluation never decodes or rectifies.</summary>
+    public BitmapImage? ArtworkOverrideAbsolutePath => _overridePreview;
+    public bool IsOverridePreviewLoading => _isOverridePreviewLoading;
+
+    private string? CurrentOverridePreviewKey()
     {
-        get
-        {
-            var value=ArtworkOverride;var path=_document.GetArtworkAssetAbsolutePath(value?.AssetPath);
-            var key=$"{path}|{value?.ContentRevision ?? -1}";
-            if(!string.Equals(key,_overridePreviewKey,StringComparison.Ordinal)){_overridePreviewKey=key;_overridePreview=ReloadableBitmapImageLoader.Load(path);}
-            return _overridePreview;
-        }
+        var value=ArtworkOverride;var path=_document.GetArtworkAssetAbsolutePath(value?.AssetPath);
+        return value is null||string.IsNullOrWhiteSpace(path)?null:
+            FaceArtworkOverridePreviewService.CreateCacheKey(path,value.ContentRevision,value.PerspectiveRegistration);
     }
+
+    private void InvalidateOverrideAlignmentPreview()
+    {
+        _overridePreviewCancellation?.Cancel();_overridePreviewCancellation?.Dispose();_overridePreviewCancellation=null;
+        _overridePreviewGeneration++;_overridePreview=null;_overridePreviewKey=null;_overridePreviewInputKey=CurrentOverridePreviewKey();
+        SetOverridePreviewLoading(false);Raise(nameof(ArtworkOverrideAbsolutePath));
+        if(_destination==FaceWorkspaceDestination.ArtworkOverride)RequestOverrideAlignmentPreview();
+    }
+
+    private async void RequestOverrideAlignmentPreview()
+    {
+        var value=ArtworkOverride;var path=_document.GetArtworkAssetAbsolutePath(value?.AssetPath);var key=CurrentOverridePreviewKey();
+        if(value is null||string.IsNullOrWhiteSpace(path)||key is null||!File.Exists(path))return;
+        if(string.Equals(_overridePreviewKey,key,StringComparison.Ordinal))return;
+        _overridePreviewCancellation?.Cancel();_overridePreviewCancellation?.Dispose();
+        var cancellation=new CancellationTokenSource();_overridePreviewCancellation=cancellation;var generation=++_overridePreviewGeneration;_overridePreviewInputKey=key;
+        SetOverridePreviewLoading(true);
+        try
+        {
+            await _overridePreviewGate.WaitAsync(cancellation.Token);
+            FaceArtworkOverridePreviewResult result;
+            try { result=await Task.Run(()=>FaceArtworkOverridePreviewService.Generate(path,value,cancellation.Token),cancellation.Token); }
+            finally { _overridePreviewGate.Release(); }
+            if(cancellation.IsCancellationRequested||generation!=_overridePreviewGeneration||_destination!=FaceWorkspaceDestination.ArtworkOverride||!string.Equals(key,CurrentOverridePreviewKey(),StringComparison.Ordinal))return;
+            using var stream=new MemoryStream(result.PngBytes);var bitmap=new BitmapImage();bitmap.BeginInit();bitmap.CacheOption=BitmapCacheOption.OnLoad;bitmap.StreamSource=stream;bitmap.EndInit();bitmap.Freeze();
+            _overridePreview=bitmap;_overridePreviewKey=key;SetOverridePreviewLoading(false);Raise(nameof(ArtworkOverrideAbsolutePath));
+        }
+        catch(OperationCanceledException){}
+        catch(Exception){if(generation==_overridePreviewGeneration){_overridePreview=null;SetOverridePreviewLoading(false);Raise(nameof(ArtworkOverrideAbsolutePath));}}
+    }
+
+    private void SetOverridePreviewLoading(bool value)
+    {if(_isOverridePreviewLoading==value)return;_isOverridePreviewLoading=value;Raise(nameof(IsOverridePreviewLoading));}
+
+    private void InvalidateGeometryRawImage()
+    {
+        _geometryRawImageCancellation?.Cancel();_geometryRawImageCancellation?.Dispose();_geometryRawImageCancellation=null;
+        _geometryRawImageGeneration++;_geometryRawImage=null;_geometryRawImageKey=null;Raise(nameof(GeometryRawImage));
+        if(_destination is FaceWorkspaceDestination.ArtworkGeometry or FaceWorkspaceDestination.ArtworkOverrideGeometry)RequestGeometryRawImage();
+    }
+
+    private async void RequestGeometryRawImage()
+    {
+        var path=GeometryRawImagePath;var revision=IsEditingOverrideGeometry?ArtworkOverride?.ContentRevision??0:0;var key=$"{path}|{revision}";
+        if(string.IsNullOrWhiteSpace(path)||!File.Exists(path)||string.Equals(key,_geometryRawImageKey,StringComparison.Ordinal))return;
+        _geometryRawImageCancellation?.Cancel();_geometryRawImageCancellation?.Dispose();var cancellation=new CancellationTokenSource();_geometryRawImageCancellation=cancellation;var generation=++_geometryRawImageGeneration;
+        try
+        {
+            var image=await Task.Run(()=>ReloadableBitmapImageLoader.Load(path,GeometryPreviewMaximumDecodeDimension),cancellation.Token);
+            if(cancellation.IsCancellationRequested||generation!=_geometryRawImageGeneration||_destination is not (FaceWorkspaceDestination.ArtworkGeometry or FaceWorkspaceDestination.ArtworkOverrideGeometry))return;
+            _geometryRawImage=image;_geometryRawImageKey=key;Raise(nameof(GeometryRawImage));
+        }
+        catch(OperationCanceledException){}
+        catch(Exception){if(generation==_geometryRawImageGeneration){_geometryRawImage=null;Raise(nameof(GeometryRawImage));}}
+    }
+
     public Thickness OverridePreviewMargin=>new((ArtworkOverride?.X??0)*1000,(ArtworkOverride?.Y??0)*1000,0,0);
     public double OverridePreviewWidth=>(ArtworkOverride?.Width??1)*1000;
     public double OverridePreviewHeight=>(ArtworkOverride?.Height??1)*1000;
     internal void RefreshArtworkPreviews(bool refreshBase, bool refreshOverride)
     {
         if(refreshBase){_basePreview=null;_basePreviewPath=null;Raise(nameof(ArtworkBaseAbsolutePath));}
-        if(refreshOverride){_overridePreview=null;_overridePreviewKey=null;Raise(nameof(ArtworkOverrideAbsolutePath));}
+        if(refreshOverride){InvalidateOverrideAlignmentPreview();InvalidateGeometryRawImage();}
     }
 
     public string ArtworkCalibrationSummary
@@ -447,11 +538,15 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         if (destination != FaceWorkspaceDestination.ArtworkCalibration) _document.CancelCalibrationPlacement();
         if (destination != FaceWorkspaceDestination.ComponentsEditor) CancelComponentPlacement();
         if (destination != FaceWorkspaceDestination.IlluminationLamps) CancelLampPlacement();
+        if(destination!=FaceWorkspaceDestination.ArtworkOverride){_overridePreviewCancellation?.Cancel();_overridePreviewGeneration++;SetOverridePreviewLoading(false);}
+        if(destination is not (FaceWorkspaceDestination.ArtworkGeometry or FaceWorkspaceDestination.ArtworkOverrideGeometry)){_geometryRawImageCancellation?.Cancel();_geometryRawImageGeneration++;}
         _destination = destination;
+        if(destination==FaceWorkspaceDestination.ArtworkOverride)RequestOverrideAlignmentPreview();
+        if(destination is FaceWorkspaceDestination.ArtworkGeometry or FaceWorkspaceDestination.ArtworkOverrideGeometry)RequestGeometryRawImage();
         Raise(nameof(Destination));
         Raise(nameof(DestinationName));
         Raise(nameof(Breadcrumbs));
-        Raise(nameof(IsViewportDestination));
+        Raise(nameof(IsViewportDestination)); Raise(nameof(IsEditingOverrideGeometry)); Raise(nameof(DoneGeometryCommand)); Raise(nameof(GeometryRawImagePath)); Raise(nameof(GeometryRawImage)); Raise(nameof(GeometrySourcePixelWidth)); Raise(nameof(GeometrySourcePixelHeight)); Raise(nameof(GeometryRegistration));
     }
 
     private IReadOnlyList<FaceWorkspaceBreadcrumb> BuildBreadcrumbs()
@@ -464,6 +559,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
             FaceWorkspaceDestination.ArtworkGeometry => [root, new("Artwork", NavigateToArtworkCommand), new("Geometry", null)],
             FaceWorkspaceDestination.ArtworkCalibration => [root, new("Artwork", NavigateToArtworkCommand), new("Calibration", null)],
             FaceWorkspaceDestination.ArtworkOverride => [root, new("Artwork", NavigateToArtworkCommand), new("Override", null)],
+            FaceWorkspaceDestination.ArtworkOverrideGeometry => [root, new("Artwork", NavigateToArtworkCommand), new("Override", NavigateToArtworkOverrideCommand), new("Geometry", null)],
             FaceWorkspaceDestination.Components => [root, new("Components", null)],
             FaceWorkspaceDestination.ComponentsEditor => [root, new("Components", NavigateToComponentsCommand), new("Edit", null)],
             FaceWorkspaceDestination.Illumination => [root, new("Illumination", null)],
@@ -486,7 +582,10 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
 
     private void RefreshArtworkSourceState()
     {
-        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(OverridePreviewMargin)); Raise(nameof(OverridePreviewWidth)); Raise(nameof(OverridePreviewHeight)); Raise(nameof(ArtworkOverride)); Raise(nameof(HasArtworkOverride)); Raise(nameof(ArtworkOverrideSummary)); Raise(nameof(OverrideToggleLabel)); Raise(nameof(ArtworkBaseAbsolutePath)); Raise(nameof(ArtworkOverrideAbsolutePath)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(IsPanel2DArtworkSource)); Raise(nameof(CanChooseImageArtwork)); Raise(nameof(HasRetainedPanel2DArtworkSource)); Raise(nameof(CanShowUsePanel2DSource)); Raise(nameof(CanUsePanel2DSource)); Raise(nameof(Panel2DSourceAvailability)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkGeometrySummary));
+        var previewKey=CurrentOverridePreviewKey();
+        if(!string.Equals(previewKey,_overridePreviewInputKey,StringComparison.Ordinal))InvalidateOverrideAlignmentPreview();
+        if(_destination is FaceWorkspaceDestination.ArtworkGeometry or FaceWorkspaceDestination.ArtworkOverrideGeometry)RequestGeometryRawImage();
+        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(GeometryRawImagePath)); Raise(nameof(GeometryRawImage)); Raise(nameof(GeometrySourcePixelWidth)); Raise(nameof(GeometrySourcePixelHeight)); Raise(nameof(GeometryRegistration)); Raise(nameof(OverridePreviewMargin)); Raise(nameof(OverridePreviewWidth)); Raise(nameof(OverridePreviewHeight)); Raise(nameof(ArtworkOverride)); Raise(nameof(HasArtworkOverride)); Raise(nameof(ArtworkOverrideSummary)); Raise(nameof(OverrideToggleLabel)); Raise(nameof(ArtworkBaseAbsolutePath)); Raise(nameof(ArtworkOverrideAbsolutePath)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(IsPanel2DArtworkSource)); Raise(nameof(CanChooseImageArtwork)); Raise(nameof(HasRetainedPanel2DArtworkSource)); Raise(nameof(CanShowUsePanel2DSource)); Raise(nameof(CanUsePanel2DSource)); Raise(nameof(Panel2DSourceAvailability)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkGeometrySummary));
         if (UsePanel2DSourceCommand is RelayCommand usePanel2D)
             usePanel2D.RaiseCanExecuteChanged();
     }
