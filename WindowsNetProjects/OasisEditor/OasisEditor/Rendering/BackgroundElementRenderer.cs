@@ -16,7 +16,8 @@ internal sealed class BackgroundElementRenderer : IPanelElementRenderer
 
         if (SkiaPanelImageLoader.TryGetImage(element.AssetPath, out var backgroundImage))
         {
-            context.Canvas.DrawImage(backgroundImage, bounds);
+            using var imagePaint = new SKPaint { FilterQuality = context.ViewportTransform.NormalizedZoom >= 1d ? SKFilterQuality.None : SKFilterQuality.Medium };
+            context.Canvas.DrawImage(backgroundImage, bounds, imagePaint);
             return;
         }
 

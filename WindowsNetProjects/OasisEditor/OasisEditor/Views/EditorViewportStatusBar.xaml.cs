@@ -10,6 +10,7 @@ public partial class EditorViewportStatusBar : UserControl
     public static readonly DependencyProperty ContentDimensionsProperty = DependencyProperty.Register(nameof(ContentDimensions), typeof(string), typeof(EditorViewportStatusBar), new PropertyMetadata(string.Empty));
     public static readonly DependencyProperty PointerCoordinatesProperty = DependencyProperty.Register(nameof(PointerCoordinates), typeof(string), typeof(EditorViewportStatusBar), new PropertyMetadata("X: —  Y: —"));
     public static readonly DependencyProperty ZoomProperty = DependencyProperty.Register(nameof(Zoom), typeof(double), typeof(EditorViewportStatusBar), new PropertyMetadata(1d, OnZoomChanged));
+    public static readonly DependencyProperty ZoomToolTipProperty = DependencyProperty.Register(nameof(ZoomToolTip), typeof(string), typeof(EditorViewportStatusBar), new PropertyMetadata("Zoom percentage; 100% = Actual Pixels"));
 
     public event EventHandler? FitRequested;
     public event EventHandler<double>? ZoomRequested;
@@ -17,6 +18,7 @@ public partial class EditorViewportStatusBar : UserControl
     public string ContentDimensions { get => (string)GetValue(ContentDimensionsProperty); set => SetValue(ContentDimensionsProperty, value); }
     public string PointerCoordinates { get => (string)GetValue(PointerCoordinatesProperty); set => SetValue(PointerCoordinatesProperty, value); }
     public double Zoom { get => (double)GetValue(ZoomProperty); set => SetValue(ZoomProperty, value); }
+    public string ZoomToolTip { get => (string)GetValue(ZoomToolTipProperty); set => SetValue(ZoomToolTipProperty, value); }
 
     public EditorViewportStatusBar() { InitializeComponent(); UpdateZoomText(); }
 

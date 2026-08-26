@@ -3,7 +3,7 @@ using System.Windows;
 
 namespace OasisEditor;
 
-/// <summary>Transient, DPI-aware navigation for raster editor viewports.</summary>
+/// <summary>Transient, DPI-aware navigation for raster and logical editor viewports.</summary>
 public readonly record struct EditorViewportTransform(double Zoom, double PanX, double PanY)
 {
     public const double MinZoom = 0.01d;
@@ -23,6 +23,9 @@ public readonly record struct EditorViewportTransform(double Zoom, double PanX, 
     public static EditorViewportTransform Fit(Rect viewport, double contentWidth, double contentHeight,
         double dpiScaleX, double dpiScaleY) => new(CalculateFitZoom(viewport, contentWidth, contentHeight, dpiScaleX, dpiScaleY), 0, 0);
 
+    public static EditorViewportTransform Fit(Rect viewport, Rect contentBounds, double dpiScaleX, double dpiScaleY) =>
+        Fit(viewport, contentBounds.Width, contentBounds.Height, dpiScaleX, dpiScaleY);
+
     public Rect ContentRect(Rect viewport, double contentWidth, double contentHeight, double dpiScaleX, double dpiScaleY)
     {
         var width = contentWidth * ClampedZoom / ValidDpi(dpiScaleX);
@@ -41,6 +44,27 @@ public readonly record struct EditorViewportTransform(double Zoom, double PanX, 
     {
         var rect = ContentRect(viewport, width, height, dpiX, dpiY);
         return new Point((screen.X - rect.X) * width / rect.Width, (screen.Y - rect.Y) * height / rect.Height);
+    }
+
+    public Point ContentToScreen(Point content, Rect viewport, Rect bounds, double dpiX, double dpiY)
+    {
+        var local = new Point(content.X - bounds.X, content.Y - bounds.Y);
+        return ContentToScreen(local, viewport, bounds.Width, bounds.Height, dpiX, dpiY);
+    }
+
+    public Point ScreenToContent(Point screen, Rect viewport, Rect bounds, double dpiX, double dpiY)
+    {
+        var local = ScreenToContent(screen, viewport, bounds.Width, bounds.Height, dpiX, dpiY);
+        return new Point(local.X + bounds.X, local.Y + bounds.Y);
+    }
+
+    public EditorViewportTransform WithZoomAt(Point pivot, double newZoom, Rect viewport, Rect bounds,
+        double dpiX, double dpiY)
+    {
+        var content = ScreenToContent(pivot, viewport, bounds, dpiX, dpiY);
+        var next = new EditorViewportTransform(Math.Clamp(newZoom, MinZoom, MaxZoom), 0, 0);
+        var withoutPan = next.ContentToScreen(content, viewport, bounds, dpiX, dpiY);
+        return next with { PanX = pivot.X - withoutPan.X, PanY = pivot.Y - withoutPan.Y };
     }
 
     public EditorViewportTransform WithZoomAt(Point pivot, double newZoom, Rect viewport, double width, double height,

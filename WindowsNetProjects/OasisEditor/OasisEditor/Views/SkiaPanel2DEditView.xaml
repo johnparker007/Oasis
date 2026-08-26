@@ -4,10 +4,11 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:sk="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
+             xmlns:local="clr-namespace:OasisEditor.Views"
              mc:Ignorable="d"
              d:DesignHeight="450"
              d:DesignWidth="700">
-    <Grid>
+    <Grid><Grid.RowDefinitions><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Border Padding="8"
                 Background="{DynamicResource EditorBackgroundBrush}"
                 BorderBrush="{DynamicResource BorderSubtleBrush}"
@@ -21,5 +22,8 @@
                           LostMouseCapture="OnEditSkiaSurfaceLostMouseCapture"
                           MouseLeave="OnEditSkiaSurfaceMouseLeave" />
         </Border>
+        <local:EditorViewportStatusBar x:Name="ViewportStatus" Grid.Row="1"
+          ZoomToolTip="Zoom percentage; 100% = 1 Panel2D document unit per physical display pixel"
+          FitRequested="OnFitRequested" ZoomRequested="OnZoomRequested"/>
     </Grid>
 </UserControl>

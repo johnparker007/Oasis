@@ -5,6 +5,40 @@ namespace OasisEditor.Tests;
 
 public sealed class ArtworkRegistrationViewportTransformTests
 {
+    [Fact]
+    public void LogicalUnitAtOneHundredPercentUsesDpiAwareScreenSize()
+    {
+        var bounds = new Rect(25, 40, 1024, 768);
+        var transform = new EditorViewportTransform(1, 0, 0);
+        var a = transform.ContentToScreen(new Point(100, 100), Viewport, bounds, 2, 2);
+        var b = transform.ContentToScreen(new Point(101, 100), Viewport, bounds, 2, 2);
+        Assert.Equal(0.5, b.X - a.X, 10);
+    }
+
+    [Theory]
+    [InlineData(.25)]
+    [InlineData(1)]
+    [InlineData(4)]
+    [InlineData(16)]
+    public void LogicalRectangleRoundTripsAtSharedZooms(double zoom)
+    {
+        var bounds = new Rect(-50, 75, 1400, 900);
+        var transform = new EditorViewportTransform(zoom, 37, -19);
+        var expected = new Point(431.25, 207.75);
+        var screen = transform.ContentToScreen(expected, Viewport, bounds, 1.5, 1.25);
+        var actual = transform.ScreenToContent(screen, Viewport, bounds, 1.5, 1.25);
+        Assert.Equal(expected.X, actual.X, 8); Assert.Equal(expected.Y, actual.Y, 8);
+    }
+
+    [Fact]
+    public void HighZoomScreenDeltaAllowsFineLogicalMovement()
+    {
+        var bounds = new Rect(0, 0, 1024, 1024);
+        var transform = new EditorViewportTransform(16, 0, 0);
+        var a = transform.ScreenToContent(new Point(100, 100), Viewport, bounds, 1, 1);
+        var b = transform.ScreenToContent(new Point(101, 100), Viewport, bounds, 1, 1);
+        Assert.Equal(1d / 16d, b.X - a.X, 10);
+    }
     private static readonly Rect Viewport = new(24, 24, 1200, 800);
 
     [Theory]

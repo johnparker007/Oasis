@@ -19,6 +19,7 @@ internal sealed class ImageElementRenderer : IPanelElementRenderer
             return;
         }
 
-        context.Canvas.DrawImage(image, bounds);
+        using var imagePaint = new SKPaint { FilterQuality = context.ViewportTransform.NormalizedZoom >= 1d ? SKFilterQuality.None : SKFilterQuality.Medium };
+        context.Canvas.DrawImage(image, bounds, imagePaint);
     }
 }
