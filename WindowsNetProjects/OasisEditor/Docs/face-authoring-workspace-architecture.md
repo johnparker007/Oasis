@@ -48,7 +48,9 @@ artwork.png
 
 Override Geometry selects and perspective-corrects the rectangular artwork in a raw photograph. Override Alignment then translates/scales that rectified result against Base. The semantic TopLeft, TopRight, BottomRight, BottomLeft quad is independent of primary Artwork Geometry; already-rectified artwork uses the default FullImage quad. Rectification is performed in memory while building Artwork Output and does not create a persisted build product or stale Correction Input/Base.
 
-Alignment uses a document-local, asynchronously generated preview capped at 1600 pixels on its longest edge. Preview requests are cancellable and superseded by newer source/registration revisions, and use a display-only bilinear warp. Property getters only expose an already-prepared frozen image. The bounded preview is never used by Build: explicit Build/Rebuild continues to estimate the full useful registered resolution and use the supersampled bicubic production rasterizer.
+Import and Replace enter Override Geometry after committing the authored asset, without requesting an Alignment warp. Geometry displays a reload-safe WPF decode capped at 2560 pixels on its longest edge while retaining normalized coordinates and true authored source dimensions.
+
+Alignment uses a document-local, asynchronously generated preview capped at 1000 pixels on its longest edge, sourced from a decode capped at 2560 pixels. Preview requests are cancellable and superseded by newer source/registration revisions, and use a native-Skia display-only perspective warp with bilinear filtering. A lightweight in-viewport loading state remains navigable. Property getters only expose an already-prepared frozen image. The bounded preview is never used by Build: explicit Build/Rebuild continues to decode the full source, estimate the full useful registered resolution, and use the supersampled bicubic production rasterizer.
 
 Generated artwork uses exactly:
 

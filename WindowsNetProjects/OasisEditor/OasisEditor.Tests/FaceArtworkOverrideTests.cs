@@ -79,12 +79,12 @@ public sealed class FaceArtworkOverrideTests : IDisposable
     public void PreviewIdentity_ExcludesAlignmentButIncludesGeometryRevisionAndCap()
     {
         var registration=new FacePerspectiveRegistrationModel{TopLeft=P(.1,.1),TopRight=P(.9,.1),BottomRight=P(.9,.9),BottomLeft=P(.1,.9)};
-        var first=FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,registration,1600);
+        var first=FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,registration,1000);
         var alignmentOnly=DocumentTabViewModel.CopyOverride(new FaceArtworkOverrideModel{AssetPath="override.png",PixelWidth=10,PixelHeight=10,PerspectiveRegistration=registration},x:.2,y:.3,width:.8,height:.7);
-        Assert.Equal(first,FaceArtworkOverridePreviewService.CreateCacheKey(alignmentOnly.AssetPath,4,alignmentOnly.PerspectiveRegistration,1600));
-        Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",5,registration,1600));
-        Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,FacePerspectiveRegistrationModel.FullImage,1600));
-        Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,registration,1200));
+        Assert.Equal(first,FaceArtworkOverridePreviewService.CreateCacheKey(alignmentOnly.AssetPath,4,alignmentOnly.PerspectiveRegistration,1000));
+        Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",5,registration,1000));
+        Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,FacePerspectiveRegistrationModel.FullImage,1000));
+        Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,registration,800));
     }
 
     [Fact]
@@ -148,6 +148,14 @@ public sealed class FaceArtworkOverrideTests : IDisposable
         Write(path,2,2,(_,_)=>SKColors.Blue);
         var second=Assert.IsType<System.Windows.Media.Imaging.BitmapImage>(ReloadableBitmapImageLoader.Load(path));
         Assert.NotSame(first,second);Assert.Equal((byte)0,Red(second));
+    }
+
+    [Fact]
+    public void PreviewLoader_BoundsDecodeWhilePreservingAspectRatio()
+    {
+        var path=Path.Combine(_root,"large-preview.png");Write(path,400,100,(_,_)=>SKColors.Red);
+        var preview=Assert.IsType<System.Windows.Media.Imaging.BitmapImage>(ReloadableBitmapImageLoader.Load(path,100));
+        Assert.Equal((100,25),(preview.PixelWidth,preview.PixelHeight));
     }
 
     [Fact]

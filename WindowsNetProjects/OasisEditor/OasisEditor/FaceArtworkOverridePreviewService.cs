@@ -1,5 +1,6 @@
 using System.IO;
 using SkiaSharp;
+using SkiaSharp.Views.Desktop;
 
 namespace OasisEditor;
 
@@ -8,7 +9,8 @@ internal sealed record FaceArtworkOverridePreviewResult(byte[] PngBytes, int Wid
 /// <summary>Creates bounded, cancellable display previews. Production artwork never consumes this path.</summary>
 internal static class FaceArtworkOverridePreviewService
 {
-    public const int MaximumPreviewDimension = 1600;
+    public const int MaximumPreviewDimension = 1000;
+    public const int MaximumSourceDecodeDimension = 2560;
 
     public static FaceSourceShapeOutputSize DeterminePreviewSize(int sourceWidth, int sourceHeight,
         FacePerspectiveRegistrationModel registration, int maximumDimension = MaximumPreviewDimension)
@@ -27,7 +29,9 @@ internal static class FaceArtworkOverridePreviewService
         CancellationToken cancellationToken, int maximumDimension = MaximumPreviewDimension)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        using var source=SKBitmap.Decode(path) ?? throw new InvalidDataException($"Artwork Override could not be decoded: '{path}'.");
+        var displaySource=ReloadableBitmapImageLoader.Load(path,MaximumSourceDecodeDimension)
+            ?? throw new InvalidDataException($"Artwork Override could not be decoded: '{path}'.");
+        using var source=displaySource.ToSKBitmap();
         var registration=value.PerspectiveRegistration.Normalize();
         if(!registration.IsValid())throw new InvalidOperationException("The Artwork Override perspective registration is invalid.");
         var size=DeterminePreviewSize(source.Width,source.Height,registration,maximumDimension);

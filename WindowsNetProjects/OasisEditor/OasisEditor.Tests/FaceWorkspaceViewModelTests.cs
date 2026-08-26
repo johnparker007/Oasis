@@ -225,6 +225,18 @@ public sealed class FaceWorkspaceViewModelTests
         Assert.Equal(.1,document.GetFaceDocument().Artwork!.Override!.PerspectiveRegistration.TopLeft.X);
     }
 
+    [Fact]
+    public void ImportedOverride_NavigatesToGeometryWithoutRequestingAlignmentPreview()
+    {
+        var model=new FaceDocumentModel{Title="Upper Glass",Artwork=new FaceArtworkModel{Override=new FaceArtworkOverrideModel{AssetPath="override.png",PixelWidth=100,PixelHeight=50}}};
+        var document=new DocumentTabViewModel(EditorDocument.CreateFaceStub(model.Title),faceDocumentJson:FaceDocumentStorage.Serialize(model));
+        var workspace=Assert.IsType<FaceWorkspaceViewModel>(document.FaceWorkspace);
+        workspace.NavigateToImportedOverrideGeometry();
+        Assert.Equal(FaceWorkspaceDestination.ArtworkOverrideGeometry,workspace.Destination);
+        Assert.Null(workspace.ArtworkOverrideAbsolutePath);
+        Assert.False(workspace.IsOverridePreviewLoading);
+    }
+
     private static CalibrationPlacementState Placement() =>
         new("calibration", CalibrationPlacementTargetKind.BlackReference, string.Empty, CalibrationSamplingMode.Pixel, .01);
 
