@@ -14,7 +14,8 @@ public partial class FaceArtworkRegistrationView : UserControl
     private bool _isPanning;
     private Point _panStart;
     private Vector _panOrigin;
-    private ArtworkRegistrationViewportTransform _viewport = ArtworkRegistrationViewportTransform.Fit;
+    private ArtworkRegistrationViewportTransform _viewport;
+    private bool _fitPending = true;
     private FacePerspectiveRegistrationModel? _preview;
     private FaceWorkspaceViewModel? _subscribedWorkspace;
     private string? _viewportSourcePath;
@@ -119,28 +120,33 @@ public partial class FaceArtworkRegistrationView : UserControl
         if (Overlay.IsMouseCaptured) Overlay.ReleaseMouseCapture();
     }
 
-    private void OnSizeChanged(object sender, SizeChangedEventArgs e) => Draw();
-
-    private Rect BaseImageRect()
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        var w = Math.Max(1, Workspace?.GeometrySourcePixelWidth ?? 1);
-        var h = Math.Max(1, Workspace?.GeometrySourcePixelHeight ?? 1);
-        var availableW = Math.Max(1, Overlay.ActualWidth - 48);
-        var availableH = Math.Max(1, Overlay.ActualHeight - 48);
-        var scale = Math.Min(availableW / w, availableH / h);
-        var width = w * scale;
-        var height = h * scale;
-        return new Rect((Overlay.ActualWidth - width) / 2, (Overlay.ActualHeight - height) / 2, width, height);
+        if (_fitPending) FitView();
+        Draw();
     }
+
+    private Rect ViewportRect() => new(24, 24, Math.Max(1, Overlay.ActualWidth - 48), Math.Max(1, Overlay.ActualHeight - 48));
+
+    private (double X, double Y) DpiScale()
+    {
+        var dpi = VisualTreeHelper.GetDpi(Overlay);
+        return (dpi.DpiScaleX, dpi.DpiScaleY);
+    }
+
+    private (double Width, double Height) SourceSize() =>
+        (Math.Max(1, Workspace?.GeometrySourcePixelWidth ?? 1), Math.Max(1, Workspace?.GeometrySourcePixelHeight ?? 1));
 
     private Point ToCanvas(NormalizedFacePointModel point)
     {
-        return _viewport.NormalizedToScreen(new Point(point.X, point.Y), BaseImageRect());
+        var size = SourceSize(); var dpi = DpiScale();
+        return _viewport.NormalizedToScreen(new Point(point.X, point.Y), ViewportRect(), size.Width, size.Height, dpi.X, dpi.Y);
     }
 
     private NormalizedFacePointModel ToNormalized(Point point)
     {
-        var normalized = _viewport.ScreenToNormalized(point, BaseImageRect());
+        var size = SourceSize(); var dpi = DpiScale();
+        var normalized = _viewport.ScreenToNormalized(point, ViewportRect(), size.Width, size.Height, dpi.X, dpi.Y);
         return new NormalizedFacePointModel
         {
             X = Math.Clamp(normalized.X, 0, 1),
@@ -151,11 +157,18 @@ public partial class FaceArtworkRegistrationView : UserControl
     private void Draw()
     {
         Overlay.Children.Clear();
-        var imageRect = _viewport.ImageRect(BaseImageRect());
+        if (_fitPending && Overlay.ActualWidth > 0 && Overlay.ActualHeight > 0) FitView();
+        var size = SourceSize(); var dpi = DpiScale();
+        var imageRect = _viewport.ImageRect(ViewportRect(), size.Width, size.Height, dpi.X, dpi.Y);
         SourceImage.Width = imageRect.Width;
         SourceImage.Height = imageRect.Height;
+        RenderOptions.SetBitmapScalingMode(SourceImage,
+            _viewport.Zoom >= 1d ? BitmapScalingMode.NearestNeighbor : BitmapScalingMode.HighQuality);
         Canvas.SetLeft(SourceImage, imageRect.X);
         Canvas.SetTop(SourceImage, imageRect.Y);
+        ViewportStatus.ContentDimensions = Workspace is { GeometrySourcePixelWidth: > 0, GeometrySourcePixelHeight: > 0 } workspace
+            ? $"{workspace.GeometrySourcePixelWidth} × {workspace.GeometrySourcePixelHeight} px" : string.Empty;
+        ViewportStatus.Zoom = _viewport.Zoom;
         var registration = _preview ?? Workspace?.GeometryRegistration;
         if (registration is null) return;
         var points = new[] { registration.TopLeft, registration.TopRight, registration.BottomRight, registration.BottomLeft };
@@ -209,6 +222,7 @@ public partial class FaceArtworkRegistrationView : UserControl
 
     private void OnMove(object sender, MouseEventArgs e)
     {
+        UpdatePointerStatus(e.GetPosition(Overlay));
         if (_isPanning)
         {
             if (e.MiddleButton != MouseButtonState.Pressed) { CancelInteraction(); return; }
@@ -247,12 +261,18 @@ public partial class FaceArtworkRegistrationView : UserControl
 
     private void OnMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        var next = _viewport.WithZoomAt(e.GetPosition(Overlay), e.Delta, BaseImageRect());
+        var size = SourceSize(); var dpi = DpiScale();
+        var factor = e.Delta > 0 ? ArtworkRegistrationViewportTransform.ZoomStep : 1d / ArtworkRegistrationViewportTransform.ZoomStep;
+        var next = _viewport.WithZoomAt(e.GetPosition(Overlay), _viewport.Zoom * factor,
+            ViewportRect(), size.Width, size.Height, dpi.X, dpi.Y);
         if (next == _viewport) return;
         _viewport = next;
         Draw();
         e.Handled = true;
     }
+
+    private void OnMouseLeave(object sender, MouseEventArgs e) =>
+        ViewportStatus.PointerCoordinates = "X: —  Y: —";
 
     private void OnLostMouseCapture(object sender, MouseEventArgs e)
     {
@@ -265,14 +285,41 @@ public partial class FaceArtworkRegistrationView : UserControl
 
     private void ResetView()
     {
-        _viewport = ArtworkRegistrationViewportTransform.Fit;
+        _fitPending = true;
+        ViewportStatus.PointerCoordinates = "X: —  Y: —";
     }
 
-    private void OnFit(object sender, RoutedEventArgs e)
+    private void FitView()
     {
-        CancelInteraction();
-        ResetView();
+        var size = SourceSize(); var dpi = DpiScale();
+        _viewport = ArtworkRegistrationViewportTransform.FitTo(ViewportRect(), size.Width, size.Height, dpi.X, dpi.Y);
+        _fitPending = false;
+    }
+
+    private void OnFitRequested(object? sender, EventArgs e)
+    {
+        CancelInteraction(); FitView();
         Draw();
+    }
+
+    private void OnZoomRequested(object? sender, double zoom)
+    {
+        var size = SourceSize(); var dpi = DpiScale();
+        var pivot = new Point(Overlay.ActualWidth / 2d, Overlay.ActualHeight / 2d);
+        _viewport = _viewport.WithZoomAt(pivot, zoom, ViewportRect(), size.Width, size.Height, dpi.X, dpi.Y);
+        _fitPending = false;
+        Draw();
+    }
+
+    private void UpdatePointerStatus(Point screen)
+    {
+        var size = SourceSize(); var dpi = DpiScale();
+        var source = new EditorViewportTransform(_viewport.Zoom, _viewport.PanX, _viewport.PanY)
+            .ScreenToContent(screen, ViewportRect(), size.Width, size.Height, dpi.X, dpi.Y);
+        if (source.X < 0 || source.Y < 0 || source.X >= size.Width || source.Y >= size.Height)
+            ViewportStatus.PointerCoordinates = "X: —  Y: —";
+        else
+            ViewportStatus.PointerCoordinates = $"X: {(int)Math.Floor(source.X)}  Y: {(int)Math.Floor(source.Y)}";
     }
 
     private void OnReset(object sender, RoutedEventArgs e) => Workspace?.ResetGeometryRegistration();
