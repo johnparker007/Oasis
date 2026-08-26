@@ -1,6 +1,8 @@
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using SkiaSharp;
-using SkiaSharp.Views.Desktop;
 
 namespace OasisEditor;
 
@@ -31,7 +33,7 @@ internal static class FaceArtworkOverridePreviewService
         cancellationToken.ThrowIfCancellationRequested();
         var displaySource=ReloadableBitmapImageLoader.Load(path,MaximumSourceDecodeDimension)
             ?? throw new InvalidDataException($"Artwork Override could not be decoded: '{path}'.");
-        using var source=displaySource.ToSKBitmap();
+        using var source=ToSkBitmap(displaySource);
         var registration=value.PerspectiveRegistration.Normalize();
         if(!registration.IsValid())throw new InvalidOperationException("The Artwork Override perspective registration is invalid.");
         var size=DeterminePreviewSize(source.Width,source.Height,registration,maximumDimension);
@@ -41,5 +43,15 @@ internal static class FaceArtworkOverridePreviewService
         cancellationToken.ThrowIfCancellationRequested();
         using var image=SKImage.FromBitmap(rectified);using var data=image.Encode(SKEncodedImageFormat.Png,90);
         return new FaceArtworkOverridePreviewResult(data.ToArray(),size.Width,size.Height);
+    }
+
+    private static SKBitmap ToSkBitmap(BitmapSource source)
+    {
+        var converted=source.Format==PixelFormats.Pbgra32?source:new FormatConvertedBitmap(source,PixelFormats.Pbgra32,null,0);
+        var stride=checked(converted.PixelWidth*4);var pixels=new byte[checked(stride*converted.PixelHeight)];
+        converted.CopyPixels(pixels,stride,0);
+        var bitmap=new SKBitmap(new SKImageInfo(converted.PixelWidth,converted.PixelHeight,SKColorType.Bgra8888,SKAlphaType.Premul));
+        Marshal.Copy(pixels,0,bitmap.GetPixels(),pixels.Length);
+        return bitmap;
     }
 }
