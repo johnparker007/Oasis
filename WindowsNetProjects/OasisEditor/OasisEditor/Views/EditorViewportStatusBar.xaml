@@ -21,13 +21,15 @@
                  CaretBrush="{DynamicResource TextPrimaryBrush}" SelectionBrush="{DynamicResource SelectionBrush}"
                  IsReadOnly="{TemplateBinding IsReadOnly}"/>
         <ToggleButton x:Name="DropDownToggle" Grid.Column="1" Focusable="False" ClickMode="Press"
+                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                       IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                      Background="Transparent" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1,0,0,0">
+                      Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1,0,0,0">
          <ToggleButton.Template>
           <ControlTemplate TargetType="ToggleButton">
-           <Border x:Name="ArrowBackground" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+           <Border x:Name="ArrowBackground" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                   Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
             <Path Width="8" Height="4" HorizontalAlignment="Center" VerticalAlignment="Center"
-                  Fill="{DynamicResource TextPrimaryBrush}" Data="M 0 0 L 4 4 L 8 0 Z"/>
+                  IsHitTestVisible="False" Fill="{DynamicResource TextPrimaryBrush}" Data="M 0 0 L 4 4 L 8 0 Z"/>
            </Border>
            <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ArrowBackground" Property="Background" Value="{DynamicResource ControlHoverBrush}"/></Trigger>
