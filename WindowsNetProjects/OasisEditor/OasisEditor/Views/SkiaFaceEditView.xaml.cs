@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
+using System.Windows.Media;
 using SkiaSharp;
 using SkiaSharp.Views.Desktop;
 using OasisEditor.Rendering;
@@ -54,9 +55,53 @@ public partial class SkiaFaceEditView : UserControl
 
     private DocumentTabViewModel? Document => DataContext as DocumentTabViewModel;
 
+    private (Rect Viewport, Rect Bounds, DpiScale Dpi) NavigationGeometry(DocumentTabViewModel document) =>
+        (new Rect(0, 0, FaceSkiaSurface.ActualWidth, FaceSkiaSurface.ActualHeight),
+         EditorLogicalViewportBounds.Face(document), VisualTreeHelper.GetDpi(FaceSkiaSurface));
+
+    private EditorViewportTransform CoreViewport(DocumentTabViewModel document) => new(document.FaceZoom, document.FacePanX, document.FacePanY);
+
+    private PanelViewportTransform CreateViewport(DocumentTabViewModel document)
+    {
+        var (viewport, bounds, dpi) = NavigationGeometry(document);
+        return PanelViewportTransform.FromEditor(CoreViewport(document), viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY);
+    }
+
+    private void SetViewport(EditorViewportTransform transform)
+    {
+        if (Document is not { } document) return;
+        document.FaceZoom = transform.ClampedZoom; document.FacePanX = transform.PanX; document.FacePanY = transform.PanY;
+        ViewportStatus.Zoom = transform.ClampedZoom;
+    }
+
+    private void OnFitRequested(object? sender, EventArgs e)
+    {
+        if (Document is not { } document) return;
+        var (viewport, bounds, dpi) = NavigationGeometry(document);
+        SetViewport(EditorViewportTransform.Fit(viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY));
+    }
+
+    private void OnZoomRequested(object? sender, double zoom)
+    {
+        if (Document is not { } document) return;
+        var (viewport, bounds, dpi) = NavigationGeometry(document);
+        SetViewport(CoreViewport(document).WithZoomAt(new Point(viewport.Width / 2, viewport.Height / 2), zoom, viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY));
+    }
+
+    private void UpdateStatus(Point? pointer = null)
+    {
+        if (Document is not { } document) return;
+        var (viewport, bounds, dpi) = NavigationGeometry(document);
+        ViewportStatus.ContentDimensions = $"{bounds.Width:0} × {bounds.Height:0}"; ViewportStatus.Zoom = document.FaceZoom;
+        if (pointer is not { } screen) { ViewportStatus.PointerCoordinates = "X: —  Y: —"; return; }
+        var point = CoreViewport(document).ScreenToContent(screen, viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY);
+        ViewportStatus.PointerCoordinates = bounds.Contains(point) ? $"X: {Math.Floor(point.X):0}  Y: {Math.Floor(point.Y):0}" : "X: —  Y: —";
+    }
+
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         UpdateDocumentSubscription(Document);
+        UpdateStatus();
         RequestRender();
     }
 
@@ -118,6 +163,7 @@ public partial class SkiaFaceEditView : UserControl
             or nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
         {
             RequestRender();
+            UpdateStatus();
         }
     }
 
@@ -172,7 +218,7 @@ public partial class SkiaFaceEditView : UserControl
             return;
         }
 
-        var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
+        var viewport = CreateViewport(document);
         canvas.Save();
         canvas.Translate((float)viewport.PanX, (float)viewport.PanY);
         canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
@@ -351,7 +397,8 @@ public partial class SkiaFaceEditView : UserControl
         if (TryGetArtworkImage(assetPath, out var image))
         {
             var source = ResolveArtworkSourceRect(element, image);
-            canvas.DrawImage(image, source, destination);
+            using var imagePaint = new SKPaint { FilterQuality = viewport.NormalizedZoom >= 1d ? SKFilterQuality.None : SKFilterQuality.Medium };
+            canvas.DrawImage(image, source, destination, imagePaint);
             return;
         }
 
@@ -489,10 +536,10 @@ public partial class SkiaFaceEditView : UserControl
         eventArgs.Handled = true;
     }
 
-    private static bool TryAddArtworkSample(DocumentTabViewModel document, Point pointer)
+    private bool TryAddArtworkSample(DocumentTabViewModel document, Point pointer)
     {
         var placement=document.CalibrationPlacement;if(placement is null)return false;var artwork=document.GetFaceElements().OfType<FaceArtworkElement>().FirstOrDefault();var operation=document.GetFaceDocument().Artwork?.ProcessingPipeline.Operations.OfType<ArtworkCalibrationOperationModel>().FirstOrDefault(o=>o.Id==placement.OperationId);if(artwork is null||operation is null)return false;
-        var x=(pointer.X-document.FacePanX)/Math.Max(document.FaceZoom,.0001);var y=(pointer.Y-document.FacePanY)/Math.Max(document.FaceZoom,.0001);if(x<artwork.X||x>artwork.X+artwork.Width||y<artwork.Y||y>artwork.Y+artwork.Height)return false;var sample=SnapArtworkPoint(document,artwork,x,y);
+        var facePoint=CreateViewport(document).ScreenToDocument(pointer);var x=facePoint.X;var y=facePoint.Y;if(x<artwork.X||x>artwork.X+artwork.Width||y<artwork.Y||y>artwork.Y+artwork.Height)return false;var sample=SnapArtworkPoint(document,artwork,x,y);
         sample=new CalibrationSampleModel{Id=sample.Id,X=sample.X,Y=sample.Y,SamplingMode=placement.SamplingMode,RadiusNormalized=placement.RadiusNormalized};
         CalibrationReferenceModel Add(CalibrationReferenceModel r)=>new(){ManualEnabled=r.ManualEnabled,ManualColor=r.ManualColor,Samples=r.Samples.Append(sample).ToArray()};
         var updated=new ArtworkCalibrationOperationModel{Id=operation.Id,Enabled=operation.Enabled,Strength=operation.Strength,BlackReference=placement.TargetKind==CalibrationPlacementTargetKind.BlackReference?Add(operation.BlackReference):operation.BlackReference,WhiteReference=placement.TargetKind==CalibrationPlacementTargetKind.WhiteReference?Add(operation.WhiteReference):operation.WhiteReference,SameColorGroups=operation.SameColorGroups.Select(g=>placement.TargetKind==CalibrationPlacementTargetKind.SameColorGroup&&g.Id==placement.TargetId?new SameColorCalibrationGroupModel{Id=g.Id,Name=g.Name,Samples=g.Samples.Append(sample).ToArray()}:g).ToArray(),CorrectSpatialBrightness=operation.CorrectSpatialBrightness,CorrectSpatialColor=operation.CorrectSpatialColor,NormalizeBlackWhite=operation.NormalizeBlackWhite,NeutralizeWhite=operation.NeutralizeWhite};
@@ -502,6 +549,7 @@ public partial class SkiaFaceEditView : UserControl
 
     private void OnFaceSkiaSurfaceMouseMove(object sender, MouseEventArgs eventArgs)
     {
+        UpdateStatus(eventArgs.GetPosition(FaceSkiaSurface));
         UpdateMarkerPreview(eventArgs.GetPosition(FaceSkiaSurface));
         if (_isLeftMouseDown)
         {
@@ -543,8 +591,9 @@ public partial class SkiaFaceEditView : UserControl
             if (_markerPreviewPoint is not null) { _markerPreviewPoint = null; RequestRender(); }
             return;
         }
-        var x = (pointer.X - document.FacePanX) / Math.Max(document.FaceZoom, 0.0001d);
-        var y = (pointer.Y - document.FacePanY) / Math.Max(document.FaceZoom, 0.0001d);
+        var facePoint = CreateViewport(document).ScreenToDocument(pointer);
+        var x = facePoint.X;
+        var y = facePoint.Y;
         var next = x >= artwork.X && x <= artwork.X + artwork.Width && y >= artwork.Y && y <= artwork.Y + artwork.Height
             ? SnapArtworkPoint(document, artwork, x, y)
             : null;
@@ -562,8 +611,8 @@ public partial class SkiaFaceEditView : UserControl
             {
                 if(document.FaceWorkspace?.IsComponentPlacementActive==true || document.FaceWorkspace?.IsLampPlacementActive==true)
                 {
-                    var zoom=Math.Max(document.FaceZoom,.0001); var start=new Point((_leftMouseDownStart.X-document.FacePanX)/zoom,(_leftMouseDownStart.Y-document.FacePanY)/zoom);
-                    var end=new Point((_dragSelectionCurrent.X-document.FacePanX)/zoom,(_dragSelectionCurrent.Y-document.FacePanY)/zoom);
+                    var viewport = CreateViewport(document); var start=viewport.ScreenToDocument(_leftMouseDownStart);
+                    var end=viewport.ScreenToDocument(_dragSelectionCurrent);
                     var width=Math.Abs(end.X-start.X); var height=Math.Abs(end.Y-start.Y);
                     if(document.FaceWorkspace.IsLampPlacementActive) document.FaceWorkspace.CompleteLampPlacement(Math.Min(start.X,end.X),Math.Min(start.Y,end.Y),width>=4?width:0,height>=4?height:0);
                     else document.FaceWorkspace.CompleteComponentPlacement(Math.Min(start.X,end.X),Math.Min(start.Y,end.Y),width>=4?width:0,height>=4?height:0);
@@ -625,12 +674,9 @@ public partial class SkiaFaceEditView : UserControl
             return;
         }
 
-        var transform = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY)
-            .WithZoomAt(eventArgs.GetPosition(FaceSkiaSurface), eventArgs.Delta);
-
-        document.FaceZoom = transform.Zoom;
-        document.FacePanX = transform.PanX;
-        document.FacePanY = transform.PanY;
+        var (viewport, bounds, dpi) = NavigationGeometry(document);
+        var zoom = CoreViewport(document).ClampedZoom * (eventArgs.Delta > 0 ? EditorViewportTransform.ZoomStep : 1 / EditorViewportTransform.ZoomStep);
+        SetViewport(CoreViewport(document).WithZoomAt(eventArgs.GetPosition(FaceSkiaSurface), zoom, viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY));
         RequestRender();
         eventArgs.Handled = true;
     }
@@ -670,7 +716,7 @@ public partial class SkiaFaceEditView : UserControl
             return;
         }
 
-        var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
+        var viewport = CreateViewport(document);
         var element = FaceElementFactory.CreateLampWindow(viewport.ScreenToDocument(screenPoint));
         var command = FaceMutationCommands.CreateAddLampWindowCommand(document.DocumentId, document, element);
         document.CommandService.Execute(command);
@@ -685,7 +731,7 @@ public partial class SkiaFaceEditView : UserControl
             return;
         }
 
-        var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
+        var viewport = CreateViewport(document);
         var selection = FaceSelectionService.SelectFromPoint(FaceArtworkEditingPresentation.GetViewportElements(document).ToArray(), viewport.ScreenToDocument(screenPoint), document.HierarchySelectedPanelSelection);
         var isCtrl = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
         if (selection is not { } selected)
@@ -711,15 +757,15 @@ public partial class SkiaFaceEditView : UserControl
         RequestRender();
     }
 
-    private static bool HasDraggedSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
+    private bool HasDraggedSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
     {
-        var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
+        var viewport = CreateViewport(document);
         return Panel2DViewportInteractionService.HasDocumentDelta(viewport.ScreenToDocument(startScreenPoint), viewport.ScreenToDocument(endScreenPoint));
     }
 
     private void HandleDragSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
     {
-        var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
+        var viewport = CreateViewport(document);
         var rect = Panel2DSelectionBoundsService.CreateNormalizedDocumentRect(viewport.ScreenToDocument(startScreenPoint), viewport.ScreenToDocument(endScreenPoint));
         var items = FaceSelectionInteractionService.SelectItemsFromRect(FaceArtworkEditingPresentation.GetViewportElements(document).ToArray(), rect);
         if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control) document.SelectionState.AddRange(items);
@@ -739,7 +785,7 @@ public partial class SkiaFaceEditView : UserControl
     private void HandleMoveSelection(DocumentTabViewModel document, Point startScreenPoint, Point endScreenPoint)
     {
         if (_moveSnapshots.Count == 0) return;
-        var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
+        var viewport = CreateViewport(document);
         var start = viewport.ScreenToDocument(startScreenPoint);
         var end = viewport.ScreenToDocument(endScreenPoint);
         if (!Panel2DViewportInteractionService.HasDocumentDelta(start, end)) return;
@@ -752,15 +798,15 @@ public partial class SkiaFaceEditView : UserControl
     {
         var document = Document;
         if (document is null || _moveSnapshots.Count == 0) return;
-        var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
+        var viewport = CreateViewport(document);
         var updated = FaceElementBulkMoveService.ComputeMovedElements(_moveSnapshots, viewport.ScreenToDocument(_leftMouseDownStart), viewport.ScreenToDocument(currentScreenPoint));
         if (FaceElementPreviewMutationService.TryApplyPreviews(document, updated)) RequestRender();
     }
 
-    private static bool TryGetSelectedElementAtPoint(DocumentTabViewModel document, Point screenPoint, out FaceElementModel selectedElement)
+    private bool TryGetSelectedElementAtPoint(DocumentTabViewModel document, Point screenPoint, out FaceElementModel selectedElement)
     {
         selectedElement = new FaceLampWindowElement();
-        var viewport = new PanelViewportTransform(document.FaceZoom, document.FacePanX, document.FacePanY);
+        var viewport = CreateViewport(document);
         var documentPoint = viewport.ScreenToDocument(screenPoint);
         foreach (var item in document.SelectionState.Items.Where(item => item.Domain == EditorSelectionDomain.FaceElement).Reverse())
         {
@@ -803,4 +849,6 @@ public partial class SkiaFaceEditView : UserControl
 
         FaceSkiaSurface.Cursor = Cursors.Arrow;
     }
+
+    private void OnFaceSkiaSurfaceMouseLeave(object sender, MouseEventArgs e) => UpdateStatus();
 }

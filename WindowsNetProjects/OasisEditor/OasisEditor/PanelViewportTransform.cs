@@ -4,13 +4,22 @@ namespace OasisEditor;
 
 public readonly record struct PanelViewportTransform(double Zoom, double PanX, double PanY)
 {
-    public const double MinZoom = 0.25d;
-    public const double MaxZoom = 4.0d;
-    public const double ZoomStep = 1.1d;
+    public const double MinZoom = EditorViewportTransform.MinZoom;
+    public const double MaxZoom = EditorViewportTransform.MaxZoom;
+    public const double ZoomStep = EditorViewportTransform.ZoomStep;
 
     public static PanelViewportTransform Identity => new(1d, 0d, 0d);
 
     public double NormalizedZoom => Math.Clamp(Zoom, MinZoom, MaxZoom);
+
+    /// <summary>Creates the legacy renderer-shaped adapter from the shared, centred viewport policy.</summary>
+    public static PanelViewportTransform FromEditor(EditorViewportTransform transform, Rect viewport, Rect contentBounds,
+        double dpiScaleX, double dpiScaleY)
+    {
+        var origin = transform.ContentToScreen(new Point(contentBounds.X, contentBounds.Y), viewport, contentBounds, dpiScaleX, dpiScaleY);
+        var scale = transform.ClampedZoom / (double.IsFinite(dpiScaleX) && dpiScaleX > 0 ? dpiScaleX : 1d);
+        return new PanelViewportTransform(scale, origin.X - contentBounds.X * scale, origin.Y - contentBounds.Y * scale);
+    }
 
     public Point DocumentToScreen(Point documentPoint)
     {
