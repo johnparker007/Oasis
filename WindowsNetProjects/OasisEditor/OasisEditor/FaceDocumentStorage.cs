@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 20;
+    public const int CurrentSchemaVersion = 21;
     public const int DefaultNativeLogicalWidth = 1024;
     public const int DefaultNativeLogicalHeight = 1024;
 
@@ -263,6 +263,7 @@ public static class FaceDocumentStorage
             {
                 Enabled = file.Override.Enabled, AssetPath = NormalizeOptional(file.Override.AssetPath) ?? string.Empty,
                 PixelWidth = file.Override.PixelWidth, PixelHeight = file.Override.PixelHeight,
+                PerspectiveRegistration = ToModel(file.Override.PerspectiveRegistration),
                 X = file.Override.X, Y = file.Override.Y, Width = file.Override.Width, Height = file.Override.Height,
                 ContentRevision = file.Override.ContentRevision
             }
@@ -303,6 +304,7 @@ public static class FaceDocumentStorage
             {
                 Enabled = model.Override.Enabled, AssetPath = model.Override.AssetPath,
                 PixelWidth = model.Override.PixelWidth, PixelHeight = model.Override.PixelHeight,
+                PerspectiveRegistration = ToFile(model.Override.PerspectiveRegistration),
                 X = model.Override.X, Y = model.Override.Y, Width = model.Override.Width, Height = model.Override.Height,
                 ContentRevision = model.Override.ContentRevision
             }
@@ -962,6 +964,7 @@ public sealed record FaceArtworkOverrideFile
     public string AssetPath { get; init; } = string.Empty;
     public int PixelWidth { get; init; }
     public int PixelHeight { get; init; }
+    public FacePerspectiveRegistrationFile PerspectiveRegistration { get; init; } = new();
     public double X { get; init; }
     public double Y { get; init; }
     public double Width { get; init; } = 1d;

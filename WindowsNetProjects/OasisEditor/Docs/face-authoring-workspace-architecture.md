@@ -8,7 +8,7 @@ A `.face` is an independent document. Panel2D is optional. Panel2D derivation is
 
 ## Workspace
 
-The central pane has a fixed breadcrumb and scrollable Overview, Artwork, Components, and Illumination pages. Focused routes host Geometry registration, Artwork Calibration, Override alignment, component editing, lamp editing, and the whole-Face **Layout View**. Overview owns the shared **Build Face** and **Rebuild Face** actions.
+The central pane has a fixed breadcrumb and scrollable Overview, Artwork, Components, and Illumination pages. Focused routes host primary Artwork Geometry registration, Artwork Calibration, Override Geometry, Override Alignment, component editing, lamp editing, and the whole-Face **Layout View**. Overview owns the shared **Build Face** and **Rebuild Face** actions.
 
 The final information architecture is:
 
@@ -20,7 +20,7 @@ Contextual generation settings are opened from Correction and Illumination rathe
 
 ## Ownership and provenance
 
-- **Authored** state and assets are designer-owned and Build/Rebuild never replace them: image sources, registration, calibration, native components and lamps, authored masks, and Override assets/alignment.
+- **Authored** state and assets are designer-owned and Build/Rebuild never replace them: image sources, registration, calibration, native components and lamps, authored masks, and Override assets/geometry/alignment.
 - **Derived** state is copied one-way from Panel2D. Artwork, Components, and Illumination have independent provenance. Local component or illumination edits can diverge without changing another subsystem.
 - **Generated** products are disposable build outputs. They are controlled only by `FaceBuildStateModel` and `FaceBuildService`.
 
@@ -28,7 +28,25 @@ The retained Face-wide Panel2D identifiers exist only so explicitly derived oper
 
 ## Artwork pipeline and files
 
-Source is either Panel2D/Face Source Shape or an authored Image. Geometry is a separate four-corner perspective registration recipe. Correction contains calibration and post-warp sharpening. Override is an optional authored external remaster aligned in normalized Face space; it is not another Source.
+Source is either Panel2D/Face Source Shape or an authored Image. Primary Artwork Geometry is a separate four-corner perspective registration recipe. Correction contains calibration and post-warp sharpening. Override is an optional authored external remaster downstream of Base; it is not another primary Source.
+
+The post-overhaul Override refinement has its own distinct recipe and focused route:
+
+```text
+Override Source Image
+    ↓
+Override Geometry / Perspective Registration
+    ↓
+rectified Override
+    ↓
+Override Alignment (Face-space X/Y/Width/Height)
+    ↓
+composite over Base
+    ↓
+artwork.png
+```
+
+Override Geometry selects and perspective-corrects the rectangular artwork in a raw photograph. Override Alignment then translates/scales that rectified result against Base. The semantic TopLeft, TopRight, BottomRight, BottomLeft quad is independent of primary Artwork Geometry; already-rectified artwork uses the default FullImage quad. Rectification is performed in memory while building Artwork Output and does not create a persisted build product or stale Correction Input/Base.
 
 Generated artwork uses exactly:
 

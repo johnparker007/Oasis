@@ -61,10 +61,11 @@ public partial class FaceArtworkRegistrationView : UserControl
 
     private void OnWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(FaceWorkspaceViewModel.ArtworkRegistration)
-            or nameof(FaceWorkspaceViewModel.ArtworkRawImagePath)
-            or nameof(FaceWorkspaceViewModel.ArtworkSourcePixelWidth)
-            or nameof(FaceWorkspaceViewModel.ArtworkSourcePixelHeight))) return;
+        if (e.PropertyName is not (nameof(FaceWorkspaceViewModel.GeometryRegistration)
+            or nameof(FaceWorkspaceViewModel.GeometryRawImagePath)
+            or nameof(FaceWorkspaceViewModel.GeometryRawImage)
+            or nameof(FaceWorkspaceViewModel.GeometrySourcePixelWidth)
+            or nameof(FaceWorkspaceViewModel.GeometrySourcePixelHeight))) return;
 
         // An external authored change makes an in-progress preview obsolete. Never commit against stale geometry.
         CancelDrag();
@@ -82,8 +83,8 @@ public partial class FaceArtworkRegistrationView : UserControl
 
     private Rect ImageRect()
     {
-        var w = Math.Max(1, Workspace?.ArtworkSourcePixelWidth ?? 1);
-        var h = Math.Max(1, Workspace?.ArtworkSourcePixelHeight ?? 1);
+        var w = Math.Max(1, Workspace?.GeometrySourcePixelWidth ?? 1);
+        var h = Math.Max(1, Workspace?.GeometrySourcePixelHeight ?? 1);
         var availableW = Math.Max(1, Overlay.ActualWidth - 48);
         var availableH = Math.Max(1, Overlay.ActualHeight - 48);
         var scale = Math.Min(availableW / w, availableH / h);
@@ -111,7 +112,7 @@ public partial class FaceArtworkRegistrationView : UserControl
     private void Draw()
     {
         Overlay.Children.Clear();
-        var registration = _preview ?? Workspace?.ArtworkRegistration;
+        var registration = _preview ?? Workspace?.GeometryRegistration;
         if (registration is null) return;
         var points = new[] { registration.TopLeft, registration.TopRight, registration.BottomRight, registration.BottomLeft };
         var line = new Polyline
@@ -138,7 +139,7 @@ public partial class FaceArtworkRegistrationView : UserControl
 
     private void OnDown(object sender, MouseButtonEventArgs e)
     {
-        var registration = Workspace?.ArtworkRegistration;
+        var registration = Workspace?.GeometryRegistration;
         if (registration is null) return;
         var at = e.GetPosition(Overlay);
         var points = new[] { registration.TopLeft, registration.TopRight, registration.BottomRight, registration.BottomLeft };
@@ -167,8 +168,8 @@ public partial class FaceArtworkRegistrationView : UserControl
         if (_drag < 0) return;
         var candidate = _preview?.Normalize();
         CancelDrag();
-        if (candidate?.IsValid() == true) Workspace?.CommitRegistration(candidate);
+        if (candidate?.IsValid() == true) Workspace?.CommitGeometryRegistration(candidate);
     }
 
-    private void OnReset(object sender, RoutedEventArgs e) => Workspace?.ResetRegistration();
+    private void OnReset(object sender, RoutedEventArgs e) => Workspace?.ResetGeometryRegistration();
 }

@@ -97,8 +97,9 @@ internal sealed class FaceArtworkRebuildService
             if (artworkOverride is not { Enabled: true }) { WriteVerified(bitmap, outputPath); return FaceArtworkProcessingResult.Success; }
             if (!artworkOverride.IsValid()) return FaceArtworkProcessingResult.Failure("The enabled Artwork Override recipe is invalid.");
             var overridePath = FaceArtworkGeneratedPathService.Resolve(artworkOverride.AssetPath, projectDirectory);
-            using var overlay = SKBitmap.Decode(overridePath);
-            if (overlay is null) return FaceArtworkProcessingResult.Failure($"Artwork Override could not be decoded: '{overridePath}'.");
+            using var rawOverlay = SKBitmap.Decode(overridePath);
+            if (rawOverlay is null) return FaceArtworkProcessingResult.Failure($"Artwork Override could not be decoded: '{overridePath}'.");
+            using var overlay = RectifyOverride(rawOverlay, artworkOverride.PerspectiveRegistration);
             var size = DetermineOutputSize(bitmap.Width, bitmap.Height, artworkOverride, overlay.Width, overlay.Height);
             using var output = new SKBitmap(new SKImageInfo(size.Width, size.Height, SKColorType.Bgra8888, SKAlphaType.Premul));
             using (var canvas = new SKCanvas(output))
@@ -125,6 +126,19 @@ internal sealed class FaceArtworkRebuildService
         if (width > MaximumOutputDimension || height > MaximumOutputDimension || (long)width * height > MaximumOutputPixels)
             throw new InvalidOperationException($"Artwork Output size {width} x {height} exceeds the safe generation limit.");
         return (width, height);
+    }
+
+    /// <summary>Rectifies only the useful registered region; override calibration remains downstream and independent of Base.</summary>
+    internal static SKBitmap RectifyOverride(SKBitmap source, FacePerspectiveRegistrationModel registration)
+    {
+        var normalized = registration.Normalize();
+        if (!normalized.IsValid()) throw new InvalidOperationException("The Artwork Override perspective registration is invalid.");
+        var size = FaceSourceShapeTransformService.EstimateRegisteredImageOutputSize(source.Width, source.Height, normalized);
+        if (size.Width > MaximumOutputDimension || size.Height > MaximumOutputDimension || (long)size.Width * size.Height > MaximumOutputPixels)
+            throw new InvalidOperationException($"Rectified Artwork Override size {size.Width} x {size.Height} exceeds the safe generation limit.");
+        var quad = new[] { normalized.TopLeft, normalized.TopRight, normalized.BottomRight, normalized.BottomLeft }
+            .Select(point => new FacePointModel { X = point.X * source.Width, Y = point.Y * source.Height }).ToArray();
+        return PerspectiveRasterizer.Rectify(source, quad, size.Width, size.Height);
     }
 
     private static void WriteVerified(SKBitmap bitmap, string path)

@@ -34,6 +34,7 @@ internal static class FaceArtworkOverrideAssetService
         return new FaceArtworkOverrideModel
         {
             Enabled=value.Enabled, AssetPath=value.AssetPath, PixelWidth=bitmap.Width, PixelHeight=bitmap.Height,
+            PerspectiveRegistration=value.PerspectiveRegistration,
             X=value.X, Y=value.Y, Width=value.Width, Height=value.Height, ContentRevision=value.ContentRevision + 1
         };
     }
@@ -44,6 +45,7 @@ internal static class FaceArtworkOverrideAssetService
         Enabled=true,
         AssetPath=ProjectAssetPathService.NormalizeProjectRelativePath(Path.GetRelativePath(project.ProjectDirectory, path)),
         PixelWidth=width, PixelHeight=height, X=alignment?.X ?? 0d, Y=alignment?.Y ?? 0d,
+        PerspectiveRegistration=FacePerspectiveRegistrationModel.FullImage,
         Width=alignment?.Width ?? 1d, Height=alignment?.Height ?? 1d,
         ContentRevision=(alignment?.ContentRevision ?? 0) + 1
     };

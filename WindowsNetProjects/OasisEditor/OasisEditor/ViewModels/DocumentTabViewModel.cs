@@ -459,6 +459,25 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         InvalidateFaceBuild(FaceBuildInput.ArtworkSource);
     }
 
+    public bool SetArtworkOverrideRegistration(FacePerspectiveRegistrationModel registration,
+        string description="Edit Artwork Override geometry")
+    {
+        var current = _faceDocumentModel.Artwork?.Override;
+        if (current is null) return false;
+        var normalized = registration.Normalize();
+        return normalized.IsValid() && SetArtworkOverride(CopyOverride(current, perspectiveRegistration: normalized), description);
+    }
+
+    internal static FaceArtworkOverrideModel CopyOverride(FaceArtworkOverrideModel value,
+        bool? enabled = null, FacePerspectiveRegistrationModel? perspectiveRegistration = null,
+        double? x = null, double? y = null, double? width = null, double? height = null) => new()
+    {
+        Enabled=enabled ?? value.Enabled, AssetPath=value.AssetPath, PixelWidth=value.PixelWidth, PixelHeight=value.PixelHeight,
+        PerspectiveRegistration=perspectiveRegistration ?? value.PerspectiveRegistration,
+        X=x ?? value.X, Y=y ?? value.Y, Width=width ?? value.Width, Height=height ?? value.Height,
+        ContentRevision=value.ContentRevision
+    };
+
     public bool CreateArtworkOverrideFromBase(out string? error)
     {
         error=null; var artwork=_faceDocumentModel.Artwork; var project=_projectAccessor?.Invoke();
