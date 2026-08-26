@@ -27,13 +27,19 @@ public partial class EditorViewportStatusBar : UserControl
     private void OnDropDownClosed(object? sender, EventArgs e)
     {
         if (ZoomBox.SelectedItem is ComboBoxItem { Tag: string tag } && double.TryParse(tag, NumberStyles.Float, CultureInfo.InvariantCulture, out var zoom))
+        {
+            ZoomBox.SelectedItem = null;
             ZoomRequested?.Invoke(this, zoom);
+        }
         else ApplyText();
     }
     private void ApplyText()
     {
-        if (EditorViewportTransform.TryParseZoomPercentage(ZoomBox.Text, out var zoom)) ZoomRequested?.Invoke(this, zoom);
-        else UpdateZoomText();
+        var isValid = EditorViewportTransform.TryParseZoomPercentage(ZoomBox.Text, out var zoom);
+        // Clear selection before the request; clearing it afterwards can overwrite
+        // the percentage written synchronously by the Zoom property callback.
         ZoomBox.SelectedItem = null;
+        if (isValid) ZoomRequested?.Invoke(this, zoom);
+        else UpdateZoomText();
     }
 }
