@@ -45,6 +45,49 @@ public sealed class FaceArtworkOverrideTests : IDisposable
     }
 
     [Fact]
+    public void InteractivePreviewSize_IsBoundedWithoutChangingUsefulAspectRatio()
+    {
+        var registration=new FacePerspectiveRegistrationModel{TopLeft=P(.1,.2),TopRight=P(.8,.2),BottomRight=P(.8,.7),BottomLeft=P(.1,.7)};
+        var useful=FaceSourceShapeTransformService.EstimateRegisteredImageOutputSize(8000,6000,registration);
+        var preview=FaceArtworkOverridePreviewService.DeterminePreviewSize(8000,6000,registration);
+        Assert.True(Math.Max(preview.Width,preview.Height)<=FaceArtworkOverridePreviewService.MaximumPreviewDimension);
+        Assert.Equal(useful.Width/(double)useful.Height,preview.Width/(double)preview.Height,2);
+        Assert.True(useful.Width>preview.Width);
+    }
+
+    [Fact]
+    public void InteractivePreview_UsesExplicitDimensionsAndPreservesAlpha()
+    {
+        Directory.CreateDirectory(_root);var path=Path.Combine(_root,"preview.png");
+        Write(path,80,40,(x,_)=>x<40?new SKColor(255,0,0,128):SKColors.Transparent);
+        var value=new FaceArtworkOverrideModel{AssetPath=path,PixelWidth=80,PixelHeight=40};
+        var result=FaceArtworkOverridePreviewService.Generate(path,value,CancellationToken.None,20);
+        Assert.Equal((20,10),(result.Width,result.Height));
+        using var output=SKBitmap.Decode(result.PngBytes);Assert.InRange(output.GetPixel(2,5).Alpha,(byte)120,(byte)136);Assert.Equal((byte)0,output.GetPixel(18,5).Alpha);
+    }
+
+    [Fact]
+    public void InteractivePreview_HonoursSupersedingCancellation()
+    {
+        Directory.CreateDirectory(_root);var path=Path.Combine(_root,"cancel.png");Write(path,20,20,(_,_)=>SKColors.Red);
+        using var cancellation=new CancellationTokenSource();cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(()=>FaceArtworkOverridePreviewService.Generate(path,
+            new FaceArtworkOverrideModel{AssetPath=path,PixelWidth=20,PixelHeight=20},cancellation.Token,20));
+    }
+
+    [Fact]
+    public void PreviewIdentity_ExcludesAlignmentButIncludesGeometryRevisionAndCap()
+    {
+        var registration=new FacePerspectiveRegistrationModel{TopLeft=P(.1,.1),TopRight=P(.9,.1),BottomRight=P(.9,.9),BottomLeft=P(.1,.9)};
+        var first=FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,registration,1600);
+        var alignmentOnly=DocumentTabViewModel.CopyOverride(new FaceArtworkOverrideModel{AssetPath="override.png",PixelWidth=10,PixelHeight=10,PerspectiveRegistration=registration},x:.2,y:.3,width:.8,height:.7);
+        Assert.Equal(first,FaceArtworkOverridePreviewService.CreateCacheKey(alignmentOnly.AssetPath,4,alignmentOnly.PerspectiveRegistration,1600));
+        Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",5,registration,1600));
+        Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,FacePerspectiveRegistrationModel.FullImage,1600));
+        Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,registration,1200));
+    }
+
+    [Fact]
     public void OverrideInvalidation_LeavesBaseCurrentAndStalesOutputAndRuntime()
     {
         var state=FaceBuildStateFactory.CreateGeneratedState(true,true,true,true,true);

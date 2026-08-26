@@ -48,6 +48,8 @@ artwork.png
 
 Override Geometry selects and perspective-corrects the rectangular artwork in a raw photograph. Override Alignment then translates/scales that rectified result against Base. The semantic TopLeft, TopRight, BottomRight, BottomLeft quad is independent of primary Artwork Geometry; already-rectified artwork uses the default FullImage quad. Rectification is performed in memory while building Artwork Output and does not create a persisted build product or stale Correction Input/Base.
 
+Alignment uses a document-local, asynchronously generated preview capped at 1600 pixels on its longest edge. Preview requests are cancellable and superseded by newer source/registration revisions, and use a display-only bilinear warp. Property getters only expose an already-prepared frozen image. The bounded preview is never used by Build: explicit Build/Rebuild continues to estimate the full useful registered resolution and use the supersampled bicubic production rasterizer.
+
 Generated artwork uses exactly:
 
 - `Generated/Faces/<Face>/Artwork/correction-input.png` — rectified source supplied to Correction;

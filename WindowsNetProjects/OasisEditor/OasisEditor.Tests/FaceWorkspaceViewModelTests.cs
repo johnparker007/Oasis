@@ -217,6 +217,7 @@ public sealed class FaceWorkspaceViewModelTests
         Assert.Equal(["Upper Glass","Artwork","Override","Geometry"], workspace.Breadcrumbs.Select(item=>item.Label));
         var changed = new FacePerspectiveRegistrationModel { TopLeft=new(){X=.1,Y=.1}, TopRight=new(){X=.9,Y=.1}, BottomRight=new(){X=.9,Y=.9}, BottomLeft=new(){X=.1,Y=.9} };
         workspace.CommitGeometryRegistration(changed);
+        Assert.Null(workspace.ArtworkOverrideAbsolutePath); // Geometry commits invalidate only; preview work is deferred until Alignment.
         Assert.Equal(.1,document.GetFaceDocument().Artwork!.Override!.PerspectiveRegistration.TopLeft.X);
         Assert.True(document.CommandService.TryUndo());
         Assert.Equal(0,document.GetFaceDocument().Artwork!.Override!.PerspectiveRegistration.TopLeft.X);
