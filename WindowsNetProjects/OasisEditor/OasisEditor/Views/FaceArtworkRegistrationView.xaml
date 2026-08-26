@@ -1,8 +1,12 @@
 <UserControl x:Class="OasisEditor.Views.FaceArtworkRegistrationView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
- <Grid Background="{DynamicResource PanelBackgroundBrush}">
-  <Image x:Name="SourceImage" Source="{Binding FaceWorkspace.GeometryRawImage}" Stretch="Uniform" Margin="24"/>
-  <Canvas x:Name="Overlay" Background="Transparent" MouseLeftButtonDown="OnDown" MouseMove="OnMove" MouseLeftButtonUp="OnUp" SizeChanged="OnSizeChanged"/>
+ <Grid Background="{DynamicResource PanelBackgroundBrush}" ClipToBounds="True">
+  <Canvas x:Name="ImageCanvas" IsHitTestVisible="False">
+   <Image x:Name="SourceImage" Source="{Binding FaceWorkspace.GeometryRawImage}" Stretch="Fill"/>
+  </Canvas>
+  <Canvas x:Name="Overlay" Background="Transparent" MouseDown="OnDown" MouseMove="OnMove" MouseUp="OnUp"
+          MouseWheel="OnMouseWheel" LostMouseCapture="OnLostMouseCapture" SizeChanged="OnSizeChanged"/>
   <StackPanel VerticalAlignment="Top" HorizontalAlignment="Right" Orientation="Horizontal" Margin="12">
+   <Button Padding="10,5" Content="Fit" Click="OnFit"/>
    <Button Padding="10,5" Content="Apply / Build" Command="{Binding FaceWorkspace.BuildFaceCommand}"/>
    <Button Margin="8,0" Padding="10,5" Content="Reset to Full Image" Click="OnReset"/>
    <Button Padding="10,5" Content="Done" Command="{Binding FaceWorkspace.DoneGeometryCommand}"/>
