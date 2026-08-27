@@ -9,7 +9,7 @@ namespace OasisEditor;
 
 public sealed class FaceRuntimeExportService
 {
-    public const int RuntimeManifestSchemaVersion = 7;
+    public const int RuntimeManifestSchemaVersion = 8;
     public const string RuntimeDirectoryName = "runtime";
     public const string ManifestFileName = "face.runtime.json";
     public const string ArtworkFileName = "artwork.png";
@@ -53,6 +53,8 @@ public sealed class FaceRuntimeExportService
 
         var width = ResolveRuntimeWidth(faceDocument);
         var height = ResolveRuntimeHeight(faceDocument);
+        var textureWidth = ResolveTextureWidth(faceDocument, width);
+        var textureHeight = ResolveTextureHeight(faceDocument, height);
         var outputDirectory = ResolveRuntimeOutputDirectory(project, documentPath);
         Directory.CreateDirectory(outputDirectory);
 
@@ -64,17 +66,17 @@ public sealed class FaceRuntimeExportService
         var artworkPath = Path.Combine(outputDirectory, ArtworkFileName);
         var maskPath = Path.Combine(outputDirectory, MaskFileName);
         progress.Report(0.15, "Exporting artwork...");
-        ExportArtwork(faceDocument, project, width, height, artworkPath);
+        ExportArtwork(faceDocument, project, textureWidth, textureHeight, artworkPath);
         progress.Report(0.3, "Copying mask...");
-        CopyMask(faceDocument, project, maskPath);
+        ExportMask(faceDocument, project, textureWidth, textureHeight, maskPath);
         progress.Report(0.45, "Creating runtime texture plan...");
-        var textureResult = _runtimeTextureGenerator.Generate(faceDocument, width, height, outputDirectory, progress.CreateChild(0.45, 0.75));
+        var textureResult = _runtimeTextureGenerator.Generate(faceDocument, width, height, textureWidth, textureHeight, outputDirectory, progress.CreateChild(0.45, 0.75));
         CopyReelBands(faceDocument, project, outputDirectory);
         CopyReelTransmissionMasks(faceDocument, project, outputDirectory);
 
         var generatedUtc = DateTime.UtcNow;
         progress.Report(0.8, "Writing manifest...");
-        var manifest = CreateManifest(faceDocument, width, height, textureResult.Plan, cabinetContext);
+        var manifest = CreateManifest(faceDocument, width, height, textureWidth, textureHeight, textureResult.Plan, cabinetContext);
         var manifestPath = Path.Combine(outputDirectory, ManifestFileName);
         File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, s_manifestJsonOptions));
 
@@ -186,6 +188,9 @@ public sealed class FaceRuntimeExportService
     }
 
     public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceRuntimeTextureGenerationPlan texturePlan, FaceCabinetContext? cabinetContext = null)
+        => CreateManifest(faceDocument, width, height, width, height, texturePlan, cabinetContext);
+
+    private FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, int textureWidth, int textureHeight, FaceRuntimeTextureGenerationPlan texturePlan, FaceCabinetContext? cabinetContext)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(texturePlan);
@@ -205,6 +210,8 @@ public sealed class FaceRuntimeExportService
             FaceId = faceDocument.Id,
             Width = width,
             Height = height,
+            TextureWidth = textureWidth,
+            TextureHeight = textureHeight,
             Artwork = ArtworkFileName,
             Mask = MaskFileName,
             TrayId = FaceRuntimeTextureGenerator.TrayIdFileName,
@@ -225,6 +232,12 @@ public sealed class FaceRuntimeExportService
 
     private static void ExportArtwork(FaceDocumentModel faceDocument, EditorProject project, int width, int height, string outputPath)
     {
+        if (faceDocument.Artwork is { OutputAssetPath: { Length: > 0 } outputAssetPath })
+        {
+            ExportImage(ResolveExistingProjectPath(project, outputAssetPath, "Final Face artwork output"), width, height, outputPath, "Final Face artwork output");
+            return;
+        }
+
         using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
         using var canvas = new SKCanvas(bitmap);
         canvas.Clear(SKColors.Transparent);
@@ -309,7 +322,7 @@ public sealed class FaceRuntimeExportService
         }
     }
 
-    private static void CopyMask(FaceDocumentModel faceDocument, EditorProject project, string outputPath)
+    private static void ExportMask(FaceDocumentModel faceDocument, EditorProject project, int width, int height, string outputPath)
     {
         if (faceDocument.MaskLayer is null)
         {
@@ -317,12 +330,21 @@ public sealed class FaceRuntimeExportService
         }
 
         var sourcePath = ResolveExistingProjectPath(project, faceDocument.MaskLayer.AssetPath, "Face mask layer");
-        if (string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(outputPath), StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
+        ExportImage(sourcePath, width, height, outputPath, "Face mask layer");
+    }
 
-        File.Copy(sourcePath, outputPath, overwrite: true);
+    private static void ExportImage(string sourcePath, int width, int height, string outputPath, string description)
+    {
+        using var image = LoadImage(sourcePath, description);
+        using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+        using var canvas = new SKCanvas(bitmap);
+        using var paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
+        canvas.Clear(SKColors.Transparent);
+        canvas.DrawImage(image, SKRect.Create(0, 0, width, height), paint);
+        using var rendered = SKImage.FromBitmap(bitmap);
+        using var data = rendered.Encode(SKEncodedImageFormat.Png, 100) ?? throw new IOException($"{description} could not be encoded as PNG.");
+        using var stream = File.Open(outputPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        data.SaveTo(stream);
     }
 
     private static string ResolveRuntimeOutputDirectory(EditorProject project, string? documentPath)
@@ -583,7 +605,6 @@ public sealed class FaceRuntimeExportService
 
     private static int ResolveRuntimeWidth(FaceDocumentModel faceDocument)
     {
-        if (faceDocument.Artwork is { FinalOutputWidth: > 0 } artwork) return artwork.FinalOutputWidth;
         if (faceDocument.SourceRegion is { IsValid: true } sourceRegion)
         {
             return Math.Max(1, (int)Math.Ceiling(sourceRegion.Width));
@@ -599,7 +620,6 @@ public sealed class FaceRuntimeExportService
 
     private static int ResolveRuntimeHeight(FaceDocumentModel faceDocument)
     {
-        if (faceDocument.Artwork is { FinalOutputHeight: > 0 } artwork) return artwork.FinalOutputHeight;
         if (faceDocument.SourceRegion is { IsValid: true } sourceRegion)
         {
             return Math.Max(1, (int)Math.Ceiling(sourceRegion.Height));
@@ -612,6 +632,12 @@ public sealed class FaceRuntimeExportService
 
         return Math.Max(1, (int)Math.Ceiling(faceDocument.Elements.Select(element => element.Y + element.Height).DefaultIfEmpty(1d).Max()));
     }
+
+    private static int ResolveTextureWidth(FaceDocumentModel faceDocument, int logicalWidth) =>
+        faceDocument.Artwork is { FinalOutputWidth: > 0 } artwork ? artwork.FinalOutputWidth : logicalWidth;
+
+    private static int ResolveTextureHeight(FaceDocumentModel faceDocument, int logicalHeight) =>
+        faceDocument.Artwork is { FinalOutputHeight: > 0 } artwork ? artwork.FinalOutputHeight : logicalHeight;
 
     private static SKRect ResolveArtworkSourceRect(FaceArtworkElement element, int imageWidth, int imageHeight)
     {
@@ -666,6 +692,8 @@ public sealed class FaceRuntimeManifest
     public string FaceId { get; init; } = string.Empty;
     public int Width { get; init; }
     public int Height { get; init; }
+    public int TextureWidth { get; init; }
+    public int TextureHeight { get; init; }
     public string Artwork { get; init; } = string.Empty;
     public string Mask { get; init; } = string.Empty;
     public string? TrayId { get; init; }

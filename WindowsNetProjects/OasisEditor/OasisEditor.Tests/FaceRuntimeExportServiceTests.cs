@@ -146,6 +146,66 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Assert.Equal(128, exportedArtwork.GetPixel(0, 0).Alpha);
     }
 
+    [Fact]
+    public void Export_HighResolutionFinalArtwork_PreservesLogicalFaceSpaceAndAlignsRuntimeTextures()
+    {
+        var finalArtworkPath = Path.Combine(_generatedDirectory, "final-artwork.png");
+        var obsoleteElementArtworkPath = Path.Combine(_assetsDirectory, "obsolete-element.png");
+        var maskPath = Path.Combine(_generatedDirectory, "logical-mask.png");
+        WriteQuadrantPng(finalArtworkPath, 16, 16);
+        WriteSolidPng(obsoleteElementArtworkPath, 4, 4, SKColors.Magenta);
+        WriteSolidPng(maskPath, 4, 4, SKColors.White);
+        WriteDefaultCabinetAsset();
+        var document = new FaceDocumentModel
+        {
+            Id = "face-runtime",
+            Title = "Runtime Face",
+            AssignedCabinetAssetPath = "Assets/Cabinets/cabinet.asset",
+            SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 4, Height = 4 },
+            Artwork = new FaceArtworkModel
+            {
+                OutputAssetPath = "Generated/final-artwork.png",
+                OutputWidth = 4,
+                OutputHeight = 4,
+                FinalOutputWidth = 16,
+                FinalOutputHeight = 16
+            },
+            MaskLayer = new FaceMaskLayerModel { AssetPath = "Generated/logical-mask.png", Width = 4, Height = 4 },
+            Elements =
+            [
+                new FaceArtworkElement { ObjectId = "obsolete", AssetPath = "Assets/obsolete-element.png", X = 0, Y = 0, Width = 4, Height = 4, IsVisible = true },
+                new FaceLampWindowElement { ObjectId = "lamp-24", X = 2, Y = 2, Width = 2, Height = 2, IsVisible = true, LinkedMachineObjectReference = MachineObjectReference.Lamp(24) }
+            ]
+        };
+
+        var result = new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath());
+
+        Assert.Equal(4, result.Manifest.Width);
+        Assert.Equal(4, result.Manifest.Height);
+        Assert.Equal(16, result.Manifest.TextureWidth);
+        Assert.Equal(16, result.Manifest.TextureHeight);
+        var lamp = Assert.Single(result.Manifest.Lamps);
+        Assert.Equal(3d, lamp.X);
+        Assert.Equal(3d, lamp.Y);
+        Assert.Equal(2d, lamp.Width);
+        Assert.Equal(2d, lamp.Height);
+
+        using var artwork = SKBitmap.Decode(result.ArtworkPath);
+        using var mask = SKBitmap.Decode(result.MaskPath);
+        using var trayIds = SKBitmap.Decode(Path.Combine(result.OutputDirectory, FaceRuntimeTextureGenerator.TrayIdFileName));
+        using var lampIds = SKBitmap.Decode(Path.Combine(result.OutputDirectory, FaceRuntimeTextureGenerator.LampIds0FileName));
+        using var lampWeights = SKBitmap.Decode(Path.Combine(result.OutputDirectory, FaceRuntimeTextureGenerator.LampWeights0FileName));
+        Assert.Equal((16, 16), (artwork.Width, artwork.Height));
+        Assert.Equal(SKColors.Blue, artwork.GetPixel(15, 15));
+        Assert.NotEqual(SKColors.Magenta, artwork.GetPixel(0, 0));
+        Assert.Equal((16, 16), (mask.Width, mask.Height));
+        Assert.Equal((16, 16), (trayIds.Width, trayIds.Height));
+        Assert.Equal(0, trayIds.GetPixel(7, 7).Red);
+        Assert.Equal(1, trayIds.GetPixel(8, 8).Red);
+        Assert.Equal(25, lampIds.GetPixel(15, 15).Red);
+        Assert.True(lampWeights.GetPixel(12, 12).Red > 0);
+    }
+
 
     [Fact]
     public void SaveDocument_ForFaceWithProject_ExportsRuntimePackageAndPersistsAssetReferences()
@@ -1200,6 +1260,19 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
         bitmap.Erase(color);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
+        data.SaveTo(stream);
+    }
+
+    private static void WriteQuadrantPng(string path, int width, int height)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+        for (var y = 0; y < height; y++)
+        for (var x = 0; x < width; x++)
+            bitmap.SetPixel(x, y, x < width / 2 ? (y < height / 2 ? SKColors.Red : SKColors.Green) : (y < height / 2 ? SKColors.Yellow : SKColors.Blue));
         using var image = SKImage.FromBitmap(bitmap);
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         using var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None);
