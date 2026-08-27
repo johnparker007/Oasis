@@ -1,12 +1,11 @@
 using SkiaSharp;
 
-namespace OasisEditor;
+namespace OasisEditor.Tests;
 
 /// <summary>Evaluates authored operations in order. Calibration samples always observe the operation input.</summary>
-internal sealed class FaceArtworkProcessingPipeline
+internal sealed class LegacyFaceArtworkProcessingPipeline
 {
     private const double Epsilon = 1e-6, MinimumReferenceRange = 1d / 255d;
-    private static readonly double[] LinearBySrgbByte = CreateLinearLookup();
     public SKBitmap Evaluate(SKBitmap input, ImageProcessingPipelineModel pipeline, int? operationCount = null)
     {
         var result = input.Copy();
@@ -38,18 +37,15 @@ internal sealed class FaceArtworkProcessingPipeline
         var fields = Enumerable.Range(0, 3).Select(channel => FitField(observations, groups.Count, channel)).ToArray();
         if (fields.Any(f => f is null)) return input.Copy();
         var output = NewBitmap(input);
-        var inputPixels = new BitmapPixelBuffer(input); var outputPixels = new BitmapPixelBuffer(output);
         for (var y = 0; y < input.Height; y++) for (var x = 0; x < input.Width; x++)
         {
-            inputPixels.ReadStraight(x,y,out var pr,out var pg,out var pb,out var alpha);
-            var red = ToLinear(pr); var green = ToLinear(pg); var blue = ToLinear(pb);
+            var p = input.GetPixel(x, y); var linear = new[] { ToLinear(p.Red), ToLinear(p.Green), ToLinear(p.Blue) };
             var fx = input.Width <= 1 ? 0 : (double)x / (input.Width - 1);
             var fy = input.Height <= 1 ? 0 : (double)y / (input.Height - 1);
-            var er = EvaluateField(fields[0]!, fx, fy); var eg = EvaluateField(fields[1]!, fx, fy); var eb = EvaluateField(fields[2]!, fx, fy);
-            var mean = (er + eg + eb) / 3d;
-            if (!operation.CorrectSpatialColor) er = eg = eb = mean;
-            if (!operation.CorrectSpatialBrightness) { er -= mean; eg -= mean; eb -= mean; }
-            outputPixels.WriteStraight(x, y, ToByte(red * BoundedExp(-er)), ToByte(green * BoundedExp(-eg)), ToByte(blue * BoundedExp(-eb)), alpha);
+            var evaluated = fields.Select(f => EvaluateField(f!, fx, fy)).ToArray();
+            if (!operation.CorrectSpatialColor) { var mean = evaluated.Average(); evaluated = [mean, mean, mean]; }
+            if (!operation.CorrectSpatialBrightness) { var mean = evaluated.Average(); evaluated = evaluated.Select(v => v - mean).ToArray(); }
+            output.SetPixel(x, y, new SKColor(ToByte(linear[0] * BoundedExp(-evaluated[0])), ToByte(linear[1] * BoundedExp(-evaluated[1])), ToByte(linear[2] * BoundedExp(-evaluated[2])), p.Alpha));
         }
         return output;
     }
@@ -78,16 +74,7 @@ internal sealed class FaceArtworkProcessingPipeline
     {
         if (!TryResolveReference(input, reference, out var white)) return input.Copy();
         var luminance=Luminance(white[0],white[1],white[2]); if(luminance<Epsilon)return input.Copy();
-        var mr=Math.Clamp(luminance/Math.Max(white[0],Epsilon),.25,4);
-        var mg=Math.Clamp(luminance/Math.Max(white[1],Epsilon),.25,4);
-        var mb=Math.Clamp(luminance/Math.Max(white[2],Epsilon),.25,4);
-        var output=NewBitmap(input);var inputPixels=new BitmapPixelBuffer(input);var outputPixels=new BitmapPixelBuffer(output);
-        for(var y=0;y<input.Height;y++)for(var x=0;x<input.Width;x++)
-        {
-            inputPixels.ReadStraight(x,y,out var r,out var g,out var b,out var alpha);
-            outputPixels.WriteStraight(x,y,ToByte(ToLinear(r)*mr),ToByte(ToLinear(g)*mg),ToByte(ToLinear(b)*mb),alpha);
-        }
-        return output;
+        var multipliers=white.Select(c=>Math.Clamp(luminance/Math.Max(c,Epsilon),.25,4)).ToArray(); return Transform(input,(c,ch)=>c*multipliers[ch]);
     }
 
     private static SKBitmap ApplyTonalNormalization(SKBitmap input, ArtworkCalibrationOperationModel operation)
@@ -96,15 +83,7 @@ internal sealed class FaceArtworkProcessingPipeline
         var lo=Luminance(black[0],black[1],black[2]);
         var hi=Luminance(white[0],white[1],white[2]);
         if(hi-lo<MinimumReferenceRange)return input.Copy();
-        var output=NewBitmap(input);var inputPixels=new BitmapPixelBuffer(input);var outputPixels=new BitmapPixelBuffer(output);
-        for(var y=0;y<input.Height;y++)for(var x=0;x<input.Width;x++)
-        {
-            inputPixels.ReadStraight(x,y,out var rb,out var gb,out var bb,out var alpha);
-            var r=ToLinear(rb);var g=ToLinear(gb);var b=ToLinear(bb);var l=Luminance(r,g,b);
-            var desired=Math.Clamp((l-lo)/(hi-lo),0,1);var scale=l>Epsilon?desired/l:0;
-            outputPixels.WriteStraight(x,y,ToByte(r*scale),ToByte(g*scale),ToByte(b*scale),alpha);
-        }
-        return output;
+        return Transform(input,(c,ch,all)=>{var l=Luminance(all[0],all[1],all[2]);var desired=Math.Clamp((l-lo)/(hi-lo),0,1);return l>Epsilon?c*desired/l:0;});
     }
 
     internal static bool TryMeasureSample(SKBitmap image, CalibrationSampleModel sample, out double[] color)
@@ -122,24 +101,14 @@ internal sealed class FaceArtworkProcessingPipeline
     internal static bool TryResolveReferenceColors(SKBitmap image, ArtworkCalibrationOperationModel operation,out string? black,out string? white){var br=TryResolveReference(image,operation.BlackReference,out var b);var wr=TryResolveReference(image,operation.WhiteReference,out var w);black=br?Hex(b):null;white=wr?Hex(w):null;return br&&wr;}
     private static bool TryResolveReference(SKBitmap image,CalibrationReferenceModel reference,out double[] color){if(reference.ManualEnabled)return TryParse(reference.ManualColor,out color);var values=reference.Samples.Select(s=>TryMeasureSample(image,s,out var c)?c:null).Where(c=>c is not null).ToArray();if(values.Length==0){color=[];return false;}color=Enumerable.Range(0,3).Select(ch=>values.Average(c=>c![ch])).ToArray();return true;}
     private static bool TryParse(string text,out double[] c){var v=text.Trim().TrimStart('#');if(v.Length==8)v=v[2..];if(v.Length!=6||!uint.TryParse(v,System.Globalization.NumberStyles.HexNumber,null,out var rgb)){c=[];return false;}c=[ToLinear((byte)(rgb>>16)),ToLinear((byte)(rgb>>8)),ToLinear((byte)rgb)];return true;}
-    private static SKBitmap Blend(SKBitmap a,SKBitmap b,double amount)
-    {
-        var output=NewBitmap(a);
-        var aPixels=new BitmapPixelBuffer(a);var bPixels=new BitmapPixelBuffer(b);var outputPixels=new BitmapPixelBuffer(output);
-        for(var y=0;y<a.Height;y++)for(var x=0;x<a.Width;x++)
-        {
-            aPixels.ReadStraight(x,y,out var ar,out var ag,out var ab,out var alpha);bPixels.ReadStraight(x,y,out var br,out var bg,out var bb,out _);
-            var lr=ToLinear(ar);var lg=ToLinear(ag);var lb=ToLinear(ab);
-            var r=lr+(ToLinear(br)-lr)*amount;var g=lg+(ToLinear(bg)-lg)*amount;var blue=lb+(ToLinear(bb)-lb)*amount;
-            outputPixels.WriteStraight(x,y,ToByte(r),ToByte(g),ToByte(blue),alpha);
-        }
-        return output;
-    }
+    private static SKBitmap Blend(SKBitmap a,SKBitmap b,double amount)=>Transform(a,(c,ch,all,x,y)=>c+(new[]{ToLinear(b.GetPixel(x,y).Red),ToLinear(b.GetPixel(x,y).Green),ToLinear(b.GetPixel(x,y).Blue)}[ch]-c)*amount);
+    private static SKBitmap Transform(SKBitmap input,Func<double,int,double> f)=>Transform(input,(c,ch,all,x,y)=>f(c,ch));
+    private static SKBitmap Transform(SKBitmap input,Func<double,int,double[],double> f)=>Transform(input,(c,ch,all,x,y)=>f(c,ch,all));
+    private static SKBitmap Transform(SKBitmap input,Func<double,int,double[],int,int,double> f){var o=NewBitmap(input);for(var y=0;y<input.Height;y++)for(var x=0;x<input.Width;x++){var p=input.GetPixel(x,y);var c=new[]{ToLinear(p.Red),ToLinear(p.Green),ToLinear(p.Blue)};o.SetPixel(x,y,new SKColor(ToByte(f(c[0],0,c,x,y)),ToByte(f(c[1],1,c,x,y)),ToByte(f(c[2],2,c,x,y)),p.Alpha));}return o;}
     private static SKBitmap NewBitmap(SKBitmap i)=>new(i.Width,i.Height,SKColorType.Rgba8888,SKAlphaType.Premul);
     private static double EvaluateField(double[] f,double x,double y)=>f[0]*x+f[1]*y+f[2]*x*x+f[3]*x*y+f[4]*y*y-f[5];
     private static double BoundedExp(double x)=>Math.Exp(Math.Clamp(x,Math.Log(.25),Math.Log(4)));
-    private static double ToLinear(byte v)=>LinearBySrgbByte[v];
-    private static double[] CreateLinearLookup(){var values=new double[256];for(var i=0;i<values.Length;i++){var x=i/255d;values[i]=x<=.04045?x/12.92:Math.Pow((x+.055)/1.055,2.4);}return values;}
+    private static double ToLinear(byte v){var x=v/255d;return x<=.04045?x/12.92:Math.Pow((x+.055)/1.055,2.4);}
     private static byte ToByte(double v){v=Math.Clamp(v,0,1);var s=v<=.0031308?v*12.92:1.055*Math.Pow(v,1/2.4)-.055;return(byte)Math.Round(Math.Clamp(s,0,1)*255);}
     private static double Luminance(double r,double g,double b)=>.2126*r+.7152*g+.0722*b;
     private static string Hex(double[] c)=>$"#FF{ToByte(c[0]):X2}{ToByte(c[1]):X2}{ToByte(c[2]):X2}";

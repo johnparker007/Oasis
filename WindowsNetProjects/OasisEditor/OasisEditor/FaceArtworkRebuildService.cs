@@ -19,6 +19,7 @@ internal sealed class FaceArtworkRebuildService
         PanelFaceSourceShapeModel shape, string? projectDirectory, string correctionInputPath,
         FaceGenerationSettingsModel? generationSettings = null)
     {
+        using var totalTiming = FaceArtworkPerformanceTrace.Measure("Panel Face correction-input rebuild total");
         ArgumentNullException.ThrowIfNull(artwork);
         if (artwork.Source.Kind != FaceArtworkSourceKind.Panel2DFaceSourceShape)
             throw new InvalidOperationException("This overload requires Panel2D Face Source Shape artwork.");
@@ -26,38 +27,42 @@ internal sealed class FaceArtworkRebuildService
 
         var absoluteInput = FaceArtworkGeneratedPathService.Resolve(correctionInputPath, projectDirectory);
         Directory.CreateDirectory(Path.GetDirectoryName(absoluteInput)!);
-        var geometryPath = Path.Combine(Path.GetDirectoryName(absoluteInput)!, $".geometry-{Guid.NewGuid():N}.png");
-        try
-        {
-            var generated = FaceSourceShapeTransformService.TryGenerateBackground(panel, shape, artwork.OutputWidth,
-                artwork.OutputHeight, projectDirectory, geometryPath);
-            if (generated is null) return null;
-            using var geometry = SKBitmap.Decode(geometryPath);
-            if (geometry is null) return null;
-            using var sharpened = FaceArtworkSharpeningService.Apply(geometry,
-                generationSettings ?? FaceGenerationSettingsModel.Default);
-            WriteVerified(sharpened, absoluteInput);
-            return FaceArtworkGeneratedPathService.ToProjectRelative(absoluteInput, projectDirectory);
-        }
-        finally { if (File.Exists(geometryPath)) File.Delete(geometryPath); }
+        using var geometryTiming = FaceArtworkPerformanceTrace.Measure("Panel background decode and perspective rectify");
+        using var geometry = FaceSourceShapeTransformService.TryGenerateBackgroundBitmap(panel, shape, artwork.OutputWidth,
+            artwork.OutputHeight, projectDirectory);
+        if (geometry is null) return null;
+        geometryTiming?.Dispose();
+        using var sharpenTiming = FaceArtworkPerformanceTrace.Measure("Post-warp sharpen");
+        using var sharpened = FaceArtworkSharpeningService.Apply(geometry,
+            generationSettings ?? FaceGenerationSettingsModel.Default);
+        sharpenTiming?.Dispose();
+        WriteVerified(sharpened, absoluteInput);
+        return FaceArtworkGeneratedPathService.ToProjectRelative(absoluteInput, projectDirectory);
     }
 
     /// <summary>Rectifies an authored image once through the shared quality-first rasterizer, then sharpens it.</summary>
     public string? RebuildImageCorrectionInput(FaceArtworkModel artwork, string projectDirectory,
         string correctionInputPath, FaceGenerationSettingsModel? generationSettings = null)
     {
+        using var totalTiming = FaceArtworkPerformanceTrace.Measure("Image Face correction-input rebuild total");
         if (artwork.Source.Kind != FaceArtworkSourceKind.Image || string.IsNullOrWhiteSpace(artwork.Source.AssetPath)) return null;
         var registration = artwork.Geometry.PerspectiveRegistration.Normalize();
         if (!registration.IsValid()) return null;
         var sourcePath = FaceArtworkGeneratedPathService.Resolve(artwork.Source.AssetPath, projectDirectory);
         if (!File.Exists(sourcePath)) return null;
+        using var decodeTiming = FaceArtworkPerformanceTrace.Measure("Image source PNG decode");
         using var source = SKBitmap.Decode(sourcePath);
         if (source is null) return null;
+        decodeTiming?.Dispose();
         var size = FaceSourceShapeTransformService.EstimateRegisteredImageOutputSize(source.Width, source.Height, registration);
         var quad = new[] { registration.TopLeft, registration.TopRight, registration.BottomRight, registration.BottomLeft }
             .Select(point => new FacePointModel { X = point.X * source.Width, Y = point.Y * source.Height }).ToArray();
+        using var rectifyTiming = FaceArtworkPerformanceTrace.Measure("Perspective rectify");
         using var rectified = PerspectiveRasterizer.Rectify(source, quad, size.Width, size.Height);
+        rectifyTiming?.Dispose();
+        using var sharpenTiming = FaceArtworkPerformanceTrace.Measure("Post-warp sharpen");
         using var sharpened = FaceArtworkSharpeningService.Apply(rectified, generationSettings ?? FaceGenerationSettingsModel.Default);
+        sharpenTiming?.Dispose();
         var output = FaceArtworkGeneratedPathService.Resolve(correctionInputPath, projectDirectory);
         WriteVerified(sharpened, output);
         return FaceArtworkGeneratedPathService.ToProjectRelative(output, projectDirectory);
@@ -73,9 +78,13 @@ internal sealed class FaceArtworkRebuildService
         if (!File.Exists(inputPath)) return FaceArtworkProcessingResult.Failure($"Correction input was not found at '{inputPath}'.");
         try
         {
+            using var decodeTiming = FaceArtworkPerformanceTrace.Measure("Correction input PNG decode");
             using var input = SKBitmap.Decode(inputPath);
             if (input is null) return FaceArtworkProcessingResult.Failure($"Correction input could not be decoded: '{inputPath}'.");
+            decodeTiming?.Dispose();
+            using var processingTiming = FaceArtworkPerformanceTrace.Measure("Calibration processing pipeline");
             using var corrected = new FaceArtworkProcessingPipeline().Evaluate(input, artwork.ProcessingPipeline);
+            processingTiming?.Dispose();
             WriteVerified(corrected, basePath);
             return FaceArtworkProcessingResult.Success;
         }
@@ -143,6 +152,7 @@ internal sealed class FaceArtworkRebuildService
 
     private static void WriteVerified(SKBitmap bitmap, string path)
     {
+        using var totalTiming = FaceArtworkPerformanceTrace.Measure("PNG encode, write and verification");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var temporary = $"{path}.{Guid.NewGuid():N}.tmp";
         using (var image = SKImage.FromBitmap(bitmap))

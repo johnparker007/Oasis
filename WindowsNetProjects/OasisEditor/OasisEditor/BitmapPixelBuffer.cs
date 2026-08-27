@@ -2,39 +2,61 @@ using SkiaSharp;
 
 namespace OasisEditor;
 
-/// <summary>Stride-aware access to the RGBA/BGRA premultiplied storage used by generated artwork.</summary>
-internal static unsafe class BitmapPixelBuffer
+/// <summary>A cached, stride-aware view over a bitmap's pixels for tight raster loops.</summary>
+internal readonly unsafe struct BitmapPixelBuffer
 {
-    public static bool IsSupported(SKBitmap bitmap) => bitmap.ColorType is SKColorType.Rgba8888 or SKColorType.Bgra8888;
+    private readonly SKBitmap _bitmap;
+    private readonly byte* _pixels;
+    private readonly int _rowBytes;
+    private readonly byte _redOffset;
+    private readonly byte _blueOffset;
 
-    public static SKColor Read(SKBitmap bitmap, int x, int y)
+    public BitmapPixelBuffer(SKBitmap bitmap)
     {
-        if (!IsSupported(bitmap)) return bitmap.GetPixel(x, y);
-        var p = (byte*)bitmap.GetPixels() + (y * bitmap.RowBytes) + (x * 4);
-        var alpha = p[3];
-        var first = Unpremultiply(p[0], alpha);
-        var second = Unpremultiply(p[1], alpha);
-        var third = Unpremultiply(p[2], alpha);
-        return bitmap.ColorType == SKColorType.Rgba8888
-            ? new SKColor(first, second, third, alpha)
-            : new SKColor(third, second, first, alpha);
+        _bitmap = bitmap;
+        _rowBytes = bitmap.RowBytes;
+        _pixels = (byte*)bitmap.GetPixels();
+        IsDirect = _pixels != null && bitmap.ColorType is SKColorType.Rgba8888 or SKColorType.Bgra8888;
+        _redOffset = bitmap.ColorType == SKColorType.Bgra8888 ? (byte)2 : (byte)0;
+        _blueOffset = bitmap.ColorType == SKColorType.Bgra8888 ? (byte)0 : (byte)2;
     }
 
-    public static void Write(SKBitmap bitmap, int x, int y, byte red, byte green, byte blue, byte alpha)
+    public bool IsDirect { get; }
+
+    /// <summary>Reads the bytes exactly as stored: RGB is premultiplied by alpha.</summary>
+    public void ReadPremultiplied(int x, int y, out byte red, out byte green, out byte blue, out byte alpha)
     {
-        if (!IsSupported(bitmap)) { bitmap.SetPixel(x, y, new SKColor(red, green, blue, alpha)); return; }
-        var p = (byte*)bitmap.GetPixels() + (y * bitmap.RowBytes) + (x * 4);
-        if (bitmap.ColorType == SKColorType.Rgba8888)
+        if (!IsDirect)
         {
-            p[0] = Premultiply(red, alpha); p[1] = Premultiply(green, alpha); p[2] = Premultiply(blue, alpha);
+            var color = _bitmap.GetPixel(x, y);
+            alpha = color.Alpha;
+            red = Premultiply(color.Red, alpha); green = Premultiply(color.Green, alpha); blue = Premultiply(color.Blue, alpha);
+            return;
         }
-        else
-        {
-            p[0] = Premultiply(blue, alpha); p[1] = Premultiply(green, alpha); p[2] = Premultiply(red, alpha);
-        }
-        p[3] = alpha;
+        var pixel = _pixels + y * _rowBytes + x * 4;
+        red = pixel[_redOffset]; green = pixel[1]; blue = pixel[_blueOffset]; alpha = pixel[3];
+    }
+
+    public void ReadPremultipliedDirect(int x, int y, out byte red, out byte green, out byte blue, out byte alpha)
+    {
+        var pixel = _pixels + y * _rowBytes + x * 4;
+        red = pixel[_redOffset]; green = pixel[1]; blue = pixel[_blueOffset]; alpha = pixel[3];
+    }
+
+    public void ReadStraight(int x, int y, out byte red, out byte green, out byte blue, out byte alpha)
+    {
+        ReadPremultiplied(x, y, out red, out green, out blue, out alpha);
+        red = Unpremultiply(red, alpha); green = Unpremultiply(green, alpha); blue = Unpremultiply(blue, alpha);
+    }
+
+    public void WriteStraight(int x, int y, byte red, byte green, byte blue, byte alpha)
+    {
+        if (!IsDirect) { _bitmap.SetPixel(x, y, new SKColor(red, green, blue, alpha)); return; }
+        var pixel = _pixels + y * _rowBytes + x * 4;
+        pixel[_redOffset] = Premultiply(red, alpha); pixel[1] = Premultiply(green, alpha);
+        pixel[_blueOffset] = Premultiply(blue, alpha); pixel[3] = alpha;
     }
 
     private static byte Premultiply(byte value, byte alpha) => (byte)((value * alpha + 127) / 255);
-    private static byte Unpremultiply(byte value, byte alpha) => alpha == 0 ? (byte)0 : (byte)Math.Min(255, (value * 255 + (alpha / 2)) / alpha);
+    private static byte Unpremultiply(byte value, byte alpha) => alpha == 0 ? (byte)0 : (byte)Math.Min(255, (value * 255 + alpha / 2) / alpha);
 }

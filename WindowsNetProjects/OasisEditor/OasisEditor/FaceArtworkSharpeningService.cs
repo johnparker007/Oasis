@@ -5,6 +5,8 @@ namespace OasisEditor;
 /// <summary>Post-rectification, linear-light unsharp masking for visible Face artwork.</summary>
 internal static class FaceArtworkSharpeningService
 {
+    private static readonly double[] LinearBySrgbByte = CreateLinearLookup();
+
     public static SKBitmap Apply(SKBitmap source, FaceGenerationSettingsModel settings)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -16,15 +18,17 @@ internal static class FaceArtworkSharpeningService
         var height = source.Height;
         var count = width * height;
         var channels = new double[count * 4]; // premultiplied linear RGB and coverage
+        var sourcePixels = new BitmapPixelBuffer(source);
+        var outputPixels = new BitmapPixelBuffer(output);
         for (var y = 0; y < height; y++)
         for (var x = 0; x < width; x++)
         {
-            var color = BitmapPixelBuffer.Read(source, x, y);
+            sourcePixels.ReadStraight(x, y, out var red, out var green, out var blue, out var alphaByte);
             var i = ((y * width) + x) * 4;
-            var alpha = color.Alpha / 255d;
-            channels[i] = SrgbToLinear(color.Red / 255d) * alpha;
-            channels[i + 1] = SrgbToLinear(color.Green / 255d) * alpha;
-            channels[i + 2] = SrgbToLinear(color.Blue / 255d) * alpha;
+            var alpha = alphaByte / 255d;
+            channels[i] = LinearBySrgbByte[red] * alpha;
+            channels[i + 1] = LinearBySrgbByte[green] * alpha;
+            channels[i + 2] = LinearBySrgbByte[blue] * alpha;
             channels[i + 3] = alpha;
         }
 
@@ -43,13 +47,13 @@ internal static class FaceArtworkSharpeningService
         {
             var i = ((y * width) + x) * 4;
             var alpha = channels[i + 3];
-            if (alpha <= 0d) { BitmapPixelBuffer.Write(output, x, y, 0, 0, 0, 0); continue; }
+            if (alpha <= 0d) { outputPixels.WriteStraight(x, y, 0, 0, 0, 0); continue; }
             var blurredAlpha = blurred[i + 3];
             var changed = false;
             var red = SharpenChannel(channels[i], blurred[i], alpha, blurredAlpha, threshold, normalized.PostWarpSharpeningAmount, ref changed);
             var green = SharpenChannel(channels[i + 1], blurred[i + 1], alpha, blurredAlpha, threshold, normalized.PostWarpSharpeningAmount, ref changed);
             var blue = SharpenChannel(channels[i + 2], blurred[i + 2], alpha, blurredAlpha, threshold, normalized.PostWarpSharpeningAmount, ref changed);
-            if (changed) BitmapPixelBuffer.Write(output, x, y, ToByte(LinearToSrgb(red)), ToByte(LinearToSrgb(green)), ToByte(LinearToSrgb(blue)), ToByte(alpha));
+            if (changed) outputPixels.WriteStraight(x, y, ToByte(LinearToSrgb(red)), ToByte(LinearToSrgb(green)), ToByte(LinearToSrgb(blue)), ToByte(alpha));
         }
         return output;
     }
@@ -90,7 +94,7 @@ internal static class FaceArtworkSharpeningService
             }
             return;
         }
-        for (var x = 0; x < width; x++) for (var y = 0; y < height; y++)
+        for (var y = 0; y < height; y++) for (var x = 0; x < width; x++)
         {
             var r = 0d; var g = 0d; var b = 0d; var a = 0d;
             for (var offset = -radius; offset <= radius; offset++)
@@ -104,6 +108,12 @@ internal static class FaceArtworkSharpeningService
     }
 
     private static double SrgbToLinear(double value) => value <= 0.04045d ? value / 12.92d : Math.Pow((value + 0.055d) / 1.055d, 2.4d);
+    private static double[] CreateLinearLookup()
+    {
+        var lookup = new double[256];
+        for (var i = 0; i < lookup.Length; i++) lookup[i] = SrgbToLinear(i / 255d);
+        return lookup;
+    }
     private static double LinearToSrgb(double value) => value <= 0.0031308d ? value * 12.92d : (1.055d * Math.Pow(value, 1d / 2.4d)) - 0.055d;
     private static byte ToByte(double value) => (byte)Math.Clamp((int)Math.Round(value * 255d), 0, 255);
 }

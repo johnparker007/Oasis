@@ -34,16 +34,9 @@ internal static class FaceSourceShapeTransformService
 
     public static string? TryGenerateBackground(Panel2DDocumentModel panel, PanelFaceSourceShapeModel shape, int width, int height, string? projectDirectory, string? outputPath = null)
     {
-        var background = panel.Elements.FirstOrDefault(e => e.Kind == PanelElementKind.Background && !string.IsNullOrWhiteSpace(e.AssetPath));
-        if (background is null || string.IsNullOrWhiteSpace(projectDirectory)) return null;
-        var sourcePath = Path.IsPathRooted(background.AssetPath!) ? background.AssetPath! : Path.Combine(projectDirectory, background.AssetPath!);
-        if (!File.Exists(sourcePath)) return null;
-        using var source = SKBitmap.Decode(sourcePath);
-        if (source is null) return null;
-        var sourceQuad = new[] { shape.TopLeft, shape.TopRight, shape.BottomRight, shape.BottomLeft }
-            .Select(point => PanelPointToBitmap(point, background, source))
-            .ToArray();
-        using var output = PerspectiveRasterizer.Rectify(source, sourceQuad, width, height);
+        if (string.IsNullOrWhiteSpace(projectDirectory)) return null;
+        using var output = TryGenerateBackgroundBitmap(panel, shape, width, height, projectDirectory);
+        if (output is null) return null;
         var path = string.IsNullOrWhiteSpace(outputPath)
             ? Path.Combine(projectDirectory, "Generated", "Faces", $"face-source-shape-{Guid.NewGuid():N}.png")
             : outputPath;
@@ -54,6 +47,20 @@ internal static class FaceSourceShapeTransformService
         using var stream = File.Create(path);
         data.SaveTo(stream);
         return relative.Replace(Path.DirectorySeparatorChar, '/');
+    }
+
+    internal static SKBitmap? TryGenerateBackgroundBitmap(Panel2DDocumentModel panel, PanelFaceSourceShapeModel shape,
+        int width, int height, string projectDirectory)
+    {
+        var background = panel.Elements.FirstOrDefault(e => e.Kind == PanelElementKind.Background && !string.IsNullOrWhiteSpace(e.AssetPath));
+        if (background is null) return null;
+        var sourcePath = Path.IsPathRooted(background.AssetPath!) ? background.AssetPath! : Path.Combine(projectDirectory, background.AssetPath!);
+        if (!File.Exists(sourcePath)) return null;
+        using var source = SKBitmap.Decode(sourcePath);
+        if (source is null) return null;
+        var sourceQuad = new[] { shape.TopLeft, shape.TopRight, shape.BottomRight, shape.BottomLeft }
+            .Select(point => PanelPointToBitmap(point, background, source)).ToArray();
+        return PerspectiveRasterizer.Rectify(source, sourceQuad, width, height);
     }
 
     public static string? TryGenerateTransformedElementAsset(

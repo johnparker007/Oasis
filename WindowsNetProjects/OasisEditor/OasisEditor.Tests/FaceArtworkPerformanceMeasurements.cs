@@ -35,17 +35,9 @@ public sealed class FaceArtworkPerformanceMeasurements(ITestOutputHelper output)
         }
         var quad = new FacePointModel[] { new() { X = 0, Y = 0 }, new() { X = width, Y = 8 },
             new() { X = width - 12, Y = height }, new() { X = 6, Y = height - 5 } };
-        var watch = Stopwatch.StartNew();
-        using var rectified = PerspectiveRasterizer.Rectify(source, quad, width, height);
-        watch.Stop(); output.WriteLine($"Rectify {width}x{height}: {watch.ElapsedMilliseconds} ms");
-
-        watch.Restart();
-        using var sharpened = FaceArtworkSharpeningService.Apply(rectified, new FaceGenerationSettingsModel
-            { PostWarpSharpeningEnabled = true, PostWarpSharpeningAmount = 1, PostWarpSharpeningRadiusPixels = .75 });
-        watch.Stop(); output.WriteLine($"Sharpen {width}x{height}: {watch.ElapsedMilliseconds} ms");
-
-        watch.Restart();
-        using var calibrated = new FaceArtworkProcessingPipeline().Evaluate(sharpened, new ImageProcessingPipelineModel
+        var settings = new FaceGenerationSettingsModel
+            { PostWarpSharpeningEnabled = true, PostWarpSharpeningAmount = 1, PostWarpSharpeningRadiusPixels = .75 };
+        var pipeline = new ImageProcessingPipelineModel
         {
             Operations = [new ArtworkCalibrationOperationModel
             {
@@ -53,7 +45,40 @@ public sealed class FaceArtworkPerformanceMeasurements(ITestOutputHelper output)
                 BlackReference = new CalibrationReferenceModel { ManualEnabled = true, ManualColor = "#FF101010" },
                 WhiteReference = new CalibrationReferenceModel { ManualEnabled = true, ManualColor = "#FFE0E0E0" }
             }]
-        });
-        watch.Stop(); output.WriteLine($"Calibration {width}x{height}: {watch.ElapsedMilliseconds} ms");
+        };
+
+        Report("Rectify", width, height,
+            () => LegacyPerspectiveRasterizer.Rectify(source, quad, width, height),
+            () => PerspectiveRasterizer.Rectify(source, quad, width, height));
+        Report("Sharpen", width, height,
+            () => LegacyFaceArtworkSharpeningService.Apply(source, settings),
+            () => FaceArtworkSharpeningService.Apply(source, settings));
+        Report("Calibration", width, height,
+            () => new LegacyFaceArtworkProcessingPipeline().Evaluate(source, pipeline),
+            () => new FaceArtworkProcessingPipeline().Evaluate(source, pipeline));
+    }
+
+    private void Report(string operation, int width, int height, Func<SKBitmap> legacy, Func<SKBitmap> current)
+    {
+        using (legacy()) { } // JIT and native-code warm-up are excluded from both measurements.
+        using (current()) { }
+        var legacyMedian = MedianMilliseconds(legacy);
+        var currentMedian = MedianMilliseconds(current);
+        output.WriteLine($"{operation} {width}x{height}: legacy {legacyMedian:F1} ms, current {currentMedian:F1} ms, " +
+            $"speed-up {legacyMedian / currentMedian:F2}x");
+    }
+
+    private static double MedianMilliseconds(Func<SKBitmap> operation)
+    {
+        var samples = new double[3];
+        for (var iteration = 0; iteration < samples.Length; iteration++)
+        {
+            var watch = Stopwatch.StartNew();
+            using var result = operation();
+            watch.Stop();
+            samples[iteration] = watch.Elapsed.TotalMilliseconds;
+        }
+        Array.Sort(samples);
+        return samples[samples.Length / 2];
     }
 }
