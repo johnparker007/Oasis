@@ -167,7 +167,7 @@ internal static class FaceSourceShapeTransformService
         return TryCreateHomography(source, destination, out h);
     }
 
-    private static bool TryCreateFaceToPanelHomography(PanelFaceSourceShapeModel shape, int width, int height, out double[] h)
+    internal static bool TryCreateFaceToPanelHomography(PanelFaceSourceShapeModel shape, int width, int height, out double[] h)
     {
         var source = CreateFaceCorners(width, height);
         var destination = new[] { shape.TopLeft, shape.TopRight, shape.BottomRight, shape.BottomLeft };

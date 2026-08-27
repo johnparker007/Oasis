@@ -187,7 +187,8 @@ internal sealed class FaceGenerationService
             projectDirectory,
             resolvedFaceAssetName,
             ResolveFaceAuthoredAssetPath(projectDirectory, generatedDirectory, faceAssetDirectory, resolvedFaceAssetName, ProjectAssetPathService.FaceMaskFileName),
-            settings.MaskExtractionThreshold);
+            settings.MaskExtractionThreshold,
+            ImageProcessingExecutionPolicy.Current.WithCancellation(cancellationToken));
         cancellationToken.ThrowIfCancellationRequested();
         var artwork = new FaceArtworkElement
         {
@@ -261,8 +262,11 @@ internal sealed class FaceGenerationService
         string? projectDirectory,
         string faceAssetName,
         string? outputPath,
-        byte extractionThreshold)
+        byte extractionThreshold,
+        ImageProcessingExecutionOptions? executionOptions = null)
     {
+        using var totalTiming = FaceArtworkPerformanceTrace.Measure("Complete generated lamp-mask build");
+        var options = executionOptions ?? ImageProcessingExecutionPolicy.Current;
         if (string.IsNullOrWhiteSpace(projectDirectory) || faceWidth <= 0 || faceHeight <= 0)
         {
             return null;
@@ -273,9 +277,12 @@ internal sealed class FaceGenerationService
             .ToDictionary(element => element.ObjectId, StringComparer.Ordinal);
         var maskPixels = new byte[faceWidth * faceHeight];
         var contributions = new List<FaceMaskContributionModel>();
+        var decodeElapsed = TimeSpan.Zero;
+        var compositeElapsed = TimeSpan.Zero;
 
         foreach (var lampWindow in lampWindows)
         {
+            options.CancellationToken.ThrowIfCancellationRequested();
             if (string.IsNullOrWhiteSpace(lampWindow.LinkedPanel2DElementId)
                 || !sourceLampsById.TryGetValue(lampWindow.LinkedPanel2DElementId, out var sourceLamp)
                 || string.IsNullOrWhiteSpace(sourceLamp.AssetPath))
@@ -291,13 +298,17 @@ internal sealed class FaceGenerationService
                 continue;
             }
 
+            var decodeStarted = System.Diagnostics.Stopwatch.GetTimestamp();
             using var bitmap = SKBitmap.Decode(sourcePath);
+            decodeElapsed += System.Diagnostics.Stopwatch.GetElapsedTime(decodeStarted);
             if (bitmap is null)
             {
                 continue;
             }
 
-            var contribution = CompositeSourceShapeLampMask(maskPixels, faceWidth, faceHeight, sourceShape, sourceLamp, bitmap, lampWindow, extractionThreshold);
+            var compositeStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+            var contribution = CompositeSourceShapeLampMask(maskPixels, faceWidth, faceHeight, sourceShape, sourceLamp, bitmap, lampWindow, extractionThreshold, options);
+            compositeElapsed += System.Diagnostics.Stopwatch.GetElapsedTime(compositeStarted);
             if (contribution.PixelCount <= 0 || contribution.Bounds is null)
             {
                 continue;
@@ -312,7 +323,9 @@ internal sealed class FaceGenerationService
             });
         }
 
-        var assetPath = SaveSourceShapeMask(maskPixels, faceWidth, faceHeight, projectDirectory, faceAssetName, outputPath);
+        FaceArtworkPerformanceTrace.WriteMeasurement("Source lamp bitmap decode total", decodeElapsed);
+        FaceArtworkPerformanceTrace.WriteMeasurement("Source-shape lamp compositing total", compositeElapsed);
+        var assetPath = SaveSourceShapeMask(maskPixels, faceWidth, faceHeight, projectDirectory, faceAssetName, outputPath, options);
         return new FaceMaskLayerModel
         {
             Id = "face-mask-layer",
@@ -328,76 +341,86 @@ internal sealed class FaceGenerationService
         };
     }
 
-    private static SourceShapeMaskContribution CompositeSourceShapeLampMask(
-        byte[] maskPixels,
-        int faceWidth,
-        int faceHeight,
-        PanelFaceSourceShapeModel sourceShape,
-        PanelElementModel sourceLamp,
-        SKBitmap lampBitmap,
-        FaceLampWindowElement lampWindow,
-        byte extractionThreshold)
+    internal static SourceShapeMaskContribution CompositeSourceShapeLampMask(
+        byte[] maskPixels, int faceWidth, int faceHeight, PanelFaceSourceShapeModel sourceShape,
+        PanelElementModel sourceLamp, SKBitmap lampBitmap, FaceLampWindowElement lampWindow,
+        byte extractionThreshold, ImageProcessingExecutionOptions options)
     {
         var left = Math.Max(0, (int)Math.Floor(lampWindow.X));
         var top = Math.Max(0, (int)Math.Floor(lampWindow.Y));
         var right = Math.Min(faceWidth, (int)Math.Ceiling(lampWindow.X + lampWindow.Width));
         var bottom = Math.Min(faceHeight, (int)Math.Ceiling(lampWindow.Y + lampWindow.Height));
-        var count = 0;
-        var minX = faceWidth;
-        var minY = faceHeight;
-        var maxX = -1;
-        var maxY = -1;
-
-        for (var y = top; y < bottom; y++)
-        for (var x = left; x < right; x++)
+        if (right <= left || bottom <= top) return default;
+        if (!FaceSourceShapeTransformService.TryCreateFaceToPanelHomography(sourceShape, faceWidth, faceHeight, out var h))
+            return default;
+        var sourcePixels = new BitmapPixelBuffer(lampBitmap);
+        if (!sourcePixels.IsDirect) options = options with { MaxDegreeOfParallelism = 1 };
+        var lampRight = sourceLamp.X + sourceLamp.Width;
+        var lampBottom = sourceLamp.Y + sourceLamp.Height;
+        var scaleX = lampBitmap.Width / Math.Max(1d, sourceLamp.Width);
+        var scaleY = lampBitmap.Height / Math.Max(1d, sourceLamp.Height);
+        var rowCounts = new int[bottom - top];
+        var rowMinX = new int[bottom - top];
+        var rowMaxX = new int[bottom - top];
+        ImageProcessingExecutionPolicy.ForEachRow(bottom - top, options, row =>
         {
-            if (!FaceSourceShapeTransformService.TryTransformFacePointToPanel(sourceShape, faceWidth, faceHeight, x + 0.5d, y + 0.5d, out var panelPoint)
-                || panelPoint.X < sourceLamp.X
-                || panelPoint.Y < sourceLamp.Y
-                || panelPoint.X > sourceLamp.X + sourceLamp.Width
-                || panelPoint.Y > sourceLamp.Y + sourceLamp.Height)
+            var y = top + row;
+            var count = 0; var minX = faceWidth; var maxX = -1;
+            var destinationX = left + .5d; var destinationY = y + .5d;
+            var nx = h[0] * destinationX + h[1] * destinationY + h[2];
+            var ny = h[3] * destinationX + h[4] * destinationY + h[5];
+            var denominator = h[6] * destinationX + h[7] * destinationY + h[8];
+            for (var x = left; x < right; x++)
             {
-                continue;
+                if (double.IsFinite(denominator) && Math.Abs(denominator) >= 1e-9)
+                {
+                    var panelX = nx / denominator; var panelY = ny / denominator;
+                    if (double.IsFinite(panelX) && double.IsFinite(panelY) && panelX >= sourceLamp.X && panelY >= sourceLamp.Y
+                        && panelX <= lampRight && panelY <= lampBottom)
+                    {
+                        var sourceX = Math.Clamp((int)Math.Round((panelX - sourceLamp.X) * scaleX), 0, lampBitmap.Width - 1);
+                        var sourceY = Math.Clamp((int)Math.Round((panelY - sourceLamp.Y) * scaleY), 0, lampBitmap.Height - 1);
+                        var alpha = sourcePixels.ReadAlpha(sourceX, sourceY);
+                        if (alpha >= extractionThreshold && alpha != 0)
+                        {
+                            var index = y * faceWidth + x;
+                            if (alpha > maskPixels[index]) maskPixels[index] = alpha;
+                            count++; minX = Math.Min(minX, x); maxX = Math.Max(maxX, x);
+                        }
+                    }
+                }
+                nx += h[0]; ny += h[3]; denominator += h[6];
             }
-
-            var sourceX = (panelPoint.X - sourceLamp.X) / Math.Max(1d, sourceLamp.Width) * lampBitmap.Width;
-            var sourceY = (panelPoint.Y - sourceLamp.Y) / Math.Max(1d, sourceLamp.Height) * lampBitmap.Height;
-            var color = lampBitmap.GetPixel(
-                Math.Clamp((int)Math.Round(sourceX), 0, lampBitmap.Width - 1),
-                Math.Clamp((int)Math.Round(sourceY), 0, lampBitmap.Height - 1));
-            var mask = color.Alpha >= extractionThreshold ? color.Alpha : (byte)0;
-            if (mask == 0)
-            {
-                continue;
-            }
-
-            var index = (y * faceWidth) + x;
-            if (mask > maskPixels[index])
-            {
-                maskPixels[index] = mask;
-            }
-
-            count++;
-            minX = Math.Min(minX, x);
-            minY = Math.Min(minY, y);
-            maxX = Math.Max(maxX, x);
-            maxY = Math.Max(maxY, y);
+            rowCounts[row] = count; rowMinX[row] = minX; rowMaxX[row] = maxX;
+        });
+        var count = 0; var minX = faceWidth; var minY = faceHeight; var maxX = -1; var maxY = -1;
+        for (var row = 0; row < rowCounts.Length; row++)
+        {
+            if (rowCounts[row] == 0) continue;
+            count += rowCounts[row]; minX = Math.Min(minX, rowMinX[row]); maxX = Math.Max(maxX, rowMaxX[row]);
+            minY = Math.Min(minY, top + row); maxY = Math.Max(maxY, top + row);
         }
-
         var bounds = count > 0
             ? FaceSourceRegionModel.FromRect(new Rect(minX, minY, maxX - minX + 1, maxY - minY + 1))
             : null;
         return new SourceShapeMaskContribution(bounds, count);
     }
 
-    private static string SaveSourceShapeMask(byte[] maskPixels, int width, int height, string projectDirectory, string faceAssetName, string? outputPath = null)
+    private static string SaveSourceShapeMask(byte[] maskPixels, int width, int height, string projectDirectory,
+        string faceAssetName, string? outputPath, ImageProcessingExecutionOptions options)
     {
         using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
-        for (var y = 0; y < height; y++)
-        for (var x = 0; x < width; x++)
+        using (FaceArtworkPerformanceTrace.Measure("Final byte-mask to bitmap conversion"))
         {
-            var value = maskPixels[(y * width) + x];
-            bitmap.SetPixel(x, y, new SKColor(value, value, value, value));
+            var pixels = new BitmapPixelBuffer(bitmap);
+            ImageProcessingExecutionPolicy.ForEachRow(height, options, y =>
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var value = maskPixels[y * width + x];
+                    pixels.WriteStraight(x, y, value, value, value, value);
+                }
+            });
         }
 
         var pathService = new ProjectAssetPathService();
@@ -405,10 +428,11 @@ internal sealed class FaceGenerationService
         var path = string.IsNullOrWhiteSpace(outputPath) ? pathService.GetFaceMaskPath(project, faceAssetName) : outputPath;
         var relative = pathService.ToProjectRelativePath(project, path);
         System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
-        using var image = SKImage.FromBitmap(bitmap);
-        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-        using var stream = System.IO.File.Create(path);
-        data.SaveTo(stream);
+        options.CancellationToken.ThrowIfCancellationRequested();
+        using (FaceArtworkPerformanceTrace.Measure("Lamp-mask PNG encode/write"))
+        using (var image = SKImage.FromBitmap(bitmap))
+        using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
+        using (var stream = System.IO.File.Create(path)) data.SaveTo(stream);
         return ProjectAssetPathService.NormalizeProjectRelativePath(relative);
     }
 
@@ -529,5 +553,5 @@ internal sealed class FaceGenerationService
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
-    private readonly record struct SourceShapeMaskContribution(FaceSourceRegionModel? Bounds, int PixelCount);
+    internal readonly record struct SourceShapeMaskContribution(FaceSourceRegionModel? Bounds, int PixelCount);
 }

@@ -11,6 +11,11 @@ internal static class FaceArtworkPerformanceTrace
         ? new Scope($"{operation} (processing workers: {ImageProcessingExecutionPolicy.Current.MaxDegreeOfParallelism})", Stopwatch.GetTimestamp())
         : null;
 
+    public static void WriteMeasurement(string operation, TimeSpan elapsed)
+    {
+        if (Enabled) Trace.WriteLine($"[Face artwork timing] {operation} (processing workers: {ImageProcessingExecutionPolicy.Current.MaxDegreeOfParallelism}): {elapsed.TotalMilliseconds:F1} ms");
+    }
+
     internal sealed class Scope(string operation, long started) : IDisposable
     {
         private string? _operation = operation;
