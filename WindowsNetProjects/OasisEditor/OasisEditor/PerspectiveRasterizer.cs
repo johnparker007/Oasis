@@ -56,8 +56,11 @@ internal static class PerspectiveRasterizer
                     }
                     nx[lane] += h[0]; ny[lane] += h[3]; denominator[lane] += h[6];
                 }
-                var color = ToColor(red * .25d, green * .25d, blue * .25d, alpha * .25d);
-                outputPixels.WriteStraight(x, y, color.Red, color.Green, color.Blue, color.Alpha);
+                red *= .25d; green *= .25d; blue *= .25d; alpha = Math.Clamp(alpha * .25d, 0d, 1d);
+                // Bicubic accumulation is already premultiplied. Writing those bytes directly avoids
+                // straight-colour rounding followed immediately by a second premultiplication.
+                outputPixels.WritePremultiplied(x, y, ToByte(Math.Clamp(red, 0d, alpha)),
+                    ToByte(Math.Clamp(green, 0d, alpha)), ToByte(Math.Clamp(blue, 0d, alpha)), ToByte(alpha));
             }
         }
 

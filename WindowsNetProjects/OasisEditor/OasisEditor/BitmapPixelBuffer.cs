@@ -57,6 +57,19 @@ internal readonly unsafe struct BitmapPixelBuffer
         pixel[_blueOffset] = Premultiply(blue, alpha); pixel[3] = alpha;
     }
 
+    /// <summary>Writes already-premultiplied channel bytes without a lossy straight-colour round trip.</summary>
+    public void WritePremultiplied(int x, int y, byte red, byte green, byte blue, byte alpha)
+    {
+        if (!IsDirect)
+        {
+            _bitmap.SetPixel(x, y, new SKColor(Unpremultiply(red, alpha), Unpremultiply(green, alpha),
+                Unpremultiply(blue, alpha), alpha));
+            return;
+        }
+        var pixel = _pixels + y * _rowBytes + x * 4;
+        pixel[_redOffset] = red; pixel[1] = green; pixel[_blueOffset] = blue; pixel[3] = alpha;
+    }
+
     private static byte Premultiply(byte value, byte alpha) => (byte)((value * alpha + 127) / 255);
     private static byte Unpremultiply(byte value, byte alpha) => alpha == 0 ? (byte)0 : (byte)Math.Min(255, (value * 255 + alpha / 2) / alpha);
 }
