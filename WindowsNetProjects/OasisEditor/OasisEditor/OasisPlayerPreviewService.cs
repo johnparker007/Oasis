@@ -1,4 +1,6 @@
 using OasisEditor.Features.CabinetEditor.Models;
+using OasisEditor.Progress;
+
 namespace OasisEditor;
 
 public sealed class OasisPlayerPreviewService
@@ -12,11 +14,13 @@ public sealed class OasisPlayerPreviewService
         _launchService = launchService ?? new OasisPlayerLaunchService();
     }
 
-    public OasisPlayerPreviewResult Preview(EditorProject project, string cabinetManifestPath, CabinetDocument cabinetDocument, OasisPlayerPreferences preferences)
+    public OasisPlayerPreviewResult Preview(EditorProject project, string cabinetManifestPath, CabinetDocument cabinetDocument, OasisPlayerPreferences preferences, IEditorProgressReporter progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(cabinetDocument);
         ArgumentNullException.ThrowIfNull(preferences);
+        ArgumentNullException.ThrowIfNull(progress);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var validationRequest = new OasisPlayerLaunchRequest(preferences.ExecutablePath, project.GeneratedDirectory, preferences.Fullscreen, preferences.PreviewWidth, preferences.PreviewHeight);
         var validationError = OasisPlayerLaunchService.Validate(validationRequest);
@@ -25,12 +29,14 @@ public sealed class OasisPlayerPreviewService
             return OasisPlayerPreviewResult.Fail(validationError);
         }
 
-        var buildResult = _buildService.BuildFromCabinetDocument(project, cabinetManifestPath, cabinetDocument);
+        var buildResult = _buildService.BuildFromCabinetDocument(project, cabinetManifestPath, cabinetDocument, progress, cancellationToken);
         if (!buildResult.Success || string.IsNullOrWhiteSpace(buildResult.BuildRoot))
         {
             return OasisPlayerPreviewResult.Fail(buildResult.ErrorMessage ?? "Failed to build Oasis Player runtime output.");
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
+        progress.ReportMessage("Launching Oasis Player...");
         var launchResult = _launchService.Launch(new OasisPlayerLaunchRequest(preferences.ExecutablePath, buildResult.BuildRoot, preferences.Fullscreen, preferences.PreviewWidth, preferences.PreviewHeight));
         if (!launchResult.Success)
         {
