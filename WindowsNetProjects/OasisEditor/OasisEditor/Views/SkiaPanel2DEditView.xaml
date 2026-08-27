@@ -23,7 +23,7 @@
                           MouseLeave="OnEditSkiaSurfaceMouseLeave" />
         </Border>
         <local:EditorViewportStatusBar x:Name="ViewportStatus" Grid.Row="1"
-          ZoomToolTip="Zoom percentage; 100% = 1 Panel2D document unit per physical display pixel"
+          ZoomToolTip="Zoom percentage; 100% = reference background Actual Pixels"
           FitRequested="OnFitRequested" ZoomRequested="OnZoomRequested"/>
     </Grid>
 </UserControl>

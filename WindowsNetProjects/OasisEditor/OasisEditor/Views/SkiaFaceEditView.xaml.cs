@@ -61,10 +61,26 @@ public partial class SkiaFaceEditView : UserControl
 
     private EditorViewportTransform CoreViewport(DocumentTabViewModel document) => new(document.FaceZoom, document.FacePanX, document.FacePanY);
 
+    private static EditorViewportContentScale ContentScale(DocumentTabViewModel document)
+    {
+        var artwork = document.GetFaceElements().OfType<FaceArtworkElement>().FirstOrDefault(e => e.Width > 0d && e.Height > 0d);
+        return artwork is not null && TryGetArtworkImage(artwork.AssetPath, out var image)
+            ? FaceArtworkRasterMapping.ContentScale(artwork, image.Width, image.Height)
+            : EditorViewportContentScale.Identity;
+    }
+
     private PanelViewportTransform CreateViewport(DocumentTabViewModel document)
     {
         var (viewport, bounds, dpi) = NavigationGeometry(document);
-        return PanelViewportTransform.FromEditor(CoreViewport(document), viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY);
+        return PanelViewportTransform.FromEditorNavigation(CoreViewport(document), viewport, bounds, dpi.DpiScaleX,
+            dpi.DpiScaleY, ContentScale(document));
+    }
+
+    private PanelViewportTransform CreateRenderViewport(DocumentTabViewModel document)
+    {
+        var (viewport, bounds, dpi) = NavigationGeometry(document);
+        return PanelViewportTransform.FromEditor(CoreViewport(document), viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY,
+            ContentScale(document));
     }
 
     private void SetViewport(EditorViewportTransform transform)
@@ -78,14 +94,15 @@ public partial class SkiaFaceEditView : UserControl
     {
         if (Document is not { } document) return;
         var (viewport, bounds, dpi) = NavigationGeometry(document);
-        SetViewport(EditorViewportTransform.Fit(viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY));
+        SetViewport(EditorViewportTransform.Fit(viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY, ContentScale(document)));
     }
 
     private void OnZoomRequested(object? sender, double zoom)
     {
         if (Document is not { } document) return;
         var (viewport, bounds, dpi) = NavigationGeometry(document);
-        SetViewport(CoreViewport(document).WithZoomAt(new Point(viewport.Width / 2, viewport.Height / 2), zoom, viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY));
+        SetViewport(CoreViewport(document).WithZoomAt(new Point(viewport.Width / 2, viewport.Height / 2), zoom,
+            viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY, ContentScale(document)));
     }
 
     private void UpdateStatus(Point? pointer = null)
@@ -94,7 +111,8 @@ public partial class SkiaFaceEditView : UserControl
         var (viewport, bounds, dpi) = NavigationGeometry(document);
         ViewportStatus.ContentDimensions = $"{bounds.Width:0} × {bounds.Height:0}"; ViewportStatus.Zoom = document.FaceZoom;
         if (pointer is not { } screen) { ViewportStatus.PointerCoordinates = "X: —  Y: —"; return; }
-        var point = CoreViewport(document).ScreenToContent(screen, viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY);
+        var point = CoreViewport(document).ScreenToContent(screen, viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY,
+            ContentScale(document));
         ViewportStatus.PointerCoordinates = bounds.Contains(point) ? $"X: {Math.Floor(point.X):0}  Y: {Math.Floor(point.Y):0}" : "X: —  Y: —";
     }
 
@@ -218,10 +236,10 @@ public partial class SkiaFaceEditView : UserControl
             return;
         }
 
-        var viewport = CreateViewport(document);
+        var viewport = CreateRenderViewport(document);
         canvas.Save();
         canvas.Translate((float)viewport.PanX, (float)viewport.PanY);
-        canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
+        canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedScaleY);
         DrawBlankNativeCanvas(canvas, document, viewport);
         DrawFaceElements(canvas, document, viewport);
         DrawArtworkSamples(canvas, document, viewport);
@@ -396,8 +414,8 @@ public partial class SkiaFaceEditView : UserControl
 
         if (TryGetArtworkImage(assetPath, out var image))
         {
-            var source = ResolveArtworkSourceRect(element, image);
-            using var imagePaint = new SKPaint { FilterQuality = viewport.NormalizedZoom >= 1d ? SKFilterQuality.None : SKFilterQuality.Medium };
+            var source = FaceArtworkRasterMapping.ResolveSourceRect(element, image.Width, image.Height);
+            using var imagePaint = new SKPaint { FilterQuality = viewport.NormalizedRasterMagnification >= 1d ? SKFilterQuality.None : SKFilterQuality.Medium };
             canvas.DrawImage(image, source, destination, imagePaint);
             return;
         }
@@ -406,28 +424,6 @@ public partial class SkiaFaceEditView : UserControl
         using var strokePaint = new SKPaint { Style = SKPaintStyle.Stroke, Color = new SKColor(0x66, 0x66, 0x66), StrokeWidth = (float)(1d / viewport.NormalizedZoom), IsAntialias = true };
         canvas.DrawRect(destination, fillPaint);
         canvas.DrawRect(destination, strokePaint);
-    }
-
-    private static SKRect ResolveArtworkSourceRect(FaceArtworkElement element, SKImage image)
-    {
-        var sourceRegion = element.SourceRegion;
-        var sourceBounds = element.Provenance?.SourceElementBounds;
-        if (sourceRegion is null || sourceBounds is null || sourceBounds.Width <= 0d || sourceBounds.Height <= 0d)
-        {
-            return SKRect.Create(0f, 0f, image.Width, image.Height);
-        }
-
-        var scaleX = image.Width / sourceBounds.Width;
-        var scaleY = image.Height / sourceBounds.Height;
-        var x = (sourceRegion.X - sourceBounds.X) * scaleX;
-        var y = (sourceRegion.Y - sourceBounds.Y) * scaleY;
-        var width = sourceRegion.Width * scaleX;
-        var height = sourceRegion.Height * scaleY;
-        var left = (float)Math.Clamp(x, 0d, image.Width);
-        var top = (float)Math.Clamp(y, 0d, image.Height);
-        var right = (float)Math.Clamp(x + width, left, image.Width);
-        var bottom = (float)Math.Clamp(y + height, top, image.Height);
-        return new SKRect(left, top, right, bottom);
     }
 
     private static bool TryGetArtworkImage(string? assetPath, out SKImage image)
@@ -676,7 +672,8 @@ public partial class SkiaFaceEditView : UserControl
 
         var (viewport, bounds, dpi) = NavigationGeometry(document);
         var zoom = CoreViewport(document).ClampedZoom * (eventArgs.Delta > 0 ? EditorViewportTransform.ZoomStep : 1 / EditorViewportTransform.ZoomStep);
-        SetViewport(CoreViewport(document).WithZoomAt(eventArgs.GetPosition(FaceSkiaSurface), zoom, viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY));
+        SetViewport(CoreViewport(document).WithZoomAt(eventArgs.GetPosition(FaceSkiaSurface), zoom, viewport, bounds,
+            dpi.DpiScaleX, dpi.DpiScaleY, ContentScale(document)));
         RequestRender();
         eventArgs.Handled = true;
     }
