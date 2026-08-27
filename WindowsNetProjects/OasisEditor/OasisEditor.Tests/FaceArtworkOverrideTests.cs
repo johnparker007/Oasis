@@ -1,5 +1,6 @@
 using OasisEditor;
 using SkiaSharp;
+using System.Text.Json.Nodes;
 using System.Windows.Media;
 using Xunit;
 
@@ -49,8 +50,9 @@ public sealed class FaceArtworkOverrideTests : IDisposable
     public void Storage_RequiresAlphaSourceInCurrentSchema()
     {
         var model=new FaceDocumentModel{Artwork=new FaceArtworkModel{Override=new FaceArtworkOverrideModel{AssetPath="override.png",PixelWidth=1,PixelHeight=1}}};
-        var json=FaceDocumentStorage.Serialize(model).Replace("      \"AlphaSource\": \"OriginalFaceArt\",\n",string.Empty);
-        Assert.False(FaceDocumentStorage.TryRead(json,out _));
+        var root=JsonNode.Parse(FaceDocumentStorage.Serialize(model))!.AsObject();
+        root["Artwork"]!["Override"]!.AsObject().Remove("AlphaSource");
+        Assert.False(FaceDocumentStorage.TryRead(root.ToJsonString(),out _));
     }
 
     [Fact]
@@ -161,7 +163,8 @@ public sealed class FaceArtworkOverrideTests : IDisposable
     {
         using var colour=new SKBitmap(new SKImageInfo(2,1,SKColorType.Bgra8888,SKAlphaType.Premul));using var alpha=new SKBitmap(new SKImageInfo(2,1,SKColorType.Bgra8888,SKAlphaType.Premul));
         colour.SetPixel(0,0,SKColors.Red);colour.SetPixel(1,0,SKColors.Lime);alpha.SetPixel(0,0,new SKColor(0,0,0,128));alpha.SetPixel(1,0,SKColors.Transparent);FaceArtworkRebuildService.ApplyAlpha(colour,alpha);
-        Assert.Equal((byte)128,colour.GetPixel(0,0).Alpha);Assert.InRange(colour.GetPixel(0,0).Red,(byte)254,(byte)255);Assert.Equal(SKColors.Transparent,colour.GetPixel(1,0));
+        Assert.Equal((byte)128,colour.GetPixel(0,0).Alpha);Assert.InRange(colour.GetPixel(0,0).Red,(byte)254,(byte)255);
+        var transparent=colour.GetPixel(1,0);Assert.Equal((byte)0,transparent.Alpha);Assert.Equal((byte)0,transparent.Red);Assert.Equal((byte)0,transparent.Green);Assert.Equal((byte)0,transparent.Blue);
     }
 
     [Fact]
