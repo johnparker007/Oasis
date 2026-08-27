@@ -21,29 +21,47 @@ internal static class PerspectiveRasterizer
             return output;
         }
 
+        var sourcePixels = new BitmapPixelBuffer(source);
+        var outputPixels = new BitmapPixelBuffer(output);
+        var h = destinationToSource;
+        Span<double> nx = stackalloc double[4];
+        Span<double> ny = stackalloc double[4];
+        Span<double> denominator = stackalloc double[4];
         for (var y = 0; y < height; y++)
-        for (var x = 0; x < width; x++)
         {
-            var red = 0d;
-            var green = 0d;
-            var blue = 0d;
-            var alpha = 0d;
-            for (var sampleY = 0; sampleY < SupersampleGridSize; sampleY++)
-            for (var sampleX = 0; sampleX < SupersampleGridSize; sampleX++)
+            // Four homogeneous lanes represent the fixed 2x2 quarter-pixel sample positions.
+            // Their terms are affine in x, so advancing a pixel is three additions per lane.
+            for (var lane = 0; lane < 4; lane++)
             {
-                // Images occupy [0, width] x [0, height]; these are quarter-points in the destination pixel area.
-                var destinationX = x + ((sampleX + 0.5d) / SupersampleGridSize);
-                var destinationY = y + ((sampleY + 0.5d) / SupersampleGridSize);
-                if (!FaceSourceShapeTransformService.TryApplyHomography(destinationToSource, destinationX, destinationY, out var point)) continue;
-                var sample = SampleBicubicPremultiplied(source, point.X, point.Y);
-                red += sample.Red;
-                green += sample.Green;
-                blue += sample.Blue;
-                alpha += sample.Alpha;
+                var destinationX = (lane & 1) == 0 ? .25d : .75d;
+                var destinationY = y + (lane < 2 ? .25d : .75d);
+                nx[lane] = h[0] * destinationX + h[1] * destinationY + h[2];
+                ny[lane] = h[3] * destinationX + h[4] * destinationY + h[5];
+                denominator[lane] = h[6] * destinationX + h[7] * destinationY + h[8];
             }
-
-            const double sampleCount = SupersampleGridSize * SupersampleGridSize;
-            output.SetPixel(x, y, ToColor(red / sampleCount, green / sampleCount, blue / sampleCount, alpha / sampleCount));
+            for (var x = 0; x < width; x++)
+            {
+                var red = 0d; var green = 0d; var blue = 0d; var alpha = 0d;
+                for (var lane = 0; lane < 4; lane++)
+                {
+                    var d = denominator[lane];
+                    if (double.IsFinite(d) && Math.Abs(d) >= 1e-9)
+                    {
+                        var sourceX = nx[lane] / d; var sourceY = ny[lane] / d;
+                        if (double.IsFinite(sourceX) && double.IsFinite(sourceY))
+                        {
+                            var sample = SampleBicubicPremultiplied(sourcePixels, source.Width, source.Height, sourceX, sourceY);
+                            red += sample.Red; green += sample.Green; blue += sample.Blue; alpha += sample.Alpha;
+                        }
+                    }
+                    nx[lane] += h[0]; ny[lane] += h[3]; denominator[lane] += h[6];
+                }
+                red *= .25d; green *= .25d; blue *= .25d; alpha = Math.Clamp(alpha * .25d, 0d, 1d);
+                // Bicubic accumulation is already premultiplied. Writing those bytes directly avoids
+                // straight-colour rounding followed immediately by a second premultiplication.
+                outputPixels.WritePremultiplied(x, y, ToByte(Math.Clamp(red, 0d, alpha)),
+                    ToByte(Math.Clamp(green, 0d, alpha)), ToByte(Math.Clamp(blue, 0d, alpha)), ToByte(alpha));
+            }
         }
 
         return output;
@@ -75,14 +93,25 @@ internal static class PerspectiveRasterizer
 
     internal static SKColor SampleBicubic(SKBitmap source, double x, double y)
     {
-        var sample = SampleBicubicPremultiplied(source, x, y);
+        var sample = SampleBicubicPremultiplied(new BitmapPixelBuffer(source), source.Width, source.Height, x, y);
         return ToColor(sample.Red, sample.Green, sample.Blue, sample.Alpha);
     }
 
-    private static PremultipliedColor SampleBicubicPremultiplied(SKBitmap source, double x, double y)
+    private static PremultipliedColor SampleBicubicPremultiplied(BitmapPixelBuffer source, int width, int height, double x, double y)
+        => source.IsDirect
+            ? SampleBicubicPremultipliedDirect(source, width, height, x, y)
+            : SampleBicubicPremultipliedFallback(source, width, height, x, y);
+
+    private static PremultipliedColor SampleBicubicPremultipliedDirect(BitmapPixelBuffer source, int width, int height, double x, double y)
+        => SampleBicubicCore(source, width, height, x, y, direct: true);
+
+    private static PremultipliedColor SampleBicubicPremultipliedFallback(BitmapPixelBuffer source, int width, int height, double x, double y)
+        => SampleBicubicCore(source, width, height, x, y, direct: false);
+
+    private static PremultipliedColor SampleBicubicCore(BitmapPixelBuffer source, int width, int height, double x, double y, bool direct)
     {
         // Pixel (i,j) is centred at (i + .5,j + .5) in the continuous image extent.
-        if (x < 0d || y < 0d || x > source.Width || y > source.Height) return default;
+        if (x < 0d || y < 0d || x > width || y > height) return default;
         var sampleX = x - 0.5d;
         var sampleY = y - 0.5d;
         var baseX = (int)Math.Floor(sampleX);
@@ -92,21 +121,44 @@ internal static class PerspectiveRasterizer
         var blue = 0d;
         var alpha = 0d;
 
-        for (var row = -1; row <= 2; row++)
+        Span<double> weightsX = stackalloc double[4];
+        Span<int> samplesX = stackalloc int[4];
+        for (var column = 0; column < 4; column++)
         {
-            var weightY = CubicKernel(sampleY - (baseY + row));
-            var iy = Math.Clamp(baseY + row, 0, source.Height - 1);
-            for (var column = -1; column <= 2; column++)
+            var offset = column - 1;
+            weightsX[column] = CubicKernel(sampleX - (baseX + offset));
+            samplesX[column] = Math.Clamp(baseX + offset, 0, width - 1);
+        }
+        if (direct)
+        {
+            for (var row = -1; row <= 2; row++)
             {
-                var weight = weightY * CubicKernel(sampleX - (baseX + column));
-                var ix = Math.Clamp(baseX + column, 0, source.Width - 1);
-                var color = source.GetPixel(ix, iy);
-                var a = color.Alpha / 255d;
-                // SKColor exposes straight RGB, so explicitly interpolate premultiplied components.
-                red += (color.Red / 255d) * a * weight;
-                green += (color.Green / 255d) * a * weight;
-                blue += (color.Blue / 255d) * a * weight;
-                alpha += a * weight;
+                var weightY = CubicKernel(sampleY - (baseY + row));
+                var iy = Math.Clamp(baseY + row, 0, height - 1);
+                for (var column = 0; column < 4; column++)
+                {
+                    var weight = weightY * weightsX[column];
+                    source.ReadPremultipliedDirect(samplesX[column], iy, out var r, out var g, out var b, out var a);
+                    const double byteScale = 1d / 255d;
+                    red += r * byteScale * weight; green += g * byteScale * weight;
+                    blue += b * byteScale * weight; alpha += a * byteScale * weight;
+                }
+            }
+        }
+        else
+        {
+            for (var row = -1; row <= 2; row++)
+            {
+                var weightY = CubicKernel(sampleY - (baseY + row));
+                var iy = Math.Clamp(baseY + row, 0, height - 1);
+                for (var column = 0; column < 4; column++)
+                {
+                    var weight = weightY * weightsX[column];
+                    source.ReadPremultiplied(samplesX[column], iy, out var r, out var g, out var b, out var a);
+                    const double byteScale = 1d / 255d;
+                    red += r * byteScale * weight; green += g * byteScale * weight;
+                    blue += b * byteScale * weight; alpha += a * byteScale * weight;
+                }
             }
         }
 

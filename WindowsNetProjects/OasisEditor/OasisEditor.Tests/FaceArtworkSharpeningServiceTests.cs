@@ -63,6 +63,15 @@ public sealed class FaceArtworkSharpeningServiceTests
         Assert.Equal(0, transparent.Blue);
     }
 
+    [Fact]
+    public void Apply_BgraStoragePreservesFlatColourAndAlpha()
+    {
+        using var source = new SKBitmap(5, 3, SKColorType.Bgra8888, SKAlphaType.Premul);
+        source.Erase(new SKColor(210, 70, 20, 127));
+        using var result = FaceArtworkSharpeningService.Apply(source, Settings(true, 1));
+        AssertPixelsEqual(source, result);
+    }
+
     private static FaceGenerationSettingsModel Settings(bool enabled, double amount) => new() { PostWarpSharpeningEnabled = enabled, PostWarpSharpeningAmount = amount, PostWarpSharpeningRadiusPixels = .75, PostWarpSharpeningThreshold = 0 };
     private static SKBitmap Gradient() { var bitmap = new SKBitmap(5, 2, SKColorType.Rgba8888, SKAlphaType.Premul); for (var y = 0; y < 2; y++) for (var x = 0; x < 5; x++) bitmap.SetPixel(x, y, new SKColor((byte)(x * 40), 30, 90, (byte)(100 + x * 30))); return bitmap; }
     private static void AssertPixelsEqual(SKBitmap expected, SKBitmap actual) { Assert.Equal(expected.Width, actual.Width); Assert.Equal(expected.Height, actual.Height); for (var y = 0; y < expected.Height; y++) for (var x = 0; x < expected.Width; x++) Assert.Equal(expected.GetPixel(x, y), actual.GetPixel(x, y)); }

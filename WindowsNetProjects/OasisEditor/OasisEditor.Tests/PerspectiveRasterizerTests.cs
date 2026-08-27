@@ -89,6 +89,20 @@ public sealed class PerspectiveRasterizerTests
         Assert.Equal(SKColors.Transparent, PerspectiveRasterizer.SampleBicubic(source, 2.1d, 0.5d));
     }
 
+    [Fact]
+    public void SampleBicubic_BgraStorageReadsChannelsInTheirDeclaredOrder()
+    {
+        using var source = new SKBitmap(1, 1, SKColorType.Bgra8888, SKAlphaType.Premul);
+        source.SetPixel(0, 0, new SKColor(230, 40, 10, 128));
+
+        var result = PerspectiveRasterizer.SampleBicubic(source, .5d, .5d);
+
+        Assert.InRange(result.Red, 229, 231);
+        Assert.InRange(result.Green, 39, 41);
+        Assert.InRange(result.Blue, 9, 11);
+        Assert.Equal(128, result.Alpha);
+    }
+
     private static SKBitmap Bitmap(int width, int height, Func<int, int, SKColor> color)
     {
         var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
