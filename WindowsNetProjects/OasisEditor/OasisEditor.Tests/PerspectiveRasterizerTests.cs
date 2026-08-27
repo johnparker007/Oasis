@@ -103,6 +103,18 @@ public sealed class PerspectiveRasterizerTests
         Assert.Equal(128, result.Alpha);
     }
 
+    [Fact]
+    public void Rectify_MultipleWorkersMatchesOneWorkerAndIsDeterministic()
+    {
+        using var source = Bitmap(41, 37, (x, y) => new SKColor((byte)(x * 5), (byte)(y * 6), (byte)(x + y), (byte)((x * 13 + y * 7) % 256)));
+        var quad = new[] { Point(2, 1), Point(39, 4), Point(40, 35), Point(1, 36) };
+        using var serial = PerspectiveRasterizer.Rectify(source, quad, 38, 34, new ImageProcessingExecutionOptions(1));
+        using var parallel = PerspectiveRasterizer.Rectify(source, quad, 38, 34, new ImageProcessingExecutionOptions(4));
+        using var repeated = PerspectiveRasterizer.Rectify(source, quad, 38, 34, new ImageProcessingExecutionOptions(4));
+        AssertPixelsEqual(serial, parallel);
+        AssertPixelsEqual(parallel, repeated);
+    }
+
     private static SKBitmap Bitmap(int width, int height, Func<int, int, SKColor> color)
     {
         var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
@@ -115,6 +127,11 @@ public sealed class PerspectiveRasterizerTests
         [Point(0, 0), Point(bitmap.Width, 0), Point(bitmap.Width, bitmap.Height), Point(0, bitmap.Height)];
 
     private static FacePointModel Point(double x, double y) => new() { X = x, Y = y };
+    private static void AssertPixelsEqual(SKBitmap expected, SKBitmap actual)
+    {
+        for (var y = 0; y < expected.Height; y++)
+        for (var x = 0; x < expected.Width; x++) Assert.Equal(expected.GetPixel(x, y), actual.GetPixel(x, y));
+    }
 
     private static double BrightnessCentroid(SKBitmap bitmap, int y)
     {

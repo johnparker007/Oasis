@@ -43,6 +43,10 @@ internal readonly unsafe struct BitmapPixelBuffer
         red = pixel[_redOffset]; green = pixel[1]; blue = pixel[_blueOffset]; alpha = pixel[3];
     }
 
+    public byte ReadAlpha(int x, int y) => IsDirect
+        ? *(_pixels + y * _rowBytes + x * 4 + 3)
+        : _bitmap.GetPixel(x, y).Alpha;
+
     public void ReadStraight(int x, int y, out byte red, out byte green, out byte blue, out byte alpha)
     {
         ReadPremultiplied(x, y, out red, out green, out blue, out alpha);

@@ -7,10 +7,19 @@ public sealed class EditorPreferences
     public NativeEmulationPreferences NativeEmulation { get; init; } = new();
     public OutputLogPreferences OutputLog { get; init; } = new();
     public FaceGenerationPreferences FaceGeneration { get; init; } = new();
+    public ProcessingPreferences Processing { get; init; } = new();
     public OasisPlayerPreferences Player { get; init; } = new();
     public string LastMfmeFmlImportDirectory { get; init; } = string.Empty;
 
     public Dictionary<string, ProjectWindowState> ProjectWindowStates { get; init; } = new();
+}
+
+public enum CpuImageProcessingMode { Auto, Maximum, Custom }
+
+public sealed class ProcessingPreferences
+{
+    public CpuImageProcessingMode CpuMode { get; init; } = CpuImageProcessingMode.Auto;
+    public int CustomMaximumWorkers { get; init; } = 1;
 }
 
 public sealed class OasisPlayerPreferences

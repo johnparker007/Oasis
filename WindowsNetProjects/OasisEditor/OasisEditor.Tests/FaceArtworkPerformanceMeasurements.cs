@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using OasisEditor.Rendering;
 using SkiaSharp;
 using Xunit;
 using Xunit.Abstractions;
@@ -14,13 +15,94 @@ public sealed class FaceArtworkPerformanceMeasurements(ITestOutputHelper output)
 {
     [Fact]
     [Trait("Category", "Performance")]
-    public void MeasureSingleThreadedArtworkOperations()
+    public void MeasureArtworkOperationsAcrossWorkerPolicies()
     {
         if (Environment.GetEnvironmentVariable("OASIS_IMAGE_BENCHMARK") != "1") return;
 
         Measure(1024, 1024);
         Measure(2048, 2048);
         if (Environment.GetEnvironmentVariable("OASIS_IMAGE_BENCHMARK_16MP") == "1") Measure(4096, 4096);
+    }
+
+    [Fact]
+    [Trait("Category", "Performance")]
+    public void MeasureGeneratedLampMaskAcrossWorkerPolicies()
+    {
+        if (Environment.GetEnvironmentVariable("OASIS_IMAGE_BENCHMARK") != "1") return;
+        const int width = 2048, height = 2048, lampCount = 40;
+        using var source = new SKBitmap(320, 240, SKColorType.Rgba8888, SKAlphaType.Premul);
+        source.Erase(new SKColor(255, 255, 255, 180));
+        var shape = new PanelFaceSourceShapeModel { TopLeft = new() { X = 0, Y = 0 }, TopRight = new() { X = width, Y = 24 }, BottomRight = new() { X = width - 18, Y = height }, BottomLeft = new() { X = 12, Y = height - 16 } };
+        var lamp = new PanelElementModel { X = 0, Y = 0, Width = width, Height = height };
+        var windows = Enumerable.Range(0, lampCount).Select(index => new FaceLampWindowElement
+        {
+            X = (index % 8) * 240 - 20, Y = (index / 8) * 390 - 10, Width = 320, Height = 480
+        }).ToArray();
+        ReportLampMask("Generated lamp mask", width, height, lampCount, options =>
+        {
+            var mask = new byte[width * height];
+            foreach (var window in windows)
+                FaceGenerationService.CompositeSourceShapeLampMask(mask, width, height, shape, lamp, source, window, 32, options);
+        });
+    }
+
+    [Fact]
+    [Trait("Category", "Performance")]
+    public void MeasureFaceTexturePreviewPreparationAcrossWorkerPolicies()
+    {
+        if (Environment.GetEnvironmentVariable("OASIS_IMAGE_BENCHMARK") != "1") return;
+        const int width = 2048, height = 2048;
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-preview-benchmark-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            foreach (var name in new[] { "artwork", "mask", "trayId", "lampIds0", "lampWeights0" })
+            {
+                using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+                bitmap.Erase(name == "lampIds0" ? new SKColor(8, 9, 10, 255) : new SKColor(180, 120, 60, 220));
+                using var image = SKImage.FromBitmap(bitmap); using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+                using var stream = File.Create(Path.Combine(directory, $"{name}.png")); data.SaveTo(stream);
+            }
+            var document = new FaceDocumentModel { RuntimeRenderAssets = new FaceRuntimeRenderAssetsModel
+            {
+                ArtworkPath="artwork.png",MaskPath="mask.png",TrayIdPath="trayId.png",LampIds0Path="lampIds0.png",
+                LampWeights0Path="lampWeights0.png",Width=width,Height=height
+            }};
+            var policies = new[] { ("1 worker", new ImageProcessingExecutionOptions(1)),
+                ("Auto", ImageProcessingExecutionPolicy.Resolve(new ProcessingPreferences(), Environment.ProcessorCount)),
+                ("Maximum", ImageProcessingExecutionPolicy.Resolve(new ProcessingPreferences { CpuMode=CpuImageProcessingMode.Maximum }, Environment.ProcessorCount)) };
+            double baseline = 0;
+            foreach (var (mode, options) in policies)
+            {
+                var samples = new List<(double Total, FaceTexturePreviewDiagnostics Diagnostics)>();
+                for (var iteration = 0; iteration < 3; iteration++)
+                {
+                    using var renderer = new FaceTexturePreviewRenderer(path => Path.Combine(directory, path!));
+                    var watch = Stopwatch.StartNew(); renderer.Prepare(document, new MachineRuntimeState(), options); watch.Stop();
+                    samples.Add((watch.Elapsed.TotalMilliseconds, renderer.LastDiagnostics));
+                }
+                var median = samples.OrderBy(sample => sample.Total).ElementAt(1); if (mode == "1 worker") baseline = median.Total;
+                output.WriteLine($"Face texture prepare {width}x{height}; CPUs {Environment.ProcessorCount}; {mode}={options.MaxDegreeOfParallelism} workers: " +
+                    $"load {median.Diagnostics.TextureCacheLoadMilliseconds:F1} ms, precompute {median.Diagnostics.PrecomputeMilliseconds:F1} ms, " +
+                    $"compose {median.Diagnostics.ComposeMilliseconds:F1} ms, total {median.Total:F1} ms, speed-up {baseline / median.Total:F2}x");
+            }
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    private void ReportLampMask(string operation, int width, int height, int lampCount, Action<ImageProcessingExecutionOptions> run)
+    {
+        var policies = new[] { ("1 worker", new ImageProcessingExecutionOptions(1)),
+            ("Auto", ImageProcessingExecutionPolicy.Resolve(new ProcessingPreferences(), Environment.ProcessorCount)),
+            ("Maximum", ImageProcessingExecutionPolicy.Resolve(new ProcessingPreferences { CpuMode = CpuImageProcessingMode.Maximum }, Environment.ProcessorCount)) };
+        run(policies[0].Item2);
+        var baseline = MedianMilliseconds(() => { run(policies[0].Item2); return new SKBitmap(); });
+        output.WriteLine($"{operation} {width}x{height}; {lampCount} lamps; logical processors {Environment.ProcessorCount}");
+        foreach (var (mode, options) in policies)
+        {
+            var median = mode == "1 worker" ? baseline : MedianMilliseconds(() => { run(options); return new SKBitmap(); });
+            output.WriteLine($"  {mode}: {options.MaxDegreeOfParallelism} workers, median {median:F1} ms, {baseline / median:F2}x vs 1 worker");
+        }
     }
 
     private void Measure(int width, int height)
@@ -47,25 +129,24 @@ public sealed class FaceArtworkPerformanceMeasurements(ITestOutputHelper output)
             }]
         };
 
-        Report("Rectify", width, height,
-            () => LegacyPerspectiveRasterizer.Rectify(source, quad, width, height),
-            () => PerspectiveRasterizer.Rectify(source, quad, width, height));
-        Report("Sharpen", width, height,
-            () => LegacyFaceArtworkSharpeningService.Apply(source, settings),
-            () => FaceArtworkSharpeningService.Apply(source, settings));
-        Report("Calibration", width, height,
-            () => new LegacyFaceArtworkProcessingPipeline().Evaluate(source, pipeline),
-            () => new FaceArtworkProcessingPipeline().Evaluate(source, pipeline));
+        Report("Rectify", width, height, options => PerspectiveRasterizer.Rectify(source, quad, width, height, options));
+        Report("Sharpen", width, height, options => FaceArtworkSharpeningService.Apply(source, settings, options));
+        Report("Calibration", width, height, options => new FaceArtworkProcessingPipeline().Evaluate(source, pipeline, executionOptions: options));
     }
 
-    private void Report(string operation, int width, int height, Func<SKBitmap> legacy, Func<SKBitmap> current)
+    private void Report(string operation, int width, int height, Func<ImageProcessingExecutionOptions, SKBitmap> run)
     {
-        using (legacy()) { } // JIT and native-code warm-up are excluded from both measurements.
-        using (current()) { }
-        var legacyMedian = MedianMilliseconds(legacy);
-        var currentMedian = MedianMilliseconds(current);
-        output.WriteLine($"{operation} {width}x{height}: legacy {legacyMedian:F1} ms, current {currentMedian:F1} ms, " +
-            $"speed-up {legacyMedian / currentMedian:F2}x");
+        var policies = new[] { ("1 worker", new ImageProcessingExecutionOptions(1)),
+            ("Auto", ImageProcessingExecutionPolicy.Resolve(new ProcessingPreferences(), Environment.ProcessorCount)),
+            ("Maximum", ImageProcessingExecutionPolicy.Resolve(new ProcessingPreferences { CpuMode = CpuImageProcessingMode.Maximum }, Environment.ProcessorCount)) };
+        using (run(policies[0].Item2)) { }
+        var baseline = MedianMilliseconds(() => run(policies[0].Item2));
+        output.WriteLine($"{operation} {width}x{height}; logical processors {Environment.ProcessorCount}");
+        foreach (var (mode, options) in policies)
+        {
+            var median = mode == "1 worker" ? baseline : MedianMilliseconds(() => run(options));
+            output.WriteLine($"  {mode}: {options.MaxDegreeOfParallelism} workers, median {median:F1} ms, {baseline / median:F2}x vs 1 worker");
+        }
     }
 
     private static double MedianMilliseconds(Func<SKBitmap> operation)

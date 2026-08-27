@@ -16,6 +16,40 @@ public sealed class FaceTexturePreviewRendererTests : IDisposable
     }
 
     [Fact]
+    public void Prepare_MultipleWorkersMatchesSerialAndRepeatedPreparation()
+    {
+        const int width = 53, height = 37;
+        WriteSolidPng("artwork.png", width, height, new SKColor(120, 70, 25, 180));
+        WriteSolidPng("mask.png", width, height, new SKColor(200, 180, 160, 190));
+        WriteSolidPng("trayId.png", width, height, SKColors.Black);
+        WriteSolidPng("lampIds0.png", width, height, new SKColor(8, 9, 0, 255));
+        WriteSolidPng("lampWeights0.png", width, height, new SKColor(150, 90, 0, 255));
+        var state = new MachineRuntimeState(); state.SetLampIntensityIfChanged(MachineObjectReference.Lamp(7), .7);
+        var document = CreateDocument(width, height);
+        using var serialRenderer = CreateRenderer(); using var parallelRenderer = CreateRenderer();
+        Assert.True(serialRenderer.Prepare(document, state, new ImageProcessingExecutionOptions(1)));
+        Assert.True(parallelRenderer.Prepare(document, state, new ImageProcessingExecutionOptions(4)));
+        using var serial = serialRenderer.Render(document, state); using var parallel = parallelRenderer.Render(document, state);
+        Assert.Equal(serial.Bitmap!.Bytes, parallel.Bitmap!.Bytes);
+        Assert.True(parallelRenderer.Prepare(document, state, new ImageProcessingExecutionOptions(4)));
+        using var repeated = parallelRenderer.Render(document, state);
+        Assert.Equal(parallel.Bitmap.Bytes, repeated.Bitmap!.Bytes);
+        Assert.True(parallelRenderer.LastDiagnostics.ReusedTextureCache);
+    }
+
+    [Fact]
+    public void Prepare_PreCancelledRequestDoesNotPublishCache()
+    {
+        WriteSolidPng("artwork.png", 2, 2, SKColors.White); WriteSolidPng("mask.png", 2, 2, SKColors.White);
+        WriteSolidPng("trayId.png", 2, 2, SKColors.Black); WriteSolidPng("lampIds0.png", 2, 2, SKColors.Black);
+        WriteSolidPng("lampWeights0.png", 2, 2, SKColors.Black);
+        using var renderer = CreateRenderer();
+        Assert.Throws<OperationCanceledException>(() => renderer.Prepare(CreateDocument(), new MachineRuntimeState(),
+            new ImageProcessingExecutionOptions(4, new CancellationToken(canceled: true))));
+        Assert.Equal(FaceTexturePreviewDiagnostics.Empty, renderer.LastDiagnostics);
+    }
+
+    [Fact]
     public void Render_MissingRuntimeRenderAssets_ReturnsFallbackReason()
     {
         var renderer = CreateRenderer();

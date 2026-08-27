@@ -7,7 +7,8 @@ internal static class FaceArtworkSharpeningService
 {
     private static readonly double[] LinearBySrgbByte = CreateLinearLookup();
 
-    public static SKBitmap Apply(SKBitmap source, FaceGenerationSettingsModel settings)
+    public static SKBitmap Apply(SKBitmap source, FaceGenerationSettingsModel settings,
+        ImageProcessingExecutionOptions? executionOptions = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         var normalized = (settings ?? FaceGenerationSettingsModel.Default).Normalize();
@@ -20,7 +21,10 @@ internal static class FaceArtworkSharpeningService
         var channels = new double[count * 4]; // premultiplied linear RGB and coverage
         var sourcePixels = new BitmapPixelBuffer(source);
         var outputPixels = new BitmapPixelBuffer(output);
-        for (var y = 0; y < height; y++)
+        var options = executionOptions ?? ImageProcessingExecutionPolicy.Current;
+        if (!sourcePixels.IsDirect || !outputPixels.IsDirect) options = options with { MaxDegreeOfParallelism = 1 };
+        ImageProcessingExecutionPolicy.ForEachRow(height, options, y =>
+        {
         for (var x = 0; x < width; x++)
         {
             sourcePixels.ReadStraight(x, y, out var red, out var green, out var blue, out var alphaByte);
@@ -30,7 +34,7 @@ internal static class FaceArtworkSharpeningService
             channels[i + 1] = LinearBySrgbByte[green] * alpha;
             channels[i + 2] = LinearBySrgbByte[blue] * alpha;
             channels[i + 3] = alpha;
-        }
+        }});
 
         // Radius is Gaussian sigma in final output pixels; truncate the genuine Gaussian at 3 sigma.
         var sigma = normalized.PostWarpSharpeningRadiusPixels;
@@ -38,11 +42,12 @@ internal static class FaceArtworkSharpeningService
         var kernel = CreateKernel(sigma, kernelRadius);
         var horizontal = new double[channels.Length];
         var blurred = new double[channels.Length];
-        Convolve(channels, horizontal, width, height, kernel, kernelRadius, horizontalPass: true);
-        Convolve(horizontal, blurred, width, height, kernel, kernelRadius, horizontalPass: false);
+        Convolve(channels, horizontal, width, height, kernel, kernelRadius, horizontalPass: true, options);
+        Convolve(horizontal, blurred, width, height, kernel, kernelRadius, horizontalPass: false, options);
 
         var threshold = normalized.PostWarpSharpeningThreshold / 255d;
-        for (var y = 0; y < height; y++)
+        ImageProcessingExecutionPolicy.ForEachRow(height, options, y =>
+        {
         for (var x = 0; x < width; x++)
         {
             var i = ((y * width) + x) * 4;
@@ -54,7 +59,7 @@ internal static class FaceArtworkSharpeningService
             var green = SharpenChannel(channels[i + 1], blurred[i + 1], alpha, blurredAlpha, threshold, normalized.PostWarpSharpeningAmount, ref changed);
             var blue = SharpenChannel(channels[i + 2], blurred[i + 2], alpha, blurredAlpha, threshold, normalized.PostWarpSharpeningAmount, ref changed);
             if (changed) outputPixels.WriteStraight(x, y, ToByte(LinearToSrgb(red)), ToByte(LinearToSrgb(green)), ToByte(LinearToSrgb(blue)), ToByte(alpha));
-        }
+        }});
         return output;
     }
 
@@ -77,11 +82,12 @@ internal static class FaceArtworkSharpeningService
         return kernel;
     }
 
-    private static void Convolve(double[] source, double[] destination, int width, int height, double[] kernel, int radius, bool horizontalPass)
+    private static void Convolve(double[] source, double[] destination, int width, int height, double[] kernel, int radius,
+        bool horizontalPass, ImageProcessingExecutionOptions options)
     {
         if (horizontalPass)
         {
-            for (var y = 0; y < height; y++) for (var x = 0; x < width; x++)
+            ImageProcessingExecutionPolicy.ForEachRow(height, options, y => { for (var x = 0; x < width; x++)
             {
                 var r = 0d; var g = 0d; var b = 0d; var a = 0d;
                 for (var offset = -radius; offset <= radius; offset++)
@@ -91,10 +97,10 @@ internal static class FaceArtworkSharpeningService
                     r += source[i] * weight; g += source[i + 1] * weight; b += source[i + 2] * weight; a += source[i + 3] * weight;
                 }
                 var d = ((y * width + x) * 4); destination[d] = r; destination[d + 1] = g; destination[d + 2] = b; destination[d + 3] = a;
-            }
+            }});
             return;
         }
-        for (var y = 0; y < height; y++) for (var x = 0; x < width; x++)
+        ImageProcessingExecutionPolicy.ForEachRow(height, options, y => { for (var x = 0; x < width; x++)
         {
             var r = 0d; var g = 0d; var b = 0d; var a = 0d;
             for (var offset = -radius; offset <= radius; offset++)
@@ -104,7 +110,7 @@ internal static class FaceArtworkSharpeningService
                 r += source[i] * weight; g += source[i + 1] * weight; b += source[i + 2] * weight; a += source[i + 3] * weight;
             }
             var d = ((y * width + x) * 4); destination[d] = r; destination[d + 1] = g; destination[d + 2] = b; destination[d + 3] = a;
-        }
+        }});
     }
 
     private static double SrgbToLinear(double value) => value <= 0.04045d ? value / 12.92d : Math.Pow((value + 0.055d) / 1.055d, 2.4d);

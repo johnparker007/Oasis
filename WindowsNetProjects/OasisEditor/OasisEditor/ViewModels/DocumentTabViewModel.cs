@@ -47,6 +47,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private readonly Dictionary<string, CalibrationOperationInputCacheEntry> _calibrationOperationInputs = new(StringComparer.Ordinal);
     private IProgressDialogService _progressDialogService = NoOpProgressDialogService.Instance;
     private bool _isDetachedFaceBuildWorker;
+    private CancellationToken _faceBuildCancellationToken;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action<PanelChangeEvent>? PanelChanged;
@@ -576,7 +577,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
             using var worker = new DocumentTabViewModel(workItem.Document, faceDocumentJson: workItem.FaceDocumentJson)
             {
-                _isDetachedFaceBuildWorker = true
+                _isDetachedFaceBuildWorker = true,
+                _faceBuildCancellationToken = cancellationToken
             };
             worker.SetProjectAccessor(() => workItem.Project);
             worker.SetOpenDocumentsAccessor(() => openDocuments);
@@ -741,7 +743,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             panel, shape, width, height, lampWindows,
             _faceDocumentModel.Id, _faceDocumentModel.SourcePanel2DDocumentId, project.ProjectDirectory,
             ProjectAssetPathService.GetPackageAssetNameFromManifestPath(FilePath, EditorAssetType.Face) ?? _faceDocumentModel.Title,
-            maskPath, _faceDocumentModel.GenerationSettings.MaskExtractionThreshold);
+            maskPath, _faceDocumentModel.GenerationSettings.MaskExtractionThreshold,
+            ImageProcessingExecutionPolicy.Current.WithCancellation(_faceBuildCancellationToken));
         if (mask is null)
         {
             return new(FaceGeneratedProduct.LampMask, false, "Lamp-mask generation did not produce an output.");

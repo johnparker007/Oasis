@@ -49,6 +49,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool _oasisPlayerFullscreen;
     private int _oasisPlayerPreviewWidth = OasisPlayerLaunchService.DefaultPreviewWidth;
     private int _oasisPlayerPreviewHeight = OasisPlayerLaunchService.DefaultPreviewHeight;
+    private CpuImageProcessingMode _cpuImageProcessingMode = CpuImageProcessingMode.Auto;
+    private int _customMaximumProcessingWorkers = 1;
     private string _selectedPreferencesCategory = "Appearance";
     private string _selectedProjectSettingsCategory = "General";
     private string _selectedNativeProjectSettingsTab = "ROMS";
@@ -246,6 +248,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             _oasisPlayerPreviewHeight = preferences.Player.PreviewHeight;
             _lastMfmeFmlImportDirectory = preferences.LastMfmeFmlImportDirectory;
             _defaultFaceGenerationSettings = preferences.FaceGeneration.ToSettings();
+            _cpuImageProcessingMode = preferences.Processing.CpuMode;
+            _customMaximumProcessingWorkers = Math.Clamp(preferences.Processing.CustomMaximumWorkers, 1, Environment.ProcessorCount);
+            ImageProcessingExecutionPolicy.Configure(CurrentProcessingPreferences());
             _outputLog.ShowInfoLogs = preferences.OutputLog.ShowInfoLogs;
             _outputLog.ShowWarningLogs = preferences.OutputLog.ShowWarningLogs;
             _outputLog.ShowErrorLogs = preferences.OutputLog.ShowErrorLogs;
@@ -439,7 +444,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
-    public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "Player", "Fabric Emulation"];
+    public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "Player", "Processing", "Fabric Emulation"];
+    public IReadOnlyList<string> CpuImageProcessingModes { get; } = ["Auto (Recommended)", "Maximum", "Custom"];
     public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "Platform Settings"];
     public IReadOnlyList<string> NativeProjectSettingsTabs { get; } = ["ROMS", "Stake/Prize", "Reels", "Coins"];
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
@@ -542,6 +548,29 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool OasisPlayerFullscreen { get => _oasisPlayerFullscreen; set { if (SetProperty(ref _oasisPlayerFullscreen, value)) SavePreferences(); } }
     public int OasisPlayerPreviewWidth { get => _oasisPlayerPreviewWidth; set { if (SetProperty(ref _oasisPlayerPreviewWidth, value)) SavePreferences(); } }
     public int OasisPlayerPreviewHeight { get => _oasisPlayerPreviewHeight; set { if (SetProperty(ref _oasisPlayerPreviewHeight, value)) SavePreferences(); } }
+    public string SelectedCpuImageProcessingMode
+    {
+        get => _cpuImageProcessingMode == CpuImageProcessingMode.Auto ? "Auto (Recommended)" : _cpuImageProcessingMode.ToString();
+        set
+        {
+            var mode = value switch { "Maximum" => CpuImageProcessingMode.Maximum, "Custom" => CpuImageProcessingMode.Custom, _ => CpuImageProcessingMode.Auto };
+            if (!SetProperty(ref _cpuImageProcessingMode, mode, nameof(SelectedCpuImageProcessingMode))) return;
+            ProcessingPreferenceChanged();
+            OnPropertyChanged(nameof(IsCustomProcessingMode));
+        }
+    }
+    public int CustomMaximumProcessingWorkers
+    {
+        get => _customMaximumProcessingWorkers;
+        set
+        {
+            var normalized = Math.Clamp(value, 1, AvailableLogicalProcessors);
+            if (SetProperty(ref _customMaximumProcessingWorkers, normalized)) ProcessingPreferenceChanged();
+        }
+    }
+    public int AvailableLogicalProcessors => Math.Max(1, Environment.ProcessorCount);
+    public int EffectiveProcessingWorkers => ImageProcessingExecutionPolicy.Resolve(CurrentProcessingPreferences(), AvailableLogicalProcessors).MaxDegreeOfParallelism;
+    public bool IsCustomProcessingMode => _cpuImageProcessingMode == CpuImageProcessingMode.Custom;
     public string FabricRuntimeLibraryPath { get => _fabricRuntimeLibraryPath; set { if (SetProperty(ref _fabricRuntimeLibraryPath, value)) SavePreferences(); } }
     public string ProductionAmberLibraryPath { get => _productionAmberLibraryPath; set { if (SetProperty(ref _productionAmberLibraryPath, value)) SavePreferences(); } }
     public string Mpu5AmberLibraryPath { get => _mpu5AmberLibraryPath; set { if (SetProperty(ref _mpu5AmberLibraryPath, value)) SavePreferences(); } }
@@ -1797,6 +1826,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 PreviewHeight = OasisPlayerPreviewHeight
             },
             FaceGeneration = FaceGenerationPreferences.FromSettings(_defaultFaceGenerationSettings),
+            Processing = CurrentProcessingPreferences(),
             OutputLog = new OutputLogPreferences
             {
                 ShowInfoLogs = _outputLog.ShowInfoLogs,
@@ -1807,6 +1837,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             },
             ProjectWindowStates = existingPreferences.ProjectWindowStates
         });
+    }
+
+    private ProcessingPreferences CurrentProcessingPreferences() => new()
+    {
+        CpuMode = _cpuImageProcessingMode,
+        CustomMaximumWorkers = _customMaximumProcessingWorkers
+    };
+
+    private void ProcessingPreferenceChanged()
+    {
+        ImageProcessingExecutionPolicy.Configure(CurrentProcessingPreferences());
+        OnPropertyChanged(nameof(EffectiveProcessingWorkers));
+        SavePreferences();
     }
 
     private void OpenProjectSettings()

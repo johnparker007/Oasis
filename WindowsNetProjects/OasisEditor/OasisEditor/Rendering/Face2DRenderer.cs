@@ -11,6 +11,8 @@ public interface IFace2DRenderer
     void RenderStaticBase(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, PanelViewportTransform viewportTransform);
 
     void RenderLampOverlay(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState);
+    bool PrepareTexturePreview(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState,
+        ImageProcessingExecutionOptions? executionOptions = null);
 }
 
 public sealed class Face2DRenderer : IFace2DRenderer
@@ -132,6 +134,10 @@ public sealed class Face2DRenderer : IFace2DRenderer
 
         DrawLampIllumination(canvas, faceDocument.MaskLayer, faceDocument.Elements.OfType<FaceLampWindowElement>(), runtimeState);
     }
+
+    public bool PrepareTexturePreview(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState,
+        ImageProcessingExecutionOptions? executionOptions = null) =>
+        _texturePreviewRenderer.Prepare(faceDocument, runtimeState, executionOptions);
 
 
     private bool TryDrawTextureDrivenLampPreview(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState)

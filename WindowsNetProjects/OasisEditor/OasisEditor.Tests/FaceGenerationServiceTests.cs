@@ -7,6 +7,53 @@ namespace OasisEditor.Tests;
 
 public sealed class FaceGenerationServiceTests
 {
+    [Fact]
+    public void SourceShapeLampMask_MultipleWorkersMatchesSerialForOverlapThresholdAndPerspective()
+    {
+        const int width = 37, height = 29;
+        var shape = new PanelFaceSourceShapeModel
+        {
+            TopLeft = new FacePointModel { X = 2, Y = 1 }, TopRight = new FacePointModel { X = 41, Y = 4 },
+            BottomRight = new FacePointModel { X = 38, Y = 33 }, BottomLeft = new FacePointModel { X = 0, Y = 28 }
+        };
+        var lamp = new PanelElementModel { X = 4, Y = 3, Width = 30, Height = 24 };
+        var firstWindow = new FaceLampWindowElement { X = -2, Y = 0, Width = 34, Height = 27 };
+        var overlapWindow = new FaceLampWindowElement { X = 8, Y = 5, Width = 29, Height = 24 };
+        using var source = new SkiaSharp.SKBitmap(31, 25, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+        for (var y = 0; y < source.Height; y++) for (var x = 0; x < source.Width; x++)
+            source.SetPixel(x, y, new SkiaSharp.SKColor(220, 80, 20, (byte)((x * 17 + y * 11) % 256)));
+        var serial = new byte[width * height]; var parallel = new byte[serial.Length]; var repeated = new byte[serial.Length];
+        var serialFirst = FaceGenerationService.CompositeSourceShapeLampMask(serial, width, height, shape, lamp, source, firstWindow, 96, new ImageProcessingExecutionOptions(1));
+        var parallelFirst = FaceGenerationService.CompositeSourceShapeLampMask(parallel, width, height, shape, lamp, source, firstWindow, 96, new ImageProcessingExecutionOptions(4));
+        var repeatedFirst = FaceGenerationService.CompositeSourceShapeLampMask(repeated, width, height, shape, lamp, source, firstWindow, 96, new ImageProcessingExecutionOptions(4));
+        var serialOverlap = FaceGenerationService.CompositeSourceShapeLampMask(serial, width, height, shape, lamp, source, overlapWindow, 128, new ImageProcessingExecutionOptions(1));
+        var parallelOverlap = FaceGenerationService.CompositeSourceShapeLampMask(parallel, width, height, shape, lamp, source, overlapWindow, 128, new ImageProcessingExecutionOptions(4));
+        var repeatedOverlap = FaceGenerationService.CompositeSourceShapeLampMask(repeated, width, height, shape, lamp, source, overlapWindow, 128, new ImageProcessingExecutionOptions(4));
+        Assert.Equal(serial, parallel); Assert.Equal(parallel, repeated);
+        AssertContributionEqual(serialFirst, parallelFirst); AssertContributionEqual(parallelFirst, repeatedFirst);
+        AssertContributionEqual(serialOverlap, parallelOverlap); AssertContributionEqual(parallelOverlap, repeatedOverlap);
+        Assert.Contains(serial, value => value == 0); Assert.Contains(serial, value => value >= 128);
+    }
+
+    private static void AssertContributionEqual(FaceGenerationService.SourceShapeMaskContribution expected,
+        FaceGenerationService.SourceShapeMaskContribution actual)
+    {
+        Assert.Equal(expected.PixelCount, actual.PixelCount);
+        Assert.Equal(expected.Bounds?.X, actual.Bounds?.X); Assert.Equal(expected.Bounds?.Y, actual.Bounds?.Y);
+        Assert.Equal(expected.Bounds?.Width, actual.Bounds?.Width); Assert.Equal(expected.Bounds?.Height, actual.Bounds?.Height);
+    }
+
+    [Fact]
+    public void SourceShapeLampMask_CancellationStopsBeforePublishingRows()
+    {
+        using var source = new SkiaSharp.SKBitmap(4, 4, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Premul);
+        source.Erase(SkiaSharp.SKColors.White);
+        var cancellation = new CancellationToken(canceled: true);
+        Assert.Throws<OperationCanceledException>(() => FaceGenerationService.CompositeSourceShapeLampMask(
+            new byte[16], 4, 4, CreateSourceShape(), new PanelElementModel { Width = 100, Height = 100 }, source,
+            new FaceLampWindowElement { Width = 4, Height = 4 }, 1, new ImageProcessingExecutionOptions(4, cancellation)));
+    }
+
     [Theory]
     [InlineData(true, false)]
     [InlineData(false, true)]

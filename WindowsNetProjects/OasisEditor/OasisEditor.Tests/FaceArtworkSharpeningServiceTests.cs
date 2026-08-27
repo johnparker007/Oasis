@@ -72,6 +72,17 @@ public sealed class FaceArtworkSharpeningServiceTests
         AssertPixelsEqual(source, result);
     }
 
+    [Fact]
+    public void Apply_MultipleWorkersExactlyMatchesOneWorker()
+    {
+        using var source = new SKBitmap(53, 31, SKColorType.Rgba8888, SKAlphaType.Premul);
+        for (var y = 0; y < source.Height; y++) for (var x = 0; x < source.Width; x++)
+            source.SetPixel(x, y, new SKColor((byte)(x * 3), (byte)(y * 7), (byte)(x + y), (byte)((x * 11 + y * 5) % 256)));
+        using var serial = FaceArtworkSharpeningService.Apply(source, Settings(true, 1), new ImageProcessingExecutionOptions(1));
+        using var parallel = FaceArtworkSharpeningService.Apply(source, Settings(true, 1), new ImageProcessingExecutionOptions(4));
+        AssertPixelsEqual(serial, parallel);
+    }
+
     private static FaceGenerationSettingsModel Settings(bool enabled, double amount) => new() { PostWarpSharpeningEnabled = enabled, PostWarpSharpeningAmount = amount, PostWarpSharpeningRadiusPixels = .75, PostWarpSharpeningThreshold = 0 };
     private static SKBitmap Gradient() { var bitmap = new SKBitmap(5, 2, SKColorType.Rgba8888, SKAlphaType.Premul); for (var y = 0; y < 2; y++) for (var x = 0; x < 5; x++) bitmap.SetPixel(x, y, new SKColor((byte)(x * 40), 30, 90, (byte)(100 + x * 30))); return bitmap; }
     private static void AssertPixelsEqual(SKBitmap expected, SKBitmap actual) { Assert.Equal(expected.Width, actual.Width); Assert.Equal(expected.Height, actual.Height); for (var y = 0; y < expected.Height; y++) for (var x = 0; x < expected.Width; x++) Assert.Equal(expected.GetPixel(x, y), actual.GetPixel(x, y)); }

@@ -18,6 +18,14 @@ public sealed class FaceArtworkProcessingPipelineTests
     [Fact] public void InsufficientSpatialData_IsSafeNoOpAndPreservesAlpha(){using var b=Bitmap(4,4,new SKColor(30,60,90,77));using var o=new FaceArtworkProcessingPipeline().Evaluate(b,new(){Operations=[new ArtworkCalibrationOperationModel{NormalizeBlackWhite=false,NeutralizeWhite=false}]});Assert.Equal(b.GetPixel(2,2),o.GetPixel(2,2));}
     [Fact] public void ManualLevels_PreserveSaturatedChromaticityAndAlpha(){using var b=Bitmap(2,1,new SKColor(100,20,10,99));var op=new ArtworkCalibrationOperationModel{CorrectSpatialBrightness=false,CorrectSpatialColor=false,NeutralizeWhite=false,BlackReference=new(){ManualEnabled=true,ManualColor="#FF101010"},WhiteReference=new(){ManualEnabled=true,ManualColor="#FF808080"}};using var o=new FaceArtworkProcessingPipeline().Evaluate(b,new(){Operations=[op]});var p=o.GetPixel(0,0);Assert.True(p.Red>p.Green);Assert.True(p.Green>=p.Blue);Assert.Equal(99,p.Alpha);}
     [Fact] public void StrengthZero_IsExactNoOp(){using var b=Bitmap(2,2,SKColors.CornflowerBlue);using var o=new FaceArtworkProcessingPipeline().Evaluate(b,new(){Operations=[new ArtworkCalibrationOperationModel{Strength=0}]});Assert.Equal(b.GetPixel(0,0),o.GetPixel(0,0));}
+    [Fact] public void Calibration_MultipleWorkersExactlyMatchesOneWorker()
+    {
+        using var b=Bitmap(47,35,new SKColor(100,40,15,143));
+        var pipeline=new ImageProcessingPipelineModel{Operations=[new ArtworkCalibrationOperationModel{CorrectSpatialBrightness=false,CorrectSpatialColor=false,NeutralizeWhite=true,WhiteReference=new(){ManualEnabled=true,ManualColor="#FFB09070"},BlackReference=new(){ManualEnabled=true,ManualColor="#FF101010"}}]};
+        using var serial=new FaceArtworkProcessingPipeline().Evaluate(b,pipeline,executionOptions:new ImageProcessingExecutionOptions(1));
+        using var parallel=new FaceArtworkProcessingPipeline().Evaluate(b,pipeline,executionOptions:new ImageProcessingExecutionOptions(4));
+        for(var y=0;y<b.Height;y++)for(var x=0;x<b.Width;x++)Assert.Equal(serial.GetPixel(x,y),parallel.GetPixel(x,y));
+    }
 
     [Fact]
     public void FinalizeOutput_CopiesBaseExactlyAndDoesNotReprocessIt()
