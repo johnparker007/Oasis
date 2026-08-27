@@ -99,6 +99,10 @@ public partial class PlayView : UserControl
     {
         var selected = ViewModel?.SelectedDocument;
         UpdateSelectedDocumentSubscription(selected);
+        _facePreparationCancellation?.Cancel();
+        _facePreparationCancellation?.Dispose();
+        _facePreparationCancellation = null;
+        _preparingFaceDocumentId = null;
 
         if (selected is null || selected.Document.DocumentType is not (EditorDocumentType.Panel2D or EditorDocumentType.Face))
         {
@@ -112,10 +116,7 @@ public partial class PlayView : UserControl
 
         if (selected.Document.DocumentType == EditorDocumentType.Face)
         {
-            _facePreparationCancellation?.Cancel();
-            _facePreparationCancellation?.Dispose();
             _facePreparationCancellation = new CancellationTokenSource();
-            _preparingFaceDocumentId = null;
             _ = PrepareFacePlayViewAsync(selected, ++_selectionRefreshVersion);
             return;
         }
