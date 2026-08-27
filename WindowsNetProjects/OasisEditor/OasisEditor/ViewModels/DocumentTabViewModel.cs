@@ -471,11 +471,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     internal static FaceArtworkOverrideModel CopyOverride(FaceArtworkOverrideModel value,
         bool? enabled = null, FacePerspectiveRegistrationModel? perspectiveRegistration = null,
-        double? x = null, double? y = null, double? width = null, double? height = null) => new()
+        double? x = null, double? y = null, double? width = null, double? height = null,
+        FaceArtworkOverrideAlphaSource? alphaSource = null) => new()
     {
         Enabled=enabled ?? value.Enabled, AssetPath=value.AssetPath, PixelWidth=value.PixelWidth, PixelHeight=value.PixelHeight,
         PerspectiveRegistration=perspectiveRegistration ?? value.PerspectiveRegistration,
         X=x ?? value.X, Y=y ?? value.Y, Width=width ?? value.Width, Height=height ?? value.Height,
+        AlphaSource=alphaSource ?? value.AlphaSource,
         ContentRevision=value.ContentRevision
     };
 
