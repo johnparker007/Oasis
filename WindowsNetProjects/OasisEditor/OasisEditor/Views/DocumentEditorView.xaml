@@ -9,25 +9,23 @@
              mc:Ignorable="d"
              d:DesignHeight="500"
              d:DesignWidth="700">
-    <Grid Margin="4">
+    <Grid Margin="2">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0"
-                   Margin="0,0,0,8"
+                   Margin="0,0,0,3"
                    Foreground="{DynamicResource TextSecondaryBrush}"
                    Text="{Binding FilePath}" />
 
         <Grid Grid.Row="1">
-            <Border Padding="12"
-                    Background="{DynamicResource EditorBackgroundBrush}"
-                    BorderBrush="{DynamicResource BorderSubtleBrush}"
-                    BorderThickness="1"
-                    CornerRadius="4">
-                <Border.Style>
-                    <Style TargetType="Border">
+            <Grid MinHeight="280"
+                  ClipToBounds="True"
+                  Background="{DynamicResource PanelBackgroundBrush}">
+                <Grid.Style>
+                    <Style TargetType="Grid">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Panel2D}">
@@ -35,21 +33,15 @@
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
-                </Border.Style>
-                <Grid MinHeight="280"
-                      ClipToBounds="True"
-                      Background="{DynamicResource PanelBackgroundBrush}">
-                    <views:SkiaPanel2DEditView />
-                </Grid>
-            </Border>
+                </Grid.Style>
+                <views:SkiaPanel2DEditView />
+            </Grid>
 
-            <Border Padding="16"
-                    CornerRadius="4"
-                    Background="{DynamicResource EditorBackgroundBrush}"
-                    BorderBrush="{DynamicResource BorderSubtleBrush}"
-                    BorderThickness="1">
-                <Border.Style>
-                    <Style TargetType="Border">
+            <Grid MinHeight="280"
+                  ClipToBounds="True"
+                  Background="{DynamicResource PanelBackgroundBrush}">
+                <Grid.Style>
+                    <Style TargetType="Grid">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Face}">
@@ -57,22 +49,15 @@
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
-                </Border.Style>
-                <Grid MinHeight="280"
-                      ClipToBounds="True"
-                      Background="{DynamicResource PanelBackgroundBrush}">
-                    <views:FaceWorkspaceView />
+                </Grid.Style>
+                <views:FaceWorkspaceView />
+            </Grid>
 
-                </Grid>
-            </Border>
-
-            <Border Padding="12"
-                    CornerRadius="4"
-                    Background="{DynamicResource EditorBackgroundBrush}"
-                    BorderBrush="{DynamicResource BorderSubtleBrush}"
-                    BorderThickness="1">
-                <Border.Style>
-                    <Style TargetType="Border">
+            <Grid MinHeight="280"
+                  ClipToBounds="True"
+                  Background="{DynamicResource PanelBackgroundBrush}">
+                <Grid.Style>
+                    <Style TargetType="Grid">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding HasCabinetViewer}" Value="True">
@@ -80,13 +65,9 @@
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
-                </Border.Style>
-                <Grid MinHeight="280"
-                      ClipToBounds="True"
-                      Background="{DynamicResource PanelBackgroundBrush}">
-                    <cabinetViews:CabinetModelDocumentView />
-                </Grid>
-            </Border>
+                </Grid.Style>
+                <cabinetViews:CabinetModelDocumentView />
+            </Grid>
 
             <Border Padding="10"
                     CornerRadius="4"
