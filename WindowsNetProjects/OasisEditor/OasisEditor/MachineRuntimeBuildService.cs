@@ -3,13 +3,14 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
+using OasisEditor.Progress;
 
 namespace OasisEditor;
 
 public interface IMachineRuntimeBuildService
 {
-    MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath);
-    MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, CabinetDocument cabinetDocument);
+    MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, IEditorProgressReporter progress, CancellationToken cancellationToken);
+    MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, CabinetDocument cabinetDocument, IEditorProgressReporter progress, CancellationToken cancellationToken);
 }
 
 public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
@@ -39,19 +40,23 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         _faceRuntimeExportService = faceRuntimeExportService ?? new FaceRuntimeExportService();
     }
 
-    public MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath)
+    public MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, IEditorProgressReporter progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(progress);
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail("A saved Cabinet3D asset must be selected before building for Oasis Player.");
         if (!File.Exists(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail($"Cabinet3D manifest was not found: {cabinetManifestPath}");
         if (!CabinetDocumentStorage.TryRead(File.ReadAllText(cabinetManifestPath), out var cabinetDocument)) return MachineRuntimeBuildResult.Fail($"Cabinet3D manifest is invalid or missing model.path: {cabinetManifestPath}");
-        return BuildFromCabinetDocument(project, cabinetManifestPath, cabinetDocument);
+        return BuildFromCabinetDocument(project, cabinetManifestPath, cabinetDocument, progress, cancellationToken);
     }
 
-    public MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, CabinetDocument cabinetDocument)
+    public MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, CabinetDocument cabinetDocument, IEditorProgressReporter progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(cabinetDocument);
+        ArgumentNullException.ThrowIfNull(progress);
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail("A saved Cabinet3D asset must be selected before building for Oasis Player.");
         if (!File.Exists(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail($"Cabinet3D manifest was not found: {cabinetManifestPath}");
         var cabinetAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(cabinetManifestPath, EditorAssetType.Cabinet3D);
@@ -62,18 +67,29 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         var stagingRoot = buildRoot + ".staging";
         try
         {
+            progress.Report(0.05, "Preparing build output...");
             ReplaceEmptyDirectory(stagingRoot);
+            cancellationToken.ThrowIfCancellationRequested();
             var cabinetRoot = Path.Combine(stagingRoot, CabinetDirectoryName);
             Directory.CreateDirectory(cabinetRoot);
+            progress.Report(0.15, "Copying cabinet model...");
             File.Copy(sourceGlb, Path.Combine(cabinetRoot, CabinetGlbFileName), overwrite: true);
+            cancellationToken.ThrowIfCancellationRequested();
             var cabinetAssetPath = ToProjectRelativePath(project, cabinetManifestPath);
-            var faceReferences = ExportReferencedFaces(project, stagingRoot, cabinetDocument, cabinetAssetPath);
+            var faceReferences = ExportReferencedFaces(project, stagingRoot, cabinetDocument, cabinetAssetPath, progress.CreateChild(0.2, 0.7), cancellationToken);
+            progress.Report(0.72, "Validating cabinet reflections...");
+            cancellationToken.ThrowIfCancellationRequested();
             ValidateReflections(cabinetDocument.Reflections ?? [], GlbCabinetReflectionReceiverDiscovery.Discover(sourceGlb), faceReferences);
-            var cabinetManifest = new CabinetRuntimeManifest(CabinetSchema, CabinetSchemaVersion, cabinetAssetName, CabinetGlbFileName, cabinetDocument.Model.Scale, cabinetDocument.Model.UpAxis, ExportReflections(cabinetManifestPath, cabinetRoot, cabinetDocument.Reflections ?? []));
+            var cabinetManifest = new CabinetRuntimeManifest(CabinetSchema, CabinetSchemaVersion, cabinetAssetName, CabinetGlbFileName, cabinetDocument.Model.Scale, cabinetDocument.Model.UpAxis, ExportReflections(cabinetManifestPath, cabinetRoot, cabinetDocument.Reflections ?? [], cancellationToken));
+            progress.Report(0.85, "Writing runtime manifests...");
+            cancellationToken.ThrowIfCancellationRequested();
             File.WriteAllText(Path.Combine(cabinetRoot, CabinetManifestFileName), JsonSerializer.Serialize(cabinetManifest, JsonOptions));
             var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, project.Name, project.Name, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences);
             File.WriteAllText(Path.Combine(stagingRoot, MachineManifestFileName), JsonSerializer.Serialize(machineManifest, JsonOptions));
+            progress.Report(0.95, "Finalising Oasis Player machine...");
+            cancellationToken.ThrowIfCancellationRequested();
             ReplaceFinalDirectory(stagingRoot, buildRoot);
+            progress.Report(1, "Oasis Player machine build complete.");
             return MachineRuntimeBuildResult.Ok(buildRoot);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
@@ -108,12 +124,13 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         }
     }
 
-    private static IReadOnlyList<CabinetReflectionDefinition> ExportReflections(string cabinetManifestPath, string cabinetRoot, IReadOnlyList<CabinetReflectionDefinition> definitions)
+    private static IReadOnlyList<CabinetReflectionDefinition> ExportReflections(string cabinetManifestPath, string cabinetRoot, IReadOnlyList<CabinetReflectionDefinition> definitions, CancellationToken cancellationToken)
     {
         var result = new List<CabinetReflectionDefinition>();
         var sourceRoot = Path.GetFullPath(Path.GetDirectoryName(cabinetManifestPath) ?? string.Empty).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         foreach (var definition in definitions)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (string.IsNullOrWhiteSpace(definition.VisibilityMask)) { result.Add(definition with { VisibilityMask = null }); continue; }
             var source = Path.GetFullPath(Path.Combine(sourceRoot, definition.VisibilityMask));
             if (!source.StartsWith(sourceRoot, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException($"Reflection '{definition.Id}' visibility mask escapes the Cabinet asset directory.");
@@ -127,14 +144,19 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         return result;
     }
 
-    private IReadOnlyList<MachineRuntimeFaceReference> ExportReferencedFaces(EditorProject project, string stagingRoot, CabinetDocument cabinetDocument, string cabinetAssetPath)
+    private IReadOnlyList<MachineRuntimeFaceReference> ExportReferencedFaces(EditorProject project, string stagingRoot, CabinetDocument cabinetDocument, string cabinetAssetPath, IEditorProgressReporter progress, CancellationToken cancellationToken)
     {
         var faceRoot = _pathService.GetAssetTypeDirectory(project, EditorAssetType.Face);
         if (!Directory.Exists(faceRoot)) return Array.Empty<MachineRuntimeFaceReference>();
 
+        var manifestPaths = Directory.EnumerateFiles(faceRoot, ProjectAssetPathService.FaceManifestFileName, SearchOption.AllDirectories).OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray();
         var references = new List<MachineRuntimeFaceReference>();
-        foreach (var manifestPath in Directory.EnumerateFiles(faceRoot, ProjectAssetPathService.FaceManifestFileName, SearchOption.AllDirectories).OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        for (var index = 0; index < manifestPaths.Length; index++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            var manifestPath = manifestPaths[index];
+            var fallbackName = Path.GetFileName(Path.GetDirectoryName(manifestPath));
+            progress.Report((double)index / Math.Max(1, manifestPaths.Length), $"Inspecting Face {index + 1} of {manifestPaths.Length}: {fallbackName}...");
             if (!FaceDocumentStorage.TryReadValidated(File.ReadAllText(manifestPath), out var faceFile, out _))
             {
                 throw new InvalidOperationException($"Face manifest is invalid: {manifestPath}");
@@ -156,9 +178,10 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             }
 
             var cabinetContext = new FaceCabinetContext(cabinetDocument, null, cabinetAssetPath, null, null);
+            progress.Report((index + 0.25) / Math.Max(1, manifestPaths.Length), $"Exporting Face {index + 1} of {manifestPaths.Length}: {faceAssetName}...");
             var exportResult = _faceRuntimeExportService.Export(faceDocument, project, cabinetContext, manifestPath);
             var buildFaceDirectory = Path.Combine(stagingRoot, "faces", _pathService.SanitizePathSegment(faceAssetName));
-            CopyDirectory(exportResult.OutputDirectory, buildFaceDirectory);
+            CopyDirectory(exportResult.OutputDirectory, buildFaceDirectory, cancellationToken);
             references.Add(new MachineRuntimeFaceReference(
                 faceDocument.Id,
                 faceAssetName,
@@ -169,20 +192,23 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), FaceRuntimeExportService.ManifestFileName))));
         }
 
+        progress.Report(1, manifestPaths.Length == 0 ? "No referenced Faces to export." : $"Exported {references.Count} referenced Faces.");
         return references;
     }
 
-    private static void CopyDirectory(string sourceDirectory, string destinationDirectory)
+    private static void CopyDirectory(string sourceDirectory, string destinationDirectory, CancellationToken cancellationToken)
     {
         if (Directory.Exists(destinationDirectory)) Directory.Delete(destinationDirectory, recursive: true);
         Directory.CreateDirectory(destinationDirectory);
         foreach (var directory in Directory.EnumerateDirectories(sourceDirectory, "*", SearchOption.AllDirectories).OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             Directory.CreateDirectory(Path.Combine(destinationDirectory, Path.GetRelativePath(sourceDirectory, directory)));
         }
 
         foreach (var file in Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories).OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var relativePath = Path.GetRelativePath(sourceDirectory, file);
             File.Copy(file, Path.Combine(destinationDirectory, relativePath), overwrite: true);
         }

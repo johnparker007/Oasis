@@ -79,6 +79,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private M1ProjectSettingsViewModel? _m1ProjectSettings;
     private Scorpion4ProjectSettingsViewModel? _scorpion4ProjectSettings;
     private bool _isFmlImportInProgress;
+    private bool _isOasisPlayerMachineOperationInProgress;
     private bool _isEditorProgressVisible;
     private bool _isEditorProgressIndeterminate;
     private double _editorProgressPercent;
@@ -1111,7 +1112,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
 
-    private void BuildOasisPlayerMachine()
+    private async void BuildOasisPlayerMachine()
     {
         if (LoadedProject is null)
         {
@@ -1126,19 +1127,40 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetCabinetDocument());
-        if (!result.Success)
+        _isOasisPlayerMachineOperationInProgress = true;
+        RaiseOasisPlayerMachineCanExecuteChanged();
+        await Task.Yield();
+        try
         {
-            ReportEditorOperationError(result.ErrorMessage ?? "Failed to build Oasis Player runtime output.", OutputLogStatus.Error);
-            return;
-        }
+            var result = await _progressDialogService.RunAsync(
+                new EditorProgressRequest("Building Oasis Player Machine", "Preparing Oasis Player machine build...", EditorProgressMode.Determinate, CanCancel: true),
+                (progress, token) => Task.FromResult(new MachineRuntimeBuildService().BuildFromCabinetDocument(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetCabinetDocument(), progress, token)));
+            if (!result.Success)
+            {
+                ReportEditorOperationError(result.ErrorMessage ?? "Failed to build Oasis Player runtime output.", OutputLogStatus.Error);
+                return;
+            }
 
-        StatusMessage = $"Oasis Player machine build written: {result.BuildRoot}";
-        AddOutputEntry($"Oasis Player machine build written: {result.BuildRoot}", OutputLogStatus.Info);
+            StatusMessage = $"Oasis Player machine build written: {result.BuildRoot}";
+            AddOutputEntry($"Oasis Player machine build written: {result.BuildRoot}", OutputLogStatus.Info);
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Oasis Player machine build cancelled.";
+        }
+        catch (Exception exception)
+        {
+            ReportEditorOperationError($"Failed to build Oasis Player runtime output: {exception.Message}", OutputLogStatus.Error);
+        }
+        finally
+        {
+            _isOasisPlayerMachineOperationInProgress = false;
+            RaiseOasisPlayerMachineCanExecuteChanged();
+        }
     }
 
 
-    private void PreviewInOasisPlayer()
+    private async void PreviewInOasisPlayer()
     {
         if (LoadedProject is null)
         {
@@ -1153,31 +1175,60 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        var result = _oasisPlayerPreviewService.Preview(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetCabinetDocument(), new OasisPlayerPreferences
+        _isOasisPlayerMachineOperationInProgress = true;
+        RaiseOasisPlayerMachineCanExecuteChanged();
+        await Task.Yield();
+        try
         {
-            ExecutablePath = OasisPlayerExecutablePath,
-            Fullscreen = OasisPlayerFullscreen,
-            PreviewWidth = OasisPlayerPreviewWidth,
-            PreviewHeight = OasisPlayerPreviewHeight
-        });
+            var result = await _progressDialogService.RunAsync(
+                new EditorProgressRequest("Preparing Oasis Player Preview", "Preparing Oasis Player machine build...", EditorProgressMode.Determinate, CanCancel: true),
+                (progress, token) => Task.FromResult(_oasisPlayerPreviewService.Preview(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetCabinetDocument(), new OasisPlayerPreferences
+                {
+                    ExecutablePath = OasisPlayerExecutablePath,
+                    Fullscreen = OasisPlayerFullscreen,
+                    PreviewWidth = OasisPlayerPreviewWidth,
+                    PreviewHeight = OasisPlayerPreviewHeight
+                }, progress, token)));
 
-        if (!result.Success)
-        {
-            ReportEditorOperationError(result.ErrorMessage ?? "Failed to preview in Oasis Player.", OutputLogStatus.Error);
-            return;
+            if (!result.Success)
+            {
+                ReportEditorOperationError(result.ErrorMessage ?? "Failed to preview in Oasis Player.", OutputLogStatus.Error);
+                return;
+            }
+
+            var arguments = string.Join(" ", result.Arguments);
+            StatusMessage = $"Oasis Player preview launched: {result.BuildRoot}";
+            AddOutputEntry($"Oasis Player machine build written: {result.BuildRoot}", OutputLogStatus.Info);
+            AddOutputEntry($"Oasis Player preview launched: {result.ExecutablePath} {arguments}", OutputLogStatus.Info);
         }
-
-        var arguments = string.Join(" ", result.Arguments);
-        StatusMessage = $"Oasis Player preview launched: {result.BuildRoot}";
-        AddOutputEntry($"Oasis Player machine build written: {result.BuildRoot}", OutputLogStatus.Info);
-        AddOutputEntry($"Oasis Player preview launched: {result.ExecutablePath} {arguments}", OutputLogStatus.Info);
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Oasis Player preview cancelled.";
+        }
+        catch (Exception exception)
+        {
+            ReportEditorOperationError($"Failed to preview in Oasis Player: {exception.Message}", OutputLogStatus.Error);
+        }
+        finally
+        {
+            _isOasisPlayerMachineOperationInProgress = false;
+            RaiseOasisPlayerMachineCanExecuteChanged();
+        }
     }
 
     private bool CanBuildOasisPlayerMachine()
     {
         return LoadedProject is not null
+               && !_isOasisPlayerMachineOperationInProgress
+               && !_progressDialogService.IsOperationActive
                && SelectedDocument?.Document.DocumentType == EditorDocumentType.Cabinet3D
                && SelectedDocument.Document.IsUntitled == false;
+    }
+
+    private void RaiseOasisPlayerMachineCanExecuteChanged()
+    {
+        if (BuildOasisPlayerMachineCommand is RelayCommand build) build.RaiseCanExecuteChanged();
+        if (PreviewInOasisPlayerCommand is RelayCommand preview) preview.RaiseCanExecuteChanged();
     }
 
     private bool CanImportGlbModel()

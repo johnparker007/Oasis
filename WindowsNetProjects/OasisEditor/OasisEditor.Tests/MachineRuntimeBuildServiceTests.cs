@@ -1,4 +1,5 @@
 using Xunit;
+using OasisEditor.Progress;
 using System.Text.Json;
 using OasisEditor.Features.CabinetEditor.Models;
 using SkiaSharp;
@@ -17,7 +18,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var document = CabinetDocument.FromModelPath("source.glb") with { Reflections = [reflection] };
         var manifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName); File.WriteAllText(manifestPath, CabinetDocumentStorage.Serialize(document));
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, document);
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, document, NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.True(result.Success, result.ErrorMessage);
         using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.runtime.json")));
@@ -40,7 +41,7 @@ public sealed class MachineRuntimeBuildServiceTests
         Directory.CreateDirectory(Path.GetDirectoryName(stale)!);
         File.WriteAllText(stale, "stale");
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName));
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.True(result.Success, result.ErrorMessage);
         Assert.Equal(Path.Combine(project.GeneratedDirectory, "Builds", "Test Cabinet"), result.BuildRoot);
@@ -82,7 +83,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var backFaceDocument = CreateFaceDocument("face-runtime-back", "target-back", "Assets/Faces/Back Face/artwork.png", "Assets/Faces/Back Face/mask.png");
         File.WriteAllText(Path.Combine(backFaceDir, ProjectAssetPathService.FaceManifestFileName), FaceDocumentStorage.Serialize(backFaceDocument));
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName));
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.True(result.Success, result.ErrorMessage);
         var faceBuildDirectory = Path.Combine(result.BuildRoot!, "faces", "Front Face");
@@ -109,7 +110,7 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.False(normalFace.GetProperty("faceFlipHorizontal").GetBoolean());
 
         File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("target-front", CabinetTargetOverride.NormalFrontSide, 270, false)).WithTargetOverride(new CabinetTargetOverride("target-back", CabinetTargetOverride.NormalFrontSide))));
-        var normalResult = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName));
+        var normalResult = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), NoOpEditorProgressReporter.Instance, CancellationToken.None);
         Assert.True(normalResult.Success, normalResult.ErrorMessage);
         using var normalMachine = JsonDocument.Parse(File.ReadAllText(Path.Combine(normalResult.BuildRoot!, "machine.runtime.json")));
         var changedFace = Assert.Single(normalMachine.RootElement.GetProperty("faces").EnumerateArray(), candidate => candidate.GetProperty("faceId").GetString() == "face-runtime");
@@ -132,7 +133,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var manifestPath = CreateCabinetAsset(project, "Runtime Cabinet", CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)));
         CreateFaceAssetWithReel(project, "Bottom Face", "face-bottom", "bottomGlass", null, "standard");
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath);
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.True(result.Success, result.ErrorMessage);
         using var faceManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "faces", "Bottom Face", "face.runtime.json")));
@@ -150,7 +151,7 @@ public sealed class MachineRuntimeBuildServiceTests
         _ = CreateCabinetAsset(project, "Unrelated Cabinet", new CabinetDocument(5, new CabinetModelReference("source.glb", 1.0, "Y"), [new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Different", 500, 300)], "standard"));
         CreateFaceAssetWithReel(project, "Bottom Face", "face-bottom", "bottomGlass", null, "standard");
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath);
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.True(result.Success, result.ErrorMessage);
         using var faceManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "faces", "Bottom Face", "face.runtime.json")));
@@ -166,7 +167,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var project = CreateProject(root);
         var missingManifest = Path.Combine(project.AssetsDirectory, "Cabinet3D", "Missing Cabinet", ProjectAssetPathService.Cabinet3DManifestFileName);
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, missingManifest);
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, missingManifest, NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.False(result.Success);
         Assert.Contains("Cabinet3D manifest was not found", result.ErrorMessage);
@@ -190,14 +191,14 @@ public sealed class MachineRuntimeBuildServiceTests
         File.WriteAllText(Path.Combine(faceDir, ProjectAssetPathService.FaceManifestFileName), FaceDocumentStorage.Serialize(CreateFaceDocument("face-top-glass", "topGlass1", "Assets/Faces/Top Glass Face/artwork.png", "Assets/Faces/Top Glass Face/mask.png")));
 
         var service = new MachineRuntimeBuildService();
-        var normalResult = service.BuildFromCabinetDocument(project, manifestPath);
+        var normalResult = service.BuildFromCabinetDocument(project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
         Assert.True(normalResult.Success, normalResult.ErrorMessage);
         using var normalMachine = JsonDocument.Parse(File.ReadAllText(Path.Combine(normalResult.BuildRoot!, "machine.runtime.json")));
         var normalFace = Assert.Single(normalMachine.RootElement.GetProperty("faces").EnumerateArray());
         Assert.Equal("normal", normalFace.GetProperty("frontSide").GetString());
 
         var unsavedCabinetDocument = CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("topGlass1", CabinetTargetOverride.InvertedFrontSide, 180, true));
-        var invertedResult = service.BuildFromCabinetDocument(project, manifestPath, unsavedCabinetDocument);
+        var invertedResult = service.BuildFromCabinetDocument(project, manifestPath, unsavedCabinetDocument, NoOpEditorProgressReporter.Instance, CancellationToken.None);
         Assert.True(invertedResult.Success, invertedResult.ErrorMessage);
         using var invertedMachine = JsonDocument.Parse(File.ReadAllText(Path.Combine(invertedResult.BuildRoot!, "machine.runtime.json")));
         var invertedFace = Assert.Single(invertedMachine.RootElement.GetProperty("faces").EnumerateArray());
@@ -221,7 +222,7 @@ public sealed class MachineRuntimeBuildServiceTests
         WriteSolidPng(Path.Combine(faceDir, "mask.png"), 4, 4, SKColors.White);
         File.WriteAllText(Path.Combine(faceDir, ProjectAssetPathService.FaceManifestFileName), FaceDocumentStorage.Serialize(CreateFaceDocument("face-mismatch", "OasisFace_Top-Glass 1", "Assets/Faces/Mismatched Face/artwork.png", "Assets/Faces/Mismatched Face/mask.png")));
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath);
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.False(result.Success);
         Assert.Contains("does not contain that target override", result.ErrorMessage);
@@ -240,10 +241,62 @@ public sealed class MachineRuntimeBuildServiceTests
         var manifest = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName);
         File.WriteAllText(manifest, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("missing.glb")));
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifest);
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifest, NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.False(result.Success);
         Assert.Contains("GLB model was not found", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void BuildFromCabinetDocument_ReportsMonotonicStageAndFaceProgress()
+    {
+        var root = CreateTempRoot();
+        var project = CreateProject(root);
+        var cabinet = CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("top", CabinetTargetOverride.NormalFrontSide))
+            .WithTargetOverride(new CabinetTargetOverride("bottom", CabinetTargetOverride.NormalFrontSide));
+        var manifestPath = CreateCabinetAsset(project, "Progress Cabinet", cabinet);
+        CreateFaceAssetWithReel(project, "Top Glass", "face-top", "top", null, "standard");
+        CreateFaceAssetWithReel(project, "Bottom Glass", "face-bottom", "bottom", null, "standard");
+        var reports = new List<EditorProgressState>();
+        var initial = new EditorProgressState("Build", "Starting", EditorProgressMode.Determinate, 0, false, false);
+        var reporter = new EditorProgressReporter(initial, reports.Add);
+
+        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, reporter, CancellationToken.None);
+
+        Assert.True(result.Success, result.ErrorMessage);
+        var determinate = reports.Where(report => report.Mode == EditorProgressMode.Determinate).ToArray();
+        Assert.NotEmpty(determinate);
+        Assert.True(determinate.Zip(determinate.Skip(1), (left, right) => left.Value.GetValueOrDefault() <= right.Value.GetValueOrDefault()).All(value => value));
+        Assert.Equal(1d, determinate[^1].Value);
+        Assert.Contains(reports, report => report.Message.Contains("Exporting Face 1 of 2", StringComparison.Ordinal));
+        Assert.Contains(reports, report => report.Message.Contains("Exporting Face 2 of 2", StringComparison.Ordinal));
+        Assert.Contains(reports, report => report.Message.Contains("Writing runtime manifests", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void BuildFromCabinetDocument_CancellationPreservesExistingBuildAndCleansStaging()
+    {
+        var root = CreateTempRoot();
+        var project = CreateProject(root);
+        var cabinet = CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("top", CabinetTargetOverride.NormalFrontSide));
+        var manifestPath = CreateCabinetAsset(project, "Cancellation Cabinet", cabinet);
+        CreateFaceAssetWithReel(project, "Top Glass", "face-top", "top", null, "standard");
+        var service = new MachineRuntimeBuildService();
+        var successful = service.BuildFromCabinetDocument(project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.True(successful.Success, successful.ErrorMessage);
+        var markerPath = Path.Combine(successful.BuildRoot!, "existing-build.marker");
+        File.WriteAllText(markerPath, "keep");
+        using var cancellation = new CancellationTokenSource();
+        var initial = new EditorProgressState("Build", "Starting", EditorProgressMode.Determinate, 0, true, false);
+        var reporter = new EditorProgressReporter(initial, state =>
+        {
+            if (state.Message.Contains("Exporting Face", StringComparison.Ordinal)) cancellation.Cancel();
+        });
+
+        Assert.ThrowsAny<OperationCanceledException>(() => service.BuildFromCabinetDocument(project, manifestPath, reporter, cancellation.Token));
+
+        Assert.True(File.Exists(markerPath));
+        Assert.False(Directory.Exists(successful.BuildRoot + ".staging"));
     }
 
     private static string CreateCabinetAsset(EditorProject project, string assetName, CabinetDocument cabinetDocument)
