@@ -171,7 +171,7 @@ public sealed class Face2DRenderer : IFace2DRenderer
 
         if (TryGetArtworkImage(element.AssetPath, out var image))
         {
-            canvas.DrawImage(image, ResolveArtworkSourceRect(element, image), destination);
+            canvas.DrawImage(image, FaceArtworkRasterMapping.ResolveSourceRect(element, image.Width, image.Height), destination);
             return;
         }
 
@@ -576,28 +576,6 @@ public sealed class Face2DRenderer : IFace2DRenderer
         var width = maskLayer.Width > 0 ? maskLayer.Width : maskImage.Width;
         var height = maskLayer.Height > 0 ? maskLayer.Height : maskImage.Height;
         return SKRect.Create(0f, 0f, width, height);
-    }
-
-    private static SKRect ResolveArtworkSourceRect(FaceArtworkElement element, SKImage image)
-    {
-        var sourceRegion = element.SourceRegion;
-        var sourceBounds = element.Provenance?.SourceElementBounds;
-        if (sourceRegion is null || sourceBounds is null || sourceBounds.Width <= 0d || sourceBounds.Height <= 0d)
-        {
-            return SKRect.Create(0f, 0f, image.Width, image.Height);
-        }
-
-        var scaleX = image.Width / sourceBounds.Width;
-        var scaleY = image.Height / sourceBounds.Height;
-        var x = (sourceRegion.X - sourceBounds.X) * scaleX;
-        var y = (sourceRegion.Y - sourceBounds.Y) * scaleY;
-        var width = sourceRegion.Width * scaleX;
-        var height = sourceRegion.Height * scaleY;
-        var left = (float)Math.Clamp(x, 0d, image.Width);
-        var top = (float)Math.Clamp(y, 0d, image.Height);
-        var right = (float)Math.Clamp(x + width, left, image.Width);
-        var bottom = (float)Math.Clamp(y + height, top, image.Height);
-        return new SKRect(left, top, right, bottom);
     }
 
     private static SKRect ToRect(FaceSourceRegionModel region)

@@ -58,10 +58,27 @@ public partial class SkiaPanel2DEditView : UserControl
     private EditorViewportTransform CoreViewport(DocumentTabViewModel document) =>
         new(document.PanelZoom, document.PanelPanX, document.PanelPanY);
 
+    private static EditorViewportContentScale ContentScale(DocumentTabViewModel document)
+    {
+        var background = document.GetPanelElements().FirstOrDefault(e => e.Kind == PanelElementKind.Background
+            && e.Width > 0d && e.Height > 0d);
+        return background is not null && SkiaPanelImageLoader.TryGetImage(background.AssetPath, out var image)
+            ? EditorViewportContentScale.FromMapping(image.Width, image.Height, background.Width, background.Height)
+            : EditorViewportContentScale.Identity;
+    }
+
     private PanelViewportTransform CreateViewport(DocumentTabViewModel document)
     {
         var (viewport, bounds, dpi) = NavigationGeometry(document);
-        return PanelViewportTransform.FromEditor(CoreViewport(document), viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY);
+        return PanelViewportTransform.FromEditorNavigation(CoreViewport(document), viewport, bounds, dpi.DpiScaleX,
+            dpi.DpiScaleY, ContentScale(document));
+    }
+
+    private PanelViewportTransform CreateRenderViewport(DocumentTabViewModel document)
+    {
+        var (viewport, bounds, dpi) = NavigationGeometry(document);
+        return PanelViewportTransform.FromEditor(CoreViewport(document), viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY,
+            ContentScale(document));
     }
 
     private void SetViewport(EditorViewportTransform transform)
@@ -75,7 +92,7 @@ public partial class SkiaPanel2DEditView : UserControl
     {
         if (Document is not { } document) return;
         var (viewport, bounds, dpi) = NavigationGeometry(document);
-        SetViewport(EditorViewportTransform.Fit(viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY));
+        SetViewport(EditorViewportTransform.Fit(viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY, ContentScale(document)));
     }
 
     private void OnZoomRequested(object? sender, double zoom) => ZoomAtViewportCentre(zoom);
@@ -84,7 +101,8 @@ public partial class SkiaPanel2DEditView : UserControl
     {
         if (Document is not { } document) return;
         var (viewport, bounds, dpi) = NavigationGeometry(document);
-        SetViewport(CoreViewport(document).WithZoomAt(new Point(viewport.Width / 2, viewport.Height / 2), zoom, viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY));
+        SetViewport(CoreViewport(document).WithZoomAt(new Point(viewport.Width / 2, viewport.Height / 2), zoom,
+            viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY, ContentScale(document)));
     }
 
     private void UpdateStatus(Point? pointer = null)
@@ -94,7 +112,8 @@ public partial class SkiaPanel2DEditView : UserControl
         ViewportStatus.ContentDimensions = $"{bounds.Width:0} × {bounds.Height:0}";
         ViewportStatus.Zoom = document.PanelZoom;
         if (pointer is not { } screen) { ViewportStatus.PointerCoordinates = "X: —  Y: —"; return; }
-        var point = CoreViewport(document).ScreenToContent(screen, viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY);
+        var point = CoreViewport(document).ScreenToContent(screen, viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY,
+            ContentScale(document));
         ViewportStatus.PointerCoordinates = bounds.Contains(point) ? $"X: {Math.Floor(point.X):0}  Y: {Math.Floor(point.Y):0}" : "X: —  Y: —";
     }
 
@@ -216,10 +235,10 @@ public partial class SkiaPanel2DEditView : UserControl
             return;
         }
 
-        var viewport = CreateViewport(document);
+        var viewport = CreateRenderViewport(document);
         canvas.Save();
         canvas.Translate((float)viewport.PanX, (float)viewport.PanY);
-        canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedZoom);
+        canvas.Scale((float)viewport.NormalizedZoom, (float)viewport.NormalizedScaleY);
         _renderer.Render(canvas, document.GetPanelElements(), document.RuntimeState, viewport);
         DrawFaceSourceShapes(canvas, document, viewport);
         DrawSelectionOutline(canvas, document, viewport);
@@ -518,7 +537,8 @@ public partial class SkiaPanel2DEditView : UserControl
 
         var (viewport, bounds, dpi) = NavigationGeometry(Document);
         var zoom = CoreViewport(Document).ClampedZoom * (eventArgs.Delta > 0 ? EditorViewportTransform.ZoomStep : 1 / EditorViewportTransform.ZoomStep);
-        SetViewport(CoreViewport(Document).WithZoomAt(eventArgs.GetPosition(EditSkiaSurface), zoom, viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY));
+        SetViewport(CoreViewport(Document).WithZoomAt(eventArgs.GetPosition(EditSkiaSurface), zoom, viewport, bounds,
+            dpi.DpiScaleX, dpi.DpiScaleY, ContentScale(Document)));
         RequestRender();
         eventArgs.Handled = true;
     }

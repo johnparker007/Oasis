@@ -14,10 +14,14 @@ public readonly record struct EditorViewportTransform(double Zoom, double PanX, 
 
     public static double CalculateFitZoom(Rect viewport, double contentWidth, double contentHeight,
         double dpiScaleX, double dpiScaleY)
+        => CalculateFitZoom(viewport, contentWidth, contentHeight, dpiScaleX, dpiScaleY, EditorViewportContentScale.Identity);
+
+    public static double CalculateFitZoom(Rect viewport, double contentWidth, double contentHeight,
+        double dpiScaleX, double dpiScaleY, EditorViewportContentScale contentScale)
     {
         if (contentWidth <= 0 || contentHeight <= 0 || viewport.Width <= 0 || viewport.Height <= 0) return MinZoom;
-        return Math.Clamp(Math.Min(viewport.Width * ValidDpi(dpiScaleX) / contentWidth,
-            viewport.Height * ValidDpi(dpiScaleY) / contentHeight), MinZoom, MaxZoom);
+        return Math.Clamp(Math.Min(viewport.Width * ValidDpi(dpiScaleX) / (contentWidth * contentScale.X),
+            viewport.Height * ValidDpi(dpiScaleY) / (contentHeight * contentScale.Y)), MinZoom, MaxZoom);
     }
 
     public static EditorViewportTransform Fit(Rect viewport, double contentWidth, double contentHeight,
@@ -26,10 +30,18 @@ public readonly record struct EditorViewportTransform(double Zoom, double PanX, 
     public static EditorViewportTransform Fit(Rect viewport, Rect contentBounds, double dpiScaleX, double dpiScaleY) =>
         Fit(viewport, contentBounds.Width, contentBounds.Height, dpiScaleX, dpiScaleY);
 
+    public static EditorViewportTransform Fit(Rect viewport, Rect contentBounds, double dpiScaleX, double dpiScaleY,
+        EditorViewportContentScale contentScale) =>
+        new(CalculateFitZoom(viewport, contentBounds.Width, contentBounds.Height, dpiScaleX, dpiScaleY, contentScale), 0, 0);
+
     public Rect ContentRect(Rect viewport, double contentWidth, double contentHeight, double dpiScaleX, double dpiScaleY)
+        => ContentRect(viewport, contentWidth, contentHeight, dpiScaleX, dpiScaleY, EditorViewportContentScale.Identity);
+
+    public Rect ContentRect(Rect viewport, double contentWidth, double contentHeight, double dpiScaleX, double dpiScaleY,
+        EditorViewportContentScale contentScale)
     {
-        var width = contentWidth * ClampedZoom / ValidDpi(dpiScaleX);
-        var height = contentHeight * ClampedZoom / ValidDpi(dpiScaleY);
+        var width = contentWidth * contentScale.X * ClampedZoom / ValidDpi(dpiScaleX);
+        var height = contentHeight * contentScale.Y * ClampedZoom / ValidDpi(dpiScaleY);
         return new Rect(viewport.X + (viewport.Width - width) / 2d + PanX,
             viewport.Y + (viewport.Height - height) / 2d + PanY, width, height);
     }
@@ -47,23 +59,38 @@ public readonly record struct EditorViewportTransform(double Zoom, double PanX, 
     }
 
     public Point ContentToScreen(Point content, Rect viewport, Rect bounds, double dpiX, double dpiY)
+        => ContentToScreen(content, viewport, bounds, dpiX, dpiY, EditorViewportContentScale.Identity);
+
+    public Point ContentToScreen(Point content, Rect viewport, Rect bounds, double dpiX, double dpiY,
+        EditorViewportContentScale contentScale)
     {
         var local = new Point(content.X - bounds.X, content.Y - bounds.Y);
-        return ContentToScreen(local, viewport, bounds.Width, bounds.Height, dpiX, dpiY);
+        var rect = ContentRect(viewport, bounds.Width, bounds.Height, dpiX, dpiY, contentScale);
+        return new Point(rect.X + local.X * contentScale.X * ClampedZoom / ValidDpi(dpiX),
+            rect.Y + local.Y * contentScale.Y * ClampedZoom / ValidDpi(dpiY));
     }
 
     public Point ScreenToContent(Point screen, Rect viewport, Rect bounds, double dpiX, double dpiY)
+        => ScreenToContent(screen, viewport, bounds, dpiX, dpiY, EditorViewportContentScale.Identity);
+
+    public Point ScreenToContent(Point screen, Rect viewport, Rect bounds, double dpiX, double dpiY,
+        EditorViewportContentScale contentScale)
     {
-        var local = ScreenToContent(screen, viewport, bounds.Width, bounds.Height, dpiX, dpiY);
-        return new Point(local.X + bounds.X, local.Y + bounds.Y);
+        var rect = ContentRect(viewport, bounds.Width, bounds.Height, dpiX, dpiY, contentScale);
+        return new Point((screen.X - rect.X) * ValidDpi(dpiX) / (contentScale.X * ClampedZoom) + bounds.X,
+            (screen.Y - rect.Y) * ValidDpi(dpiY) / (contentScale.Y * ClampedZoom) + bounds.Y);
     }
 
     public EditorViewportTransform WithZoomAt(Point pivot, double newZoom, Rect viewport, Rect bounds,
         double dpiX, double dpiY)
+        => WithZoomAt(pivot, newZoom, viewport, bounds, dpiX, dpiY, EditorViewportContentScale.Identity);
+
+    public EditorViewportTransform WithZoomAt(Point pivot, double newZoom, Rect viewport, Rect bounds,
+        double dpiX, double dpiY, EditorViewportContentScale contentScale)
     {
-        var content = ScreenToContent(pivot, viewport, bounds, dpiX, dpiY);
+        var content = ScreenToContent(pivot, viewport, bounds, dpiX, dpiY, contentScale);
         var next = new EditorViewportTransform(Math.Clamp(newZoom, MinZoom, MaxZoom), 0, 0);
-        var withoutPan = next.ContentToScreen(content, viewport, bounds, dpiX, dpiY);
+        var withoutPan = next.ContentToScreen(content, viewport, bounds, dpiX, dpiY, contentScale);
         return next with { PanX = pivot.X - withoutPan.X, PanY = pivot.Y - withoutPan.Y };
     }
 
