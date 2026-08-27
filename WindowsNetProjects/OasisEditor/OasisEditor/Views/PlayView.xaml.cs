@@ -36,6 +36,7 @@ public partial class PlayView : UserControl
     private Guid? _preparedFaceDocumentId;
     private string? _preparedFaceDocumentJson;
     private Guid? _preparingFaceDocumentId;
+    private CancellationTokenSource? _facePreparationCancellation;
     private readonly Stopwatch _renderStopwatch = Stopwatch.StartNew();
     private readonly DispatcherTimer _renderThrottleTimer;
     private const double TargetFrameMillis = 16.0;
@@ -65,6 +66,7 @@ public partial class PlayView : UserControl
 
     private async void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        _facePreparationCancellation?.Cancel();
         _renderThrottleTimer.Stop();
         DetachPreProcessInputHandler();
         await ReleasePlayViewInputsAsync("Play View close");
@@ -110,6 +112,10 @@ public partial class PlayView : UserControl
 
         if (selected.Document.DocumentType == EditorDocumentType.Face)
         {
+            _facePreparationCancellation?.Cancel();
+            _facePreparationCancellation?.Dispose();
+            _facePreparationCancellation = new CancellationTokenSource();
+            _preparingFaceDocumentId = null;
             _ = PrepareFacePlayViewAsync(selected, ++_selectionRefreshVersion);
             return;
         }
@@ -143,6 +149,8 @@ public partial class PlayView : UserControl
         }
 
         _preparingFaceDocumentId = selected.DocumentId;
+        var preparationCancellation = _facePreparationCancellation;
+        var runtimeStateSnapshot = SnapshotLampRuntimeState(selected.RuntimeState);
         try
         {
             await WaitForActiveProgressOperationAsync(viewModel);
@@ -152,20 +160,23 @@ public partial class PlayView : UserControl
             }
 
             await viewModel.RunEditorProgressAsync(
-                new EditorProgressRequest("Generating Face Play View", "Generating Face Play View...", EditorProgressMode.Indeterminate, ShowDelay: TimeSpan.Zero, ExecutionMode: EditorProgressExecutionMode.UiThread),
-                async (progress, token) =>
+                new EditorProgressRequest("Generating Face Play View", "Generating Face Play View...", EditorProgressMode.Indeterminate, ShowDelay: TimeSpan.Zero),
+                (progress, token) =>
                 {
                     token.ThrowIfCancellationRequested();
                     progress.ReportIndeterminate("Loading Face render assets...");
-                    await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
-                    token.ThrowIfCancellationRequested();
-                    WarmFacePlayViewRenderCache(selected);
+                    WarmFacePlayViewRenderCache(selected, runtimeStateSnapshot, token);
                     progress.ReportIndeterminate("Finalizing Face Play View...");
-                });
+                    return Task.CompletedTask;
+                }, preparationCancellation?.Token ?? default);
 
-            _preparedFaceDocumentId = selected.DocumentId;
-            _preparedFaceDocumentJson = selected.FaceDocumentJson;
+            if (refreshVersion == _selectionRefreshVersion && ReferenceEquals(ViewModel?.SelectedDocument, selected))
+            {
+                _preparedFaceDocumentId = selected.DocumentId;
+                _preparedFaceDocumentJson = selected.FaceDocumentJson;
+            }
         }
+        catch (OperationCanceledException) { return; }
         catch (Exception ex)
         {
             viewModel.ReportEditorOperationError($"Generate Face Play View failed: {ex.Message}", OutputLogStatus.Error);
@@ -175,7 +186,7 @@ public partial class PlayView : UserControl
         }
         finally
         {
-            _preparingFaceDocumentId = null;
+            if (ReferenceEquals(_facePreparationCancellation, preparationCancellation)) _preparingFaceDocumentId = null;
         }
 
         if (refreshVersion == _selectionRefreshVersion)
@@ -192,19 +203,20 @@ public partial class PlayView : UserControl
         }
     }
 
-    private void WarmFacePlayViewRenderCache(DocumentTabViewModel selected)
+    private void WarmFacePlayViewRenderCache(DocumentTabViewModel selected, MachineRuntimeState runtimeState,
+        CancellationToken cancellationToken)
     {
-        using var surface = SKSurface.Create(new SKImageInfo(1, 1));
-        if (surface is null)
-        {
-            return;
-        }
+        using var timing = FaceArtworkPerformanceTrace.Measure("Complete Face Play View preparation");
+        _faceCompositor.PrepareTexturePreview(selected.GetFaceDocument(), runtimeState,
+            ImageProcessingExecutionPolicy.Current.WithCancellation(cancellationToken));
+    }
 
-        _faceCompositor.Render(
-            surface.Canvas,
-            selected.GetFaceDocument(),
-            selected.RuntimeState,
-            new PanelViewportTransform(_skiaZoom, _skiaPan.X, _skiaPan.Y));
+    private static MachineRuntimeState SnapshotLampRuntimeState(MachineRuntimeState source)
+    {
+        var snapshot = new MachineRuntimeState();
+        foreach (var entry in source.LampIntensityByMachineObjectId)
+            if (MachineObjectReference.TryParse(entry.Key, out var reference)) snapshot.SetLampIntensity(reference, entry.Value);
+        return snapshot;
     }
 
     private void OnPlaySkiaSurfacePaintSurface(object? sender, SKPaintSurfaceEventArgs eventArgs)

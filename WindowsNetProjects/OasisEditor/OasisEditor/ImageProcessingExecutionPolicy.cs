@@ -1,6 +1,6 @@
 namespace OasisEditor;
 
-internal readonly record struct ImageProcessingExecutionOptions(
+public readonly record struct ImageProcessingExecutionOptions(
     int MaxDegreeOfParallelism,
     CancellationToken CancellationToken = default)
 {

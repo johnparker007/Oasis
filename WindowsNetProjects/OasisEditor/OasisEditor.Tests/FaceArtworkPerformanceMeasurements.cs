@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using OasisEditor.Rendering;
 using SkiaSharp;
 using Xunit;
 using Xunit.Abstractions;
@@ -43,6 +44,50 @@ public sealed class FaceArtworkPerformanceMeasurements(ITestOutputHelper output)
             foreach (var window in windows)
                 FaceGenerationService.CompositeSourceShapeLampMask(mask, width, height, shape, lamp, source, window, 32, options);
         });
+    }
+
+    [Fact]
+    [Trait("Category", "Performance")]
+    public void MeasureFaceTexturePreviewPreparationAcrossWorkerPolicies()
+    {
+        if (Environment.GetEnvironmentVariable("OASIS_IMAGE_BENCHMARK") != "1") return;
+        const int width = 2048, height = 2048;
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-preview-benchmark-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            foreach (var name in new[] { "artwork", "mask", "trayId", "lampIds0", "lampWeights0" })
+            {
+                using var bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+                bitmap.Erase(name == "lampIds0" ? new SKColor(8, 9, 10, 255) : new SKColor(180, 120, 60, 220));
+                using var image = SKImage.FromBitmap(bitmap); using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+                using var stream = File.Create(Path.Combine(directory, $"{name}.png")); data.SaveTo(stream);
+            }
+            var document = new FaceDocumentModel { RuntimeRenderAssets = new FaceRuntimeRenderAssetsModel
+            {
+                ArtworkPath="artwork.png",MaskPath="mask.png",TrayIdPath="trayId.png",LampIds0Path="lampIds0.png",
+                LampWeights0Path="lampWeights0.png",Width=width,Height=height
+            }};
+            var policies = new[] { ("1 worker", new ImageProcessingExecutionOptions(1)),
+                ("Auto", ImageProcessingExecutionPolicy.Resolve(new ProcessingPreferences(), Environment.ProcessorCount)),
+                ("Maximum", ImageProcessingExecutionPolicy.Resolve(new ProcessingPreferences { CpuMode=CpuImageProcessingMode.Maximum }, Environment.ProcessorCount)) };
+            double baseline = 0;
+            foreach (var (mode, options) in policies)
+            {
+                var samples = new List<(double Total, FaceTexturePreviewDiagnostics Diagnostics)>();
+                for (var iteration = 0; iteration < 3; iteration++)
+                {
+                    using var renderer = new FaceTexturePreviewRenderer(path => Path.Combine(directory, path!));
+                    var watch = Stopwatch.StartNew(); renderer.Prepare(document, new MachineRuntimeState(), options); watch.Stop();
+                    samples.Add((watch.Elapsed.TotalMilliseconds, renderer.LastDiagnostics));
+                }
+                var median = samples.OrderBy(sample => sample.Total).ElementAt(1); if (mode == "1 worker") baseline = median.Total;
+                output.WriteLine($"Face texture prepare {width}x{height}; CPUs {Environment.ProcessorCount}; {mode}={options.MaxDegreeOfParallelism} workers: " +
+                    $"load {median.Diagnostics.TextureCacheLoadMilliseconds:F1} ms, precompute {median.Diagnostics.PrecomputeMilliseconds:F1} ms, " +
+                    $"compose {median.Diagnostics.ComposeMilliseconds:F1} ms, total {median.Total:F1} ms, speed-up {baseline / median.Total:F2}x");
+            }
+        }
+        finally { Directory.Delete(directory, true); }
     }
 
     private void ReportLampMask(string operation, int width, int height, int lampCount, Action<ImageProcessingExecutionOptions> run)

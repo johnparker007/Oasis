@@ -11,6 +11,8 @@ public interface IFaceCompositor
     FaceCompositorResult ComposeStaticBase(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState, FaceCompositorRenderOptions? options = null);
 
     void RenderLampOverlay(SKCanvas canvas, FaceDocumentModel faceDocument, MachineRuntimeState runtimeState);
+    bool PrepareTexturePreview(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState,
+        ImageProcessingExecutionOptions? executionOptions = null);
 }
 
 public sealed class FaceCompositor : IFaceCompositor
@@ -94,6 +96,10 @@ public sealed class FaceCompositor : IFaceCompositor
         ArgumentNullException.ThrowIfNull(runtimeState);
         _renderer.RenderLampOverlay(canvas, faceDocument, runtimeState);
     }
+
+    public bool PrepareTexturePreview(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState,
+        ImageProcessingExecutionOptions? executionOptions = null) =>
+        _renderer.PrepareTexturePreview(faceDocument, runtimeState, executionOptions);
 
     public static bool TryResolveTarget(FaceDocumentModel faceDocument, FaceCompositorRenderOptions? options, out FaceCompositorTarget target, out string fallbackReason)
     {

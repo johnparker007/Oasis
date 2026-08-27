@@ -363,6 +363,9 @@ public sealed class Face2DRendererMaskIlluminationTests : IDisposable
         {
             return _result;
         }
+
+        public bool Prepare(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState,
+            ImageProcessingExecutionOptions? executionOptions = null) => _result.Rendered;
     }
 
     private static void WriteMask(string path, int width, int height, IReadOnlyCollection<(int X, int Y)> opaquePixels)

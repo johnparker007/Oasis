@@ -7,6 +7,8 @@ namespace OasisEditor.Rendering;
 public interface IFaceTexturePreviewRenderer
 {
     FaceTexturePreviewRenderResult Render(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState);
+    bool Prepare(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState,
+        ImageProcessingExecutionOptions? executionOptions = null);
 }
 
 public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, IDisposable
@@ -47,7 +49,7 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
         var stopwatch = Stopwatch.StartNew();
         lock (_syncRoot)
         {
-            if (!TryGetOrCreateCache(faceDocument.RuntimeRenderAssets, out var cache, out var fallbackReason, out var loadMilliseconds, out var precomputeMilliseconds))
+            if (!TryGetOrCreateCache(faceDocument.RuntimeRenderAssets, ImageProcessingExecutionPolicy.Current, out var cache, out var fallbackReason, out var loadMilliseconds, out var precomputeMilliseconds))
             {
                 _lastDiagnostics = new FaceTexturePreviewDiagnostics(false, false, false, fallbackReason, loadMilliseconds, precomputeMilliseconds, 0d, 0d);
                 TraceDiagnostics(_lastDiagnostics);
@@ -63,7 +65,7 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
                 var composeStopwatch = Stopwatch.StartNew();
                 if (!cache.HasComposedFrame)
                 {
-                    ComposeFrame(cache);
+                    ComposeFrame(cache, ImageProcessingExecutionPolicy.Current);
                     dirtyPixelCount = cache.PixelCount;
                 }
                 else
@@ -78,12 +80,41 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
             stopwatch.Stop();
             _lastDiagnostics = new FaceTexturePreviewDiagnostics(true, cache.WasReusedForLastRequest, reusedComposition, null, loadMilliseconds, precomputeMilliseconds, composeMilliseconds, stopwatch.Elapsed.TotalMilliseconds, dirtyPixelCount);
             TraceDiagnostics(_lastDiagnostics);
+            TraceFaceTimings(_lastDiagnostics);
             return FaceTexturePreviewRenderResult.FromCachedBitmap(cache.OutputBitmap);
+        }
+    }
+
+    public bool Prepare(FaceDocumentModel faceDocument, MachineRuntimeState runtimeState,
+        ImageProcessingExecutionOptions? executionOptions = null)
+    {
+        ArgumentNullException.ThrowIfNull(faceDocument); ArgumentNullException.ThrowIfNull(runtimeState);
+        var options = executionOptions ?? ImageProcessingExecutionPolicy.Current;
+        var stopwatch = Stopwatch.StartNew();
+        lock (_syncRoot)
+        {
+            options.CancellationToken.ThrowIfCancellationRequested();
+            if (!TryGetOrCreateCache(faceDocument.RuntimeRenderAssets, options, out var cache, out var fallbackReason,
+                    out var loadMilliseconds, out var precomputeMilliseconds))
+            {
+                _lastDiagnostics = new(false, false, false, fallbackReason, loadMilliseconds, precomputeMilliseconds, 0d, stopwatch.Elapsed.TotalMilliseconds);
+                TraceDiagnostics(_lastDiagnostics); return false;
+            }
+            BuildLampLookup(runtimeState, cache.LampLookup);
+            ResolveDirtyPixels(cache);
+            var reusedComposition = cache.HasComposedFrame;
+            var compose = Stopwatch.StartNew();
+            if (!cache.HasComposedFrame) ComposeFrame(cache, options);
+            compose.Stop(); stopwatch.Stop();
+            _lastDiagnostics = new(true, cache.WasReusedForLastRequest, reusedComposition, null,
+                loadMilliseconds, precomputeMilliseconds, compose.Elapsed.TotalMilliseconds, stopwatch.Elapsed.TotalMilliseconds, cache.PixelCount);
+            TraceDiagnostics(_lastDiagnostics); TraceFaceTimings(_lastDiagnostics); return true;
         }
     }
 
     private bool TryGetOrCreateCache(
         FaceRuntimeRenderAssetsModel? assets,
+        ImageProcessingExecutionOptions options,
         out FaceTexturePreviewRenderCache cache,
         out string fallbackReason,
         out double loadMilliseconds,
@@ -92,7 +123,9 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
         cache = default!;
         loadMilliseconds = 0d;
         precomputeMilliseconds = 0d;
-        if (!TryCreateCacheKey(assets, out var cacheKey, out fallbackReason))
+        FaceTexturePreviewCacheKey cacheKey;
+        using (FaceArtworkPerformanceTrace.Measure("Face Play View texture validation/stamping"))
+        if (!TryCreateCacheKey(assets, out cacheKey, out fallbackReason))
         {
             DisposeCache();
             return false;
@@ -107,6 +140,7 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
         }
 
         DisposeCache();
+        options.CancellationToken.ThrowIfCancellationRequested();
         var loadStopwatch = Stopwatch.StartNew();
         if (!TryLoadTextures(cacheKey, out var textures, out fallbackReason))
         {
@@ -120,8 +154,9 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
 
         using (textures)
         {
+            options.CancellationToken.ThrowIfCancellationRequested();
             var precomputeStopwatch = Stopwatch.StartNew();
-            if (!TryPrecompute(cacheKey, textures, out cache, out fallbackReason))
+            if (!TryPrecompute(cacheKey, textures, options, out cache, out fallbackReason))
             {
                 precomputeStopwatch.Stop();
                 precomputeMilliseconds = precomputeStopwatch.Elapsed.TotalMilliseconds;
@@ -280,7 +315,8 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
         return true;
     }
 
-    private bool TryPrecompute(FaceTexturePreviewCacheKey cacheKey, FaceTexturePreviewTextures textures, out FaceTexturePreviewRenderCache cache, out string fallbackReason)
+    private bool TryPrecompute(FaceTexturePreviewCacheKey cacheKey, FaceTexturePreviewTextures textures,
+        ImageProcessingExecutionOptions options, out FaceTexturePreviewRenderCache cache, out string fallbackReason)
     {
         var pixelCount = textures.Width * textures.Height;
         var ambientPixels = new byte[pixelCount * 4];
@@ -288,70 +324,91 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
         var maskValues = new byte[pixelCount];
         var lampIds = new byte[pixelCount * cacheKey.LampIds0ChannelCount];
         var lampWeights = new byte[pixelCount * cacheKey.LampIds0ChannelCount];
-        var lampPixelBuilders = new List<int>[256];
-
-        for (var y = 0; y < textures.Height; y++)
+        var artworkPixels = new BitmapPixelBuffer(textures.Artwork);
+        var maskPixels = new BitmapPixelBuffer(textures.Mask);
+        var idPixels = new BitmapPixelBuffer(textures.LampIds0);
+        var weightPixels = new BitmapPixelBuffer(textures.LampWeights0);
+        if (!artworkPixels.IsDirect || !maskPixels.IsDirect || !idPixels.IsDirect || !weightPixels.IsDirect)
+            options = options with { MaxDegreeOfParallelism = 1 };
+        ImageProcessingExecutionPolicy.ForEachRow(textures.Height, options, y =>
         {
             for (var x = 0; x < textures.Width; x++)
             {
                 var pixelIndex = (y * textures.Width) + x;
                 var rgbaIndex = pixelIndex * 4;
                 var rgbIndex = pixelIndex * 3;
-                var artwork = textures.Artwork.GetPixel(x, y);
-                artworkRgb[rgbIndex] = artwork.Red;
-                artworkRgb[rgbIndex + 1] = artwork.Green;
-                artworkRgb[rgbIndex + 2] = artwork.Blue;
-                ambientPixels[rgbaIndex] = ScaleChannel(artwork.Red, cacheKey.AmbientStrength);
-                ambientPixels[rgbaIndex + 1] = ScaleChannel(artwork.Green, cacheKey.AmbientStrength);
-                ambientPixels[rgbaIndex + 2] = ScaleChannel(artwork.Blue, cacheKey.AmbientStrength);
-                ambientPixels[rgbaIndex + 3] = artwork.Alpha;
-                maskValues[pixelIndex] = ResolveMaskByte(textures.Mask.GetPixel(x, y), cacheKey.MaskStrength);
+                artworkPixels.ReadStraight(x, y, out var ar, out var ag, out var ab, out var aa);
+                artworkRgb[rgbIndex] = ar; artworkRgb[rgbIndex + 1] = ag; artworkRgb[rgbIndex + 2] = ab;
+                ambientPixels[rgbaIndex] = ScaleChannel(ar, cacheKey.AmbientStrength);
+                ambientPixels[rgbaIndex + 1] = ScaleChannel(ag, cacheKey.AmbientStrength);
+                ambientPixels[rgbaIndex + 2] = ScaleChannel(ab, cacheKey.AmbientStrength); ambientPixels[rgbaIndex + 3] = aa;
+                maskPixels.ReadStraight(x, y, out var mr, out var mg, out var mb, out var ma);
+                maskValues[pixelIndex] = ResolveMaskByte(mr, mg, mb, ma, cacheKey.MaskStrength);
+                idPixels.ReadStraight(x, y, out var ir, out var ig, out var ib, out var ia);
+                weightPixels.ReadStraight(x, y, out var wr, out var wg, out var wb, out var wa);
+                WriteChannels(lampIds, pixelIndex, cacheKey.LampIds0ChannelCount, ir, ig, ib, ia);
+                WriteChannels(lampWeights, pixelIndex, cacheKey.LampIds0ChannelCount, wr, wg, wb, wa);
+            }
+        });
 
-                var ids = textures.LampIds0.GetPixel(x, y);
-                var weights = textures.LampWeights0.GetPixel(x, y);
-                WriteChannels(lampIds, pixelIndex, cacheKey.LampIds0ChannelCount, ids);
-                WriteChannels(lampWeights, pixelIndex, cacheKey.LampIds0ChannelCount, weights);
-                AddLampPixelInfluences(lampPixelBuilders, pixelIndex, cacheKey.LampIds0ChannelCount, ids, weights);
+        // Row-local builders avoid shared mutation; the ordered reduction preserves scanline ordering exactly.
+        var rowLampPixelBuilders = new List<int>[textures.Height][];
+        ImageProcessingExecutionPolicy.ForEachRow(textures.Height, options, y =>
+        {
+            var builders = new List<int>[256];
+            var firstPixel = y * textures.Width;
+            for (var x = 0; x < textures.Width; x++)
+                AddLampPixelInfluences(builders, firstPixel + x, cacheKey.LampIds0ChannelCount, lampIds, lampWeights);
+            rowLampPixelBuilders[y] = builders;
+        });
+        var lampPixelBuilders = new List<int>[256];
+        for (var y = 0; y < rowLampPixelBuilders.Length; y++)
+        {
+            options.CancellationToken.ThrowIfCancellationRequested();
+            for (var lampId = 0; lampId < lampPixelBuilders.Length; lampId++)
+            {
+                var rowPixels = rowLampPixelBuilders[y][lampId];
+                if (rowPixels is null) continue;
+                (lampPixelBuilders[lampId] ??= []).AddRange(rowPixels);
             }
         }
-
         var lampPixelIndex = BuildLampPixelIndex(lampPixelBuilders);
         cache = new FaceTexturePreviewRenderCache(cacheKey, textures.Width, textures.Height, ambientPixels, artworkRgb, maskValues, lampIds, lampWeights, lampPixelIndex);
         fallbackReason = string.Empty;
         return true;
     }
 
-    private static void WriteChannels(byte[] target, int pixelIndex, int channelCount, SKColor color)
+    private static void WriteChannels(byte[] target, int pixelIndex, int channelCount, byte red, byte green, byte blue, byte alpha)
     {
         var offset = pixelIndex * channelCount;
-        target[offset] = color.Red;
+        target[offset] = red;
         if (channelCount >= 2)
         {
-            target[offset + 1] = color.Green;
+            target[offset + 1] = green;
         }
 
         if (channelCount >= 3)
         {
-            target[offset + 2] = color.Blue;
+            target[offset + 2] = blue;
         }
 
         if (channelCount >= 4)
         {
-            target[offset + 3] = color.Alpha;
+            target[offset + 3] = alpha;
         }
     }
 
-    private static void AddLampPixelInfluences(List<int>[] lampPixelBuilders, int pixelIndex, int channelCount, SKColor ids, SKColor weights)
+    private static void AddLampPixelInfluences(List<int>[] lampPixelBuilders, int pixelIndex, int channelCount,
+        byte[] ids, byte[] weights)
     {
-        Span<byte> idChannels = stackalloc byte[] { ids.Red, ids.Green, ids.Blue, ids.Alpha };
-        Span<byte> weightChannels = stackalloc byte[] { weights.Red, weights.Green, weights.Blue, weights.Alpha };
         Span<byte> addedLampIds = stackalloc byte[4];
         var addedCount = 0;
+        var offset = pixelIndex * channelCount;
         for (var channel = 0; channel < channelCount; channel++)
         {
-            var encodedLampId = idChannels[channel];
+            var encodedLampId = ids[offset + channel];
             var lampId = FaceLampIdTextureEncoding.Decode(encodedLampId);
-            if (lampId is null || weightChannels[channel] == 0)
+            if (lampId is null || weights[offset + channel] == 0)
             {
                 continue;
             }
@@ -446,15 +503,15 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
         }
     }
 
-    private static unsafe void ComposeFrame(FaceTexturePreviewRenderCache cache)
+    private static unsafe void ComposeFrame(FaceTexturePreviewRenderCache cache, ImageProcessingExecutionOptions options)
     {
         var output = cache.OutputBitmap;
-        var pixels = (byte*)output.GetPixels().ToPointer();
+        var pixelAddress = output.GetPixels();
         var rowBytes = output.RowBytes;
         var channelCount = cache.Key.LampIds0ChannelCount;
-        for (var y = 0; y < cache.Height; y++)
+        ImageProcessingExecutionPolicy.ForEachRow(cache.Height, options, y =>
         {
-            var row = pixels + (y * rowBytes);
+            var row = (byte*)pixelAddress.ToPointer() + (y * rowBytes);
             for (var x = 0; x < cache.Width; x++)
             {
                 var pixelIndex = (y * cache.Width) + x;
@@ -491,7 +548,7 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
                 target[2] = ScaleChannel(cache.ArtworkRgb[rgbIndex + 2], multiplier);
                 target[3] = cache.AmbientPixels[rgbaIndex + 3];
             }
-        }
+        });
 
         Array.Copy(cache.CurrentQuantizedLampIntensities, cache.PreviousQuantizedLampIntensities, cache.CurrentQuantizedLampIntensities.Length);
         cache.HasComposedFrame = true;
@@ -547,10 +604,10 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
         target[3] = cache.AmbientPixels[rgbaIndex + 3];
     }
 
-    private static byte ResolveMaskByte(SKColor maskPixel, double maskStrength)
+    private static byte ResolveMaskByte(byte red, byte green, byte blue, byte alpha, double maskStrength)
     {
-        var grayscale = Math.Max(maskPixel.Red, Math.Max(maskPixel.Green, maskPixel.Blue)) / 255d;
-        var value = grayscale * (maskPixel.Alpha / 255d) * maskStrength;
+        var grayscale = Math.Max(red, Math.Max(green, blue)) / 255d;
+        var value = grayscale * (alpha / 255d) * maskStrength;
         return (byte)Math.Clamp(Math.Round(value * 255d, MidpointRounding.AwayFromZero), 0d, 255d);
     }
 
@@ -598,6 +655,14 @@ public sealed class FaceTexturePreviewRenderer : IFaceTexturePreviewRenderer, ID
             + $"drawCachedImage=pending-canvas-draw, "
             + $"reusedTextures={diagnostics.ReusedTextureCache}, "
             + $"reusedComposition={diagnostics.ReusedComposition}");
+    }
+
+    private static void TraceFaceTimings(FaceTexturePreviewDiagnostics diagnostics)
+    {
+        FaceArtworkPerformanceTrace.WriteMeasurement("Face Play View texture decode/load", TimeSpan.FromMilliseconds(diagnostics.TextureCacheLoadMilliseconds));
+        FaceArtworkPerformanceTrace.WriteMeasurement("Face Play View texture precompute", TimeSpan.FromMilliseconds(diagnostics.PrecomputeMilliseconds));
+        FaceArtworkPerformanceTrace.WriteMeasurement("Face Play View initial compose", TimeSpan.FromMilliseconds(diagnostics.ComposeMilliseconds));
+        FaceArtworkPerformanceTrace.WriteMeasurement("Face Play View texture preparation total", TimeSpan.FromMilliseconds(diagnostics.TotalMilliseconds));
     }
 
     private void DisposeCache()
