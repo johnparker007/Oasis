@@ -82,6 +82,8 @@ namespace OasisPlayer.RuntimeBuild
         public string faceId = string.Empty;
         public int width;
         public int height;
+        public int textureWidth;
+        public int textureHeight;
         public string artwork = string.Empty;
         public string mask = string.Empty;
         public string trayId = string.Empty;

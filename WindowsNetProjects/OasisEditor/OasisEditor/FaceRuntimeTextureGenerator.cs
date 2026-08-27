@@ -70,6 +70,9 @@ public sealed class FaceRuntimeTextureGenerator
     }
 
     public FaceRuntimeTextureGenerationResult Generate(FaceDocumentModel faceDocument, int width, int height, string outputDirectory, IEditorProgressReporter? progress = null)
+        => Generate(faceDocument, width, height, width, height, outputDirectory, progress);
+
+    public FaceRuntimeTextureGenerationResult Generate(FaceDocumentModel faceDocument, int logicalWidth, int logicalHeight, int textureWidth, int textureHeight, string outputDirectory, IEditorProgressReporter? progress = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         progress ??= NoOpEditorProgressReporter.Instance;
@@ -79,7 +82,12 @@ public sealed class FaceRuntimeTextureGenerator
         }
 
         progress.Report(0.0, "Creating runtime texture plan...");
-        var plan = CreatePlan(faceDocument, width, height, progress.CreateChild(0.0, 0.2));
+        var plan = CreatePlan(faceDocument, logicalWidth, logicalHeight, progress.CreateChild(0.0, 0.2));
+        ValidateDimensions(textureWidth, textureHeight);
+        var scaleX = textureWidth / (double)logicalWidth;
+        var scaleY = textureHeight / (double)logicalHeight;
+        var rasterTrays = plan.Trays.Select(tray => ScaleTray(tray, scaleX, scaleY)).ToArray();
+        var rasterEmitters = plan.Emitters.Select(emitter => ScaleEmitter(emitter, scaleX, scaleY)).ToArray();
         Directory.CreateDirectory(outputDirectory);
 
         var trayIdPath = Path.Combine(outputDirectory, TrayIdFileName);
@@ -89,9 +97,9 @@ public sealed class FaceRuntimeTextureGenerator
         var lampWeightsDebugPath = Path.Combine(outputDirectory, LampWeightsDebugFileName);
 
         progress.Report(0.35, "Generating texture files...");
-        _trayIdTextureGenerator.Generate(plan.Trays, width, height, trayIdPath, trayIdDebugPath);
+        _trayIdTextureGenerator.Generate(rasterTrays, textureWidth, textureHeight, trayIdPath, trayIdDebugPath);
         progress.Report(0.65, "Generating texture files...");
-        _lampInfluenceTextureGenerator.Generate(plan.Trays, plan.Emitters, width, height, lampIds0Path, lampWeights0Path, lampWeightsDebugPath);
+        _lampInfluenceTextureGenerator.Generate(rasterTrays, rasterEmitters, textureWidth, textureHeight, lampIds0Path, lampWeights0Path, lampWeightsDebugPath);
 
         progress.Report(1.0, "Texture file generation complete.");
         return new FaceRuntimeTextureGenerationResult(
@@ -102,6 +110,39 @@ public sealed class FaceRuntimeTextureGenerator
             trayIdDebugPath,
             lampWeightsDebugPath);
     }
+
+    private static FaceRuntimeTrayElement ScaleTray(FaceRuntimeTrayElement tray, double scaleX, double scaleY) => new()
+    {
+        TrayId = tray.TrayId,
+        ObjectId = tray.ObjectId,
+        SourceLampWindowObjectId = tray.SourceLampWindowObjectId,
+        Name = tray.Name,
+        X = tray.X * scaleX,
+        Y = tray.Y * scaleY,
+        Width = tray.Width * scaleX,
+        Height = tray.Height * scaleY,
+        Vertices = tray.Vertices.Select(vertex => new FacePointModel { X = vertex.X * scaleX, Y = vertex.Y * scaleY }).ToArray(),
+        LampEmitterObjectId = tray.LampEmitterObjectId,
+        LampId = tray.LampId
+    };
+
+    private static FaceLampEmitterElement ScaleEmitter(FaceLampEmitterElement emitter, double scaleX, double scaleY) => new()
+    {
+        ObjectId = emitter.ObjectId,
+        Name = emitter.Name,
+        TrayObjectId = emitter.TrayObjectId,
+        TrayId = emitter.TrayId,
+        LampId = emitter.LampId,
+        CenterX = emitter.CenterX * scaleX,
+        CenterY = emitter.CenterY * scaleY,
+        X = emitter.X * scaleX,
+        Y = emitter.Y * scaleY,
+        Width = emitter.Width * scaleX,
+        Height = emitter.Height * scaleY,
+        Radius = emitter.Radius * Math.Min(scaleX, scaleY),
+        SourceLampWindowObjectId = emitter.SourceLampWindowObjectId,
+        LinkedMachineObjectReference = emitter.LinkedMachineObjectReference
+    };
 
 
     private static FaceRuntimeTextureExportSource ResolveExportSource(FaceDocumentModel faceDocument)
