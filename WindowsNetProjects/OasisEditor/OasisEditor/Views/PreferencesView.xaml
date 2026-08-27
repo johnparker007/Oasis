@@ -53,19 +53,19 @@
                 <TextBlock Margin="0,16,0,6" FontWeight="SemiBold" Text="CPU Image Processing" />
                 <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource TextSecondaryBrush}" Text="Mode" />
                 <ComboBox Width="190" HorizontalAlignment="Left"
-                          ItemsSource="{Binding CpuImageProcessingModes}"
+                          ItemsSource="{Binding CpuImageProcessingModes, Mode=OneWay}"
                           SelectedItem="{Binding SelectedCpuImageProcessingMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 <TextBlock Margin="0,6,0,12" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}"
                            Text="Auto uses most available CPU resources while retaining capacity for system responsiveness." />
-                <StackPanel Orientation="Horizontal" IsEnabled="{Binding IsCustomProcessingMode}">
+                <StackPanel Orientation="Horizontal" IsEnabled="{Binding IsCustomProcessingMode, Mode=OneWay}">
                     <TextBlock Width="130" VerticalAlignment="Center" Text="Maximum workers:" />
                     <TextBox Width="70" Text="{Binding CustomMaximumProcessingWorkers, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
                 </StackPanel>
                 <TextBlock Margin="0,18,0,4">
-                    <Run Text="Available logical processors: " /><Run Text="{Binding AvailableLogicalProcessors}" />
+                    <Run Text="Available logical processors: " /><Run Text="{Binding AvailableLogicalProcessors, Mode=OneWay}" />
                 </TextBlock>
                 <TextBlock>
-                    <Run Text="Effective processing workers: " /><Run Text="{Binding EffectiveProcessingWorkers}" />
+                    <Run Text="Effective processing workers: " /><Run Text="{Binding EffectiveProcessingWorkers, Mode=OneWay}" />
                 </TextBlock>
             </StackPanel>
 
