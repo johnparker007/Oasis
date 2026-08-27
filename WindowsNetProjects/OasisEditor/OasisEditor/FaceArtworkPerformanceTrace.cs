@@ -7,7 +7,9 @@ internal static class FaceArtworkPerformanceTrace
 {
     private static readonly bool Enabled = Environment.GetEnvironmentVariable("OASIS_FACE_TIMING") == "1";
 
-    public static Scope? Measure(string operation) => Enabled ? new Scope(operation, Stopwatch.GetTimestamp()) : null;
+    public static Scope? Measure(string operation) => Enabled
+        ? new Scope($"{operation} (processing workers: {ImageProcessingExecutionPolicy.Current.MaxDegreeOfParallelism})", Stopwatch.GetTimestamp())
+        : null;
 
     internal sealed class Scope(string operation, long started) : IDisposable
     {

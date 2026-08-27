@@ -7,7 +7,8 @@ internal static class PerspectiveRasterizer
 {
     private const int SupersampleGridSize = 2;
 
-    public static SKBitmap Rectify(SKBitmap source, IReadOnlyList<FacePointModel> sourceQuad, int width, int height)
+    public static SKBitmap Rectify(SKBitmap source, IReadOnlyList<FacePointModel> sourceQuad, int width, int height,
+        ImageProcessingExecutionOptions? executionOptions = null)
     {
         ArgumentNullException.ThrowIfNull(source);
         if (sourceQuad.Count != 4) throw new ArgumentException("A perspective quad must have four corners.", nameof(sourceQuad));
@@ -24,11 +25,14 @@ internal static class PerspectiveRasterizer
         var sourcePixels = new BitmapPixelBuffer(source);
         var outputPixels = new BitmapPixelBuffer(output);
         var h = destinationToSource;
-        Span<double> nx = stackalloc double[4];
-        Span<double> ny = stackalloc double[4];
-        Span<double> denominator = stackalloc double[4];
-        for (var y = 0; y < height; y++)
+        var options = executionOptions ?? ImageProcessingExecutionPolicy.Current;
+        // Unsupported Skia formats retain the serial fallback because GetPixel/SetPixel thread safety is not guaranteed.
+        if (!sourcePixels.IsDirect || !outputPixels.IsDirect) options = options with { MaxDegreeOfParallelism = 1 };
+        ImageProcessingExecutionPolicy.ForEachRow(height, options, y =>
         {
+            Span<double> nx = stackalloc double[4];
+            Span<double> ny = stackalloc double[4];
+            Span<double> denominator = stackalloc double[4];
             // Four homogeneous lanes represent the fixed 2x2 quarter-pixel sample positions.
             // Their terms are affine in x, so advancing a pixel is three additions per lane.
             for (var lane = 0; lane < 4; lane++)
@@ -62,7 +66,7 @@ internal static class PerspectiveRasterizer
                 outputPixels.WritePremultiplied(x, y, ToByte(Math.Clamp(red, 0d, alpha)),
                     ToByte(Math.Clamp(green, 0d, alpha)), ToByte(Math.Clamp(blue, 0d, alpha)), ToByte(alpha));
             }
-        }
+        });
 
         return output;
     }

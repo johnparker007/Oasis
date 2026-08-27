@@ -14,7 +14,7 @@ public sealed class FaceArtworkPerformanceMeasurements(ITestOutputHelper output)
 {
     [Fact]
     [Trait("Category", "Performance")]
-    public void MeasureSingleThreadedArtworkOperations()
+    public void MeasureArtworkOperationsAcrossWorkerPolicies()
     {
         if (Environment.GetEnvironmentVariable("OASIS_IMAGE_BENCHMARK") != "1") return;
 
@@ -47,25 +47,24 @@ public sealed class FaceArtworkPerformanceMeasurements(ITestOutputHelper output)
             }]
         };
 
-        Report("Rectify", width, height,
-            () => LegacyPerspectiveRasterizer.Rectify(source, quad, width, height),
-            () => PerspectiveRasterizer.Rectify(source, quad, width, height));
-        Report("Sharpen", width, height,
-            () => LegacyFaceArtworkSharpeningService.Apply(source, settings),
-            () => FaceArtworkSharpeningService.Apply(source, settings));
-        Report("Calibration", width, height,
-            () => new LegacyFaceArtworkProcessingPipeline().Evaluate(source, pipeline),
-            () => new FaceArtworkProcessingPipeline().Evaluate(source, pipeline));
+        Report("Rectify", width, height, options => PerspectiveRasterizer.Rectify(source, quad, width, height, options));
+        Report("Sharpen", width, height, options => FaceArtworkSharpeningService.Apply(source, settings, options));
+        Report("Calibration", width, height, options => new FaceArtworkProcessingPipeline().Evaluate(source, pipeline, executionOptions: options));
     }
 
-    private void Report(string operation, int width, int height, Func<SKBitmap> legacy, Func<SKBitmap> current)
+    private void Report(string operation, int width, int height, Func<ImageProcessingExecutionOptions, SKBitmap> run)
     {
-        using (legacy()) { } // JIT and native-code warm-up are excluded from both measurements.
-        using (current()) { }
-        var legacyMedian = MedianMilliseconds(legacy);
-        var currentMedian = MedianMilliseconds(current);
-        output.WriteLine($"{operation} {width}x{height}: legacy {legacyMedian:F1} ms, current {currentMedian:F1} ms, " +
-            $"speed-up {legacyMedian / currentMedian:F2}x");
+        var policies = new[] { ("1 worker", new ImageProcessingExecutionOptions(1)),
+            ("Auto", ImageProcessingExecutionPolicy.Resolve(new ProcessingPreferences(), Environment.ProcessorCount)),
+            ("Maximum", ImageProcessingExecutionPolicy.Resolve(new ProcessingPreferences { CpuMode = CpuImageProcessingMode.Maximum }, Environment.ProcessorCount)) };
+        using (run(policies[0].Item2)) { }
+        var baseline = MedianMilliseconds(() => run(policies[0].Item2));
+        output.WriteLine($"{operation} {width}x{height}; logical processors {Environment.ProcessorCount}");
+        foreach (var (mode, options) in policies)
+        {
+            var median = mode == "1 worker" ? baseline : MedianMilliseconds(() => run(options));
+            output.WriteLine($"  {mode}: {options.MaxDegreeOfParallelism} workers, median {median:F1} ms, {baseline / median:F2}x vs 1 worker");
+        }
     }
 
     private static double MedianMilliseconds(Func<SKBitmap> operation)

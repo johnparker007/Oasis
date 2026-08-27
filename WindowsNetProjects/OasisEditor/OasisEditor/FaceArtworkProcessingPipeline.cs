@@ -7,28 +7,35 @@ internal sealed class FaceArtworkProcessingPipeline
 {
     private const double Epsilon = 1e-6, MinimumReferenceRange = 1d / 255d;
     private static readonly double[] LinearBySrgbByte = CreateLinearLookup();
-    public SKBitmap Evaluate(SKBitmap input, ImageProcessingPipelineModel pipeline, int? operationCount = null)
+    public SKBitmap Evaluate(SKBitmap input, ImageProcessingPipelineModel pipeline, int? operationCount = null,
+        ImageProcessingExecutionOptions? executionOptions = null)
     {
+        var options = executionOptions ?? ImageProcessingExecutionPolicy.Current;
         var result = input.Copy();
         foreach (var operation in pipeline.Operations.Take(Math.Clamp(operationCount ?? pipeline.Operations.Count, 0, pipeline.Operations.Count)))
         {
             if (!operation.Enabled) continue;
-            var next = operation switch { ArtworkCalibrationOperationModel calibration => ApplyCalibration(result, calibration.Normalize()), _ => throw new InvalidOperationException($"Unsupported image processing operation '{operation.GetType().Name}'.") };
+            options.CancellationToken.ThrowIfCancellationRequested();
+            var next = operation switch { ArtworkCalibrationOperationModel calibration => ApplyCalibration(result, calibration.Normalize(), options), _ => throw new InvalidOperationException($"Unsupported image processing operation '{operation.GetType().Name}'.") };
             result.Dispose(); result = next;
         }
         return result;
     }
 
-    private static SKBitmap ApplyCalibration(SKBitmap input, ArtworkCalibrationOperationModel operation)
+    private static SKBitmap ApplyCalibration(SKBitmap input, ArtworkCalibrationOperationModel operation, ImageProcessingExecutionOptions options)
     {
         if (operation.Strength <= 0) return input.Copy();
-        using var spatial = ApplySpatialCorrection(input, operation);
-        using var balanced = operation.NeutralizeWhite ? ApplyWhiteNeutralization(spatial, operation.WhiteReference) : spatial.Copy();
-        using var calibrated = operation.NormalizeBlackWhite ? ApplyTonalNormalization(balanced, operation) : balanced.Copy();
-        return Blend(input, calibrated, operation.Strength / 100d);
+        using var spatial = ApplySpatialCorrection(input, operation, options);
+        options.CancellationToken.ThrowIfCancellationRequested();
+        using var balanced = operation.NeutralizeWhite ? ApplyWhiteNeutralization(spatial, operation.WhiteReference, options) : spatial.Copy();
+        options.CancellationToken.ThrowIfCancellationRequested();
+        using var calibrated = operation.NormalizeBlackWhite ? ApplyTonalNormalization(balanced, operation, options) : balanced.Copy();
+        options.CancellationToken.ThrowIfCancellationRequested();
+        return Blend(input, calibrated, operation.Strength / 100d, options);
     }
 
-    internal static SKBitmap ApplySpatialCorrection(SKBitmap input, ArtworkCalibrationOperationModel operation)
+    internal static SKBitmap ApplySpatialCorrection(SKBitmap input, ArtworkCalibrationOperationModel operation,
+        ImageProcessingExecutionOptions? executionOptions = null)
     {
         if (!operation.CorrectSpatialBrightness && !operation.CorrectSpatialColor) return input.Copy();
         var groups = operation.SameColorGroups.Where(g => g.Samples.Count >= 2).Select(g => g.Samples).ToList();
@@ -39,7 +46,8 @@ internal sealed class FaceArtworkProcessingPipeline
         if (fields.Any(f => f is null)) return input.Copy();
         var output = NewBitmap(input);
         var inputPixels = new BitmapPixelBuffer(input); var outputPixels = new BitmapPixelBuffer(output);
-        for (var y = 0; y < input.Height; y++) for (var x = 0; x < input.Width; x++)
+        var options = DirectOptions(executionOptions ?? ImageProcessingExecutionPolicy.Current, inputPixels, outputPixels);
+        ImageProcessingExecutionPolicy.ForEachRow(input.Height, options, y => { for (var x = 0; x < input.Width; x++)
         {
             inputPixels.ReadStraight(x,y,out var pr,out var pg,out var pb,out var alpha);
             var red = ToLinear(pr); var green = ToLinear(pg); var blue = ToLinear(pb);
@@ -50,7 +58,7 @@ internal sealed class FaceArtworkProcessingPipeline
             if (!operation.CorrectSpatialColor) er = eg = eb = mean;
             if (!operation.CorrectSpatialBrightness) { er -= mean; eg -= mean; eb -= mean; }
             outputPixels.WriteStraight(x, y, ToByte(red * BoundedExp(-er)), ToByte(green * BoundedExp(-eg)), ToByte(blue * BoundedExp(-eb)), alpha);
-        }
+        }});
         return output;
     }
 
@@ -74,7 +82,7 @@ internal sealed class FaceArtworkProcessingPipeline
         var x=new double[n]; for(var i=n-1;i>=0;i--){var v=b[i];for(var j=i+1;j<n;j++)v-=a[i,j]*x[j];x[i]=v/a[i,i];if(!double.IsFinite(x[i]))return null;} return x;
     }
 
-    private static SKBitmap ApplyWhiteNeutralization(SKBitmap input, CalibrationReferenceModel reference)
+    private static SKBitmap ApplyWhiteNeutralization(SKBitmap input, CalibrationReferenceModel reference, ImageProcessingExecutionOptions options)
     {
         if (!TryResolveReference(input, reference, out var white)) return input.Copy();
         var luminance=Luminance(white[0],white[1],white[2]); if(luminance<Epsilon)return input.Copy();
@@ -82,28 +90,30 @@ internal sealed class FaceArtworkProcessingPipeline
         var mg=Math.Clamp(luminance/Math.Max(white[1],Epsilon),.25,4);
         var mb=Math.Clamp(luminance/Math.Max(white[2],Epsilon),.25,4);
         var output=NewBitmap(input);var inputPixels=new BitmapPixelBuffer(input);var outputPixels=new BitmapPixelBuffer(output);
-        for(var y=0;y<input.Height;y++)for(var x=0;x<input.Width;x++)
+        options=DirectOptions(options,inputPixels,outputPixels);
+        ImageProcessingExecutionPolicy.ForEachRow(input.Height,options,y=>{for(var x=0;x<input.Width;x++)
         {
             inputPixels.ReadStraight(x,y,out var r,out var g,out var b,out var alpha);
             outputPixels.WriteStraight(x,y,ToByte(ToLinear(r)*mr),ToByte(ToLinear(g)*mg),ToByte(ToLinear(b)*mb),alpha);
-        }
+        }});
         return output;
     }
 
-    private static SKBitmap ApplyTonalNormalization(SKBitmap input, ArtworkCalibrationOperationModel operation)
+    private static SKBitmap ApplyTonalNormalization(SKBitmap input, ArtworkCalibrationOperationModel operation, ImageProcessingExecutionOptions options)
     {
         if (!TryResolveReference(input, operation.BlackReference, out var black)||!TryResolveReference(input,operation.WhiteReference,out var white))return input.Copy();
         var lo=Luminance(black[0],black[1],black[2]);
         var hi=Luminance(white[0],white[1],white[2]);
         if(hi-lo<MinimumReferenceRange)return input.Copy();
         var output=NewBitmap(input);var inputPixels=new BitmapPixelBuffer(input);var outputPixels=new BitmapPixelBuffer(output);
-        for(var y=0;y<input.Height;y++)for(var x=0;x<input.Width;x++)
+        options=DirectOptions(options,inputPixels,outputPixels);
+        ImageProcessingExecutionPolicy.ForEachRow(input.Height,options,y=>{for(var x=0;x<input.Width;x++)
         {
             inputPixels.ReadStraight(x,y,out var rb,out var gb,out var bb,out var alpha);
             var r=ToLinear(rb);var g=ToLinear(gb);var b=ToLinear(bb);var l=Luminance(r,g,b);
             var desired=Math.Clamp((l-lo)/(hi-lo),0,1);var scale=l>Epsilon?desired/l:0;
             outputPixels.WriteStraight(x,y,ToByte(r*scale),ToByte(g*scale),ToByte(b*scale),alpha);
-        }
+        }});
         return output;
     }
 
@@ -122,20 +132,23 @@ internal sealed class FaceArtworkProcessingPipeline
     internal static bool TryResolveReferenceColors(SKBitmap image, ArtworkCalibrationOperationModel operation,out string? black,out string? white){var br=TryResolveReference(image,operation.BlackReference,out var b);var wr=TryResolveReference(image,operation.WhiteReference,out var w);black=br?Hex(b):null;white=wr?Hex(w):null;return br&&wr;}
     private static bool TryResolveReference(SKBitmap image,CalibrationReferenceModel reference,out double[] color){if(reference.ManualEnabled)return TryParse(reference.ManualColor,out color);var values=reference.Samples.Select(s=>TryMeasureSample(image,s,out var c)?c:null).Where(c=>c is not null).ToArray();if(values.Length==0){color=[];return false;}color=Enumerable.Range(0,3).Select(ch=>values.Average(c=>c![ch])).ToArray();return true;}
     private static bool TryParse(string text,out double[] c){var v=text.Trim().TrimStart('#');if(v.Length==8)v=v[2..];if(v.Length!=6||!uint.TryParse(v,System.Globalization.NumberStyles.HexNumber,null,out var rgb)){c=[];return false;}c=[ToLinear((byte)(rgb>>16)),ToLinear((byte)(rgb>>8)),ToLinear((byte)rgb)];return true;}
-    private static SKBitmap Blend(SKBitmap a,SKBitmap b,double amount)
+    private static SKBitmap Blend(SKBitmap a,SKBitmap b,double amount,ImageProcessingExecutionOptions options)
     {
         var output=NewBitmap(a);
         var aPixels=new BitmapPixelBuffer(a);var bPixels=new BitmapPixelBuffer(b);var outputPixels=new BitmapPixelBuffer(output);
-        for(var y=0;y<a.Height;y++)for(var x=0;x<a.Width;x++)
+        options=DirectOptions(options,aPixels,bPixels,outputPixels);
+        ImageProcessingExecutionPolicy.ForEachRow(a.Height,options,y=>{for(var x=0;x<a.Width;x++)
         {
             aPixels.ReadStraight(x,y,out var ar,out var ag,out var ab,out var alpha);bPixels.ReadStraight(x,y,out var br,out var bg,out var bb,out _);
             var lr=ToLinear(ar);var lg=ToLinear(ag);var lb=ToLinear(ab);
             var r=lr+(ToLinear(br)-lr)*amount;var g=lg+(ToLinear(bg)-lg)*amount;var blue=lb+(ToLinear(bb)-lb)*amount;
             outputPixels.WriteStraight(x,y,ToByte(r),ToByte(g),ToByte(blue),alpha);
-        }
+        }});
         return output;
     }
     private static SKBitmap NewBitmap(SKBitmap i)=>new(i.Width,i.Height,SKColorType.Rgba8888,SKAlphaType.Premul);
+    private static ImageProcessingExecutionOptions DirectOptions(ImageProcessingExecutionOptions options, params BitmapPixelBuffer[] buffers)
+        => buffers.All(buffer => buffer.IsDirect) ? options : options with { MaxDegreeOfParallelism = 1 };
     private static double EvaluateField(double[] f,double x,double y)=>f[0]*x+f[1]*y+f[2]*x*x+f[3]*x*y+f[4]*y*y-f[5];
     private static double BoundedExp(double x)=>Math.Exp(Math.Clamp(x,Math.Log(.25),Math.Log(4)));
     private static double ToLinear(byte v)=>LinearBySrgbByte[v];

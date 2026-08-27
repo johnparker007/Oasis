@@ -31,6 +31,19 @@ public sealed class EditorPreferencesSerializationTests
         Assert.Equal(73, restored.NativeEmulation.AudioBufferLengthMilliseconds);
         Assert.DoesNotContain("UseFabric", json, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(8, typeof(NativeEmulationPreferences).GetProperties().Length);
-        Assert.Equal(7, typeof(EditorPreferences).GetProperties().Length);
+        Assert.Equal(8, typeof(EditorPreferences).GetProperties().Length);
+    }
+
+    [Fact]
+    public void ProcessingPreferences_DefaultToAutoAndRoundTripCustomWorkers()
+    {
+        Assert.Equal(CpuImageProcessingMode.Auto, new EditorPreferences().Processing.CpuMode);
+        var json = System.Text.Json.JsonSerializer.Serialize(new EditorPreferences
+        {
+            Processing = new ProcessingPreferences { CpuMode = CpuImageProcessingMode.Custom, CustomMaximumWorkers = 7 }
+        });
+        var restored = System.Text.Json.JsonSerializer.Deserialize<EditorPreferences>(json)!;
+        Assert.Equal(CpuImageProcessingMode.Custom, restored.Processing.CpuMode);
+        Assert.Equal(7, restored.Processing.CustomMaximumWorkers);
     }
 }
