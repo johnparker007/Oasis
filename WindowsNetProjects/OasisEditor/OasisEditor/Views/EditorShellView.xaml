@@ -34,7 +34,7 @@
                             <layout:LayoutAnchorable Title="Hierarchy"
                                                      ContentId="Hierarchy"
                                                      CanClose="False">
-                                <Border Padding="10"
+                                <Border Padding="2"
                                         Background="{DynamicResource InspectorBackgroundBrush}">
                                     <views:HierarchyView />
                                 </Border>
@@ -43,7 +43,7 @@
                             <layout:LayoutAnchorable Title="Input Map"
                                                      ContentId="InputMap"
                                                      CanClose="True">
-                                <Border Padding="10"
+                                <Border Padding="2"
                                         Background="{DynamicResource InspectorBackgroundBrush}">
                                     <views:InputMapView />
                                 </Border>
@@ -52,7 +52,7 @@
                             <layout:LayoutAnchorable Title="Play View"
                                                      ContentId="PlayView"
                                                      CanClose="True">
-                                <Border Padding="10"
+                                <Border Padding="2"
                                         Background="{DynamicResource InspectorBackgroundBrush}">
                                     <views:PlayView />
                                 </Border>
@@ -66,7 +66,7 @@
                             <layout:LayoutAnchorable Title="Inspector"
                                                      ContentId="Inspector"
                                                      CanClose="False">
-                                <Border Padding="10"
+                                <Border Padding="2"
                                         Background="{DynamicResource InspectorBackgroundBrush}">
                                     <views:InspectorView />
                                 </Border>
@@ -75,7 +75,7 @@
                             <layout:LayoutAnchorable Title="Preferences"
                                                      ContentId="Preferences"
                                                      CanClose="True">
-                                <Border Padding="10"
+                                <Border Padding="2"
                                         Background="{DynamicResource InspectorBackgroundBrush}">
                                     <ContentControl x:Name="PreferencesContentHost" />
                                 </Border>
@@ -84,7 +84,7 @@
                             <layout:LayoutAnchorable Title="Project Settings"
                                                      ContentId="ProjectSettings"
                                                      CanClose="True">
-                                <Border Padding="10"
+                                <Border Padding="2"
                                         Background="{DynamicResource InspectorBackgroundBrush}">
                                     <views:ProjectSettingsView />
                                 </Border>
@@ -103,7 +103,7 @@
                         <layout:LayoutAnchorable Title="Assets"
                                                  ContentId="Assets"
                                                  CanClose="False">
-                            <Border Padding="10"
+                            <Border Padding="2"
                                     Background="{DynamicResource ToolBarBackgroundBrush}">
                                 <views:AssetBrowserView />
                             </Border>
@@ -112,7 +112,7 @@
                         <layout:LayoutAnchorable Title="Output"
                                                  ContentId="Output"
                                                  CanClose="False">
-                            <Border Padding="10"
+                            <Border Padding="2"
                                     Background="{DynamicResource ToolBarBackgroundBrush}">
                                 <views:OutputLogView DataContext="{Binding OutputLog}" />
                             </Border>
