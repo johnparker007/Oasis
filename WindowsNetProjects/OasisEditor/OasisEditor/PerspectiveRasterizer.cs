@@ -21,6 +21,8 @@ internal static class PerspectiveRasterizer
             return output;
         }
 
+        // Evaluate homogeneous terms inline: avoiding point allocation/helper dispatch matters
+        // here because this executes four times for every destination pixel.
         for (var y = 0; y < height; y++)
         for (var x = 0; x < width; x++)
         {
@@ -34,8 +36,12 @@ internal static class PerspectiveRasterizer
                 // Images occupy [0, width] x [0, height]; these are quarter-points in the destination pixel area.
                 var destinationX = x + ((sampleX + 0.5d) / SupersampleGridSize);
                 var destinationY = y + ((sampleY + 0.5d) / SupersampleGridSize);
-                if (!FaceSourceShapeTransformService.TryApplyHomography(destinationToSource, destinationX, destinationY, out var point)) continue;
-                var sample = SampleBicubicPremultiplied(source, point.X, point.Y);
+                var denominator = destinationToSource[6] * destinationX + destinationToSource[7] * destinationY + destinationToSource[8];
+                if (!double.IsFinite(denominator) || Math.Abs(denominator) < 1e-9) continue;
+                var sourceX = (destinationToSource[0] * destinationX + destinationToSource[1] * destinationY + destinationToSource[2]) / denominator;
+                var sourceY = (destinationToSource[3] * destinationX + destinationToSource[4] * destinationY + destinationToSource[5]) / denominator;
+                if (!double.IsFinite(sourceX) || !double.IsFinite(sourceY)) continue;
+                var sample = SampleBicubicPremultiplied(source, sourceX, sourceY);
                 red += sample.Red;
                 green += sample.Green;
                 blue += sample.Blue;
@@ -43,7 +49,8 @@ internal static class PerspectiveRasterizer
             }
 
             const double sampleCount = SupersampleGridSize * SupersampleGridSize;
-            output.SetPixel(x, y, ToColor(red / sampleCount, green / sampleCount, blue / sampleCount, alpha / sampleCount));
+            var color = ToColor(red / sampleCount, green / sampleCount, blue / sampleCount, alpha / sampleCount);
+            BitmapPixelBuffer.Write(output, x, y, color.Red, color.Green, color.Blue, color.Alpha);
         }
 
         return output;
@@ -100,7 +107,7 @@ internal static class PerspectiveRasterizer
             {
                 var weight = weightY * CubicKernel(sampleX - (baseX + column));
                 var ix = Math.Clamp(baseX + column, 0, source.Width - 1);
-                var color = source.GetPixel(ix, iy);
+                var color = BitmapPixelBuffer.Read(source, ix, iy);
                 var a = color.Alpha / 255d;
                 // SKColor exposes straight RGB, so explicitly interpolate premultiplied components.
                 red += (color.Red / 255d) * a * weight;

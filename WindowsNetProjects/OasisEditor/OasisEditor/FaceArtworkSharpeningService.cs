@@ -19,7 +19,7 @@ internal static class FaceArtworkSharpeningService
         for (var y = 0; y < height; y++)
         for (var x = 0; x < width; x++)
         {
-            var color = source.GetPixel(x, y);
+            var color = BitmapPixelBuffer.Read(source, x, y);
             var i = ((y * width) + x) * 4;
             var alpha = color.Alpha / 255d;
             channels[i] = SrgbToLinear(color.Red / 255d) * alpha;
@@ -41,29 +41,27 @@ internal static class FaceArtworkSharpeningService
         for (var y = 0; y < height; y++)
         for (var x = 0; x < width; x++)
         {
-            var pixel = source.GetPixel(x, y);
             var i = ((y * width) + x) * 4;
             var alpha = channels[i + 3];
-            if (alpha <= 0d) { output.SetPixel(x, y, SKColors.Transparent); continue; }
+            if (alpha <= 0d) { BitmapPixelBuffer.Write(output, x, y, 0, 0, 0, 0); continue; }
             var blurredAlpha = blurred[i + 3];
             var changed = false;
-            var rgb = new double[3];
-            for (var channel = 0; channel < 3; channel++)
-            {
-                var original = channels[i + channel] / alpha;
-                var soft = blurredAlpha > 1e-12 ? blurred[i + channel] / blurredAlpha : original;
-                var originalSrgb = LinearToSrgb(original);
-                var softSrgb = LinearToSrgb(soft);
-                if (Math.Abs(originalSrgb - softSrgb) >= threshold)
-                {
-                    rgb[channel] = Math.Clamp(original + normalized.PostWarpSharpeningAmount * (original - soft), 0d, 1d);
-                    changed = true;
-                }
-                else rgb[channel] = original;
-            }
-            if (changed) output.SetPixel(x, y, new SKColor(ToByte(LinearToSrgb(rgb[0])), ToByte(LinearToSrgb(rgb[1])), ToByte(LinearToSrgb(rgb[2])), pixel.Alpha));
+            var red = SharpenChannel(channels[i], blurred[i], alpha, blurredAlpha, threshold, normalized.PostWarpSharpeningAmount, ref changed);
+            var green = SharpenChannel(channels[i + 1], blurred[i + 1], alpha, blurredAlpha, threshold, normalized.PostWarpSharpeningAmount, ref changed);
+            var blue = SharpenChannel(channels[i + 2], blurred[i + 2], alpha, blurredAlpha, threshold, normalized.PostWarpSharpeningAmount, ref changed);
+            if (changed) BitmapPixelBuffer.Write(output, x, y, ToByte(LinearToSrgb(red)), ToByte(LinearToSrgb(green)), ToByte(LinearToSrgb(blue)), ToByte(alpha));
         }
         return output;
+    }
+
+    private static double SharpenChannel(double value, double blurredValue, double alpha, double blurredAlpha,
+        double threshold, double amount, ref bool changed)
+    {
+        var original = value / alpha;
+        var soft = blurredAlpha > 1e-12 ? blurredValue / blurredAlpha : original;
+        if (Math.Abs(LinearToSrgb(original) - LinearToSrgb(soft)) < threshold) return original;
+        changed = true;
+        return Math.Clamp(original + amount * (original - soft), 0d, 1d);
     }
 
     private static double[] CreateKernel(double sigma, int radius)
@@ -77,16 +75,31 @@ internal static class FaceArtworkSharpeningService
 
     private static void Convolve(double[] source, double[] destination, int width, int height, double[] kernel, int radius, bool horizontalPass)
     {
-        for (var y = 0; y < height; y++) for (var x = 0; x < width; x++) for (var channel = 0; channel < 4; channel++)
+        if (horizontalPass)
         {
-            var sum = 0d;
+            for (var y = 0; y < height; y++) for (var x = 0; x < width; x++)
+            {
+                var r = 0d; var g = 0d; var b = 0d; var a = 0d;
+                for (var offset = -radius; offset <= radius; offset++)
+                {
+                    var i = ((y * width + Math.Clamp(x + offset, 0, width - 1)) * 4);
+                    var weight = kernel[offset + radius];
+                    r += source[i] * weight; g += source[i + 1] * weight; b += source[i + 2] * weight; a += source[i + 3] * weight;
+                }
+                var d = ((y * width + x) * 4); destination[d] = r; destination[d + 1] = g; destination[d + 2] = b; destination[d + 3] = a;
+            }
+            return;
+        }
+        for (var x = 0; x < width; x++) for (var y = 0; y < height; y++)
+        {
+            var r = 0d; var g = 0d; var b = 0d; var a = 0d;
             for (var offset = -radius; offset <= radius; offset++)
             {
-                var sx = horizontalPass ? Math.Clamp(x + offset, 0, width - 1) : x;
-                var sy = horizontalPass ? y : Math.Clamp(y + offset, 0, height - 1);
-                sum += source[((sy * width + sx) * 4) + channel] * kernel[offset + radius];
+                var i = ((Math.Clamp(y + offset, 0, height - 1) * width + x) * 4);
+                var weight = kernel[offset + radius];
+                r += source[i] * weight; g += source[i + 1] * weight; b += source[i + 2] * weight; a += source[i + 3] * weight;
             }
-            destination[((y * width + x) * 4) + channel] = sum;
+            var d = ((y * width + x) * 4); destination[d] = r; destination[d + 1] = g; destination[d + 2] = b; destination[d + 3] = a;
         }
     }
 
