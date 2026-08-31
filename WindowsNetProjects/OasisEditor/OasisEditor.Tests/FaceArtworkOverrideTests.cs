@@ -1,5 +1,6 @@
 using OasisEditor;
 using SkiaSharp;
+using System.Text.Json.Nodes;
 using System.Windows.Media;
 using Xunit;
 
@@ -12,7 +13,7 @@ public sealed class FaceArtworkOverrideTests : IDisposable
     [Fact]
     public void Serialization_RoundTripsOverrideRecipe()
     {
-        var expected=new FaceArtworkOverrideModel{Enabled=false,AssetPath="Assets/Faces/Glass/ArtworkOverride/override.png",PixelWidth=4000,PixelHeight=6000,
+        var expected=new FaceArtworkOverrideModel{Enabled=false,AssetPath="Assets/Faces/Glass/ArtworkOverride/override.png",PixelWidth=4000,PixelHeight=6000,AlphaSource=FaceArtworkOverrideAlphaSource.OverrideImage,
             PerspectiveRegistration=new FacePerspectiveRegistrationModel{TopLeft=P(.1,.2),TopRight=P(.9,.1),BottomRight=P(.8,.9),BottomLeft=P(.2,.8)},X=-.01,Y=.005,Width=1.025,Height=.995,ContentRevision=7};
         Assert.True(FaceDocumentStorage.TryRead(FaceDocumentStorage.Serialize(new FaceDocumentModel{Title="Glass",Artwork=new FaceArtworkModel{Override=expected}}),out var file));
         var model=FaceDocumentStorage.ToModel(file);
@@ -23,7 +24,8 @@ public sealed class FaceArtworkOverrideTests : IDisposable
         Assert.Equal((.9,.1),(actual.PerspectiveRegistration.TopRight.X,actual.PerspectiveRegistration.TopRight.Y));
         Assert.Equal((.8,.9),(actual.PerspectiveRegistration.BottomRight.X,actual.PerspectiveRegistration.BottomRight.Y));
         Assert.Equal((.2,.8),(actual.PerspectiveRegistration.BottomLeft.X,actual.PerspectiveRegistration.BottomLeft.Y));
-        Assert.Equal(21,FaceDocumentStorage.CurrentSchemaVersion);
+        Assert.Equal(FaceArtworkOverrideAlphaSource.OverrideImage,actual.AlphaSource);
+        Assert.Equal(22,FaceDocumentStorage.CurrentSchemaVersion);
     }
 
     [Fact]
@@ -40,8 +42,17 @@ public sealed class FaceArtworkOverrideTests : IDisposable
     [Fact]
     public void Storage_RejectsPreviousSchema()
     {
-        var json=FaceDocumentStorage.Serialize(new FaceDocumentModel()).Replace("\"SchemaVersion\": 21","\"SchemaVersion\": 20");
+        var json=FaceDocumentStorage.Serialize(new FaceDocumentModel()).Replace("\"SchemaVersion\": 22","\"SchemaVersion\": 21");
         Assert.False(FaceDocumentStorage.TryRead(json,out _));
+    }
+
+    [Fact]
+    public void Storage_RequiresAlphaSourceInCurrentSchema()
+    {
+        var model=new FaceDocumentModel{Artwork=new FaceArtworkModel{Override=new FaceArtworkOverrideModel{AssetPath="override.png",PixelWidth=1,PixelHeight=1}}};
+        var root=JsonNode.Parse(FaceDocumentStorage.Serialize(model))!.AsObject();
+        root["Artwork"]!["Override"]!.AsObject().Remove("AlphaSource");
+        Assert.False(FaceDocumentStorage.TryRead(root.ToJsonString(),out _));
     }
 
     [Fact]
@@ -85,6 +96,8 @@ public sealed class FaceArtworkOverrideTests : IDisposable
         Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",5,registration,1000));
         Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,FacePerspectiveRegistrationModel.FullImage,1000));
         Assert.NotEqual(first,FaceArtworkOverridePreviewService.CreateCacheKey("override.png",4,registration,800));
+        var copied=DocumentTabViewModel.CopyOverride(new FaceArtworkOverrideModel{AssetPath="override.png",PixelWidth=10,PixelHeight=10,AlphaSource=FaceArtworkOverrideAlphaSource.OverrideImage},enabled:false,x:.1);
+        Assert.Equal(FaceArtworkOverrideAlphaSource.OverrideImage,copied.AlphaSource);
     }
 
     [Fact]
@@ -123,6 +136,35 @@ public sealed class FaceArtworkOverrideTests : IDisposable
         using var output=SKBitmap.Decode(outputPath);
         Assert.Equal(8,output.Width);Assert.Equal(6,output.Height);Assert.Equal(SKColors.Red,output.GetPixel(output.Width/2,output.Height/2));
         Assert.NotEqual(SKColors.Lime,output.GetPixel(0,0));
+    }
+
+    [Fact]
+    public void FinalizeOutput_DefaultUsesScaledOriginalFaceArtAlphaWithOverrideColour()
+    {
+        Directory.CreateDirectory(_root);var basePath=Path.Combine(_root,"base-alpha.png");var overridePath=Path.Combine(_root,"opaque.png");var outputPath=Path.Combine(_root,"scaled.png");
+        Write(basePath,2,2,(x,_)=>x==0?SKColors.Transparent:SKColors.Blue);Write(overridePath,8,8,(_,_)=>SKColors.Red);
+        var recipe=new FaceArtworkModel{BaseAssetPath=basePath,OutputAssetPath=outputPath,Override=new FaceArtworkOverrideModel{AssetPath=overridePath,PixelWidth=8,PixelHeight=8}};
+        Assert.Equal(FaceArtworkOverrideAlphaSource.OriginalFaceArt,recipe.Override.AlphaSource);Assert.True(new FaceArtworkRebuildService().FinalizeOutput(recipe,_root).Succeeded);
+        using var output=SKBitmap.Decode(outputPath);Assert.Equal((8,8),(output.Width,output.Height));Assert.Equal((byte)0,output.GetPixel(0,4).Alpha);Assert.Equal((byte)255,output.GetPixel(7,4).Alpha);Assert.Equal((byte)255,output.GetPixel(7,4).Red);Assert.InRange(output.GetPixel(3,4).Alpha,(byte)1,(byte)254);
+    }
+
+    [Fact]
+    public void FinalizeOutput_OverrideImageUsesAlignedAlphaAndTransparentOutsideExtent()
+    {
+        Directory.CreateDirectory(_root);var basePath=Path.Combine(_root,"opaque-base.png");var overridePath=Path.Combine(_root,"override-alpha.png");var outputPath=Path.Combine(_root,"aligned.png");
+        Write(basePath,8,8,(_,_)=>SKColors.Blue);Write(overridePath,4,4,(x,_)=>x<2?SKColors.Transparent:SKColors.Red);
+        var value=new FaceArtworkOverrideModel{AssetPath=overridePath,PixelWidth=4,PixelHeight=4,AlphaSource=FaceArtworkOverrideAlphaSource.OverrideImage,X=.25,Y=.25,Width=.5,Height=.5};
+        Assert.True(new FaceArtworkRebuildService().FinalizeOutput(new FaceArtworkModel{BaseAssetPath=basePath,OutputAssetPath=outputPath,Override=value},_root).Succeeded);
+        using var output=SKBitmap.Decode(outputPath);Assert.Equal((byte)0,output.GetPixel(0,0).Alpha);Assert.Equal((byte)0,output.GetPixel(2,4).Alpha);Assert.Equal((byte)255,output.GetPixel(5,4).Alpha);Assert.Equal((byte)255,output.GetPixel(5,4).Red);
+    }
+
+    [Fact]
+    public void ApplyAlpha_RePremultipliesPartialCoverageAndClearsTransparentRgb()
+    {
+        using var colour=new SKBitmap(new SKImageInfo(2,1,SKColorType.Bgra8888,SKAlphaType.Premul));using var alpha=new SKBitmap(new SKImageInfo(2,1,SKColorType.Bgra8888,SKAlphaType.Premul));
+        colour.SetPixel(0,0,SKColors.Red);colour.SetPixel(1,0,SKColors.Lime);alpha.SetPixel(0,0,new SKColor(0,0,0,128));alpha.SetPixel(1,0,SKColors.Transparent);FaceArtworkRebuildService.ApplyAlpha(colour,alpha);
+        Assert.Equal((byte)128,colour.GetPixel(0,0).Alpha);Assert.InRange(colour.GetPixel(0,0).Red,(byte)254,(byte)255);
+        var transparent=colour.GetPixel(1,0);Assert.Equal((byte)0,transparent.Alpha);Assert.Equal((byte)0,transparent.Red);Assert.Equal((byte)0,transparent.Green);Assert.Equal((byte)0,transparent.Blue);
     }
 
     [Fact]
