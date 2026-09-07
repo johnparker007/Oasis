@@ -111,7 +111,9 @@ internal sealed class FaceArtworkRebuildService
             using var overlay = RectifyOverride(rawOverlay, artworkOverride.PerspectiveRegistration);
             var size = DetermineOutputSize(bitmap.Width, bitmap.Height, artworkOverride, overlay.Width, overlay.Height);
             using var output = new SKBitmap(new SKImageInfo(size.Width, size.Height, SKColorType.Bgra8888, SKAlphaType.Premul));
+            using var alpha = new SKBitmap(new SKImageInfo(size.Width, size.Height, SKColorType.Bgra8888, SKAlphaType.Premul));
             using (var canvas = new SKCanvas(output))
+            using (var alphaCanvas = new SKCanvas(alpha))
             using (var paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
             {
                 canvas.Clear(SKColors.Transparent);
@@ -119,12 +121,33 @@ internal sealed class FaceArtworkRebuildService
                 canvas.DrawBitmap(overlay, new SKRect((float)(artworkOverride.X * size.Width), (float)(artworkOverride.Y * size.Height),
                     (float)((artworkOverride.X + artworkOverride.Width) * size.Width),
                     (float)((artworkOverride.Y + artworkOverride.Height) * size.Height)), paint);
+                alphaCanvas.Clear(SKColors.Transparent);
+                if (artworkOverride.AlphaSource == FaceArtworkOverrideAlphaSource.OriginalFaceArt)
+                    alphaCanvas.DrawBitmap(bitmap, new SKRect(0, 0, size.Width, size.Height), paint);
+                else
+                    alphaCanvas.DrawBitmap(overlay, new SKRect((float)(artworkOverride.X * size.Width), (float)(artworkOverride.Y * size.Height),
+                        (float)((artworkOverride.X + artworkOverride.Width) * size.Width),
+                        (float)((artworkOverride.Y + artworkOverride.Height) * size.Height)), paint);
                 canvas.Flush();
+                alphaCanvas.Flush();
             }
+            ApplyAlpha(output, alpha);
             WriteVerified(output, outputPath);
             return FaceArtworkProcessingResult.Success;
         }
         catch (Exception exception) { return FaceArtworkProcessingResult.Failure($"Artwork output failed: {exception.Message}"); }
+    }
+
+    /// <summary>Replaces alpha while allowing Skia to correctly re-premultiply the retained straight RGB values.</summary>
+    internal static void ApplyAlpha(SKBitmap colour, SKBitmap alpha)
+    {
+        if (colour.Width != alpha.Width || colour.Height != alpha.Height) throw new ArgumentException("Alpha dimensions must match the colour raster.");
+        for (var y = 0; y < colour.Height; y++)
+        for (var x = 0; x < colour.Width; x++)
+        {
+            var source = colour.GetPixel(x, y);
+            colour.SetPixel(x, y, source.WithAlpha(alpha.GetPixel(x, y).Alpha));
+        }
     }
 
     public static (int Width, int Height) DetermineOutputSize(int baseWidth, int baseHeight,

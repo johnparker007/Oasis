@@ -407,6 +407,16 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
 
     public FaceArtworkOverrideModel? ArtworkOverride=>_document.GetFaceDocument().Artwork?.Override;
     public bool HasArtworkOverride=>ArtworkOverride is not null;
+    public FaceArtworkOverrideAlphaSource ArtworkOverrideAlphaSource
+    {
+        get => ArtworkOverride?.AlphaSource ?? FaceArtworkOverrideAlphaSource.OriginalFaceArt;
+        set
+        {
+            var current = ArtworkOverride;
+            if (current is null || current.AlphaSource == value) return;
+            CommitOverride(DocumentTabViewModel.CopyOverride(current, alphaSource:value), "Change Artwork Override alpha source");
+        }
+    }
     public string ArtworkOverrideSummary=>ArtworkOverride is not { } value?"None":$"AUTHORED • {(value.Enabled?"Enabled":"Disabled")} • {value.PixelWidth} × {value.PixelHeight} • Alignment {value.X:0.###}, {value.Y:0.###} / {value.Width:P1} × {value.Height:P1} • {value.AssetPath}";
     public string OverrideToggleLabel=>ArtworkOverride?.Enabled==true?"Disable":"Enable";
     public BitmapImage? ArtworkBaseAbsolutePath
@@ -585,7 +595,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         var previewKey=CurrentOverridePreviewKey();
         if(!string.Equals(previewKey,_overridePreviewInputKey,StringComparison.Ordinal))InvalidateOverrideAlignmentPreview();
         if(_destination is FaceWorkspaceDestination.ArtworkGeometry or FaceWorkspaceDestination.ArtworkOverrideGeometry)RequestGeometryRawImage();
-        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(GeometryRawImagePath)); Raise(nameof(GeometryRawImage)); Raise(nameof(GeometrySourcePixelWidth)); Raise(nameof(GeometrySourcePixelHeight)); Raise(nameof(GeometryRegistration)); Raise(nameof(OverridePreviewMargin)); Raise(nameof(OverridePreviewWidth)); Raise(nameof(OverridePreviewHeight)); Raise(nameof(ArtworkOverride)); Raise(nameof(HasArtworkOverride)); Raise(nameof(ArtworkOverrideSummary)); Raise(nameof(OverrideToggleLabel)); Raise(nameof(ArtworkBaseAbsolutePath)); Raise(nameof(ArtworkOverrideAbsolutePath)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(IsPanel2DArtworkSource)); Raise(nameof(CanChooseImageArtwork)); Raise(nameof(HasRetainedPanel2DArtworkSource)); Raise(nameof(CanShowUsePanel2DSource)); Raise(nameof(CanUsePanel2DSource)); Raise(nameof(Panel2DSourceAvailability)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkGeometrySummary));
+        Raise(nameof(ArtworkSourceSummary)); Raise(nameof(GeometryRawImagePath)); Raise(nameof(GeometryRawImage)); Raise(nameof(GeometrySourcePixelWidth)); Raise(nameof(GeometrySourcePixelHeight)); Raise(nameof(GeometryRegistration)); Raise(nameof(OverridePreviewMargin)); Raise(nameof(OverridePreviewWidth)); Raise(nameof(OverridePreviewHeight)); Raise(nameof(ArtworkOverride)); Raise(nameof(HasArtworkOverride)); Raise(nameof(ArtworkOverrideAlphaSource)); Raise(nameof(ArtworkOverrideSummary)); Raise(nameof(OverrideToggleLabel)); Raise(nameof(ArtworkBaseAbsolutePath)); Raise(nameof(ArtworkOverrideAbsolutePath)); Raise(nameof(IsImageArtworkSource)); Raise(nameof(IsPanel2DArtworkSource)); Raise(nameof(CanChooseImageArtwork)); Raise(nameof(HasRetainedPanel2DArtworkSource)); Raise(nameof(CanShowUsePanel2DSource)); Raise(nameof(CanUsePanel2DSource)); Raise(nameof(Panel2DSourceAvailability)); Raise(nameof(ArtworkRawImagePath)); Raise(nameof(ArtworkSourcePixelWidth)); Raise(nameof(ArtworkSourcePixelHeight)); Raise(nameof(ArtworkRegistration)); Raise(nameof(ArtworkGeometrySummary));
         if (UsePanel2DSourceCommand is RelayCommand usePanel2D)
             usePanel2D.RaiseCanExecuteChanged();
     }

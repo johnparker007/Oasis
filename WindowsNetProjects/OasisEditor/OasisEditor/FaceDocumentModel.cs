@@ -101,6 +101,12 @@ public sealed class FaceArtworkModel
     public int FinalOutputHeight { get; init; }
 }
 
+public enum FaceArtworkOverrideAlphaSource
+{
+    OriginalFaceArt,
+    OverrideImage
+}
+
 public sealed class FaceArtworkOverrideModel
 {
     public const double MaximumExtent = 16d;
@@ -108,6 +114,7 @@ public sealed class FaceArtworkOverrideModel
     public string AssetPath { get; init; } = string.Empty;
     public int PixelWidth { get; init; }
     public int PixelHeight { get; init; }
+    public FaceArtworkOverrideAlphaSource AlphaSource { get; init; } = FaceArtworkOverrideAlphaSource.OriginalFaceArt;
     /// <summary>Semantic quad identifying the rectangular artwork within the raw authored image.</summary>
     public FacePerspectiveRegistrationModel PerspectiveRegistration { get; init; } = FacePerspectiveRegistrationModel.FullImage;
     public double X { get; init; }
@@ -118,7 +125,7 @@ public sealed class FaceArtworkOverrideModel
 
     public bool IsValid() => !string.IsNullOrWhiteSpace(AssetPath)
         && PixelWidth > 0 && PixelHeight > 0
-        && PerspectiveRegistration.IsValid()
+        && PerspectiveRegistration.IsValid() && Enum.IsDefined(AlphaSource)
         && double.IsFinite(X) && double.IsFinite(Y) && double.IsFinite(Width) && double.IsFinite(Height)
         && Math.Abs(X) <= MaximumExtent && Math.Abs(Y) <= MaximumExtent
         && Width > 0d && Height > 0d && Width <= MaximumExtent && Height <= MaximumExtent;
