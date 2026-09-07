@@ -174,7 +174,7 @@ internal sealed class FaceGenerationService
         }
         var faceDocumentId = Guid.NewGuid().ToString("N");
         progress?.Report(0.2, "Converting source-shape semantic components...");
-        var semanticElements = _semanticElementConversionService.ConvertSupportedElements(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, inputDefinitions, cabinetDocument?.DefaultReelSpecificationId).ToArray();
+        var semanticElements = _semanticElementConversionService.ConvertSupportedElements(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, inputDefinitions).ToArray();
         var lampWindows = semanticElements.OfType<FaceLampWindowElement>().ToArray();
         var maskLayer = GenerateMaskFromSourceShape(
             sourcePanel,
@@ -217,8 +217,6 @@ internal sealed class FaceGenerationService
             SourcePanel2DDocumentId = NormalizeOptional(sourcePanel2DDocumentId),
             SourceFaceShapeId = NormalizeOptional(sourceShape.Id),
             SourcePanel2DDocumentPath = NormalizeOptional(sourcePanel2DDocumentPath),
-            AssignedCabinetFaceTargetId = NormalizeOptional(assignedCabinetFaceTargetId),
-            AssignedCabinetAssetPath = NormalizeOptional(assignedCabinetAssetPath),
             SourceRegion = region,
             LastRegeneratedAtUtc = DateTime.UtcNow,
             GenerationSettings = settings,

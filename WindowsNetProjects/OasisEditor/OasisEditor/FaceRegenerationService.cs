@@ -82,8 +82,6 @@ internal sealed class FaceRegenerationService
             sourceShape,
             existingFace.Title,
             sourcePanel2DDocumentId: existingFace.SourcePanel2DDocumentId,
-            assignedCabinetFaceTargetId: existingFace.AssignedCabinetFaceTargetId,
-            assignedCabinetAssetPath: existingFace.AssignedCabinetAssetPath,
             targetAspectRatio: targetAspectRatio,
             projectDirectory: projectDirectory,
             generatedDirectory: generatedDirectory,
@@ -176,8 +174,6 @@ internal sealed class FaceRegenerationService
             SourcePanel2DDocumentId = existingFace.SourcePanel2DDocumentId,
             SourcePanel2DDocumentPath = existingFace.SourcePanel2DDocumentPath,
             SourceFaceShapeId = existingFace.SourceFaceShapeId,
-            AssignedCabinetFaceTargetId = existingFace.AssignedCabinetFaceTargetId,
-            AssignedCabinetAssetPath = existingFace.AssignedCabinetAssetPath,
             SourceRegion = generated.Document.SourceRegion ?? sourceRegion,
             LastRegeneratedAtUtc = DateTime.UtcNow,
             GenerationSettings = settings,
@@ -304,9 +300,6 @@ internal sealed class FaceRegenerationService
                 VisibleScale = reel.VisibleScale,
                 BandOffset = reel.BandOffset,
                 IsReversed = reel.IsReversed,
-                ReelSpecificationId = existingElement is FaceReelDisplayElement existingReel && !string.IsNullOrWhiteSpace(existingReel.ReelSpecificationId)
-                    ? existingReel.ReelSpecificationId
-                    : reel.ReelSpecificationId
             },
             FaceSevenSegmentDisplayElement sevenSegment => new FaceSevenSegmentDisplayElement
             {

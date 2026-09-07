@@ -23,6 +23,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
     private readonly ICabinetModelLoader _modelLoader;
     private readonly DocumentTabViewModel _document;
     private readonly Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
+    private readonly Func<EditorProject?>? _projectAccessor;
     private readonly FaceDocumentArtworkPreviewRenderer _previewRenderer = new();
     private readonly DispatcherTimer _livePreviewRefreshTimer;
     private readonly HashSet<Guid> _pendingLivePreviewDocumentIds = new();
@@ -42,6 +43,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         _modelLoader = modelLoader;
         _document = document;
         _openDocumentsAccessor = openDocumentsAccessor;
+        _projectAccessor = projectAccessor;
         ModelPath = document.GetCabinetDocument().Model.Path;
         Viewport = new CabinetViewportViewModel();
         _livePreviewRefreshTimer = new DispatcherTimer(DispatcherPriority.Background)
@@ -229,11 +231,15 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         }
 
         var previewGroup = new Model3DGroup();
-        foreach (var document in _openDocumentsAccessor()
-            .Where(document => document.Document.DocumentType == EditorDocumentType.Face))
+        foreach (var assignment in _document.GetCabinetDocument().FaceAssignments ?? [])
         {
+            var project = _projectAccessor?.Invoke();
+            var assignedPath = Path.IsPathRooted(assignment.FaceAssetPath) ? assignment.FaceAssetPath : Path.Combine(project?.ProjectDirectory ?? string.Empty, assignment.FaceAssetPath.Replace('/', Path.DirectorySeparatorChar));
+            var manifestPath = Directory.Exists(assignedPath) ? Path.Combine(assignedPath, ProjectAssetPathService.FaceManifestFileName) : assignedPath;
+            var document = _openDocumentsAccessor().FirstOrDefault(candidate => candidate.Document.DocumentType == EditorDocumentType.Face && string.Equals(Path.GetFullPath(candidate.FilePath ?? string.Empty), Path.GetFullPath(manifestPath), StringComparison.OrdinalIgnoreCase));
+            if (document is null) continue;
             var faceDocument = document.GetFaceDocument();
-            var targetId = NormalizeTargetId(faceDocument.AssignedCabinetFaceTargetId);
+            var targetId = NormalizeTargetId(assignment.TargetId);
             if (targetId is null || !validTargets.TryGetValue(targetId, out var target))
             {
                 continue;
@@ -308,8 +314,8 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         }
 
         var faceDocument = document.GetFaceDocument();
-        var assignedTargetId = NormalizeTargetId(faceDocument.AssignedCabinetFaceTargetId);
-        if (!string.Equals(assignedTargetId, entry.TargetId, StringComparison.Ordinal))
+        var assignment = (_document.GetCabinetDocument().FaceAssignments ?? []).FirstOrDefault(value => string.Equals(value.TargetId, entry.TargetId, StringComparison.Ordinal));
+        if (assignment is null)
         {
             RefreshFacePreviews();
             return;

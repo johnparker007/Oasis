@@ -19,20 +19,12 @@ public sealed class FaceRuntimeAssetsConfigurationService
         {
             return new(false, null, "No project is open.");
         }
-        var cabinet = _cabinetResolver.ResolveForFace(project, openDocuments, face);
-        if (!cabinet.HasCabinet)
+        var cabinet = new FaceCabinetContext(null, null, null, null, null);
+        if (face.Elements.OfType<FaceReelDisplayElement>().Any())
         {
-            return new(false, cabinet, cabinet.DiagnosticMessage ?? "Face has no resolvable standalone Cabinet context.");
+            return new(false, cabinet, "Standalone Face runtime export cannot resolve physical reels; build the Cabinet composition to export reels.");
         }
-        try
-        {
-            _runtimeExporter.ValidateStandaloneBuildContext(face, cabinet);
-            return new(true, cabinet, null);
-        }
-        catch (Exception exception)
-        {
-            return new(false, cabinet, exception.Message);
-        }
+        return new(true, cabinet, null);
     }
 
     public void Reconcile(FaceDocumentModel face, FaceRuntimeAssetsCapability capability)

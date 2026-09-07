@@ -36,7 +36,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Test Cabinet")).FullName;
         var sourceGlb = Path.Combine(cabinetDir, "source.glb");
         WriteMinimalGlb(sourceGlb);
-        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(new CabinetDocument(5, new CabinetModelReference("source.glb", 2.5, "Z"), [], CabinetPreviewSettings.Default)));
+        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(new CabinetDocument(6, new CabinetModelReference("source.glb", 2.5, "Z"), [], CabinetPreviewSettings.Default)));
         var stale = Path.Combine(project.GeneratedDirectory, "Builds", "Test Cabinet", "stale.txt");
         Directory.CreateDirectory(Path.GetDirectoryName(stale)!);
         File.WriteAllText(stale, "stale");
@@ -148,7 +148,7 @@ public sealed class MachineRuntimeBuildServiceTests
         var root = CreateTempRoot();
         var project = CreateProject(root);
         var manifestPath = CreateCabinetAsset(project, "Runtime Cabinet", CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)));
-        _ = CreateCabinetAsset(project, "Unrelated Cabinet", new CabinetDocument(5, new CabinetModelReference("source.glb", 1.0, "Y"), [new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Different", 500, 300)], "standard"));
+        _ = CreateCabinetAsset(project, "Unrelated Cabinet", new CabinetDocument(6, new CabinetModelReference("source.glb", 1.0, "Y"), [new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Different", 500, 300)], "standard"));
         CreateFaceAssetWithReel(project, "Bottom Face", "face-bottom", "bottomGlass", null, "standard");
 
         var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
@@ -309,7 +309,7 @@ public sealed class MachineRuntimeBuildServiceTests
     }
 
     private static CabinetDocument CreateCabinetWithSpec(string modelPath, CabinetTargetOverride targetOverride) => new(
-        5,
+        6,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [targetOverride],
         CabinetPreviewSettings.Default,
@@ -327,14 +327,12 @@ public sealed class MachineRuntimeBuildServiceTests
         {
             Id = faceId,
             Title = assetName,
-            AssignedCabinetFaceTargetId = targetId,
-            AssignedCabinetAssetPath = cabinetAssetPath,
             SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 4, Height = 4 },
             MaskLayer = new FaceMaskLayerModel { AssetPath = ProjectAssetPathService.NormalizeProjectRelativePath(Path.GetRelativePath(project.ProjectDirectory, maskPath)), Width = 4, Height = 4 },
             Elements =
             [
                 new FaceArtworkElement { ObjectId = "artwork", Name = "Artwork", X = 0, Y = 0, Width = 4, Height = 4, IsVisible = true, AssetPath = ProjectAssetPathService.NormalizeProjectRelativePath(Path.GetRelativePath(project.ProjectDirectory, artworkPath)) },
-                new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel 1", X = 1, Y = 1, Width = 100, Height = 200, Stops = 20, ReelSpecificationId = reelSpecificationId, LinkedMachineObjectReference = MachineObjectReference.Reel(1) }
+                new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel 1", X = 1, Y = 1, Width = 100, Height = 200, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(1) }
             ]
         };
         File.WriteAllText(Path.Combine(faceDir, ProjectAssetPathService.FaceManifestFileName), FaceDocumentStorage.Serialize(document));
@@ -346,7 +344,6 @@ public sealed class MachineRuntimeBuildServiceTests
         {
             Id = faceId,
             Title = "Front Face",
-            AssignedCabinetFaceTargetId = targetId,
             SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 4, Height = 4 },
             MaskLayer = new FaceMaskLayerModel { AssetPath = maskPath, Width = 4, Height = 4 },
             Elements =

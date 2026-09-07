@@ -160,7 +160,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         {
             Id = "face-runtime",
             Title = "Runtime Face",
-            AssignedCabinetAssetPath = "Assets/Cabinets/cabinet.asset",
             SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 4, Height = 4 },
             Artwork = new FaceArtworkModel
             {
@@ -623,7 +622,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Theory]
-    [InlineData("", "Face reel has no ReelSpecificationId")]
     [InlineData("unknown", "does not exist")]
     public void CreateManifest_WithUnresolvedReelSpecification_Throws(string specificationId, string expected)
     {
@@ -1037,7 +1035,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         {
             Id = "face-runtime",
             Title = title,
-            AssignedCabinetAssetPath = "Assets/Cabinets/cabinet.asset",
             SourceRegion = new FaceSourceRegionModel
             {
                 X = 0,
@@ -1084,7 +1081,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
                     Width = 1,
                     Height = 4,
                     LinkedMachineObjectReference = MachineObjectReference.Reel(1),
-                    ReelSpecificationId = "standard",
                     Stops = 20
                 }
             ]
@@ -1099,14 +1095,12 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         {
             Id = document.Id,
             Title = document.Title,
-            AssignedCabinetAssetPath = document.AssignedCabinetAssetPath,
             SourceRegion = document.SourceRegion,
             MaskLayer = document.MaskLayer,
             Elements = document.Elements.Select(element => element is FaceReelDisplayElement reel
                 ? new FaceReelDisplayElement
                 {
-                    ObjectId = reel.ObjectId, Name = reel.Name, X = reel.X, Y = reel.Y, Width = reel.Width, Height = reel.Height, LinkedMachineObjectReference = reel.LinkedMachineObjectReference,
-                    ReelSpecificationId = reel.ReelSpecificationId, Stops = reel.Stops, AssetPath = reelBandPath, IsOpaqueReel = isOpaque, ReelLampTransmissionMaskAssetPath = transmissionMaskPath
+                    ObjectId = reel.ObjectId, Name = reel.Name, X = reel.X, Y = reel.Y, Width = reel.Width, Height = reel.Height, LinkedMachineObjectReference = reel.LinkedMachineObjectReference, Stops = reel.Stops, AssetPath = reelBandPath, IsOpaqueReel = isOpaque, ReelLampTransmissionMaskAssetPath = transmissionMaskPath
                 }
                 : element).ToArray()
         };
@@ -1116,13 +1110,13 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     {
         return new FaceDocumentModel
         {
-            Id = "face-runtime", Title = "Runtime Face", AssignedCabinetAssetPath = "Assets/Cabinets/cabinet.asset", SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 1000, Height = 1000 },
-            Elements = [new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel 1", ReelSpecificationId = "standard", X = 10, Y = 20, Width = 300, Height = 400, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(1), ReelLampsEnabled = reelLampsEnabled, ReelLamps = lamps }]
+            Id = "face-runtime", Title = "Runtime Face", SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 1000, Height = 1000 },
+            Elements = [new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel 1", X = 10, Y = 20, Width = 300, Height = 400, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(1), ReelLampsEnabled = reelLampsEnabled, ReelLamps = lamps }]
         };
     }
 
     private static CabinetDocument CreateCabinet(params CabinetReelSpecification[] specifications) => new(
-        5,
+        6,
         new CabinetModelReference("Assets/Cabinets/cabinet.glb", 1.0, "Y"),
         [],
         CabinetPreviewSettings.Default,
@@ -1140,7 +1134,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             {
                 ObjectId = $"reel-{i / 5 + 1}",
                 Name = $"Reel {i / 5 + 1}",
-                ReelSpecificationId = (string)reelData[i],
                 X = Convert.ToDouble(reelData[i + 1]),
                 Y = Convert.ToDouble(reelData[i + 2]),
                 Width = Convert.ToDouble(reelData[i + 3]),
@@ -1154,7 +1147,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         {
             Id = "face-runtime",
             Title = "Runtime Face",
-            AssignedCabinetAssetPath = "Assets/Cabinets/cabinet.asset",
             SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 1000, Height = 1000 },
             Elements = elements
         };

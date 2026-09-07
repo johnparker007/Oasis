@@ -69,7 +69,6 @@ internal static class FaceElementModelUpdater
                 ReelLamps = update.ReelLamps ?? reelDisplay.ReelLamps,
                 IsOpaqueReel = update.IsOpaqueReel ?? reelDisplay.IsOpaqueReel,
                 ReelLampTransmissionMaskAssetPath = update.HasReelLampTransmissionMaskAssetPath ? update.ReelLampTransmissionMaskAssetPath : reelDisplay.ReelLampTransmissionMaskAssetPath,
-                ReelSpecificationId = update.HasReelSpecificationId ? update.ReelSpecificationId : reelDisplay.ReelSpecificationId
             },
             FaceLampWindowElement => new FaceLampWindowElement
             {
@@ -160,8 +159,6 @@ internal sealed class FaceElementModelUpdate
     public MachineObjectReference? LinkedMachineObjectReference { get; init; }
     public bool HasLinkedPanel2DElementId { get; init; }
     public string? LinkedPanel2DElementId { get; init; }
-    public bool HasReelSpecificationId { get; init; }
-    public string? ReelSpecificationId { get; init; }
     public bool? IsReversed { get; init; }
     public bool? ReelLampsEnabled { get; init; }
     public IReadOnlyList<ReelLampSlotModel>? ReelLamps { get; init; }

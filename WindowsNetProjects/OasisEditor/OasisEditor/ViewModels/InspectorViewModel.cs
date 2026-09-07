@@ -1321,6 +1321,17 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             : "(None)";
         _propertyRows.Add(new InspectorChoicePropertyViewModel("Default Reel Specification", "Reel Specifications", defaultChoices, currentDefaultChoice, commit: choice => TrySetDefaultReelSpecification(selectedDocument, choice)));
 
+        var project = _loadedProjectAccessor();
+        var faceChoices = new[] { "(None)" }.Concat(DiscoverFaceAssetPaths(project)).ToArray();
+        foreach (var target in selectedDocument.CabinetViewer?.FaceTargets.Where(value => value.IsValid) ?? [])
+        {
+            var assignment = (cabinetDocument.FaceAssignments ?? []).FirstOrDefault(value => string.Equals(value.TargetId, target.Id, StringComparison.Ordinal));
+            var currentFace = assignment?.FaceAssetPath ?? "(None)";
+            var choices = faceChoices.Contains(currentFace, StringComparer.OrdinalIgnoreCase) ? faceChoices : faceChoices.Append(currentFace).ToArray();
+            _propertyRows.Add(new InspectorChoicePropertyViewModel("Face", $"Face Target: {target.DisplayName}", choices, currentFace, commit: choice => ExecuteCabinetCommand(selectedDocument, CabinetMutationCommands.CreateSetFaceAssignmentCommand(selectedDocument.DocumentId, selectedDocument, target.Id, choice == "(None)" ? null : choice)) ? null : "Unable to assign Face."));
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Target", $"Face Target: {target.DisplayName}", target.Id));
+        }
+
         foreach (var specification in specifications)
         {
             var group = $"Reel: {specification.Name}";
@@ -1329,6 +1340,17 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             _propertyRows.Add(new InspectorDoublePropertyViewModel("Diameter mm", group, specification.DiameterMm, commit: value => value > 0 && PanelElementValidation.IsFinite(value) ? TryUpdateCabinetReelSpecification(selectedDocument, specification with { DiameterMm = value }) : "Diameter must be positive and finite."));
             _propertyRows.Add(new InspectorDoublePropertyViewModel("Width mm", group, specification.WidthMm, commit: value => value > 0 && PanelElementValidation.IsFinite(value) ? TryUpdateCabinetReelSpecification(selectedDocument, specification with { WidthMm = value }) : "Width must be positive and finite."));
             _propertyRows.Add(new InspectorActionPropertyViewModel("Delete", group, new RelayCommand(() => { ExecuteCabinetCommand(selectedDocument, CabinetMutationCommands.CreateDeleteReelSpecificationCommand(selectedDocument.DocumentId, selectedDocument, specification.Id)); })));
+        }
+
+        var reelChoices = new[] { "(None)" }.Concat(specifications.Select(FormatReelSpecificationChoice)).ToArray();
+        var knownReels = (cabinetDocument.ReelAssignments ?? []).Select(value => value.MachineReelReference)
+            .Concat(Enumerable.Range(0, 4).Select(MachineObjectReference.Reel)).Distinct().OrderBy(value => value.Id).ToArray();
+        foreach (var reelReference in knownReels)
+        {
+            var assignment = (cabinetDocument.ReelAssignments ?? []).FirstOrDefault(value => value.MachineReelReference == reelReference);
+            var selected = specifications.FirstOrDefault(value => string.Equals(value.Id, assignment?.ReelSpecificationId, StringComparison.Ordinal));
+            var current = selected is null ? "(None)" : FormatReelSpecificationChoice(selected);
+            _propertyRows.Add(new InspectorChoicePropertyViewModel(reelReference.ToString(), "Machine Reels", reelChoices, current, commit: choice => ExecuteCabinetCommand(selectedDocument, CabinetMutationCommands.CreateSetReelAssignmentCommand(selectedDocument.DocumentId, selectedDocument, reelReference, ParseReelSpecificationChoice(choice))) ? null : "Unable to assign reel specification."));
         }
 
         _hadInspectorSelection = false;
@@ -1353,7 +1375,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private void RebuildFaceDocumentPropertyRows(DocumentTabViewModel selectedDocument)
     {
         var faceDocument = selectedDocument.GetFaceDocument();
-        AddFaceCabinetAssignmentRows(selectedDocument, faceDocument);
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Source Panel2D Document", "Face Provenance", faceDocument.SourcePanel2DDocumentId ?? string.Empty));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Face Source Shape Output Bounds", "Face Provenance", faceDocument.SourceRegion is not null ? FormatSourceRegion(faceDocument.SourceRegion) : string.Empty));
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Generated Element Count", "Face Provenance", CountGeneratedElements(faceDocument).ToString()));
@@ -1373,114 +1394,15 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorPropertyRows));
     }
 
-    private void AddFaceCabinetAssignmentRows(DocumentTabViewModel selectedDocument, FaceDocumentModel faceDocument)
+    private static IReadOnlyList<string> DiscoverFaceAssetPaths(EditorProject? project)
     {
-        var availableTargets = GetAvailableCabinetFaceTargetsWithCabinets();
-        var assignedTargetId = NormalizeCabinetFaceTargetId(faceDocument.AssignedCabinetFaceTargetId);
-        var choices = new List<string> { "(None)" };
-        var labelsById = new Dictionary<string, string>(StringComparer.Ordinal);
-
-        foreach (var entry in availableTargets)
-        {
-            var target = entry.Target;
-            if (string.IsNullOrWhiteSpace(target.Id) || !target.IsValid)
-            {
-                continue;
-            }
-
-            var label = FormatCabinetFaceTargetChoice(target);
-            labelsById[target.Id] = label;
-            choices.Add(label);
-        }
-
-        var currentChoice = "(None)";
-        if (!string.IsNullOrWhiteSpace(assignedTargetId))
-        {
-            if (!labelsById.TryGetValue(assignedTargetId, out currentChoice))
-            {
-                currentChoice = $"{assignedTargetId} (saved; unavailable)";
-                choices.Add(currentChoice);
-            }
-        }
-
-        _propertyRows.Add(new InspectorChoicePropertyViewModel(
-            "Cabinet Face Target",
-            "Cabinet Assignment",
-            choices,
-            currentChoice,
-            commit: choice => TryApplyFaceCabinetTargetAssignment(selectedDocument, choice)));
-
-        _propertyRows.Add(new InspectorInfoPropertyViewModel(
-            "Assigned Target ID",
-            "Cabinet Assignment",
-            assignedTargetId ?? string.Empty));
-        _propertyRows.Add(new InspectorInfoPropertyViewModel(
-            "Assigned Cabinet Asset",
-            "Cabinet Assignment",
-            faceDocument.AssignedCabinetAssetPath ?? string.Empty));
-
-        if (availableTargets.Count == 0)
-        {
-            _propertyRows.Add(new InspectorInfoPropertyViewModel(
-                "Available Targets",
-                "Cabinet Assignment",
-                "No detected OasisFace targets are currently available from open Cabinet3D model viewers."));
-        }
+        if (project is null) return [];
+        var root = Path.Combine(project.AssetsDirectory, "Faces");
+        if (!Directory.Exists(root)) return [];
+        return Directory.EnumerateFiles(root, ProjectAssetPathService.FaceManifestFileName, SearchOption.AllDirectories)
+            .Select(path => ProjectAssetPathService.NormalizeProjectRelativePath(Path.GetRelativePath(project.ProjectDirectory, path)))
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray();
     }
-
-    private IReadOnlyList<CabinetFaceTargetEntry> GetAvailableCabinetFaceTargetsWithCabinets()
-    {
-        var project = _loadedProjectAccessor();
-        return (_openDocumentsAccessor() ?? [])
-            .Where(document => document.Document.DocumentType == EditorDocumentType.Cabinet3D)
-            .Where(document => document.CabinetViewer is not null)
-            .SelectMany(document => document.CabinetViewer!.FaceTargets.Select(target => new CabinetFaceTargetEntry(document, target, ToProjectRelativePath(project, document.FilePath))))
-            .ToArray();
-    }
-
-
-    private static string FormatCabinetFaceTargetChoice(CabinetFaceTargetViewModel target)
-    {
-        var displayName = string.IsNullOrWhiteSpace(target.DisplayName) ? target.Id : target.DisplayName.Trim();
-        return $"{displayName} ({target.Id})";
-    }
-
-    private string? TryApplyFaceCabinetTargetAssignment(DocumentTabViewModel selectedDocument, string choice)
-    {
-        var targetId = ParseCabinetFaceTargetChoice(choice);
-        var faceDocument = selectedDocument.GetFaceDocument();
-        var cabinetAssetPath = GetAvailableCabinetFaceTargetsWithCabinets().FirstOrDefault(entry => string.Equals(entry.Target.Id, targetId, StringComparison.Ordinal))?.CabinetAssetPath;
-        if (cabinetAssetPath is null && string.Equals(targetId, faceDocument.AssignedCabinetFaceTargetId, StringComparison.Ordinal))
-        {
-            cabinetAssetPath = faceDocument.AssignedCabinetAssetPath;
-        }
-
-        var command = FaceMutationCommands.CreateAssignCabinetFaceTargetCommand(selectedDocument.DocumentId, selectedDocument, targetId, cabinetAssetPath);
-        if (!_executeCanvasCommand(selectedDocument.DocumentId, command))
-        {
-            return "Unable to update cabinet face target assignment.";
-        }
-
-        return null;
-    }
-
-    private static string? ParseCabinetFaceTargetChoice(string choice)
-    {
-        if (string.IsNullOrWhiteSpace(choice) || string.Equals(choice, "(None)", StringComparison.Ordinal))
-        {
-            return null;
-        }
-
-        const string unavailableSuffix = " (saved; unavailable)";
-        if (choice.EndsWith(unavailableSuffix, StringComparison.Ordinal))
-        {
-            return NormalizeCabinetFaceTargetId(choice[..^unavailableSuffix.Length]);
-        }
-
-        var match = Regex.Match(choice, @"\((?<id>[^()]*)\)\s*$");
-        return match.Success ? NormalizeCabinetFaceTargetId(match.Groups["id"].Value) : NormalizeCabinetFaceTargetId(choice);
-    }
-
 
     private static string FormatReelSpecificationChoice(CabinetReelSpecification specification) => $"{specification.Name} ({specification.Id}) — {specification.DiameterMm:0.###} mm × {specification.WidthMm:0.###} mm";
 
@@ -1588,7 +1510,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         if (selectedElement is FaceReelDisplayElement reelDisplay)
         {
-            AddFaceReelSpecificationRows(selectedDocument, reelDisplay);
             AddFaceReelLampRows(reelDisplay);
         }
 
@@ -1754,44 +1675,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         ];
     }
 
-    private void AddFaceReelSpecificationRows(DocumentTabViewModel selectedDocument, FaceReelDisplayElement reelDisplay)
-    {
-        var faceDocument = selectedDocument.GetFaceDocument();
-        var context = _faceCabinetContextResolver.ResolveForFace(_loadedProjectAccessor(), _openDocumentsAccessor(), faceDocument);
-        if (!context.HasCabinet)
-        {
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Reel Specification", "Reel Size", reelDisplay.ReelSpecificationId ?? string.Empty));
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Cabinet", "Reel Size", context.DiagnosticCode == "Face.Cabinet.NotAssigned" ? "No Cabinet is assigned to this Face. Assign a Cabinet Face Target before selecting a reel specification." : context.DiagnosticMessage ?? "Cabinet context unavailable."));
-            return;
-        }
-
-        var specifications = context.CabinetDocument!.ReelSpecifications ?? [];
-        var choices = specifications.Select(FormatReelSpecificationChoice).ToList();
-        var current = specifications.FirstOrDefault(specification => string.Equals(specification.Id, reelDisplay.ReelSpecificationId, StringComparison.Ordinal));
-        var currentChoice = current is null
-            ? string.IsNullOrWhiteSpace(reelDisplay.ReelSpecificationId) ? "(Unresolved)" : $"{reelDisplay.ReelSpecificationId} (unresolved)"
-            : FormatReelSpecificationChoice(current);
-        if (current is null)
-        {
-            choices.Insert(0, currentChoice);
-        }
-
-        _propertyRows.Add(new InspectorChoicePropertyViewModel("Reel Specification", "Reel Size", choices, currentChoice, specifications.Length == 0, commit: choice => TryApplyFaceReelSpecificationUpdate(reelDisplay.ObjectId, choice)));
-        _propertyRows.Add(new InspectorInfoPropertyViewModel("Diameter", "Reel Size", current is null ? string.Empty : $"{current.DiameterMm:0.###} mm"));
-        _propertyRows.Add(new InspectorInfoPropertyViewModel("Width", "Reel Size", current is null ? string.Empty : $"{current.WidthMm:0.###} mm"));
-    }
-
-    private string? TryApplyFaceReelSpecificationUpdate(string objectId, string choice)
-    {
-        var specificationId = ParseReelSpecificationChoice(choice);
-        if (string.IsNullOrWhiteSpace(specificationId))
-        {
-            return "Choose a cabinet reel specification.";
-        }
-
-        return TryApplyFaceUpdate(objectId, "Update reel specification", new FaceElementModelUpdate { HasReelSpecificationId = true, ReelSpecificationId = specificationId });
-    }
-
     private void RefreshPropertyRowValues(PanelElementModel selectedElement)
     {
         foreach (var row in _propertyRows)
@@ -1936,9 +1819,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                     break;
                 case "Linked Panel2D Element" when row is InspectorTextPropertyViewModel panelRow:
                     panelRow.SetCommittedValue(selectedElement.LinkedPanel2DElementId ?? string.Empty);
-                    break;
-                case "Reel Specification" when row is InspectorChoicePropertyViewModel specificationRow && selectedElement is FaceReelDisplayElement reelDisplay:
-                    specificationRow.SetCommittedValue(reelDisplay.ReelSpecificationId ?? "(Unresolved)");
                     break;
                 case "Lamps Enabled" when row is InspectorBoolPropertyViewModel faceReelLampsEnabledRow && selectedElement is FaceReelDisplayElement faceReel:
                     faceReelLampsEnabledRow.SetCommittedValue(faceReel.ReelLampsEnabled);

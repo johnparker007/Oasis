@@ -76,6 +76,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             File.Copy(sourceGlb, Path.Combine(cabinetRoot, CabinetGlbFileName), overwrite: true);
             cancellationToken.ThrowIfCancellationRequested();
             var cabinetAssetPath = ToProjectRelativePath(project, cabinetManifestPath);
+            ValidateFaceAssignmentTargets(cabinetDocument, sourceGlb, cabinetAssetPath, cancellationToken);
             var faceReferences = ExportReferencedFaces(project, stagingRoot, cabinetDocument, cabinetAssetPath, progress.CreateChild(0.2, 0.7), cancellationToken);
             progress.Report(0.72, "Validating cabinet reflections...");
             cancellationToken.ThrowIfCancellationRequested();
@@ -99,6 +100,17 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         finally
         {
             if (Directory.Exists(stagingRoot)) Directory.Delete(stagingRoot, recursive: true);
+        }
+    }
+
+    private static void ValidateFaceAssignmentTargets(CabinetDocument cabinet, string sourceGlb, string cabinetAssetPath, CancellationToken cancellationToken)
+    {
+        var detected = new GlbCabinetFaceTargetDetector().DetectTargets(sourceGlb, cancellationToken);
+        if (detected.Count == 0) return;
+        var validIds = detected.Where(value => value.IsValid).Select(value => value.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var assignment in cabinet.FaceAssignments ?? [])
+        {
+            if (!validIds.Contains(assignment.TargetId)) throw new InvalidOperationException($"Cabinet asset '{cabinetAssetPath}' Face assignment target '{assignment.TargetId}' is not a valid detected OasisFace_* target.");
         }
     }
 
@@ -146,54 +158,45 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
 
     private IReadOnlyList<MachineRuntimeFaceReference> ExportReferencedFaces(EditorProject project, string stagingRoot, CabinetDocument cabinetDocument, string cabinetAssetPath, IEditorProgressReporter progress, CancellationToken cancellationToken)
     {
-        var faceRoot = _pathService.GetAssetTypeDirectory(project, EditorAssetType.Face);
-        if (!Directory.Exists(faceRoot)) return Array.Empty<MachineRuntimeFaceReference>();
+        var assignments = cabinetDocument.FaceAssignments ?? [];
+        var duplicateTargets = assignments.GroupBy(value => value.TargetId, StringComparer.Ordinal).FirstOrDefault(group => group.Count() > 1);
+        if (duplicateTargets is not null) throw new InvalidOperationException($"Cabinet asset '{cabinetAssetPath}' contains duplicate Face assignments for target '{duplicateTargets.Key}'.");
 
-        var manifestPaths = Directory.EnumerateFiles(faceRoot, ProjectAssetPathService.FaceManifestFileName, SearchOption.AllDirectories).OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray();
         var references = new List<MachineRuntimeFaceReference>();
-        for (var index = 0; index < manifestPaths.Length; index++)
+        for (var index = 0; index < assignments.Length; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var manifestPath = manifestPaths[index];
-            var fallbackName = Path.GetFileName(Path.GetDirectoryName(manifestPath));
-            progress.Report((double)index / Math.Max(1, manifestPaths.Length), $"Inspecting Face {index + 1} of {manifestPaths.Length}: {fallbackName}...");
-            if (!FaceDocumentStorage.TryReadValidated(File.ReadAllText(manifestPath), out var faceFile, out _))
+            var assignment = assignments[index].Normalized();
+            var manifestPath = ResolveFaceManifestPath(project, assignment.FaceAssetPath);
+            progress.Report((double)index / Math.Max(1, assignments.Length), $"Exporting mounted Face {index + 1} of {assignments.Length}: {assignment.FaceAssetPath}...");
+            try
             {
-                throw new InvalidOperationException($"Face manifest is invalid: {manifestPath}");
+                if (!File.Exists(manifestPath)) throw new InvalidOperationException("referenced Face manifest was not found");
+                if (!FaceDocumentStorage.TryReadValidated(File.ReadAllText(manifestPath), out var faceFile, out var validationError))
+                    throw new InvalidOperationException($"referenced Face manifest is invalid: {validationError}");
+                var faceDocument = FaceDocumentStorage.ToModel(faceFile);
+                var faceAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(manifestPath, EditorAssetType.Face);
+                if (string.IsNullOrWhiteSpace(faceAssetName)) throw new InvalidOperationException("Face must be stored as Assets/Faces/<AssetName>/asset.face");
+                var targetOverride = cabinetDocument.GetTargetOverride(assignment.TargetId);
+                var cabinetContext = new FaceCabinetContext(cabinetDocument, null, cabinetAssetPath, null, null);
+                var exportResult = _faceRuntimeExportService.Export(faceDocument, project, cabinetContext, manifestPath);
+                var buildFaceDirectory = Path.Combine(stagingRoot, "faces", _pathService.SanitizePathSegment(faceAssetName));
+                CopyDirectory(exportResult.OutputDirectory, buildFaceDirectory, cancellationToken);
+                references.Add(new MachineRuntimeFaceReference(faceDocument.Id, faceAssetName, assignment.TargetId, targetOverride.FrontSide, targetOverride.FaceRotation, targetOverride.FaceFlipHorizontal, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), FaceRuntimeExportService.ManifestFileName))));
             }
-
-            var faceDocument = FaceDocumentStorage.ToModel(faceFile);
-            var targetId = NormalizeOptional(faceDocument.AssignedCabinetFaceTargetId);
-            if (targetId is null) continue;
-
-            var faceAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(manifestPath, EditorAssetType.Face);
-            if (string.IsNullOrWhiteSpace(faceAssetName))
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
             {
-                throw new InvalidOperationException($"Face manifests must be stored as Assets/Faces/<AssetName>/{ProjectAssetPathService.FaceManifestFileName}: {manifestPath}");
+                throw new InvalidOperationException($"Cabinet asset '{cabinetAssetPath}', Face target '{assignment.TargetId}', referenced Face '{assignment.FaceAssetPath}': {exception.Message}", exception);
             }
-
-            if (!TryResolveTargetOverride(cabinetDocument, targetId, out var targetOverride))
-            {
-                throw new InvalidOperationException(BuildMissingTargetOverrideMessage(faceDocument.Id, faceAssetName, targetId, cabinetAssetPath, cabinetDocument.TargetOverrides));
-            }
-
-            var cabinetContext = new FaceCabinetContext(cabinetDocument, null, cabinetAssetPath, null, null);
-            progress.Report((index + 0.25) / Math.Max(1, manifestPaths.Length), $"Exporting Face {index + 1} of {manifestPaths.Length}: {faceAssetName}...");
-            var exportResult = _faceRuntimeExportService.Export(faceDocument, project, cabinetContext, manifestPath);
-            var buildFaceDirectory = Path.Combine(stagingRoot, "faces", _pathService.SanitizePathSegment(faceAssetName));
-            CopyDirectory(exportResult.OutputDirectory, buildFaceDirectory, cancellationToken);
-            references.Add(new MachineRuntimeFaceReference(
-                faceDocument.Id,
-                faceAssetName,
-                targetId,
-                targetOverride.FrontSide,
-                targetOverride.FaceRotation,
-                targetOverride.FaceFlipHorizontal,
-                ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), FaceRuntimeExportService.ManifestFileName))));
         }
-
-        progress.Report(1, manifestPaths.Length == 0 ? "No referenced Faces to export." : $"Exported {references.Count} referenced Faces.");
+        progress.Report(1, assignments.Length == 0 ? "No mounted Faces to export." : $"Exported {references.Count} mounted Faces.");
         return references;
+    }
+
+    private static string ResolveFaceManifestPath(EditorProject project, string assetPath)
+    {
+        var fullPath = Path.IsPathRooted(assetPath) ? assetPath : Path.Combine(project.ProjectDirectory, assetPath.Replace('/', Path.DirectorySeparatorChar));
+        return Directory.Exists(fullPath) ? Path.Combine(fullPath, ProjectAssetPathService.FaceManifestFileName) : fullPath;
     }
 
     private static void CopyDirectory(string sourceDirectory, string destinationDirectory, CancellationToken cancellationToken)

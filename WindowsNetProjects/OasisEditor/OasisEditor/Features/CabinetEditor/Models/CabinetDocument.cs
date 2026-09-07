@@ -7,17 +7,29 @@ public sealed record CabinetDocument(
     CabinetPreviewSettings Preview,
     CabinetReelSpecification[] ReelSpecifications = null!,
     string? DefaultReelSpecificationId = null,
-    CabinetReflectionDefinition[]? Reflections = null)
+    CabinetReflectionDefinition[]? Reflections = null,
+    CabinetFaceAssignment[]? FaceAssignments = null,
+    CabinetReelAssignment[]? ReelAssignments = null)
 {
-    public static CabinetDocument Empty => new(5, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
+    public static CabinetDocument Empty => new(6, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
 
     public static CabinetDocument FromModelPath(string modelPath) => new(
-        5,
+        6,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [],
         CabinetPreviewSettings.Default,
         [],
         null);
+}
+
+public sealed record CabinetFaceAssignment(string TargetId, string FaceAssetPath)
+{
+    public CabinetFaceAssignment Normalized() => new(TargetId.Trim(), FaceAssetPath.Trim().Replace('\\', '/'));
+}
+
+public sealed record CabinetReelAssignment(MachineObjectReference MachineReelReference, string ReelSpecificationId)
+{
+    public CabinetReelAssignment Normalized() => new(MachineReelReference, ReelSpecificationId.Trim());
 }
 
 public sealed record CabinetReflectionVector(double X, double Y, double Z);

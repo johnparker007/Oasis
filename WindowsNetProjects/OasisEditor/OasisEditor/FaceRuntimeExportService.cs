@@ -34,7 +34,7 @@ public sealed class FaceRuntimeExportService
 
     public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, string? documentPath = null, IEditorProgressReporter? progress = null)
     {
-        var cabinetContext = ResolveStandaloneCabinetContext(faceDocument, project);
+        var cabinetContext = new FaceCabinetContext(null, null, null, null, null);
         return Export(faceDocument, project, cabinetContext, documentPath, progress);
     }
 
@@ -114,8 +114,6 @@ public sealed class FaceRuntimeExportService
             SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
             SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
             SourceFaceShapeId = faceDocument.SourceFaceShapeId,
-            AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
-            AssignedCabinetAssetPath = faceDocument.AssignedCabinetAssetPath,
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,
@@ -148,36 +146,6 @@ public sealed class FaceRuntimeExportService
         {
             _ = ResolveReelPhysicalDimensions(faceDocument, reel, cabinetContext);
         }
-    }
-
-    private static FaceCabinetContext ResolveStandaloneCabinetContext(FaceDocumentModel faceDocument, EditorProject project)
-    {
-        ArgumentNullException.ThrowIfNull(faceDocument);
-        ArgumentNullException.ThrowIfNull(project);
-        var cabinetAssetPath = string.IsNullOrWhiteSpace(faceDocument.AssignedCabinetAssetPath)
-            ? null
-            : ProjectAssetPathService.NormalizeProjectRelativePath(faceDocument.AssignedCabinetAssetPath);
-        if (string.IsNullOrWhiteSpace(cabinetAssetPath))
-        {
-            return new FaceCabinetContext(null, null, null, "Face.Cabinet.ContextUnavailable", "Standalone Face runtime export has no Cabinet context. Assign a Cabinet asset to the Face or export it through a Machine build that supplies the Cabinet context.");
-        }
-
-        if (string.IsNullOrWhiteSpace(project.ProjectDirectory))
-        {
-            return new FaceCabinetContext(null, null, cabinetAssetPath, "Face.Cabinet.ProjectUnavailable", $"Assigned Cabinet asset '{cabinetAssetPath}' cannot be resolved because no project is loaded.");
-        }
-
-        var fullPath = Path.IsPathRooted(cabinetAssetPath)
-            ? cabinetAssetPath
-            : Path.Combine(project.ProjectDirectory, cabinetAssetPath.Replace('/', Path.DirectorySeparatorChar));
-        if (!File.Exists(fullPath))
-        {
-            return new FaceCabinetContext(null, null, cabinetAssetPath, "Face.Cabinet.AssetMissing", $"Assigned Cabinet asset '{cabinetAssetPath}' could not be found.");
-        }
-
-        return CabinetDocumentStorage.TryRead(File.ReadAllText(fullPath), out var cabinetDocument)
-            ? new FaceCabinetContext(cabinetDocument, null, cabinetAssetPath, null, null)
-            : new FaceCabinetContext(null, null, cabinetAssetPath, "Face.Cabinet.AssetInvalid", $"Assigned Cabinet asset '{cabinetAssetPath}' could not be read.");
     }
 
     public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceCabinetContext? cabinetContext = null)
@@ -489,8 +457,9 @@ public sealed class FaceRuntimeExportService
     {
         var faceAsset = string.IsNullOrWhiteSpace(faceDocument.Title) ? faceDocument.Id : faceDocument.Title;
         var reelName = DisplayName(reel);
-        var requestedId = string.IsNullOrWhiteSpace(reel.ReelSpecificationId) ? string.Empty : reel.ReelSpecificationId.Trim();
-        var cabinetAsset = cabinetContext?.CabinetAssetPath ?? faceDocument.AssignedCabinetAssetPath ?? string.Empty;
+        var machineReference = reel.LinkedMachineObjectReference;
+        var cabinetAsset = cabinetContext?.CabinetAssetPath ?? string.Empty;
+        var requestedId = string.Empty;
 
         InvalidOperationException Fail(string reason) => new($"Unable to resolve physical reel dimensions. Face asset '{faceAsset}', reel '{reelName}' (objectId '{reel.ObjectId}'), Cabinet asset '{cabinetAsset}', requested specification ID '{requestedId}': {reason}");
 
@@ -500,10 +469,18 @@ public sealed class FaceRuntimeExportService
             throw Fail(reason);
         }
 
-        if (string.IsNullOrWhiteSpace(requestedId))
+        if (machineReference is null || machineReference.Value.Kind != MachineObjectKind.Reel)
         {
-            throw Fail("Face reel has no ReelSpecificationId.");
+            throw Fail("Face reel has no logical machine reel reference.");
         }
+
+        var assignments = cabinetContext.CabinetDocument.ReelAssignments ?? [];
+        var assignmentMatches = assignments.Where(value => value.MachineReelReference == machineReference.Value).ToArray();
+        if (assignmentMatches.Length != 1)
+        {
+            throw Fail(assignmentMatches.Length == 0 ? $"Cabinet has no assignment for logical reel '{machineReference}'." : $"Cabinet has duplicate assignments for logical reel '{machineReference}'.");
+        }
+        requestedId = assignmentMatches[0].ReelSpecificationId;
 
         var matches = (cabinetContext.CabinetDocument.ReelSpecifications ?? [])
             .Where(specification => string.Equals(specification.Id?.Trim(), requestedId, StringComparison.Ordinal))

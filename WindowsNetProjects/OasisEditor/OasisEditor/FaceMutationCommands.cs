@@ -174,15 +174,6 @@ internal static class FaceMutationCommands
         return new BulkUpdateFaceElementsMutationCommand(documentId, document, updatedElements, originalElements, description);
     }
 
-    public static Commands.ICommand CreateAssignCabinetFaceTargetCommand(
-        Guid documentId,
-        DocumentTabViewModel document,
-        string? assignedTargetId,
-        string? assignedCabinetAssetPath = null)
-    {
-        return new AssignCabinetFaceTargetMutationCommand(documentId, document, NormalizeTargetId(assignedTargetId), NormalizeAssetPath(assignedCabinetAssetPath));
-    }
-
     private static PanelChangeEvent CreateChange(DocumentTabViewModel document, string? objectId, PanelChangeProperties properties, bool structure = false)
     {
         return new PanelChangeEvent(
@@ -193,35 +184,6 @@ internal static class FaceMutationCommands
             AffectsHierarchy: structure || properties.HasFlag(PanelChangeProperties.Name) || properties.HasFlag(PanelChangeProperties.Visibility) || properties.HasFlag(PanelChangeProperties.TransformLockState),
             AffectsInspectorRows: true,
             AffectsPersistence: true);
-    }
-
-    private static string? NormalizeTargetId(string? targetId) => string.IsNullOrWhiteSpace(targetId) ? null : targetId.Trim();
-    private static string? NormalizeAssetPath(string? assetPath) => string.IsNullOrWhiteSpace(assetPath) ? null : assetPath.Trim().Replace('\\', '/');
-
-    private static FaceDocumentModel WithAssignedCabinetFaceTarget(FaceDocumentModel faceDocument, string? assignedTargetId, string? assignedCabinetAssetPath)
-    {
-        return new FaceDocumentModel
-        {
-            Id = faceDocument.Id,
-            Title = faceDocument.Title,
-            Summary = faceDocument.Summary,
-            SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
-            SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
-            SourceFaceShapeId = faceDocument.SourceFaceShapeId,
-            AssignedCabinetFaceTargetId = NormalizeTargetId(assignedTargetId),
-            AssignedCabinetAssetPath = NormalizeAssetPath(assignedCabinetAssetPath),
-            SourceRegion = faceDocument.SourceRegion,
-            LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
-            GenerationSettings = faceDocument.GenerationSettings,
-            Provenance = faceDocument.Provenance, BuildState = faceDocument.BuildState,
-            Artwork = faceDocument.Artwork,
-            RuntimeRenderAssets = faceDocument.RuntimeRenderAssets,
-            MaskLayer = faceDocument.MaskLayer,
-            Trays = faceDocument.Trays,
-            LampEmitters = faceDocument.LampEmitters,
-            Layers = faceDocument.Layers,
-            Elements = faceDocument.Elements
-        };
     }
 
     private static FaceDocumentModel WithPipeline(FaceDocumentModel model, ImageProcessingPipelineModel pipeline)
@@ -236,7 +198,6 @@ internal static class FaceMutationCommands
         {
             Id = model.Id, Title = model.Title, Summary = model.Summary, SourcePanel2DDocumentId = model.SourcePanel2DDocumentId,
             SourcePanel2DDocumentPath = model.SourcePanel2DDocumentPath, SourceFaceShapeId = model.SourceFaceShapeId,
-            AssignedCabinetFaceTargetId = model.AssignedCabinetFaceTargetId, AssignedCabinetAssetPath = model.AssignedCabinetAssetPath,
             SourceRegion = model.SourceRegion, LastRegeneratedAtUtc = model.LastRegeneratedAtUtc, GenerationSettings = model.GenerationSettings,
             Provenance = model.Provenance, BuildState = model.BuildState,
             Artwork = artwork, RuntimeRenderAssets = model.RuntimeRenderAssets, MaskLayer = model.MaskLayer, Trays = model.Trays,
@@ -599,57 +560,5 @@ internal static class FaceMutationCommands
         }
     }
 
-    private sealed class AssignCabinetFaceTargetMutationCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
-    {
-        private readonly Guid _documentId;
-        private readonly DocumentTabViewModel _document;
-        private readonly string? _assignedTargetId;
-        private readonly string? _assignedCabinetAssetPath;
-        private string? _originalTargetId;
-        private string? _originalCabinetAssetPath;
 
-        public AssignCabinetFaceTargetMutationCommand(Guid documentId, DocumentTabViewModel document, string? assignedTargetId, string? assignedCabinetAssetPath)
-        {
-            _documentId = documentId;
-            _document = document;
-            _assignedTargetId = assignedTargetId;
-            _assignedCabinetAssetPath = assignedCabinetAssetPath;
-        }
-
-        public Guid DocumentId => _documentId;
-        public string Description => "Assign cabinet face target";
-        public bool WasExecuted { get; private set; }
-
-        public void Execute()
-        {
-            WasExecuted = false;
-            var faceDocument = _document.GetFaceDocument();
-            var currentTargetId = NormalizeTargetId(faceDocument.AssignedCabinetFaceTargetId);
-            var currentCabinetAssetPath = NormalizeAssetPath(faceDocument.AssignedCabinetAssetPath);
-            if (string.Equals(currentTargetId, _assignedTargetId, StringComparison.Ordinal)
-                && string.Equals(currentCabinetAssetPath, _assignedCabinetAssetPath, StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            _originalTargetId ??= currentTargetId;
-            _originalCabinetAssetPath ??= currentCabinetAssetPath;
-            _document.SetFaceDocument(
-                WithAssignedCabinetFaceTarget(faceDocument, _assignedTargetId, _assignedCabinetAssetPath),
-                CreateChange(_document, null, PanelChangeProperties.Metadata));
-            _document.ReconcileRuntimeAssetsConfiguration();
-            _document.MarkDirty();
-            WasExecuted = true;
-        }
-
-        public void Undo()
-        {
-            var faceDocument = _document.GetFaceDocument();
-            _document.SetFaceDocument(
-                WithAssignedCabinetFaceTarget(faceDocument, _originalTargetId, _originalCabinetAssetPath),
-                CreateChange(_document, null, PanelChangeProperties.Metadata));
-            _document.ReconcileRuntimeAssetsConfiguration();
-            _document.MarkDirty();
-        }
-    }
 }
