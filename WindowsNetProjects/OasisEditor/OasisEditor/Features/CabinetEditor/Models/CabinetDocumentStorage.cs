@@ -15,7 +15,7 @@ public static class CabinetDocumentStorage
     public static string Serialize(CabinetDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
-        return JsonSerializer.Serialize(document, Options);
+        return JsonSerializer.Serialize(document with { Version = 6 }, Options);
     }
 
     public static bool TryRead(string? json, out CabinetDocument document)
@@ -29,7 +29,7 @@ public static class CabinetDocumentStorage
         try
         {
             var parsed = JsonSerializer.Deserialize<CabinetDocument>(json, Options);
-            if (parsed?.Model is null || string.IsNullOrWhiteSpace(parsed.Model.Path) || parsed.Version != 5)
+            if (parsed?.Model is null || string.IsNullOrWhiteSpace(parsed.Model.Path) || parsed.Version != 6)
             {
                 return false;
             }
@@ -46,7 +46,9 @@ public static class CabinetDocumentStorage
                     .Select(specification => specification.Normalized())
                     .ToArray(),
                 DefaultReelSpecificationId = string.IsNullOrWhiteSpace(parsed.DefaultReelSpecificationId) ? null : parsed.DefaultReelSpecificationId.Trim(),
-                Reflections = (parsed.Reflections ?? []).Where(reflection => !string.IsNullOrWhiteSpace(reflection.Id) && reflection.Sources is not null && reflection.Settings is not null).Select(reflection => reflection.Normalized()).ToArray()
+                Reflections = (parsed.Reflections ?? []).Where(reflection => !string.IsNullOrWhiteSpace(reflection.Id) && reflection.Sources is not null && reflection.Settings is not null).Select(reflection => reflection.Normalized()).ToArray(),
+                FaceAssignments = (parsed.FaceAssignments ?? []).Where(value => !string.IsNullOrWhiteSpace(value.TargetId) && !string.IsNullOrWhiteSpace(value.FaceAssetPath)).Select(value => value.Normalized()).ToArray(),
+                ReelAssignments = (parsed.ReelAssignments ?? []).Where(value => value.MachineReelReference.Kind == MachineObjectKind.Reel && !value.MachineReelReference.IsEmpty && !string.IsNullOrWhiteSpace(value.ReelSpecificationId)).Select(value => value.Normalized()).ToArray()
             };
             return true;
         }

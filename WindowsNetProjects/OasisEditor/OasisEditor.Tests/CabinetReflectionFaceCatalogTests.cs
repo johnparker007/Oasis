@@ -52,8 +52,14 @@ public sealed class CabinetReflectionFaceCatalogTests : IDisposable
         var assets = Directory.CreateDirectory(Path.Combine(_root, "Assets")).FullName;
         var facePackage = Directory.CreateDirectory(Path.Combine(assets, "Faces", "TopGlass")).FullName;
         File.WriteAllText(Path.Combine(facePackage, ProjectAssetPathService.FaceManifestFileName), FaceDocumentStorage.Serialize(new FaceDocumentModel { Id = "face-top", Title = "Top Glass" }));
+        var unrelatedPackage = Directory.CreateDirectory(Path.Combine(assets, "Faces", "Unused")).FullName;
+        File.WriteAllText(Path.Combine(unrelatedPackage, ProjectAssetPathService.FaceManifestFileName), FaceDocumentStorage.Serialize(new FaceDocumentModel { Id = "face-unused", Title = "Unused" }));
         var project = new EditorProject { Name = "Test", ProjectDirectory = _root, ProjectFilePath = Path.Combine(_root, "test.oasis"), AssetsDirectory = assets, MachinesDirectory = Path.Combine(_root, "Machines"), GeneratedDirectory = Path.Combine(_root, "Generated") };
-        var document = new DocumentTabViewModel(EditorDocument.CreateCabinet3DStub("Cabinet"), cabinetDocumentJson: CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("missing.glb")));
+        var cabinet = CabinetDocument.FromModelPath("missing.glb") with
+        {
+            FaceAssignments = [new CabinetFaceAssignment("top-glass", "Assets/Faces/TopGlass/asset.face")]
+        };
+        var document = new DocumentTabViewModel(EditorDocument.CreateCabinet3DStub("Cabinet"), cabinetDocumentJson: CabinetDocumentStorage.Serialize(cabinet));
         document.SetProjectAccessor(() => project);
 
         var choice = Assert.Single(document.CabinetViewer!.ReflectionEditor.FaceChoices);

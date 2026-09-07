@@ -4,6 +4,21 @@ namespace OasisEditor;
 
 internal static class CabinetMutationCommands
 {
+    public static Commands.ICommand CreateSetFaceAssignmentCommand(Guid documentId, DocumentTabViewModel document, string targetId, string? faceAssetPath)
+    {
+        var current = document.GetCabinetDocument();
+        var assignments = (current.FaceAssignments ?? []).Where(value => !string.Equals(value.TargetId, targetId, StringComparison.Ordinal));
+        if (!string.IsNullOrWhiteSpace(faceAssetPath)) assignments = assignments.Append(new CabinetFaceAssignment(targetId, faceAssetPath).Normalized());
+        return new SetCabinetDocumentCommand(documentId, document, current with { FaceAssignments = assignments.ToArray() }, "Assign Face to cabinet target");
+    }
+
+    public static Commands.ICommand CreateSetReelAssignmentCommand(Guid documentId, DocumentTabViewModel document, MachineObjectReference machineReelReference, string? specificationId)
+    {
+        var current = document.GetCabinetDocument();
+        var assignments = (current.ReelAssignments ?? []).Where(value => value.MachineReelReference != machineReelReference);
+        if (!string.IsNullOrWhiteSpace(specificationId)) assignments = assignments.Append(new CabinetReelAssignment(machineReelReference, specificationId).Normalized());
+        return new SetCabinetDocumentCommand(documentId, document, current with { ReelAssignments = assignments.ToArray() }, "Assign physical specification to machine reel");
+    }
     public static Commands.ICommand CreateUpdateReflectionCommand(Guid documentId, DocumentTabViewModel document, string originalId, CabinetReflectionDefinition definition)
     {
         var current = document.GetCabinetDocument(); var reflections = current.Reflections ?? [];
@@ -48,7 +63,8 @@ internal static class CabinetMutationCommands
         var next = current with
         {
             ReelSpecifications = (current.ReelSpecifications ?? []).Where(specification => !string.Equals(specification.Id, normalizedId, StringComparison.Ordinal)).ToArray(),
-            DefaultReelSpecificationId = string.Equals(current.DefaultReelSpecificationId, normalizedId, StringComparison.Ordinal) ? null : current.DefaultReelSpecificationId
+            DefaultReelSpecificationId = string.Equals(current.DefaultReelSpecificationId, normalizedId, StringComparison.Ordinal) ? null : current.DefaultReelSpecificationId,
+            ReelAssignments = (current.ReelAssignments ?? []).Where(value => !string.Equals(value.ReelSpecificationId, normalizedId, StringComparison.Ordinal)).ToArray()
         };
         return new SetCabinetDocumentCommand(documentId, document, next, "Delete cabinet reel specification");
     }
@@ -67,7 +83,13 @@ internal static class CabinetMutationCommands
     {
         var normalizedId = string.IsNullOrWhiteSpace(specificationId) ? null : specificationId.Trim();
         var current = document.GetCabinetDocument();
-        return new SetCabinetDocumentCommand(documentId, document, current with { DefaultReelSpecificationId = normalizedId }, "Set default cabinet reel specification");
+        var assignments = current.ReelAssignments ?? [];
+        if (normalizedId is not null)
+        {
+            var assigned = assignments.Select(value => value.MachineReelReference).ToHashSet();
+            assignments = assignments.Concat(Enumerable.Range(0, 4).Select(MachineObjectReference.Reel).Where(value => !assigned.Contains(value)).Select(value => new CabinetReelAssignment(value, normalizedId))).ToArray();
+        }
+        return new SetCabinetDocumentCommand(documentId, document, current with { DefaultReelSpecificationId = normalizedId, ReelAssignments = assignments }, "Set default cabinet reel specification");
     }
 
     public static Commands.ICommand CreateSetPreviewLampModeCommand(Guid documentId, DocumentTabViewModel document, string lampPreviewMode)

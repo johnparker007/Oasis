@@ -9,7 +9,7 @@ namespace OasisEditor;
 
 public sealed class FaceRuntimeExportService
 {
-    public const int RuntimeManifestSchemaVersion = 8;
+    public const int RuntimeManifestSchemaVersion = 9;
     public const string RuntimeDirectoryName = "runtime";
     public const string ManifestFileName = "face.runtime.json";
     public const string ArtworkFileName = "artwork.png";
@@ -34,7 +34,7 @@ public sealed class FaceRuntimeExportService
 
     public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, string? documentPath = null, IEditorProgressReporter? progress = null)
     {
-        var cabinetContext = ResolveStandaloneCabinetContext(faceDocument, project);
+        var cabinetContext = new FaceCabinetContext(null, null, null, null, null);
         return Export(faceDocument, project, cabinetContext, documentPath, progress);
     }
 
@@ -114,8 +114,6 @@ public sealed class FaceRuntimeExportService
             SourcePanel2DDocumentId = faceDocument.SourcePanel2DDocumentId,
             SourcePanel2DDocumentPath = faceDocument.SourcePanel2DDocumentPath,
             SourceFaceShapeId = faceDocument.SourceFaceShapeId,
-            AssignedCabinetFaceTargetId = faceDocument.AssignedCabinetFaceTargetId,
-            AssignedCabinetAssetPath = faceDocument.AssignedCabinetAssetPath,
             SourceRegion = faceDocument.SourceRegion,
             LastRegeneratedAtUtc = faceDocument.LastRegeneratedAtUtc,
             GenerationSettings = faceDocument.GenerationSettings,
@@ -137,47 +135,9 @@ public sealed class FaceRuntimeExportService
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(cabinetContext);
-        if (!cabinetContext.HasCabinet)
-        {
-            throw new InvalidOperationException(cabinetContext.DiagnosticMessage ?? "Face has no Cabinet context.");
-        }
         var width = ResolveRuntimeWidth(faceDocument);
         var height = ResolveRuntimeHeight(faceDocument);
         _runtimeTextureGenerator.CreatePlan(faceDocument, width, height);
-        foreach (var reel in faceDocument.Elements.OfType<FaceReelDisplayElement>())
-        {
-            _ = ResolveReelPhysicalDimensions(faceDocument, reel, cabinetContext);
-        }
-    }
-
-    private static FaceCabinetContext ResolveStandaloneCabinetContext(FaceDocumentModel faceDocument, EditorProject project)
-    {
-        ArgumentNullException.ThrowIfNull(faceDocument);
-        ArgumentNullException.ThrowIfNull(project);
-        var cabinetAssetPath = string.IsNullOrWhiteSpace(faceDocument.AssignedCabinetAssetPath)
-            ? null
-            : ProjectAssetPathService.NormalizeProjectRelativePath(faceDocument.AssignedCabinetAssetPath);
-        if (string.IsNullOrWhiteSpace(cabinetAssetPath))
-        {
-            return new FaceCabinetContext(null, null, null, "Face.Cabinet.ContextUnavailable", "Standalone Face runtime export has no Cabinet context. Assign a Cabinet asset to the Face or export it through a Machine build that supplies the Cabinet context.");
-        }
-
-        if (string.IsNullOrWhiteSpace(project.ProjectDirectory))
-        {
-            return new FaceCabinetContext(null, null, cabinetAssetPath, "Face.Cabinet.ProjectUnavailable", $"Assigned Cabinet asset '{cabinetAssetPath}' cannot be resolved because no project is loaded.");
-        }
-
-        var fullPath = Path.IsPathRooted(cabinetAssetPath)
-            ? cabinetAssetPath
-            : Path.Combine(project.ProjectDirectory, cabinetAssetPath.Replace('/', Path.DirectorySeparatorChar));
-        if (!File.Exists(fullPath))
-        {
-            return new FaceCabinetContext(null, null, cabinetAssetPath, "Face.Cabinet.AssetMissing", $"Assigned Cabinet asset '{cabinetAssetPath}' could not be found.");
-        }
-
-        return CabinetDocumentStorage.TryRead(File.ReadAllText(fullPath), out var cabinetDocument)
-            ? new FaceCabinetContext(cabinetDocument, null, cabinetAssetPath, null, null)
-            : new FaceCabinetContext(null, null, cabinetAssetPath, "Face.Cabinet.AssetInvalid", $"Assigned Cabinet asset '{cabinetAssetPath}' could not be read.");
     }
 
     public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceCabinetContext? cabinetContext = null)
@@ -453,7 +413,9 @@ public sealed class FaceRuntimeExportService
 
     private static FaceRuntimeReelManifestEntry CreateReelManifestEntry(FaceDocumentModel faceDocument, FaceReelDisplayElement element, FaceCabinetContext? cabinetContext)
     {
-        var dimensions = ResolveReelPhysicalDimensions(faceDocument, element, cabinetContext);
+        var dimensions = cabinetContext?.CabinetDocument is null
+            ? (ResolvedReelPhysicalDimensions?)null
+            : ResolveReelPhysicalDimensions(faceDocument, element, cabinetContext);
         return new FaceRuntimeReelManifestEntry
         {
             ObjectId = element.ObjectId,
@@ -467,8 +429,8 @@ public sealed class FaceRuntimeExportService
             ReelLampsEnabled = element.ReelLampsEnabled,
             ReelLamps = element.ReelLamps.Select(CreateReelLampManifestEntry).ToArray(),
             TransmissionMask = element.IsOpaqueReel ? ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(ReelBandDirectoryName, CreateReelTransmissionMaskFileName(element))) : null,
-            PhysicalWidth = dimensions.WidthMm,
-            PhysicalRadius = dimensions.RadiusMm,
+            PhysicalWidth = dimensions?.WidthMm,
+            PhysicalRadius = dimensions?.RadiusMm,
             X = element.X,
             Y = element.Y,
             Width = element.Width,
@@ -489,8 +451,9 @@ public sealed class FaceRuntimeExportService
     {
         var faceAsset = string.IsNullOrWhiteSpace(faceDocument.Title) ? faceDocument.Id : faceDocument.Title;
         var reelName = DisplayName(reel);
-        var requestedId = string.IsNullOrWhiteSpace(reel.ReelSpecificationId) ? string.Empty : reel.ReelSpecificationId.Trim();
-        var cabinetAsset = cabinetContext?.CabinetAssetPath ?? faceDocument.AssignedCabinetAssetPath ?? string.Empty;
+        var machineReference = reel.LinkedMachineObjectReference;
+        var cabinetAsset = cabinetContext?.CabinetAssetPath ?? string.Empty;
+        var requestedId = string.Empty;
 
         InvalidOperationException Fail(string reason) => new($"Unable to resolve physical reel dimensions. Face asset '{faceAsset}', reel '{reelName}' (objectId '{reel.ObjectId}'), Cabinet asset '{cabinetAsset}', requested specification ID '{requestedId}': {reason}");
 
@@ -500,10 +463,18 @@ public sealed class FaceRuntimeExportService
             throw Fail(reason);
         }
 
-        if (string.IsNullOrWhiteSpace(requestedId))
+        if (machineReference is null || machineReference.Value.Kind != MachineObjectKind.Reel)
         {
-            throw Fail("Face reel has no ReelSpecificationId.");
+            throw Fail("Face reel has no logical machine reel reference.");
         }
+
+        var assignments = cabinetContext.CabinetDocument.ReelAssignments ?? [];
+        var assignmentMatches = assignments.Where(value => value.MachineReelReference == machineReference.Value).ToArray();
+        if (assignmentMatches.Length != 1)
+        {
+            throw Fail(assignmentMatches.Length == 0 ? $"Cabinet has no assignment for logical reel '{machineReference}'." : $"Cabinet has duplicate assignments for logical reel '{machineReference}'.");
+        }
+        requestedId = assignmentMatches[0].ReelSpecificationId;
 
         var matches = (cabinetContext.CabinetDocument.ReelSpecifications ?? [])
             .Where(specification => string.Equals(specification.Id?.Trim(), requestedId, StringComparison.Ordinal))
@@ -777,8 +748,8 @@ public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEnt
     public int Stops { get; init; }
     public bool IsReversed { get; init; }
     public double BandOffset { get; init; }
-    public double PhysicalWidth { get; init; }
-    public double PhysicalRadius { get; init; }
+    public double? PhysicalWidth { get; init; }
+    public double? PhysicalRadius { get; init; }
     public string? TransmissionMask { get; init; }
     public bool ReelLampsEnabled { get; init; } = true;
     public IReadOnlyList<FaceRuntimeReelLampManifestEntry> ReelLamps { get; init; } = [];

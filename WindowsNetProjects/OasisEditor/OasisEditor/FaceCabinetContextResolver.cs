@@ -29,24 +29,9 @@ public sealed class FaceCabinetContextResolver
         return ResolveByTarget(project, openDocuments, targetId);
     }
 
-    public FaceCabinetContext ResolveForFace(
-        EditorProject? project,
-        IEnumerable<DocumentTabViewModel> openDocuments,
-        FaceDocumentModel faceDocument)
+    public FaceCabinetContext ResolveForFace(EditorProject? project, IEnumerable<DocumentTabViewModel> openDocuments, FaceDocumentModel faceDocument)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
-        var cabinetAssetPath = Normalize(faceDocument.AssignedCabinetAssetPath);
-        if (!string.IsNullOrWhiteSpace(cabinetAssetPath))
-        {
-            return ResolveByAssetPath(project, openDocuments, cabinetAssetPath);
-        }
-
-        var targetId = Normalize(faceDocument.AssignedCabinetFaceTargetId);
-        if (!string.IsNullOrWhiteSpace(targetId))
-        {
-            return ResolveByTarget(project, openDocuments, targetId);
-        }
-
         return MissingAssignment();
     }
 

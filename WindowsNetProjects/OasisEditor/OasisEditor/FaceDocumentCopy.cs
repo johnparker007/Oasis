@@ -6,7 +6,6 @@ internal static class FaceDocumentCopy
     {
         Id=value.Id, Title=value.Title, Summary=value.Summary, SourcePanel2DDocumentId=value.SourcePanel2DDocumentId,
         SourcePanel2DDocumentPath=value.SourcePanel2DDocumentPath, SourceFaceShapeId=value.SourceFaceShapeId,
-        AssignedCabinetFaceTargetId=value.AssignedCabinetFaceTargetId, AssignedCabinetAssetPath=value.AssignedCabinetAssetPath,
         SourceRegion=value.SourceRegion, LastRegeneratedAtUtc=value.LastRegeneratedAtUtc, GenerationSettings=settings.Normalize(),
         Provenance=value.Provenance, BuildState=value.BuildState, Artwork=value.Artwork, RuntimeRenderAssets=value.RuntimeRenderAssets,
         MaskLayer=value.MaskLayer, Trays=value.Trays, LampEmitters=value.LampEmitters, Layers=value.Layers, Elements=value.Elements
@@ -36,7 +35,6 @@ internal static class FaceDocumentCopy
     {
         Id=value.Id, Title=value.Title, Summary=value.Summary, SourcePanel2DDocumentId=value.SourcePanel2DDocumentId,
         SourcePanel2DDocumentPath=value.SourcePanel2DDocumentPath, SourceFaceShapeId=value.SourceFaceShapeId,
-        AssignedCabinetFaceTargetId=value.AssignedCabinetFaceTargetId, AssignedCabinetAssetPath=value.AssignedCabinetAssetPath,
         SourceRegion=value.SourceRegion, LastRegeneratedAtUtc=value.LastRegeneratedAtUtc, GenerationSettings=value.GenerationSettings,
         Provenance=new FaceProvenanceModel { Artwork=value.Provenance.Artwork, Components=components, Illumination=value.Provenance.Illumination },
         BuildState=value.BuildState, Artwork=value.Artwork, RuntimeRenderAssets=value.RuntimeRenderAssets, MaskLayer=value.MaskLayer,
@@ -58,7 +56,6 @@ internal static class FaceDocumentCopy
     {
         Id=value.Id, Title=value.Title, Summary=value.Summary, SourcePanel2DDocumentId=value.SourcePanel2DDocumentId,
         SourcePanel2DDocumentPath=value.SourcePanel2DDocumentPath, SourceFaceShapeId=value.SourceFaceShapeId,
-        AssignedCabinetFaceTargetId=value.AssignedCabinetFaceTargetId, AssignedCabinetAssetPath=value.AssignedCabinetAssetPath,
         SourceRegion=value.SourceRegion, LastRegeneratedAtUtc=value.LastRegeneratedAtUtc, GenerationSettings=value.GenerationSettings,
         Provenance=new FaceProvenanceModel { Artwork=value.Provenance.Artwork, Components=value.Provenance.Components, Illumination=provenance },
         BuildState=value.BuildState, Artwork=value.Artwork, RuntimeRenderAssets=value.RuntimeRenderAssets, MaskLayer=maskLayer,
@@ -72,7 +69,6 @@ internal static class FaceDocumentCopy
     {
         Id=value.Id, Title=value.Title, Summary=value.Summary, SourcePanel2DDocumentId=value.SourcePanel2DDocumentId,
         SourcePanel2DDocumentPath=value.SourcePanel2DDocumentPath, SourceFaceShapeId=value.SourceFaceShapeId,
-        AssignedCabinetFaceTargetId=value.AssignedCabinetFaceTargetId, AssignedCabinetAssetPath=value.AssignedCabinetAssetPath,
         SourceRegion=value.SourceRegion, LastRegeneratedAtUtc=value.LastRegeneratedAtUtc, GenerationSettings=value.GenerationSettings,
         Provenance=new FaceProvenanceModel { Artwork=artworkProvenance, Components=value.Provenance.Components, Illumination=value.Provenance.Illumination },
         BuildState=value.BuildState, Artwork=artwork, RuntimeRenderAssets=value.RuntimeRenderAssets, MaskLayer=value.MaskLayer,
@@ -98,7 +94,6 @@ internal static class FaceDocumentCopy
         {
             Id=copy.Id, Title=copy.Title, Summary=copy.Summary, SourcePanel2DDocumentId=copy.SourcePanel2DDocumentId,
             SourcePanel2DDocumentPath=copy.SourcePanel2DDocumentPath, SourceFaceShapeId=copy.SourceFaceShapeId,
-            AssignedCabinetFaceTargetId=copy.AssignedCabinetFaceTargetId, AssignedCabinetAssetPath=copy.AssignedCabinetAssetPath,
             SourceRegion=copy.SourceRegion, LastRegeneratedAtUtc=copy.LastRegeneratedAtUtc, GenerationSettings=copy.GenerationSettings,
             Provenance=copy.Provenance, BuildState=copy.BuildState, Artwork=copy.Artwork, RuntimeRenderAssets=copy.RuntimeRenderAssets,
             MaskLayer=copy.MaskLayer, Trays=copy.Trays, LampEmitters=copy.LampEmitters, Layers=copy.Layers, Elements=elements
@@ -114,7 +109,6 @@ internal static class FaceDocumentCopy
     {
         Id=value.Id, Title=value.Title, Summary=value.Summary, SourcePanel2DDocumentId=value.SourcePanel2DDocumentId,
         SourcePanel2DDocumentPath=value.SourcePanel2DDocumentPath, SourceFaceShapeId=value.SourceFaceShapeId,
-        AssignedCabinetFaceTargetId=value.AssignedCabinetFaceTargetId, AssignedCabinetAssetPath=value.AssignedCabinetAssetPath,
         SourceRegion=value.SourceRegion, LastRegeneratedAtUtc=value.LastRegeneratedAtUtc, GenerationSettings=value.GenerationSettings,
         Provenance=value.Provenance, BuildState=value.BuildState, Artwork=value.Artwork, RuntimeRenderAssets=value.RuntimeRenderAssets,
         MaskLayer=maskLayer, Trays=trays, LampEmitters=emitters, Layers=value.Layers, Elements=value.Elements

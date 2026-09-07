@@ -8,7 +8,6 @@ public sealed record FaceRuntimeAssetsCapability(bool IsConfigured, FaceCabinetC
 /// </summary>
 public sealed class FaceRuntimeAssetsConfigurationService
 {
-    private readonly FaceCabinetContextResolver _cabinetResolver = new();
     private readonly FaceRuntimeExportService _runtimeExporter = new();
 
     public FaceRuntimeAssetsCapability Evaluate(FaceDocumentModel face, EditorProject? project,
@@ -19,19 +18,23 @@ public sealed class FaceRuntimeAssetsConfigurationService
         {
             return new(false, null, "No project is open.");
         }
-        var cabinet = _cabinetResolver.ResolveForFace(project, openDocuments, face);
-        if (!cabinet.HasCabinet)
+        if (face.Artwork is null)
         {
-            return new(false, cabinet, cabinet.DiagnosticMessage ?? "Face has no resolvable standalone Cabinet context.");
+            return new(false, null, "Face artwork is not configured.");
         }
+        if (face.MaskLayer is null || string.IsNullOrWhiteSpace(face.MaskLayer.AssetPath))
+        {
+            return new(false, null, "Face mask output is not configured.");
+        }
+        var context = new FaceCabinetContext(null, null, null, null, null);
         try
         {
-            _runtimeExporter.ValidateStandaloneBuildContext(face, cabinet);
-            return new(true, cabinet, null);
+            _runtimeExporter.ValidateStandaloneBuildContext(face, context);
+            return new(true, context, null);
         }
         catch (Exception exception)
         {
-            return new(false, cabinet, exception.Message);
+            return new(false, context, exception.Message);
         }
     }
 

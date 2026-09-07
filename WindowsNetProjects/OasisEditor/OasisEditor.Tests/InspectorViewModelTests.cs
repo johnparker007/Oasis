@@ -222,7 +222,7 @@ public sealed class InspectorViewModelTests
     {
         var selectedDocument = new DocumentTabViewModel(
             EditorDocument.CreateCabinet3DStub("Cabinet"),
-            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(5, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
+            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(6, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
         var context = new ActiveDocumentContextService();
         context.SetActiveDocument(selectedDocument);
         var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
@@ -247,7 +247,7 @@ public sealed class InspectorViewModelTests
     {
         var selectedDocument = new DocumentTabViewModel(
             EditorDocument.CreateCabinet3DStub("Cabinet"),
-            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(5, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
+            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(6, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
         var context = new ActiveDocumentContextService();
         context.SetActiveDocument(selectedDocument);
         InspectorViewModel? viewModel = null;
@@ -274,7 +274,6 @@ public sealed class InspectorViewModelTests
         Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Add Reel Specification")).Command.Execute(null);
 
         var specification = Assert.Single(selectedDocument.GetCabinetDocument().ReelSpecifications);
-        Assert.Equal(specification.Id, selectedDocument.GetCabinetDocument().DefaultReelSpecificationId);
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Name" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Diameter mm" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Width mm" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
@@ -305,12 +304,10 @@ public sealed class InspectorViewModelTests
     }
 
     [Fact]
-    public void InspectorPropertyRows_SelectedFaceReelWithoutCabinet_ShowsExplanationAndRetainsStoredId()
+    public void InspectorPropertyRows_SelectedFaceReel_ExposesLogicalReferenceWithoutPhysicalSpecification()
     {
-        var reel = new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel", X = 1, Y = 2, Width = 3, Height = 4, IsVisible = true, ReelSpecificationId = "stored-id" };
-        var selectedDocument = new DocumentTabViewModel(
-            EditorDocument.CreateFaceStub("Face"),
-            faceDocumentJson: FaceDocumentStorage.Serialize(new FaceDocumentModel { Title = "Face", Elements = [reel] }));
+        var reel = new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel", X = 1, Y = 2, Width = 3, Height = 4, IsVisible = true, LinkedMachineObjectReference = MachineObjectReference.Reel(3) };
+        var selectedDocument = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"), faceDocumentJson: FaceDocumentStorage.Serialize(new FaceDocumentModel { Title = "Face", Elements = [reel] }));
         var context = new ActiveDocumentContextService();
         context.SetActiveDocument(selectedDocument);
         context.SetPanelSelection(selectedDocument.DocumentId, FaceSelectionService.ToSelectionInfo(reel)!);
@@ -318,42 +315,9 @@ public sealed class InspectorViewModelTests
 
         viewModel.NotifyContextChanged();
 
-        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Reel Specification" && row.GroupName == "Reel Size" && row is InspectorInfoPropertyViewModel info && info.Value == "stored-id");
-        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Cabinet" && row.GroupName == "Reel Size" && row is InspectorInfoPropertyViewModel info && info.Value.Contains("Cabinet is assigned", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void InspectorPropertyRows_SelectedFaceReelWithCabinet_PopulatesSpecificationChoices()
-    {
-        var root = Path.Combine(Path.GetTempPath(), $"oasis-inspector-reel-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(root);
-        try
-        {
-            var cabinetPath = Path.Combine(root, "Assets", "Cabinets", "main.cabinet3d");
-            Directory.CreateDirectory(Path.GetDirectoryName(cabinetPath)!);
-            var cabinetDocument = new DocumentTabViewModel(
-                EditorDocument.CreateFromFile(cabinetPath, "Cabinet"),
-                cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(5, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Standard Reel", 210, 50)], "standard")));
-            var reel = new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel", X = 1, Y = 2, Width = 3, Height = 4, IsVisible = true, ReelSpecificationId = "missing" };
-            var faceDocument = new DocumentTabViewModel(
-                EditorDocument.CreateFaceStub("Face"),
-                faceDocumentJson: FaceDocumentStorage.Serialize(new FaceDocumentModel { Title = "Face", AssignedCabinetAssetPath = "Assets/Cabinets/main.cabinet3d", Elements = [reel] }));
-            var project = new EditorProject { Name = "Project", ProjectDirectory = root, ProjectFilePath = Path.Combine(root, "project.oasis"), AssetsDirectory = Path.Combine(root, "Assets"), MachinesDirectory = Path.Combine(root, "Machines"), GeneratedDirectory = Path.Combine(root, "Generated") };
-            var context = new ActiveDocumentContextService();
-            context.SetActiveDocument(faceDocument);
-            context.SetPanelSelection(faceDocument.DocumentId, FaceSelectionService.ToSelectionInfo(reel)!);
-            var viewModel = CreateInspectorViewModel(faceDocument, context, ExecuteImmediately, openDocuments: [cabinetDocument, faceDocument], loadedProject: project);
-
-            viewModel.NotifyContextChanged();
-
-            var row = Assert.IsType<InspectorChoicePropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Reel Specification" && row.GroupName == "Reel Size"));
-            Assert.Contains("missing (unresolved)", row.Choices);
-            Assert.Contains(row.Choices, choice => choice.Contains("Standard Reel", StringComparison.Ordinal) && choice.Contains("210", StringComparison.Ordinal) && choice.Contains("50", StringComparison.Ordinal));
-        }
-        finally
-        {
-            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
-        }
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Machine Reference" && row is InspectorTextPropertyViewModel text && text.Value == "reel:3");
+        Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.DisplayName == "Reel Specification");
+        Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.GroupName == "Cabinet Assignment");
     }
 
     [Fact]

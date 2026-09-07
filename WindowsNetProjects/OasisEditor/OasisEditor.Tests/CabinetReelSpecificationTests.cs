@@ -9,6 +9,47 @@ namespace OasisEditor.Tests;
 public sealed class CabinetReelSpecificationTests
 {
     [Fact]
+    public void CabinetSerialization_RoundTripsFaceAndLogicalReelAssignments()
+    {
+        var cabinet = CabinetDocument.FromModelPath("cabinet.glb") with
+        {
+            FaceAssignments = [new("top-glass", "Assets/Faces/Top Glass/asset.face")],
+            ReelSpecifications = [new("small", "Small", 230, 70)],
+            ReelAssignments = [new(MachineObjectReference.Reel(3), "small")]
+        };
+
+        Assert.True(CabinetDocumentStorage.TryRead(CabinetDocumentStorage.Serialize(cabinet), out var parsed));
+        Assert.Equal(new CabinetFaceAssignment("top-glass", "Assets/Faces/Top Glass/asset.face"), Assert.Single(parsed.FaceAssignments!));
+        Assert.Equal(new CabinetReelAssignment(MachineObjectReference.Reel(3), "small"), Assert.Single(parsed.ReelAssignments!));
+    }
+
+    [Fact]
+    public void CabinetAssignmentCommandsSupportUndo()
+    {
+        var document = new DocumentTabViewModel(EditorDocument.CreateCabinet3DStub("Cabinet"), cabinetDocumentJson: CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb") with { ReelSpecifications = [new("standard", "Standard", 290, 70)] }));
+        var faceCommand = CabinetMutationCommands.CreateSetFaceAssignmentCommand(document.DocumentId, document, "top", "Assets/Faces/Top/asset.face");
+        faceCommand.Execute();
+        Assert.Single(document.GetCabinetDocument().FaceAssignments!);
+        faceCommand.Undo();
+        Assert.Empty(document.GetCabinetDocument().FaceAssignments!);
+
+        var reelCommand = CabinetMutationCommands.CreateSetReelAssignmentCommand(document.DocumentId, document, MachineObjectReference.Reel(0), "standard");
+        reelCommand.Execute();
+        Assert.Single(document.GetCabinetDocument().ReelAssignments!);
+        reelCommand.Undo();
+        Assert.Empty(document.GetCabinetDocument().ReelAssignments!);
+    }
+
+    [Fact]
+    public void FaceSerializationContainsNoCabinetOwnershipOrPhysicalSpecification()
+    {
+        var json = FaceDocumentStorage.Serialize(new FaceDocumentModel { Elements = [new FaceReelDisplayElement { ObjectId = "reel", LinkedMachineObjectReference = MachineObjectReference.Reel(0) }] });
+        Assert.DoesNotContain("assignedCabinet", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("reelSpecificationId", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("linkedMachineObjectReference", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void ReflectionDefinitionRoundTripsExplicitPlaneAndSettings()
     {
         var reflection = new CabinetReflectionDefinition("side", "CabinetSide", 1, [new CabinetReflectionSource("lowerGlass", new CabinetReflectionPlane(new(1, 2, 3), new(1, 0, 0), new(0, 1, 0), 2.5, 1.25))],
@@ -69,7 +110,7 @@ public sealed class CabinetReelSpecificationTests
     public void CabinetSerialization_RoundTripsReelSpecificationsAndDefault()
     {
         var cabinet = new CabinetDocument(
-            5,
+            6,
             new CabinetModelReference("source.glb", 1.0, "Y"),
             [],
             CabinetPreviewSettings.Default,
@@ -79,8 +120,7 @@ public sealed class CabinetReelSpecificationTests
         var json = CabinetDocumentStorage.Serialize(cabinet);
 
         Assert.True(CabinetDocumentStorage.TryRead(json, out var parsed));
-        Assert.Equal(5, parsed.Version);
-        Assert.Equal("jpm-standard", parsed.DefaultReelSpecificationId);
+        Assert.Equal(6, parsed.Version);
         var specification = Assert.Single(parsed.ReelSpecifications);
         Assert.Equal("jpm-standard", specification.Id);
         Assert.Equal("JPM Standard Reel", specification.Name);
@@ -95,11 +135,11 @@ public sealed class CabinetReelSpecificationTests
         {
             Elements =
             [
-                new FaceReelDisplayElement { ObjectId = "reel", Name = "Reel", ReelSpecificationId = "missing" }
+                new FaceReelDisplayElement { ObjectId = "reel", Name = "Reel", LinkedMachineObjectReference = MachineObjectReference.Reel(1) }
             ]
         };
         var cabinet = new CabinetDocument(
-            5,
+            6,
             new CabinetModelReference("source.glb", 1.0, "Y"),
             [],
             CabinetPreviewSettings.Default,
@@ -108,14 +148,15 @@ public sealed class CabinetReelSpecificationTests
                 new CabinetReelSpecification("dup", "Duplicate B", 210, 50),
                 new CabinetReelSpecification("bad", "Bad", 0, 50)
             ],
-            "default-missing");
+            "default-missing",
+            ReelAssignments: [new CabinetReelAssignment(MachineObjectReference.Reel(1), "missing")]);
 
         var diagnostics = new FaceValidationService().Validate(face, null, [], cabinet);
 
         Assert.Contains(diagnostics, diagnostic => diagnostic.Code == "Cabinet.ReelSpecification.DefaultMissing");
         Assert.Contains(diagnostics, diagnostic => diagnostic.Code == "Cabinet.ReelSpecification.DuplicateId");
         Assert.Contains(diagnostics, diagnostic => diagnostic.Code == "Cabinet.ReelSpecification.InvalidDimensions");
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Code == "Face.ReelSpecification.UnknownSelection");
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Code == "Cabinet.ReelAssignment.SpecificationMissing");
     }
 
     [Fact]
@@ -123,12 +164,11 @@ public sealed class CabinetReelSpecificationTests
     {
         var document = new DocumentTabViewModel(
             EditorDocument.CreateCabinet3DStub("Cabinet"),
-            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(5, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
+            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(6, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
 
         var addCommand = CabinetMutationCommands.CreateAddReelSpecificationCommand(document.DocumentId, document);
         addCommand.Execute();
         var added = Assert.Single(document.GetCabinetDocument().ReelSpecifications);
-        Assert.Equal(added.Id, document.GetCabinetDocument().DefaultReelSpecificationId);
 
         var renamed = added with { Name = "Renamed Reel", DiameterMm = 180, WidthMm = 45 };
         CabinetMutationCommands.CreateUpdateReelSpecificationCommand(document.DocumentId, document, renamed).Execute();
@@ -138,43 +178,17 @@ public sealed class CabinetReelSpecificationTests
 
         CabinetMutationCommands.CreateDeleteReelSpecificationCommand(document.DocumentId, document, added.Id).Execute();
         Assert.Empty(document.GetCabinetDocument().ReelSpecifications);
-        Assert.Null(document.GetCabinetDocument().DefaultReelSpecificationId);
     }
 
     [Fact]
-    public void CabinetContextResolver_ResolvesAssignedCabinetAssetPath()
+    public void FaceSerialization_UsesCurrentSchemaWithoutCabinetOwnership()
     {
-        var root = Path.Combine(Path.GetTempPath(), $"oasis-cabinet-context-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(root);
-        try
-        {
-            var project = new EditorProject { Name = "Test", ProjectDirectory = root, ProjectFilePath = Path.Combine(root, "test.oasis"), AssetsDirectory = Path.Combine(root, "Assets"), MachinesDirectory = Path.Combine(root, "Machines"), GeneratedDirectory = Path.Combine(root, "Generated") };
-            var cabinetPath = Path.Combine(root, "Assets", "Cabinets", "main.cabinet3d");
-            Directory.CreateDirectory(Path.GetDirectoryName(cabinetPath)!);
-            File.WriteAllText(cabinetPath, CabinetDocumentStorage.Serialize(new CabinetDocument(5, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Standard", 210, 50)], "standard")));
-            var face = new FaceDocumentModel { AssignedCabinetAssetPath = "Assets/Cabinets/main.cabinet3d" };
-
-            var context = new FaceCabinetContextResolver().ResolveForFace(project, [], face);
-
-            Assert.True(context.HasCabinet);
-            Assert.Equal("standard", context.CabinetDocument!.DefaultReelSpecificationId);
-        }
-        finally
-        {
-            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
-        }
-    }
-
-    [Fact]
-    public void FaceSerialization_RoundTripsAssignedCabinetAssetPathWithCurrentSchemaVersion()
-    {
-        var face = new FaceDocumentModel { Title = "Face", AssignedCabinetAssetPath = "Assets\\Cabinets\\main.cabinet3d" };
+        var face = new FaceDocumentModel { Title = "Face",};
 
         var json = FaceDocumentStorage.Serialize(face);
 
         Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
         Assert.Equal(FaceDocumentStorage.CurrentSchemaVersion, file.SchemaVersion);
-        Assert.Equal("Assets/Cabinets/main.cabinet3d", file.AssignedCabinetAssetPath);
     }
 
 }

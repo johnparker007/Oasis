@@ -7,7 +7,7 @@ public sealed record CabinetReflectionFaceChoice(string FaceId, string DisplayNa
 
 public static class CabinetReflectionFaceCatalog
 {
-    public static IReadOnlyList<CabinetReflectionFaceChoice> Discover(string? assetsDirectory)
+    public static IReadOnlyList<CabinetReflectionFaceChoice> Discover(string? assetsDirectory, CabinetDocument? cabinet = null)
     {
         if (string.IsNullOrWhiteSpace(assetsDirectory)) return [];
         try
@@ -16,16 +16,18 @@ public static class CabinetReflectionFaceCatalog
             var faceRoot = Path.Combine(assets, "Faces");
             if (!Directory.Exists(faceRoot)) return [];
             var raw = new List<CabinetReflectionFaceChoice>();
-            foreach (var path in Directory.EnumerateFiles(faceRoot, ProjectAssetPathService.FaceManifestFileName, SearchOption.AllDirectories))
+            var mountedFaces = (cabinet?.FaceAssignments ?? []).Select(value => new { value.TargetId, Path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(assets)!, value.FaceAssetPath.Replace('/', Path.DirectorySeparatorChar))) }).ToArray();
+            foreach (var mounted in mountedFaces)
             {
                 try
                 {
+                    var path = Directory.Exists(mounted.Path) ? Path.Combine(mounted.Path, ProjectAssetPathService.FaceManifestFileName) : mounted.Path;
                     if (!FaceDocumentStorage.TryReadValidated(File.ReadAllText(path), out var file, out _)) continue;
                     var face = FaceDocumentStorage.ToModel(file);
                     if (string.IsNullOrWhiteSpace(face.Id)) continue;
                     var name = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(path, EditorAssetType.Face) ?? Path.GetFileName(Path.GetDirectoryName(path));
                     var relative = ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(Path.GetFileName(assets), Path.GetRelativePath(assets, Path.GetDirectoryName(path)!)));
-                    raw.Add(new(face.Id.Trim(), name, relative, name, face.AssignedCabinetFaceTargetId));
+                    raw.Add(new(face.Id.Trim(), name, relative, name, mounted.TargetId));
                 }
                 catch (Exception exception) when (IsExpectedDiscoveryFailure(exception)) { }
             }

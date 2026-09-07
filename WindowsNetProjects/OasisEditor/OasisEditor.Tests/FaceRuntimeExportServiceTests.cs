@@ -160,7 +160,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         {
             Id = "face-runtime",
             Title = "Runtime Face",
-            AssignedCabinetAssetPath = "Assets/Cabinets/cabinet.asset",
             SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 4, Height = 4 },
             Artwork = new FaceArtworkModel
             {
@@ -623,12 +622,14 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Theory]
-    [InlineData("", "Face reel has no ReelSpecificationId")]
     [InlineData("unknown", "does not exist")]
     public void CreateManifest_WithUnresolvedReelSpecification_Throws(string specificationId, string expected)
     {
         var document = CreateReelDocument(specificationId, 1, 1, 1000, 1000);
-        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50));
+        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50)) with
+        {
+            ReelAssignments = [new CabinetReelAssignment(MachineObjectReference.Reel(1), specificationId)]
+        };
 
         var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet)));
 
@@ -639,13 +640,26 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Fact]
-    public void CreateManifest_WithMissingCabinet_Throws()
+    public void CreateManifest_StandaloneReelLeavesPhysicalDimensionsUnresolved()
     {
         var document = CreateReelDocument("standard", 1, 1, 1000, 1000);
 
-        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100));
+        var reel = Assert.Single(new FaceRuntimeExportService().CreateManifest(document, 100, 100).Reels);
+        Assert.Null(reel.PhysicalWidth);
+        Assert.Null(reel.PhysicalRadius);
+    }
 
-        Assert.Contains("Face has no assigned Cabinet", exception.Message);
+    [Fact]
+    public void CreateManifest_WithMissingLogicalReelAssignment_Throws()
+    {
+        var document = CreateReelDocument("standard", 1, 1, 1000, 1000);
+        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50)) with { ReelAssignments = [] };
+
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet)));
+
+        Assert.Contains("reel:1", exception.Message);
+        Assert.Contains("no assignment", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Cabinet asset", exception.Message);
     }
 
     [Fact]
@@ -1037,7 +1051,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         {
             Id = "face-runtime",
             Title = title,
-            AssignedCabinetAssetPath = "Assets/Cabinets/cabinet.asset",
             SourceRegion = new FaceSourceRegionModel
             {
                 X = 0,
@@ -1084,7 +1097,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
                     Width = 1,
                     Height = 4,
                     LinkedMachineObjectReference = MachineObjectReference.Reel(1),
-                    ReelSpecificationId = "standard",
                     Stops = 20
                 }
             ]
@@ -1099,14 +1111,12 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         {
             Id = document.Id,
             Title = document.Title,
-            AssignedCabinetAssetPath = document.AssignedCabinetAssetPath,
             SourceRegion = document.SourceRegion,
             MaskLayer = document.MaskLayer,
             Elements = document.Elements.Select(element => element is FaceReelDisplayElement reel
                 ? new FaceReelDisplayElement
                 {
-                    ObjectId = reel.ObjectId, Name = reel.Name, X = reel.X, Y = reel.Y, Width = reel.Width, Height = reel.Height, LinkedMachineObjectReference = reel.LinkedMachineObjectReference,
-                    ReelSpecificationId = reel.ReelSpecificationId, Stops = reel.Stops, AssetPath = reelBandPath, IsOpaqueReel = isOpaque, ReelLampTransmissionMaskAssetPath = transmissionMaskPath
+                    ObjectId = reel.ObjectId, Name = reel.Name, X = reel.X, Y = reel.Y, Width = reel.Width, Height = reel.Height, LinkedMachineObjectReference = reel.LinkedMachineObjectReference, Stops = reel.Stops, AssetPath = reelBandPath, IsOpaqueReel = isOpaque, ReelLampTransmissionMaskAssetPath = transmissionMaskPath
                 }
                 : element).ToArray()
         };
@@ -1116,18 +1126,18 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     {
         return new FaceDocumentModel
         {
-            Id = "face-runtime", Title = "Runtime Face", AssignedCabinetAssetPath = "Assets/Cabinets/cabinet.asset", SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 1000, Height = 1000 },
-            Elements = [new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel 1", ReelSpecificationId = "standard", X = 10, Y = 20, Width = 300, Height = 400, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(1), ReelLampsEnabled = reelLampsEnabled, ReelLamps = lamps }]
+            Id = "face-runtime", Title = "Runtime Face", SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 1000, Height = 1000 },
+            Elements = [new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel 1", X = 10, Y = 20, Width = 300, Height = 400, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(1), ReelLampsEnabled = reelLampsEnabled, ReelLamps = lamps }]
         };
     }
 
-    private static CabinetDocument CreateCabinet(params CabinetReelSpecification[] specifications) => new(
-        5,
-        new CabinetModelReference("Assets/Cabinets/cabinet.glb", 1.0, "Y"),
-        [],
-        CabinetPreviewSettings.Default,
-        specifications,
-        specifications.FirstOrDefault()?.Id);
+    private static CabinetDocument CreateCabinet(params CabinetReelSpecification[] specifications)
+    {
+        var assignments = Enumerable.Range(0, 4)
+            .Select(index => new CabinetReelAssignment(MachineObjectReference.Reel(index + 1), specifications[Math.Min(index, specifications.Length - 1)].Id))
+            .ToArray();
+        return new CabinetDocument(6, new CabinetModelReference("Assets/Cabinets/cabinet.glb", 1.0, "Y"), [], CabinetPreviewSettings.Default, specifications, specifications.FirstOrDefault()?.Id, ReelAssignments: assignments);
+    }
 
     private static FaceCabinetContext CreateCabinetContext(CabinetDocument cabinet) => new(cabinet, null, "Assets/Cabinets/cabinet.asset", null, null);
 
@@ -1140,7 +1150,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             {
                 ObjectId = $"reel-{i / 5 + 1}",
                 Name = $"Reel {i / 5 + 1}",
-                ReelSpecificationId = (string)reelData[i],
                 X = Convert.ToDouble(reelData[i + 1]),
                 Y = Convert.ToDouble(reelData[i + 2]),
                 Width = Convert.ToDouble(reelData[i + 3]),
@@ -1154,7 +1163,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         {
             Id = "face-runtime",
             Title = "Runtime Face",
-            AssignedCabinetAssetPath = "Assets/Cabinets/cabinet.asset",
             SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 1000, Height = 1000 },
             Elements = elements
         };

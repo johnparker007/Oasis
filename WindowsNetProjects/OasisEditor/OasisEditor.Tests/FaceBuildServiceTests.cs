@@ -383,14 +383,14 @@ public sealed class FaceBuildServiceTests
     }
 
     [Fact]
-    public void ArtworkCorrection_StandaloneFaceWithoutCabinetBuildsArtworkAndSkipsRuntimeAssets()
+    public void ArtworkCorrection_StandaloneFaceWithoutMaskBuildsArtworkAndSkipsRuntimeAssets()
     {
         var face = new FaceDocumentModel
         {
             Artwork = new FaceArtworkModel { OutputWidth = 4, OutputHeight = 4 },
             MaskLayer = new FaceMaskLayerModel { Width = 4, Height = 4 },
             Trays = [new FaceTrayModel { ObjectId = "tray-1" }],
-            Elements = [new FaceReelDisplayElement { ObjectId = "reel-1", ReelSpecificationId = "standard" }],
+            Elements = [new FaceReelDisplayElement { ObjectId = "reel-1",}],
             BuildState = FaceBuildStateFactory.CreateGeneratedState(true, true, true, false, false)
         };
         var configuration = new FaceRuntimeAssetsConfigurationService();
@@ -417,7 +417,7 @@ public sealed class FaceBuildServiceTests
     }
 
     [Fact]
-    public void StandaloneCabinetCapability_ConfiguresRuntimeAssetsAndRemovalReturnsToNotConfigured()
+    public void StandaloneRuntimeCapability_DoesNotDependOnCabinetOrReelPresence()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"oasis-runtime-capability-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
@@ -429,9 +429,9 @@ public sealed class FaceBuildServiceTests
                 [new CabinetReelSpecification("standard", "Standard", 210, 50)], "standard")));
             var face = new FaceDocumentModel
             {
-                AssignedCabinetAssetPath = "cabinet.cabinet3d",
                 Artwork = new FaceArtworkModel { OutputWidth = 4, OutputHeight = 4 },
-                Elements = [new FaceReelDisplayElement { ObjectId = "reel-1", ReelSpecificationId = "standard" }],
+                MaskLayer = new FaceMaskLayerModel { AssetPath = "Generated/Faces/Face/mask.png", Width = 4, Height = 4 },
+                Elements = [new FaceReelDisplayElement { ObjectId = "reel-1",}],
                 BuildState = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false)
             };
             var service = new FaceRuntimeAssetsConfigurationService();

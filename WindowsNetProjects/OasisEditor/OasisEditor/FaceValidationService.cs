@@ -30,125 +30,50 @@ public sealed class FaceValidationService
         ValidateArtworkAssets(faceDocument, project, diagnostics);
         ValidateMaskLayer(faceDocument, project, diagnostics);
         ValidateMachineReferences(faceDocument, diagnostics);
-        var cabinetContext = cabinetContextOrDocument as FaceCabinetContext;
-        var cabinetDocument = cabinetContext?.CabinetDocument ?? cabinetContextOrDocument as CabinetDocument;
-        ValidateCabinetContext(faceDocument, cabinetContext, diagnostics);
-        ValidateReelSpecifications(faceDocument, cabinetDocument, cabinetContext, diagnostics);
+        if (cabinetContextOrDocument is CabinetDocument cabinetDocument)
+        {
+            ValidateCabinetComposition(faceDocument, cabinetDocument, diagnostics);
+        }
+        else if (cabinetContextOrDocument is FaceCabinetContext { CabinetDocument: { } contextCabinet })
+        {
+            ValidateCabinetComposition(faceDocument, contextCabinet, diagnostics);
+        }
         diagnostics.AddRange(new FaceTrayAutoAuthoringService().Validate(faceDocument));
         return diagnostics;
     }
 
-
-    private static void ValidateCabinetContext(
-        FaceDocumentModel faceDocument,
-        FaceCabinetContext? cabinetContext,
-        List<FaceValidationDiagnostic> diagnostics)
+    private static void ValidateCabinetComposition(FaceDocumentModel face, CabinetDocument cabinet, List<FaceValidationDiagnostic> diagnostics)
     {
-        if (!faceDocument.Elements.OfType<FaceReelDisplayElement>().Any())
-        {
-            return;
-        }
+        var specifications = cabinet.ReelSpecifications ?? [];
+        if (!string.IsNullOrWhiteSpace(cabinet.DefaultReelSpecificationId)
+            && !specifications.Any(value => string.Equals(value.Id, cabinet.DefaultReelSpecificationId, StringComparison.Ordinal)))
+            diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelSpecification.DefaultMissing", $"Cabinet default reel specification '{cabinet.DefaultReelSpecificationId}' does not exist."));
+        foreach (var group in specifications.Where(value => !string.IsNullOrWhiteSpace(value.Id)).GroupBy(value => value.Id, StringComparer.Ordinal).Where(value => value.Count() > 1))
+            diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelSpecification.DuplicateId", $"Cabinet contains duplicate reel specification ID '{group.Key}'."));
+        foreach (var specification in specifications.Where(value => !value.HasValidDimensions))
+            diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelSpecification.InvalidDimensions", $"Cabinet reel specification '{specification.Id}' must have positive finite diameter and width values."));
 
-        if (cabinetContext is null)
+        foreach (var reel in face.Elements.OfType<FaceReelDisplayElement>())
         {
-            return;
-        }
-
-        if (!cabinetContext.HasCabinet && !string.IsNullOrWhiteSpace(cabinetContext.DiagnosticCode))
-        {
-            diagnostics.Add(new FaceValidationDiagnostic(
-                cabinetContext.DiagnosticCode == "Face.Cabinet.NotAssigned" ? FaceValidationSeverity.Warning : FaceValidationSeverity.Error,
-                cabinetContext.DiagnosticCode,
-                cabinetContext.DiagnosticMessage ?? "Face Cabinet context could not be resolved."));
-        }
-    }
-
-    private static void ValidateReelSpecifications(
-        FaceDocumentModel faceDocument,
-        CabinetDocument? cabinetDocument,
-        FaceCabinetContext? cabinetContext,
-        List<FaceValidationDiagnostic> diagnostics)
-    {
-        if (cabinetDocument is null)
-        {
-            if (cabinetContext is not null)
+            var machineReference = reel.LinkedMachineObjectReference;
+            if (machineReference is null || machineReference.Value.Kind != MachineObjectKind.Reel) continue;
+            var reference = machineReference.Value;
+            var assignments = (cabinet.ReelAssignments ?? []).Where(value => value.MachineReelReference == reference).ToArray();
+            if (assignments.Length == 0)
             {
-                return;
-            }
-
-            foreach (var reel in faceDocument.Elements.OfType<FaceReelDisplayElement>().Where(reel => string.IsNullOrWhiteSpace(reel.ReelSpecificationId)))
-            {
-                diagnostics.Add(new FaceValidationDiagnostic(
-                    FaceValidationSeverity.Warning,
-                    "Face.ReelSpecification.MissingSelection",
-                    $"Reel display '{DisplayName(reel)}' does not have a selected cabinet reel specification."));
-            }
-
-            return;
-        }
-
-        var specifications = cabinetDocument.ReelSpecifications ?? [];
-        if (specifications.Length == 0)
-        {
-            diagnostics.Add(new FaceValidationDiagnostic(
-                FaceValidationSeverity.Error,
-                "Cabinet.ReelSpecification.None",
-                "Assigned Cabinet does not contain any reel specifications."));
-        }
-        if (string.IsNullOrWhiteSpace(cabinetDocument.DefaultReelSpecificationId))
-        {
-            diagnostics.Add(new FaceValidationDiagnostic(
-                FaceValidationSeverity.Error,
-                "Cabinet.ReelSpecification.DefaultMissing",
-                "Cabinet does not have a default reel specification selected."));
-        }
-        else if (!specifications.Any(specification => string.Equals(specification.Id, cabinetDocument.DefaultReelSpecificationId.Trim(), StringComparison.Ordinal)))
-        {
-            diagnostics.Add(new FaceValidationDiagnostic(
-                FaceValidationSeverity.Error,
-                "Cabinet.ReelSpecification.DefaultMissing",
-                $"Cabinet default reel specification '{cabinetDocument.DefaultReelSpecificationId}' does not exist."));
-        }
-
-        foreach (var duplicateGroup in specifications.Where(specification => !string.IsNullOrWhiteSpace(specification.Id)).GroupBy(specification => specification.Id.Trim(), StringComparer.Ordinal).Where(group => group.Count() > 1))
-        {
-            diagnostics.Add(new FaceValidationDiagnostic(
-                FaceValidationSeverity.Error,
-                "Cabinet.ReelSpecification.DuplicateId",
-                $"Cabinet contains duplicate reel specification ID '{duplicateGroup.Key}'."));
-        }
-
-        foreach (var specification in specifications)
-        {
-            if (string.IsNullOrWhiteSpace(specification.Id) || !specification.HasValidDimensions)
-            {
-                diagnostics.Add(new FaceValidationDiagnostic(
-                    FaceValidationSeverity.Error,
-                    "Cabinet.ReelSpecification.InvalidDimensions",
-                    $"Cabinet reel specification '{(string.IsNullOrWhiteSpace(specification.Id) ? specification.Name : specification.Id)}' must have positive finite diameter and width values."));
-            }
-        }
-
-        foreach (var reel in faceDocument.Elements.OfType<FaceReelDisplayElement>())
-        {
-            if (string.IsNullOrWhiteSpace(reel.ReelSpecificationId))
-            {
-                diagnostics.Add(new FaceValidationDiagnostic(
-                    FaceValidationSeverity.Error,
-                    "Face.ReelSpecification.MissingSelection",
-                    $"Reel display '{DisplayName(reel)}' does not have a selected cabinet reel specification."));
+                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.Missing", $"Cabinet has no physical reel assignment for logical reel '{reference}'."));
                 continue;
             }
-
-            if (!specifications.Any(specification => string.Equals(specification.Id, reel.ReelSpecificationId.Trim(), StringComparison.Ordinal)))
+            if (assignments.Length > 1)
             {
-                diagnostics.Add(new FaceValidationDiagnostic(
-                    FaceValidationSeverity.Error,
-                    "Face.ReelSpecification.UnknownSelection",
-                    $"Reel display '{DisplayName(reel)}' references unknown cabinet reel specification '{reel.ReelSpecificationId}'."));
+                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.Duplicate", $"Cabinet has duplicate physical reel assignments for logical reel '{reference}'."));
+                continue;
             }
+            if (!specifications.Any(value => string.Equals(value.Id, assignments[0].ReelSpecificationId, StringComparison.Ordinal)))
+                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.SpecificationMissing", $"Logical reel '{reference}' references Cabinet reel specification '{assignments[0].ReelSpecificationId}', which does not exist."));
         }
     }
+
 
     private static void ValidateSourcePanel(
         FaceDocumentModel faceDocument,

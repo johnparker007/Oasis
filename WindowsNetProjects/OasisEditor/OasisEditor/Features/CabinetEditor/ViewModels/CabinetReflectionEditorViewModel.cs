@@ -88,7 +88,7 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
         if (_disposed) return;
         var receiverId = Selected?.Id; var sourceIndex = SelectedSource?.Index;
         List<CabinetReflectionFaceChoice> discovered;
-        try { discovered = CabinetReflectionFaceCatalog.Discover(_projectAccessor?.Invoke()?.AssetsDirectory).ToList(); }
+        try { discovered = CabinetReflectionFaceCatalog.Discover(_projectAccessor?.Invoke()?.AssetsDirectory, _document.GetCabinetDocument()).ToList(); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or ObjectDisposedException or System.Security.SecurityException) { discovered = []; }
         var storedIds = (_document.GetCabinetDocument().Reflections ?? []).SelectMany(item => item.Sources ?? []).Select(item => item.FaceId).Where(id => !string.IsNullOrWhiteSpace(id));
         foreach (var missing in storedIds.Where(id => discovered.All(choice => choice.FaceId != id)).Distinct(StringComparer.Ordinal)) discovered.Add(new(missing, $"Missing Face ({missing})", string.Empty, $"Missing Face ({missing})", null, true));
