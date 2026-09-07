@@ -8,7 +8,6 @@ public sealed record FaceRuntimeAssetsCapability(bool IsConfigured, FaceCabinetC
 /// </summary>
 public sealed class FaceRuntimeAssetsConfigurationService
 {
-    private readonly FaceCabinetContextResolver _cabinetResolver = new();
     private readonly FaceRuntimeExportService _runtimeExporter = new();
 
     public FaceRuntimeAssetsCapability Evaluate(FaceDocumentModel face, EditorProject? project,
@@ -19,12 +18,20 @@ public sealed class FaceRuntimeAssetsConfigurationService
         {
             return new(false, null, "No project is open.");
         }
-        var cabinet = new FaceCabinetContext(null, null, null, null, null);
-        if (face.Elements.OfType<FaceReelDisplayElement>().Any())
+        if (face.Artwork is null)
         {
-            return new(false, cabinet, "Standalone Face runtime export cannot resolve physical reels; build the Cabinet composition to export reels.");
+            return new(false, null, "Face artwork is not configured.");
         }
-        return new(true, cabinet, null);
+        var context = new FaceCabinetContext(null, null, null, null, null);
+        try
+        {
+            _runtimeExporter.ValidateStandaloneBuildContext(face, context);
+            return new(true, context, null);
+        }
+        catch (Exception exception)
+        {
+            return new(false, context, exception.Message);
+        }
     }
 
     public void Reconcile(FaceDocumentModel face, FaceRuntimeAssetsCapability capability)

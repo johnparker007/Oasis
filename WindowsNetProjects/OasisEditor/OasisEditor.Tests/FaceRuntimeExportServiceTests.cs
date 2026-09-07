@@ -626,7 +626,10 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     public void CreateManifest_WithUnresolvedReelSpecification_Throws(string specificationId, string expected)
     {
         var document = CreateReelDocument(specificationId, 1, 1, 1000, 1000);
-        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50));
+        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50)) with
+        {
+            ReelAssignments = [new CabinetReelAssignment(MachineObjectReference.Reel(1), specificationId)]
+        };
 
         var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet)));
 
@@ -637,13 +640,26 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Fact]
-    public void CreateManifest_WithMissingCabinet_Throws()
+    public void CreateManifest_StandaloneReelLeavesPhysicalDimensionsUnresolved()
     {
         var document = CreateReelDocument("standard", 1, 1, 1000, 1000);
 
-        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100));
+        var reel = Assert.Single(new FaceRuntimeExportService().CreateManifest(document, 100, 100).Reels);
+        Assert.Null(reel.PhysicalWidth);
+        Assert.Null(reel.PhysicalRadius);
+    }
 
-        Assert.Contains("Face has no assigned Cabinet", exception.Message);
+    [Fact]
+    public void CreateManifest_WithMissingLogicalReelAssignment_Throws()
+    {
+        var document = CreateReelDocument("standard", 1, 1, 1000, 1000);
+        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50)) with { ReelAssignments = [] };
+
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet)));
+
+        Assert.Contains("reel:1", exception.Message);
+        Assert.Contains("no assignment", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Cabinet asset", exception.Message);
     }
 
     [Fact]
@@ -1115,13 +1131,13 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         };
     }
 
-    private static CabinetDocument CreateCabinet(params CabinetReelSpecification[] specifications) => new(
-        6,
-        new CabinetModelReference("Assets/Cabinets/cabinet.glb", 1.0, "Y"),
-        [],
-        CabinetPreviewSettings.Default,
-        specifications,
-        specifications.FirstOrDefault()?.Id);
+    private static CabinetDocument CreateCabinet(params CabinetReelSpecification[] specifications)
+    {
+        var assignments = Enumerable.Range(0, 4)
+            .Select(index => new CabinetReelAssignment(MachineObjectReference.Reel(index + 1), specifications[Math.Min(index, specifications.Length - 1)].Id))
+            .ToArray();
+        return new CabinetDocument(6, new CabinetModelReference("Assets/Cabinets/cabinet.glb", 1.0, "Y"), [], CabinetPreviewSettings.Default, specifications, specifications.FirstOrDefault()?.Id, ReelAssignments: assignments);
+    }
 
     private static FaceCabinetContext CreateCabinetContext(CabinetDocument cabinet) => new(cabinet, null, "Assets/Cabinets/cabinet.asset", null, null);
 

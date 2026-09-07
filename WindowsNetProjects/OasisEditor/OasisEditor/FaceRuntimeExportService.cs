@@ -9,7 +9,7 @@ namespace OasisEditor;
 
 public sealed class FaceRuntimeExportService
 {
-    public const int RuntimeManifestSchemaVersion = 8;
+    public const int RuntimeManifestSchemaVersion = 9;
     public const string RuntimeDirectoryName = "runtime";
     public const string ManifestFileName = "face.runtime.json";
     public const string ArtworkFileName = "artwork.png";
@@ -135,17 +135,9 @@ public sealed class FaceRuntimeExportService
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(cabinetContext);
-        if (!cabinetContext.HasCabinet)
-        {
-            throw new InvalidOperationException(cabinetContext.DiagnosticMessage ?? "Face has no Cabinet context.");
-        }
         var width = ResolveRuntimeWidth(faceDocument);
         var height = ResolveRuntimeHeight(faceDocument);
         _runtimeTextureGenerator.CreatePlan(faceDocument, width, height);
-        foreach (var reel in faceDocument.Elements.OfType<FaceReelDisplayElement>())
-        {
-            _ = ResolveReelPhysicalDimensions(faceDocument, reel, cabinetContext);
-        }
     }
 
     public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceCabinetContext? cabinetContext = null)
@@ -421,7 +413,9 @@ public sealed class FaceRuntimeExportService
 
     private static FaceRuntimeReelManifestEntry CreateReelManifestEntry(FaceDocumentModel faceDocument, FaceReelDisplayElement element, FaceCabinetContext? cabinetContext)
     {
-        var dimensions = ResolveReelPhysicalDimensions(faceDocument, element, cabinetContext);
+        var dimensions = cabinetContext?.CabinetDocument is null
+            ? (ResolvedReelPhysicalDimensions?)null
+            : ResolveReelPhysicalDimensions(faceDocument, element, cabinetContext);
         return new FaceRuntimeReelManifestEntry
         {
             ObjectId = element.ObjectId,
@@ -435,8 +429,8 @@ public sealed class FaceRuntimeExportService
             ReelLampsEnabled = element.ReelLampsEnabled,
             ReelLamps = element.ReelLamps.Select(CreateReelLampManifestEntry).ToArray(),
             TransmissionMask = element.IsOpaqueReel ? ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(ReelBandDirectoryName, CreateReelTransmissionMaskFileName(element))) : null,
-            PhysicalWidth = dimensions.WidthMm,
-            PhysicalRadius = dimensions.RadiusMm,
+            PhysicalWidth = dimensions?.WidthMm,
+            PhysicalRadius = dimensions?.RadiusMm,
             X = element.X,
             Y = element.Y,
             Width = element.Width,
@@ -754,8 +748,8 @@ public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEnt
     public int Stops { get; init; }
     public bool IsReversed { get; init; }
     public double BandOffset { get; init; }
-    public double PhysicalWidth { get; init; }
-    public double PhysicalRadius { get; init; }
+    public double? PhysicalWidth { get; init; }
+    public double? PhysicalRadius { get; init; }
     public string? TransmissionMask { get; init; }
     public bool ReelLampsEnabled { get; init; } = true;
     public IReadOnlyList<FaceRuntimeReelLampManifestEntry> ReelLamps { get; init; } = [];

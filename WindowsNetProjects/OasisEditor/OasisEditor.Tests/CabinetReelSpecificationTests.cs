@@ -135,7 +135,7 @@ public sealed class CabinetReelSpecificationTests
         {
             Elements =
             [
-                new FaceReelDisplayElement { ObjectId = "reel", Name = "Reel",}
+                new FaceReelDisplayElement { ObjectId = "reel", Name = "Reel", LinkedMachineObjectReference = MachineObjectReference.Reel(1) }
             ]
         };
         var cabinet = new CabinetDocument(
@@ -148,14 +148,15 @@ public sealed class CabinetReelSpecificationTests
                 new CabinetReelSpecification("dup", "Duplicate B", 210, 50),
                 new CabinetReelSpecification("bad", "Bad", 0, 50)
             ],
-            "default-missing");
+            "default-missing",
+            ReelAssignments: [new CabinetReelAssignment(MachineObjectReference.Reel(1), "missing")]);
 
         var diagnostics = new FaceValidationService().Validate(face, null, [], cabinet);
 
         Assert.Contains(diagnostics, diagnostic => diagnostic.Code == "Cabinet.ReelSpecification.DefaultMissing");
         Assert.Contains(diagnostics, diagnostic => diagnostic.Code == "Cabinet.ReelSpecification.DuplicateId");
         Assert.Contains(diagnostics, diagnostic => diagnostic.Code == "Cabinet.ReelSpecification.InvalidDimensions");
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Code == "Face.ReelSpecification.UnknownSelection");
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Code == "Cabinet.ReelAssignment.SpecificationMissing");
     }
 
     [Fact]

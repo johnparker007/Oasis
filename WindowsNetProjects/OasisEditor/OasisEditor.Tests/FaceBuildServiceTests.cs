@@ -383,7 +383,7 @@ public sealed class FaceBuildServiceTests
     }
 
     [Fact]
-    public void ArtworkCorrection_StandaloneFaceWithoutCabinetBuildsArtworkAndSkipsRuntimeAssets()
+    public void ArtworkCorrection_StandaloneFaceWithoutCabinetBuildsRuntimeAssetsWithUnresolvedPhysicalReels()
     {
         var face = new FaceDocumentModel
         {
@@ -412,12 +412,12 @@ public sealed class FaceBuildServiceTests
 
         Assert.True(result.Succeeded);
         Assert.Equal(FaceBuildStatus.Current, face.BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
-        Assert.Equal(FaceBuildStatus.NotConfigured, face.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
-        Assert.False(runtimeInvoked);
+        Assert.Equal(FaceBuildStatus.Current, face.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
+        Assert.True(runtimeInvoked);
     }
 
     [Fact]
-    public void StandaloneCabinetCapability_ConfiguresRuntimeAssetsAndRemovalReturnsToNotConfigured()
+    public void StandaloneRuntimeCapability_DoesNotDependOnCabinetOrReelPresence()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"oasis-runtime-capability-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
@@ -446,7 +446,7 @@ public sealed class FaceBuildServiceTests
                 Artwork = face.Artwork, BuildState = face.BuildState, RuntimeRenderAssets = face.RuntimeRenderAssets
             };
             service.Reconcile(removed, service.Evaluate(removed, Project(directory), []));
-            Assert.Equal(FaceBuildStatus.NotConfigured, removed.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
+            Assert.NotEqual(FaceBuildStatus.NotConfigured, removed.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
         }
         finally
         {

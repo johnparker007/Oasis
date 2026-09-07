@@ -168,7 +168,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             cancellationToken.ThrowIfCancellationRequested();
             var assignment = assignments[index].Normalized();
             var manifestPath = ResolveFaceManifestPath(project, assignment.FaceAssetPath);
-            progress.Report((double)index / Math.Max(1, assignments.Length), $"Exporting mounted Face {index + 1} of {assignments.Length}: {assignment.FaceAssetPath}...");
+            progress.Report((double)index / Math.Max(1, assignments.Length), $"Exporting Face {index + 1} of {assignments.Length}: {assignment.FaceAssetPath}...");
             try
             {
                 if (!File.Exists(manifestPath)) throw new InvalidOperationException("referenced Face manifest was not found");
@@ -177,7 +177,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 var faceDocument = FaceDocumentStorage.ToModel(faceFile);
                 var faceAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(manifestPath, EditorAssetType.Face);
                 if (string.IsNullOrWhiteSpace(faceAssetName)) throw new InvalidOperationException("Face must be stored as Assets/Faces/<AssetName>/asset.face");
-                var targetOverride = cabinetDocument.GetTargetOverride(assignment.TargetId);
+                if (!TryResolveTargetOverride(cabinetDocument, assignment.TargetId, out var targetOverride))
+                    throw new InvalidOperationException(BuildMissingTargetOverrideMessage(faceDocument.Id, faceAssetName, assignment.TargetId, cabinetAssetPath, cabinetDocument.TargetOverrides));
                 var cabinetContext = new FaceCabinetContext(cabinetDocument, null, cabinetAssetPath, null, null);
                 var exportResult = _faceRuntimeExportService.Export(faceDocument, project, cabinetContext, manifestPath);
                 var buildFaceDirectory = Path.Combine(stagingRoot, "faces", _pathService.SanitizePathSegment(faceAssetName));
