@@ -383,7 +383,7 @@ public sealed class FaceBuildServiceTests
     }
 
     [Fact]
-    public void ArtworkCorrection_StandaloneFaceWithoutCabinetBuildsRuntimeAssetsWithUnresolvedPhysicalReels()
+    public void ArtworkCorrection_StandaloneFaceWithoutMaskBuildsArtworkAndSkipsRuntimeAssets()
     {
         var face = new FaceDocumentModel
         {
@@ -412,8 +412,8 @@ public sealed class FaceBuildServiceTests
 
         Assert.True(result.Succeeded);
         Assert.Equal(FaceBuildStatus.Current, face.BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
-        Assert.Equal(FaceBuildStatus.Current, face.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
-        Assert.True(runtimeInvoked);
+        Assert.Equal(FaceBuildStatus.NotConfigured, face.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
+        Assert.False(runtimeInvoked);
     }
 
     [Fact]
@@ -430,6 +430,7 @@ public sealed class FaceBuildServiceTests
             var face = new FaceDocumentModel
             {
                 Artwork = new FaceArtworkModel { OutputWidth = 4, OutputHeight = 4 },
+                MaskLayer = new FaceMaskLayerModel { AssetPath = "Generated/Faces/Face/mask.png", Width = 4, Height = 4 },
                 Elements = [new FaceReelDisplayElement { ObjectId = "reel-1",}],
                 BuildState = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false)
             };
@@ -446,7 +447,7 @@ public sealed class FaceBuildServiceTests
                 Artwork = face.Artwork, BuildState = face.BuildState, RuntimeRenderAssets = face.RuntimeRenderAssets
             };
             service.Reconcile(removed, service.Evaluate(removed, Project(directory), []));
-            Assert.NotEqual(FaceBuildStatus.NotConfigured, removed.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
+            Assert.Equal(FaceBuildStatus.NotConfigured, removed.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
         }
         finally
         {

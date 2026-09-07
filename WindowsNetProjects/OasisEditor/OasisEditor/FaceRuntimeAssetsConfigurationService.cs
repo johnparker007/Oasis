@@ -22,6 +22,10 @@ public sealed class FaceRuntimeAssetsConfigurationService
         {
             return new(false, null, "Face artwork is not configured.");
         }
+        if (face.MaskLayer is null || string.IsNullOrWhiteSpace(face.MaskLayer.AssetPath))
+        {
+            return new(false, null, "Face mask output is not configured.");
+        }
         var context = new FaceCabinetContext(null, null, null, null, null);
         try
         {
