@@ -1,8 +1,10 @@
 using MfmeFmlDecoder.Model;
 using MfmeFmlDecoder.src.Decoder.Component.Core;
 using MfmeFmlDecoder.src.Model.Component;
+using MfmeFmlDecoder.Utilities;
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace MfmeFmlDecoder.src.Decoder.Component
 {
@@ -46,6 +48,8 @@ namespace MfmeFmlDecoder.src.Decoder.Component
                     RewriteTriggerOffsetDelta: 0,
                     ValidAngleOffsetDelta: 0));
 
+            WriteDiagnosticDump(componentOffset, componentId, parseData, offset);
+
             var parseOptions = ExtendedTagParser.Options
                 .WithBitmapTags(0x03, 0x36, 0x0C)
                 .WithFlagDropdown(
@@ -61,6 +65,61 @@ namespace MfmeFmlDecoder.src.Decoder.Component
             ApplyExtendedTags(component, parseResult, ComponentTagMap);
 
             return component;
+        }
+
+        private static void WriteDiagnosticDump(long componentOffset, uint componentId, byte[] parseData, long offset)
+        {
+            const int completeDumpThreshold = 512;
+            const int bytesBeforeOffset = 64;
+            const int bytesFromOffset = 128;
+
+            RunLog.WriteDiagnosticLine("=== MFME Background diagnostic begin ===");
+            RunLog.WriteDiagnosticLine($"componentOffset={componentOffset} (0x{componentOffset:X})");
+            RunLog.WriteDiagnosticLine($"componentId={componentId} (0x{componentId:X})");
+            RunLog.WriteDiagnosticLine($"parseDataLength={parseData.Length}");
+            RunLog.WriteDiagnosticLine($"extendedOffset=0x{offset:X} ({offset})");
+
+            if (parseData.Length <= completeDumpThreshold)
+            {
+                RunLog.WriteDiagnosticLine("decodedParseData=complete");
+                WriteHexRange(parseData, 0, parseData.Length);
+            }
+            else
+            {
+                int boundedOffset = checked((int)Math.Max(0, Math.Min(offset, parseData.Length)));
+                int contextStart = Math.Max(0, boundedOffset - bytesBeforeOffset);
+                int contextEnd = Math.Min(parseData.Length, boundedOffset + bytesFromOffset);
+
+                RunLog.WriteDiagnosticLine(
+                    $"decodedParseData=context [0x{contextStart:X}, 0x{contextEnd:X})");
+                WriteHexRange(parseData, contextStart, contextEnd);
+            }
+
+            RunLog.WriteDiagnosticLine("=== MFME Background diagnostic end ===");
+        }
+
+        private static void WriteHexRange(byte[] data, int start, int end)
+        {
+            const int bytesPerLine = 16;
+
+            if (start >= end)
+            {
+                RunLog.WriteDiagnosticLine("(no data)");
+                return;
+            }
+
+            for (int lineOffset = start; lineOffset < end; lineOffset += bytesPerLine)
+            {
+                int lineEnd = Math.Min(lineOffset + bytesPerLine, end);
+                var line = new StringBuilder($"{lineOffset:X8}:");
+
+                for (int byteOffset = lineOffset; byteOffset < lineEnd; byteOffset++)
+                {
+                    line.Append($" {data[byteOffset]:X2}");
+                }
+
+                RunLog.WriteDiagnosticLine(line.ToString());
+            }
         }
 
         private void ApplyExtendedTags(Background component, ExtendedTagParser.ParseResult parseResult, ComponentTagMap componentTagMap)
