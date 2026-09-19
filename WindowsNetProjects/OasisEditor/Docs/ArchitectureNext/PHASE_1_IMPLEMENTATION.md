@@ -6,7 +6,17 @@
 - Machine schema 1 is stored at `Assets/Machines/<Name>/asset.machine`. It owns a stable GUID, display name, Cabinet asset reference, Cabinet-target-to-Face assignments, temporary logical-reel-to-Cabinet-specification assignments, a discriminated Emulation runtime (`platform` plus only that platform's settings), and inputs.
 - Cabinet schema 7 owns its model, target configuration, reflection receiver configuration, preview settings, and temporary physical reel specifications/default only. Installed Face and logical reel assignments are not part of Cabinet.
 - Cabinet reflection sources serialize `sourceSurfaceTargetId`. A Machine build resolves that target through its surface assignments.
-- Machine runtime schema 4 includes Machine identity, Cabinet and Face composition, emulation runtime configuration, and inputs. Oasis Player validates and retains the runtime definition; Player-side Fabric execution is intentionally deferred.
+- Machine runtime schema 5 includes Machine identity, Cabinet and Face composition, emulation runtime configuration, and inputs. Oasis Player validates and retains the runtime definition; Player-side Fabric execution is intentionally deferred.
+
+## Active Machine and composition editing
+
+The active Machine is the actual open `DocumentTabViewModel`; there is no second mutable Machine clone. Runtime settings, MFME inputs, Cabinet selection, Face assignments, and reel assignments all execute document commands against that same model and use its dirty/save/undo lifecycle. A sole Machine is opened automatically. Zero or multiple Machines leave the context empty until a Machine document is explicitly selected.
+
+The Machine editor discovers Cabinet and Face package assets, detects the selected Cabinet's valid `OasisFace_*` targets, and exposes Face and temporary Cabinet reel-specification dropdowns including `(None)`. The package directory supplies the asset/tab title while `Machine.DisplayName` remains independently authored.
+
+Standalone Cabinet tabs render no mounted Faces without context. When an active Machine references that Cabinet, the Cabinet viewer receives that Machine tab explicitly and previews only its `SurfaceAssignments`; it never scans Machines or persists composition on Cabinet.
+
+Runtime schema 5 stores the complete selected platform settings in `platformSettingsJson`, a concrete JSON string Unity `JsonUtility` can reliably deserialize and validate. Oasis Player deliberately retains but does not execute those settings in Phase 1.
 
 ## Phase-1 reel bridge
 

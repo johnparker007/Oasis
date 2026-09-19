@@ -37,6 +37,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private bool _disposed;
     private bool _initialized;
+    private DocumentTabViewModel? _machineCompositionContext;
 
     public CabinetModelDocumentViewModel(ICabinetModelLoader modelLoader, DocumentTabViewModel document, Func<IReadOnlyList<DocumentTabViewModel>>? openDocumentsAccessor = null, Func<EditorProject?>? projectAccessor = null)
     {
@@ -65,6 +66,12 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         {
             _ = LoadAsync();
         }
+    }
+
+    public void SetMachineCompositionContext(DocumentTabViewModel? machineDocument)
+    {
+        _machineCompositionContext = machineDocument;
+        RefreshFacePreviews();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -220,8 +227,29 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
 
     public void RefreshFacePreviews()
     {
-        // Cabinet is reusable and has no installed Faces. Machine composition preview supplies this context.
-        Viewport.FacePreviewModel = null;
+        _pendingLivePreviewDocumentIds.Clear(); _livePreviewRefreshTimer.Stop(); _facePreviewEntriesByDocumentId.Clear();
+        var validTargets = FaceTargets.Where(target => target.IsValid).ToDictionary(target => target.Id, StringComparer.Ordinal);
+        var project = _projectAccessor?.Invoke();
+        if (validTargets.Count == 0 || _openDocumentsAccessor is null || project is null || _machineCompositionContext is null)
+        { Viewport.FacePreviewModel = null; return; }
+        var machine = _machineCompositionContext.GetMachineDocument();
+        if (string.IsNullOrWhiteSpace(machine.CabinetAssetPath)
+            || !string.Equals(Path.GetFullPath(_document.FilePath), new ProjectAssetPathService().ResolveProjectRelativePath(project, machine.CabinetAssetPath), StringComparison.OrdinalIgnoreCase))
+        { Viewport.FacePreviewModel = null; return; }
+        var previewGroup = new Model3DGroup();
+        foreach (var assignment in machine.SurfaceAssignments)
+        {
+            var manifestPath = new ProjectAssetPathService().ResolveProjectRelativePath(project, assignment.FaceAssetPath);
+            var faceTab = _openDocumentsAccessor().FirstOrDefault(candidate => candidate.Document.DocumentType == EditorDocumentType.Face && string.Equals(Path.GetFullPath(candidate.FilePath), Path.GetFullPath(manifestPath), StringComparison.OrdinalIgnoreCase));
+            if (faceTab is null || !validTargets.TryGetValue(assignment.TargetId, out var target)) continue;
+            var preview = ResolvePreviewImage(faceTab, faceTab.GetFaceDocument(), SelectedLampPreviewMode, out var livePreviewTexture);
+            if (preview is null) continue;
+            var targetOverride = _document.GetCabinetDocument().GetTargetOverride(target.Id);
+            if (!TryCreatePreviewGeometry(target.Target, targetOverride, preview, out var geometry, out var imageBrush)) continue;
+            _facePreviewEntriesByDocumentId[faceTab.DocumentId] = new CabinetFacePreviewEntry(faceTab.DocumentId, target.Id, geometry, imageBrush, livePreviewTexture);
+            previewGroup.Children.Add(geometry);
+        }
+        Viewport.FacePreviewModel = previewGroup.Children.Count == 0 ? null : previewGroup;
     }
 
     public void QueueFaceRuntimePreviewRefresh(Guid faceDocumentId)

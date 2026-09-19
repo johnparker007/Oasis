@@ -793,7 +793,7 @@ public sealed class DocumentWorkspaceViewModel
         }
 
         if (document.Document.DocumentType == EditorDocumentType.Machine)
-            return MachineDocumentStorage.Serialize(document.GetMachineDocument() with { DisplayName = document.Document.Title });
+            return MachineDocumentStorage.Serialize(document.GetMachineDocument());
 
         var persisted = new
         {

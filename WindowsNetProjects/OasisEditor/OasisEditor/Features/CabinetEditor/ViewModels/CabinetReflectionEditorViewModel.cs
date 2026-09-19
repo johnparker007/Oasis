@@ -27,14 +27,14 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
     {
         _document = document; _projectAccessor = projectAccessor; _context = SynchronizationContext.Current;
         AddCommand = new RelayCommand(Add, () => Targets.Count > 0); RemoveCommand = new RelayCommand(Remove, () => Selected is not null); DuplicateCommand = new RelayCommand(Duplicate, () => Selected is not null);
-        AddSourceCommand = new RelayCommand(AddSource, () => Selected is not null && Selected.Sources.Length < CabinetReflectionContract.MaximumSources && FaceChoices.Count > 0);
+        AddSourceCommand = new RelayCommand(AddSource, () => Selected is not null && Selected.Sources.Length < CabinetReflectionContract.MaximumSources && SurfaceChoices.Count > 0);
         RemoveSourceCommand = new RelayCommand(RemoveSource, () => SelectedSource is not null); DeriveCommand = new RelayCommand(Derive, () => SelectedSource is not null);
         RefreshCommand = new RelayCommand(Refresh); BrowseMaskCommand = new RelayCommand(BrowseMask, () => Selected is not null); ClearMaskCommand = new RelayCommand(() => Mask = string.Empty, () => Selected is not null);
     }
     public event PropertyChangedEventHandler? PropertyChanged;
     public ObservableCollection<CabinetReflectionDefinition> Items { get; } = new();
     public ObservableCollection<CabinetReflectionReceiverTarget> Targets { get; } = new();
-    public ObservableCollection<CabinetReflectionFaceChoice> FaceChoices { get; } = new();
+    public ObservableCollection<CabinetReflectionSurfaceChoice> SurfaceChoices { get; } = new();
     public ObservableCollection<CabinetReflectionSourceViewModel> Sources { get; } = new();
     public ObservableCollection<CabinetFaceTarget> FaceTargets { get; } = new();
     public ICommand AddCommand { get; } public ICommand RemoveCommand { get; } public ICommand DuplicateCommand { get; } public ICommand AddSourceCommand { get; } public ICommand RemoveSourceCommand { get; } public ICommand DeriveCommand { get; } public ICommand RefreshCommand { get; }
@@ -53,7 +53,7 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
     public string Mask { get => Selected?.VisibilityMask ?? string.Empty; set => Update(item => item with { VisibilityMask = string.IsNullOrWhiteSpace(value) ? null : value.Trim() }); }
     public double Strength { get => Selected?.Settings.Strength ?? 0; set => UpdateSettings(s => s with { Strength = value }); } public double Artwork { get => Selected?.Settings.UnlitArtworkStrength ?? 0; set => UpdateSettings(s => s with { UnlitArtworkStrength = value }); } public double Lamps { get => Selected?.Settings.LitLampStrength ?? 0; set => UpdateSettings(s => s with { LitLampStrength = value }); } public double Roughness { get => Selected?.Settings.Roughness ?? 0; set => UpdateSettings(s => s with { Roughness = value }); } public double Distortion { get => Selected?.Settings.Distortion ?? 0; set => UpdateSettings(s => s with { Distortion = value }); }
     public double FresnelStrength { get => Selected?.Settings.FresnelStrength ?? 0; set => UpdateSettings(s => s with { FresnelStrength = value }); } public double FresnelPower { get => Selected?.Settings.FresnelPower ?? 0; set => UpdateSettings(s => s with { FresnelPower = value }); } public double EdgeFade { get => Selected?.Settings.EdgeFade ?? 0; set => UpdateSettings(s => s with { EdgeFade = value }); }
-    public string Validation { get { if (Selected is null) return string.Empty; if (Items.Count(item => item.Id == Selected.Id) > 1) return "Duplicate receiver ID."; if (Target is null) return "Cabinet renderer is missing."; if (Slot is null) return "Material slot is invalid."; if (Selected.Settings.Enabled && Sources.Count == 0) return "Enabled receivers require at least one source Face."; if (Sources.Count > CabinetReflectionContract.MaximumSources) return $"A receiver supports at most {CabinetReflectionContract.MaximumSources} source Faces."; if (Sources.GroupBy(source => source.FaceId).Any(group => group.Count() > 1)) return "Duplicate source Face IDs are not allowed within a receiver."; foreach (var source in Sources) { if (source.Choice?.IsMissing != false) return $"Source Face '{source.FaceId}' is missing. Choose another Face or remove this source."; if (!CabinetReflectionPlaneValidation.TryValidate(source.Model.Plane, out var error)) return $"Source Face '{source.Choice.Label}' plane is invalid: {error}"; } return "Valid"; } }
+    public string Validation { get { if (Selected is null) return string.Empty; if (Items.Count(item => item.Id == Selected.Id) > 1) return "Duplicate receiver ID."; if (Target is null) return "Cabinet renderer is missing."; if (Slot is null) return "Material slot is invalid."; if (Selected.Settings.Enabled && Sources.Count == 0) return "Enabled receivers require at least one source surface target."; if (Sources.Count > CabinetReflectionContract.MaximumSources) return $"A receiver supports at most {CabinetReflectionContract.MaximumSources} source surface targets."; if (Sources.GroupBy(source => source.SourceSurfaceTargetId).Any(group => group.Count() > 1)) return "Duplicate source surface target IDs are not allowed within a receiver."; foreach (var source in Sources) { if (source.Choice?.IsMissing != false) return $"Source surface target '{source.SourceSurfaceTargetId}' is missing. Choose another surface target or remove this source."; if (!CabinetReflectionPlaneValidation.TryValidate(source.Model.Plane, out var error)) return $"Source surface target '{source.Choice.Label}' plane is invalid: {error}"; } return "Valid"; } }
 
     public void Initialize()
     {
@@ -87,12 +87,12 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
     {
         if (_disposed) return;
         var receiverId = Selected?.Id; var sourceIndex = SelectedSource?.Index;
-        List<CabinetReflectionFaceChoice> discovered;
-        try { discovered = CabinetReflectionFaceCatalog.Discover(_projectAccessor?.Invoke()?.AssetsDirectory, _document.GetCabinetDocument()).ToList(); }
+        List<CabinetReflectionSurfaceChoice> discovered;
+        try { discovered = CabinetReflectionSurfaceCatalog.Discover(_projectAccessor?.Invoke()?.AssetsDirectory, _document.GetCabinetDocument()).ToList(); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or ObjectDisposedException or System.Security.SecurityException) { discovered = []; }
-        var storedIds = (_document.GetCabinetDocument().Reflections ?? []).SelectMany(item => item.Sources ?? []).Select(item => item.FaceId).Where(id => !string.IsNullOrWhiteSpace(id));
-        foreach (var missing in storedIds.Where(id => discovered.All(choice => choice.FaceId != id)).Distinct(StringComparer.Ordinal)) discovered.Add(new(missing, $"Missing Face ({missing})", string.Empty, $"Missing Face ({missing})", null, true));
-        FaceChoices.Clear(); foreach (var choice in discovered) FaceChoices.Add(choice);
+        var storedIds = (_document.GetCabinetDocument().Reflections ?? []).SelectMany(item => item.Sources ?? []).Select(item => item.SourceSurfaceTargetId).Where(id => !string.IsNullOrWhiteSpace(id));
+        foreach (var missing in storedIds.Where(id => discovered.All(choice => choice.SourceSurfaceTargetId != id)).Distinct(StringComparer.Ordinal)) discovered.Add(new(missing, $"Missing surface target ({missing})", string.Empty, $"Missing surface target ({missing})", null, true));
+        SurfaceChoices.Clear(); foreach (var choice in discovered) SurfaceChoices.Add(choice);
         Items.Clear(); foreach (var item in _document.GetCabinetDocument().Reflections ?? []) Items.Add(item);
         _selected = Items.FirstOrDefault(item => item.Id == receiverId) ?? Items.FirstOrDefault(); RebuildSources();
         SelectedSource = sourceIndex is int index ? Sources.ElementAtOrDefault(index) : Sources.FirstOrDefault(); RaiseAll();
@@ -132,12 +132,12 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
         }
     }
     private void RebuildSources() { Sources.Clear(); if (_selected is not null) for (var i = 0; i < _selected.Sources.Length; i++) Sources.Add(new(this, i, _selected.Sources[i])); _selectedSource = Sources.FirstOrDefault(); }
-    private void Add() { var target = Targets.FirstOrDefault(); if (target is null) return; var sources = FaceChoices.FirstOrDefault(choice => !choice.IsMissing) is { } choice ? new[] { NewSource(choice.FaceId) } : []; var item = new CabinetReflectionDefinition("reflection-" + Guid.NewGuid().ToString("N"), target.TargetPath, 0, sources, CabinetReflectionSettings.RoughPlastic); ExecuteAdd(item); if (Sources.Count > 0) Derive(); }
+    private void Add() { var target = Targets.FirstOrDefault(); if (target is null) return; var sources = SurfaceChoices.FirstOrDefault(choice => !choice.IsMissing) is { } choice ? new[] { NewSource(choice.SourceSurfaceTargetId) } : []; var item = new CabinetReflectionDefinition("reflection-" + Guid.NewGuid().ToString("N"), target.TargetPath, 0, sources, CabinetReflectionSettings.RoughPlastic); ExecuteAdd(item); if (Sources.Count > 0) Derive(); }
     private void ExecuteAdd(CabinetReflectionDefinition item) { _document.CommandService.Execute(CabinetMutationCommands.CreateAddReflectionCommand(_document.DocumentId, _document, item)); Refresh(); Selected = Items.First(candidate => candidate.Id == item.Id); }
-    private static CabinetReflectionSource NewSource(string faceId) => new(faceId, new(new(0, 0, 0), new(1, 0, 0), new(0, 1, 0), 1, 1));
+    private static CabinetReflectionSource NewSource(string sourceSurfaceTargetId) => new(sourceSurfaceTargetId, new(new(0, 0, 0), new(1, 0, 0), new(0, 1, 0), 1, 1));
     private void Remove() { if (Selected is null) return; _document.CommandService.Execute(CabinetMutationCommands.CreateDeleteReflectionCommand(_document.DocumentId, _document, Selected.Id)); Refresh(); }
     private void Duplicate() { if (Selected is null) return; ExecuteAdd(Selected with { Id = "reflection-" + Guid.NewGuid().ToString("N"), Sources = Selected.Sources.Select(source => source with { Plane = source.Plane with { Origin = source.Plane.Origin with { }, Right = source.Plane.Right with { }, Up = source.Plane.Up with { } } }).ToArray() }); }
-    private void AddSource() { if (Selected is null) return; var choice = FaceChoices.FirstOrDefault(candidate => !candidate.IsMissing && Selected.Sources.All(source => source.FaceId != candidate.FaceId)); if (choice is null) return; Update(item => item with { Sources = item.Sources.Append(NewSource(choice.FaceId)).ToArray() }); SelectedSource = Sources.LastOrDefault(); Derive(); }
+    private void AddSource() { if (Selected is null) return; var choice = SurfaceChoices.FirstOrDefault(candidate => !candidate.IsMissing && Selected.Sources.All(source => source.SourceSurfaceTargetId != candidate.SourceSurfaceTargetId)); if (choice is null) return; Update(item => item with { Sources = item.Sources.Append(NewSource(choice.SourceSurfaceTargetId)).ToArray() }); SelectedSource = Sources.LastOrDefault(); Derive(); }
     private void RemoveSource() { if (SelectedSource is null) return; var index = SelectedSource.Index; Update(item => item with { Sources = item.Sources.Where((_, i) => i != index).ToArray() }); }
     private void Derive() { if (SelectedSource is null) return; var targetId = SelectedSource.Choice?.CabinetTargetId; var target = FaceTargets.FirstOrDefault(item => item.Id == targetId); if (CabinetReflectionPlaneDeriver.TryDerive(target, out var plane, out _)) UpdateSource(SelectedSource.Index, source => source with { Plane = plane, PlaneSource = CabinetReflectionPlaneSource.Automatic }); }
     internal void UpdateSource(int index, Func<CabinetReflectionSource, CabinetReflectionSource> change) => Update(item => item with { Sources = item.Sources.Select((source, i) => i == index ? change(source) : source).ToArray() }, index);
@@ -152,8 +152,8 @@ public sealed class CabinetReflectionSourceViewModel : INotifyPropertyChanged
     private readonly CabinetReflectionEditorViewModel _owner; public int Index { get; } public CabinetReflectionSource Model { get; }
     public CabinetReflectionSourceViewModel(CabinetReflectionEditorViewModel owner, int index, CabinetReflectionSource model) { _owner = owner; Index = index; Model = model; }
     public event PropertyChangedEventHandler? PropertyChanged;
-    public string FaceId => Model.FaceId;
-    public CabinetReflectionFaceChoice? Choice { get => _owner.FaceChoices.FirstOrDefault(item => item.FaceId == Model.FaceId); set { if (value is not null) _owner.UpdateSource(Index, source => source with { FaceId = value.FaceId }); } }
+    public string SourceSurfaceTargetId => Model.SourceSurfaceTargetId;
+    public CabinetReflectionSurfaceChoice? Choice { get => _owner.SurfaceChoices.FirstOrDefault(item => item.SourceSurfaceTargetId == Model.SourceSurfaceTargetId); set { if (value is not null) _owner.UpdateSource(Index, source => source with { SourceSurfaceTargetId = value.SourceSurfaceTargetId }); } }
     public string PlaneSource { get => Model.PlaneSource; set => _owner.UpdateSource(Index, source => source with { PlaneSource = value }); }
     public double OriginX { get => Model.Plane.Origin.X; set => Plane(plane => plane with { Origin = plane.Origin with { X = value } }); } public double OriginY { get => Model.Plane.Origin.Y; set => Plane(plane => plane with { Origin = plane.Origin with { Y = value } }); } public double OriginZ { get => Model.Plane.Origin.Z; set => Plane(plane => plane with { Origin = plane.Origin with { Z = value } }); }
     public double RightX { get => Model.Plane.Right.X; set => Plane(plane => plane with { Right = plane.Right with { X = value } }); } public double RightY { get => Model.Plane.Right.Y; set => Plane(plane => plane with { Right = plane.Right with { Y = value } }); } public double RightZ { get => Model.Plane.Right.Z; set => Plane(plane => plane with { Right = plane.Right with { Z = value } }); }

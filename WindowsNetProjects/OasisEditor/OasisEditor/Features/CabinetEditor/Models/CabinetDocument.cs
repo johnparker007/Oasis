@@ -31,9 +31,9 @@ public sealed record CabinetReflectionSettings(bool Enabled, double Strength, do
     public CabinetReflectionSettings Normalized() => new(Enabled, Math.Clamp(Strength, 0, 2), Math.Clamp(UnlitArtworkStrength, 0, 2), Math.Clamp(LitLampStrength, 0, 4), Math.Clamp(FresnelPower, .1, 10), Math.Clamp(FresnelStrength, 0, 2), Math.Clamp(Roughness, 0, 1), Math.Clamp(Distortion, 0, .05), Math.Clamp(EdgeFade, 0, .25));
 }
 
-public sealed record CabinetReflectionSource([property: System.Text.Json.Serialization.JsonPropertyName("sourceSurfaceTargetId")] string FaceId, CabinetReflectionPlane Plane, string PlaneSource = CabinetReflectionPlaneSource.Automatic)
+public sealed record CabinetReflectionSource([property: System.Text.Json.Serialization.JsonPropertyName("sourceSurfaceTargetId")] string SourceSurfaceTargetId, CabinetReflectionPlane Plane, string PlaneSource = CabinetReflectionPlaneSource.Automatic)
 {
-    public CabinetReflectionSource Normalized() => this with { FaceId = FaceId?.Trim() ?? string.Empty };
+    public CabinetReflectionSource Normalized() => this with { SourceSurfaceTargetId = SourceSurfaceTargetId?.Trim() ?? string.Empty };
 }
 
 public sealed record CabinetReflectionDefinition(string Id, string TargetId, int MaterialSlot, CabinetReflectionSource[] Sources, CabinetReflectionSettings Settings, string? VisibilityMask = null)
@@ -43,7 +43,7 @@ public sealed record CabinetReflectionDefinition(string Id, string TargetId, int
 
 public static class CabinetReflectionContract { public const int MaximumSources = 4; }
 
-public static class CabinetReflectionPlaneSource { public const string Automatic = "Automatic from Face target"; public const string Manual = "Manual"; }
+public static class CabinetReflectionPlaneSource { public const string Automatic = "Automatic from surface target"; public const string Manual = "Manual"; }
 public static class CabinetReflectionPreset
 {
     public const string RoughPlastic = "Rough Plastic"; public const string PolishedChrome = "Polished Chrome"; public const string Custom = "Custom";

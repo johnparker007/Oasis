@@ -4,7 +4,7 @@ using Xunit;
 
 namespace OasisEditor.Tests;
 
-public sealed class CabinetReflectionFaceCatalogTests
+public sealed class CabinetReflectionSurfaceCatalogTests
 {
     [Fact]
     public void Discover_ReturnsReusableCabinetTargetIds_NotInstalledFaces()
@@ -13,9 +13,9 @@ public sealed class CabinetReflectionFaceCatalogTests
         {
             TargetOverrides = [CabinetTargetOverride.Default("OasisFace_TopGlass"), CabinetTargetOverride.Default("OasisFace_BottomGlass")]
         };
-        var choices = CabinetReflectionFaceCatalog.Discover("ignored", cabinet);
+        var choices = CabinetReflectionSurfaceCatalog.Discover("ignored", cabinet);
         Assert.Equal(2, choices.Count);
-        Assert.Contains(choices, item => item.FaceId == "OasisFace_TopGlass");
-        Assert.All(choices, item => Assert.Equal(item.FaceId, item.CabinetTargetId));
+        Assert.Contains(choices, item => item.SourceSurfaceTargetId == "OasisFace_TopGlass");
+        Assert.All(choices, item => Assert.Equal(item.SourceSurfaceTargetId, item.CabinetTargetId));
     }
 }

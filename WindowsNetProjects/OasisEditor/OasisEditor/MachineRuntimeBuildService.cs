@@ -21,7 +21,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string CabinetGlbFileName = "cabinet.glb";
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
-    public const int MachineSchemaVersion = 4;
+    public const int MachineSchemaVersion = 5;
     public const int CabinetSchemaVersion = 5;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -127,15 +127,15 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             var target = targets.SingleOrDefault(item => item.TargetPath == definition.TargetId) ?? throw new InvalidOperationException($"Reflection '{definition.Id}' cabinet renderer target was not found: '{definition.TargetId}'.");
             if (target.MaterialSlots.All(slot => slot.Index != definition.MaterialSlot)) throw new InvalidOperationException($"Reflection '{definition.Id}' material slot {definition.MaterialSlot} is invalid for '{definition.TargetId}'.");
             if (!claims.Add(definition.TargetId + ":" + definition.MaterialSlot)) throw new InvalidOperationException($"Multiple enabled reflections target '{definition.TargetId}' material slot {definition.MaterialSlot}.");
-            if (definition.Sources.Length == 0) throw new InvalidOperationException($"Reflection '{definition.Id}' in cabinet requires at least one source Face.");
+            if (definition.Sources.Length == 0) throw new InvalidOperationException($"Reflection '{definition.Id}' in cabinet requires at least one source surface target.");
             if (definition.Sources.Length > CabinetReflectionContract.MaximumSources) throw new InvalidOperationException($"Reflection '{definition.Id}' has {definition.Sources.Length} sources; the supported maximum is {CabinetReflectionContract.MaximumSources}.");
             var sourceIds = new HashSet<string>(StringComparer.Ordinal);
             foreach (var source in definition.Sources)
             {
-                var found = mountedTargets.TryGetValue(source.FaceId, out var mountedFace); var display = found ? mountedFace!.AssetName : "unknown Face";
-                if (!sourceIds.Add(source.FaceId)) throw new InvalidOperationException($"Reflection '{definition.Id}' contains duplicate source surface target '{source.FaceId}'.");
-                if (!found) throw new InvalidOperationException($"Reflection '{definition.Id}' source surface target '{source.FaceId}' must resolve uniquely; it is not assigned by the Machine.");
-                if (!CabinetReflectionPlaneValidation.TryValidate(source.Plane, out var error)) throw new InvalidOperationException($"Reflection '{definition.Id}' source surface target '{source.FaceId}' plane is invalid: {error}");
+                var found = mountedTargets.ContainsKey(source.SourceSurfaceTargetId);
+                if (!sourceIds.Add(source.SourceSurfaceTargetId)) throw new InvalidOperationException($"Reflection '{definition.Id}' contains duplicate source surface target '{source.SourceSurfaceTargetId}'.");
+                if (!found) throw new InvalidOperationException($"Reflection '{definition.Id}' source surface target '{source.SourceSurfaceTargetId}' must resolve uniquely; it is not assigned by the Machine.");
+                if (!CabinetReflectionPlaneValidation.TryValidate(source.Plane, out var error)) throw new InvalidOperationException($"Reflection '{definition.Id}' source surface target '{source.SourceSurfaceTargetId}' plane is invalid: {error}");
             }
         }
     }
@@ -272,9 +272,9 @@ public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, 
 }
 
 public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, MachineRuntimeDefinition Runtime, IReadOnlyList<InputDefinitionModel> Inputs);
-public sealed record MachineRuntimeDefinition(string Kind, string Platform, object PlatformSettings, bool ExecutionSupportedByPlayer)
+public sealed record MachineRuntimeDefinition(string Kind, string Platform, string PlatformSettingsJson, bool ExecutionSupportedByPlayer)
 {
-    public static MachineRuntimeDefinition From(MachineEmulationRuntime runtime) => new(MachineEmulationRuntime.Kind, runtime.Platform.ToString(), runtime.Settings, false);
+    public static MachineRuntimeDefinition From(MachineEmulationRuntime runtime) => new(MachineEmulationRuntime.Kind, runtime.Platform.ToString(), JsonSerializer.Serialize(runtime.Settings, runtime.Settings.GetType(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }), false);
 }
 public sealed record MachineRuntimeFaceReference(string FaceId, string AssetName, string CabinetFaceTargetId, string FrontSide, int FaceRotation, bool FaceFlipHorizontal, string Manifest);
 public sealed record CabinetRuntimeManifest(string Schema, int SchemaVersion, string CabinetId, string Glb, double Scale, string UpAxis, IReadOnlyList<CabinetReflectionDefinition> Reflections);

@@ -21,7 +21,7 @@ public sealed class CabinetViewerLifecycleTests
 
         Assert.Equal(1, loader.LoadCount);
         Assert.Same(loader.Model, viewer.Viewport.Model);
-        Assert.Empty(viewer.ReflectionEditor.FaceChoices);
+        Assert.Empty(viewer.ReflectionEditor.SurfaceChoices);
         Assert.False(viewer.Viewport.ModelBounds.IsEmpty);
         Assert.NotEqual(new Point3D(10, 6.5, 10), viewer.Viewport.CameraPosition);
         viewer.Dispose();

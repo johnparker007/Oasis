@@ -24,8 +24,8 @@ namespace OasisPlayer.RuntimeBuild
         public string kind = string.Empty;
         public string platform = string.Empty;
         public bool executionSupportedByPlayer;
-        // JsonUtility retains the known envelope. Fabric/emulator hosting is intentionally not implemented in Phase 1.
-        public object platformSettings;
+        // Complete selected-platform settings encoded as JSON for reliable retention without Fabric hosting.
+        public string platformSettingsJson = string.Empty;
     }
 
     [Serializable]
@@ -259,13 +259,16 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            if (machine == null || machine.schema != MachineSchema || machine.schemaVersion != 4)
+            if (machine == null || machine.schema != MachineSchema || machine.schemaVersion != 5)
             {
                 error = $"Unsupported machine manifest schema/version in {machinePath}.";
                 return false;
             }
 
-            if (machine.runtime == null || machine.runtime.kind != "Emulation" || string.IsNullOrWhiteSpace(machine.runtime.platform))
+            if (machine.runtime == null || machine.runtime.kind != "Emulation" || string.IsNullOrWhiteSpace(machine.runtime.platform)
+                || !IsSupportedEmulationPlatform(machine.runtime.platform)
+                || string.IsNullOrWhiteSpace(machine.runtime.platformSettingsJson)
+                || !LooksLikeJsonObject(machine.runtime.platformSettingsJson))
             {
                 error = $"Machine runtime definition is missing or invalid in {machinePath}.";
                 return false;
@@ -325,6 +328,19 @@ namespace OasisPlayer.RuntimeBuild
 
             build = new ResolvedRuntimeBuild(root, machine, cabinetPath, cabinet, glbPath, machine.faces);
             return true;
+        }
+
+        private static bool LooksLikeJsonObject(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return false;
+            var trimmed = json.Trim();
+            return trimmed.Length >= 2 && trimmed[0] == '{' && trimmed[trimmed.Length - 1] == '}';
+        }
+
+        private static bool IsSupportedEmulationPlatform(string platform)
+        {
+            return platform == "None" || platform == "Impact" || platform == "MPU5" || platform == "Epoch"
+                || platform == "MPU3" || platform == "MaygayM1" || platform == "Scorpion4";
         }
 
         private static bool TryResolveContained(string root, string baseDir, string relative, out string resolved, out string error)

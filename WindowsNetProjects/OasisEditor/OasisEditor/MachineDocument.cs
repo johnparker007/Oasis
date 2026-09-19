@@ -143,19 +143,16 @@ public static class MachineDocumentStorage
     }
 }
 
-/// <summary>Explicit workspace selection. Multiple Machines are never inferred by scanning composition assets.</summary>
-public sealed class ActiveMachineContext
+public static class MachineStartupSelectionPolicy
 {
-    public string? ActiveMachineManifestPath { get; private set; }
-    public MachineDocument? ActiveMachine { get; private set; }
-    public event EventHandler? Changed;
+    public static string? SelectAutomatic(IReadOnlyList<string> machineManifestPaths) => machineManifestPaths.Count == 1 ? machineManifestPaths[0] : null;
+}
 
-    public void Select(string manifestPath, MachineDocument machine)
+public static class MachineRuntimeSettingsBinding
+{
+    public static T CreateEditableSnapshot<T>(MachineDocument? machine) where T : class, new()
     {
-        ActiveMachineManifestPath = Path.GetFullPath(manifestPath);
-        ActiveMachine = machine;
-        Changed?.Invoke(this, EventArgs.Empty);
+        if (machine?.Runtime.Settings is not T settings) return new T();
+        return JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(settings)) ?? new T();
     }
-
-    public void Clear() { ActiveMachineManifestPath = null; ActiveMachine = null; Changed?.Invoke(this, EventArgs.Empty); }
 }
