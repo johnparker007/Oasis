@@ -33,7 +33,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
 
     private EditorProject Project()
     {
-        Directory.CreateDirectory(Path.Combine(_root, "Assets");
+        Directory.CreateDirectory(Path.Combine(_root, "Assets", "Machines"));
         Directory.CreateDirectory(Path.Combine(_root, "Generated"));
         return new EditorProject { Name = "Workspace", ProjectFilePath = Path.Combine(_root, "Workspace.oasisproj"), ProjectDirectory = _root, AssetsDirectory = Path.Combine(_root, "Assets"), GeneratedDirectory = Path.Combine(_root, "Generated") };
     }
