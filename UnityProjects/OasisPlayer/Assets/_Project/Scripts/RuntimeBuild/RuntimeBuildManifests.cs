@@ -14,6 +14,25 @@ namespace OasisPlayer.RuntimeBuild
         public string displayName = string.Empty;
         public string cabinetManifest = string.Empty;
         public MachineRuntimeFaceReference[] faces = Array.Empty<MachineRuntimeFaceReference>();
+        public MachineRuntimeDefinition runtime;
+        public MachineInputDefinition[] inputs = Array.Empty<MachineInputDefinition>();
+    }
+
+    [Serializable]
+    public sealed class MachineRuntimeDefinition
+    {
+        public string kind = string.Empty;
+        public string platform = string.Empty;
+        public bool executionSupportedByPlayer;
+        // JsonUtility retains the known envelope. Fabric/emulator hosting is intentionally not implemented in Phase 1.
+        public object platformSettings;
+    }
+
+    [Serializable]
+    public sealed class MachineInputDefinition
+    {
+        public string name = string.Empty;
+        public string machineReference = string.Empty;
     }
 
     [Serializable]
@@ -71,7 +90,7 @@ namespace OasisPlayer.RuntimeBuild
 
     [Serializable] public sealed class RuntimeCabinetReflectionVector { public float x; public float y; public float z; public Vector3 Value { get { return new Vector3(x, y, z); } } }
     [Serializable] public sealed class RuntimeCabinetReflectionPlaneDefinition { public RuntimeCabinetReflectionVector origin = new RuntimeCabinetReflectionVector(); public RuntimeCabinetReflectionVector right = new RuntimeCabinetReflectionVector(); public RuntimeCabinetReflectionVector up = new RuntimeCabinetReflectionVector(); public RuntimeCabinetReflectionVector normal; public float width; public float height; }
-    [Serializable] public sealed class RuntimeCabinetReflectionSourceDefinition { public string faceId = string.Empty; public RuntimeCabinetReflectionPlaneDefinition plane = new RuntimeCabinetReflectionPlaneDefinition(); }
+    [Serializable] public sealed class RuntimeCabinetReflectionSourceDefinition { public string sourceSurfaceTargetId = string.Empty; public RuntimeCabinetReflectionPlaneDefinition plane = new RuntimeCabinetReflectionPlaneDefinition(); }
     [Serializable] public sealed class RuntimeCabinetReflectionSettings { public bool enabled = true; public float strength; public float unlitArtworkStrength; public float litLampStrength; public float fresnelPower; public float fresnelStrength; public float roughness; public float distortion; public float edgeFade; }
     [Serializable] public sealed class RuntimeCabinetReflectionDefinition { public string id = string.Empty; public string targetId = string.Empty; public int materialSlot; public RuntimeCabinetReflectionSourceDefinition[] sources = Array.Empty<RuntimeCabinetReflectionSourceDefinition>(); public RuntimeCabinetReflectionSettings settings = new RuntimeCabinetReflectionSettings(); public string visibilityMask = string.Empty; }
 
@@ -240,9 +259,15 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            if (machine == null || machine.schema != MachineSchema || (machine.schemaVersion != 3))
+            if (machine == null || machine.schema != MachineSchema || machine.schemaVersion != 4)
             {
                 error = $"Unsupported machine manifest schema/version in {machinePath}.";
+                return false;
+            }
+
+            if (machine.runtime == null || machine.runtime.kind != "Emulation" || string.IsNullOrWhiteSpace(machine.runtime.platform))
+            {
+                error = $"Machine runtime definition is missing or invalid in {machinePath}.";
                 return false;
             }
 
@@ -269,7 +294,7 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            if (cabinet == null || cabinet.schema != CabinetSchema || cabinet.schemaVersion != 4)
+            if (cabinet == null || cabinet.schema != CabinetSchema || cabinet.schemaVersion != 5)
             {
                 error = $"Unsupported cabinet manifest schema/version in {cabinetPath}.";
                 return false;

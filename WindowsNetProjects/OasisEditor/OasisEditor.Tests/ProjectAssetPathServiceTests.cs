@@ -15,7 +15,6 @@ public sealed class ProjectAssetPathServiceTests
             ProjectFilePath = Path.Combine(root, "Test.oasisproj"),
             ProjectDirectory = root,
             AssetsDirectory = Path.Combine(root, "Assets"),
-            MachinesDirectory = Path.Combine(root, "Machines"),
             GeneratedDirectory = Path.Combine(root, "Generated")
         };
         var service = new ProjectAssetPathService();
@@ -25,6 +24,7 @@ public sealed class ProjectAssetPathServiceTests
         Assert.Equal(Path.Combine(root, "Generated", "Faces", "Top Glass", "Artwork", "artwork.png"), service.GetFaceArtworkPath(project, "Top Glass"));
         Assert.Equal(Path.Combine(root, "Assets", "Faces", "Top Glass", "mask.png"), service.GetFaceMaskPath(project, "Top Glass"));
         Assert.Equal(Path.Combine(root, "Assets", "Cabinet3D", "Vogue", "asset.cabinet3d"), service.GetCabinet3DManifestPath(project, "Vogue"));
+        Assert.Equal(Path.Combine(root, "Assets", "Machines", "Bonanza", "asset.machine"), service.GetMachineManifestPath(project, "Bonanza"));
         Assert.Equal(Path.Combine(root, "Generated", "Faces", "Top Glass", "runtime"), service.GetFaceRuntimeDirectory(project, "Top Glass"));
     }
 
@@ -38,7 +38,6 @@ public sealed class ProjectAssetPathServiceTests
             ProjectFilePath = Path.Combine(root, "Test.oasisproj"),
             ProjectDirectory = root,
             AssetsDirectory = Path.Combine(root, "Assets"),
-            MachinesDirectory = Path.Combine(root, "Machines"),
             GeneratedDirectory = Path.Combine(root, "Generated")
         };
         var service = new ProjectAssetPathService();

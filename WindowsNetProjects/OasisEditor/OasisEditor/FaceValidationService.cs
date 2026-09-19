@@ -36,13 +36,13 @@ public sealed class FaceValidationService
         }
         else if (cabinetContextOrDocument is FaceCabinetContext { CabinetDocument: { } contextCabinet })
         {
-            ValidateCabinetComposition(faceDocument, contextCabinet, diagnostics);
+            ValidateCabinetComposition(faceDocument, contextCabinet, diagnostics, ((FaceCabinetContext)cabinetContextOrDocument).MachineReelAssignments);
         }
         diagnostics.AddRange(new FaceTrayAutoAuthoringService().Validate(faceDocument));
         return diagnostics;
     }
 
-    private static void ValidateCabinetComposition(FaceDocumentModel face, CabinetDocument cabinet, List<FaceValidationDiagnostic> diagnostics)
+    private static void ValidateCabinetComposition(FaceDocumentModel face, CabinetDocument cabinet, List<FaceValidationDiagnostic> diagnostics, IReadOnlyList<MachineReelAssignment>? machineAssignments = null)
     {
         var specifications = cabinet.ReelSpecifications ?? [];
         if (!string.IsNullOrWhiteSpace(cabinet.DefaultReelSpecificationId)
@@ -58,19 +58,19 @@ public sealed class FaceValidationService
             var machineReference = reel.LinkedMachineObjectReference;
             if (machineReference is null || machineReference.Value.Kind != MachineObjectKind.Reel) continue;
             var reference = machineReference.Value;
-            var assignments = (cabinet.ReelAssignments ?? []).Where(value => value.MachineReelReference == reference).ToArray();
+            var assignments = (machineAssignments ?? []).Where(value => value.MachineReelReference == reference).ToArray();
             if (assignments.Length == 0)
             {
-                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.Missing", $"Cabinet has no physical reel assignment for logical reel '{reference}'."));
+                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.Missing", $"Machine has no physical reel assignment for logical reel '{reference}'."));
                 continue;
             }
             if (assignments.Length > 1)
             {
-                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.Duplicate", $"Cabinet has duplicate physical reel assignments for logical reel '{reference}'."));
+                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.Duplicate", $"Machine has duplicate physical reel assignments for logical reel '{reference}'."));
                 continue;
             }
-            if (!specifications.Any(value => string.Equals(value.Id, assignments[0].ReelSpecificationId, StringComparison.Ordinal)))
-                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.SpecificationMissing", $"Logical reel '{reference}' references Cabinet reel specification '{assignments[0].ReelSpecificationId}', which does not exist."));
+            if (!specifications.Any(value => string.Equals(value.Id, assignments[0].CabinetReelSpecificationId, StringComparison.Ordinal)))
+                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.SpecificationMissing", $"Logical reel '{reference}' references Cabinet reel specification '{assignments[0].CabinetReelSpecificationId}', which does not exist."));
         }
     }
 

@@ -1521,7 +1521,6 @@ public sealed class Panel2DRoundTripTests
             ProjectFilePath = "C:/Repo/TestProject/TestProject.oasisproj",
             ProjectDirectory = "C:/Repo/TestProject",
             AssetsDirectory = "C:/Repo/TestProject/Assets",
-            MachinesDirectory = "C:/Repo/TestProject/Machines",
             GeneratedDirectory = "C:/Repo/TestProject/Generated"
         };
         var documents = new ObservableCollection<DocumentTabViewModel>(openDocuments);

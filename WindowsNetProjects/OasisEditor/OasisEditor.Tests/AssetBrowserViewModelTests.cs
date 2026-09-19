@@ -264,7 +264,6 @@ public sealed class AssetBrowserViewModelTests
                 ProjectFilePath = Path.Combine(RootDirectory, "TestProject.oasisproj"),
                 ProjectDirectory = RootDirectory,
                 AssetsDirectory = AssetsDirectory,
-                MachinesDirectory = Path.Combine(RootDirectory, "Machines"),
                 GeneratedDirectory = Path.Combine(RootDirectory, "Generated")
             };
         }

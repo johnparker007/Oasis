@@ -468,13 +468,13 @@ public sealed class FaceRuntimeExportService
             throw Fail("Face reel has no logical machine reel reference.");
         }
 
-        var assignments = cabinetContext.CabinetDocument.ReelAssignments ?? [];
+        var assignments = cabinetContext.MachineReelAssignments ?? [];
         var assignmentMatches = assignments.Where(value => value.MachineReelReference == machineReference.Value).ToArray();
         if (assignmentMatches.Length != 1)
         {
-            throw Fail(assignmentMatches.Length == 0 ? $"Cabinet has no assignment for logical reel '{machineReference}'." : $"Cabinet has duplicate assignments for logical reel '{machineReference}'.");
+            throw Fail(assignmentMatches.Length == 0 ? $"Machine has no assignment for logical reel '{machineReference}'." : $"Machine has duplicate assignments for logical reel '{machineReference}'.");
         }
-        requestedId = assignmentMatches[0].ReelSpecificationId;
+        requestedId = assignmentMatches[0].CabinetReelSpecificationId;
 
         var matches = (cabinetContext.CabinetDocument.ReelSpecifications ?? [])
             .Where(specification => string.Equals(specification.Id?.Trim(), requestedId, StringComparison.Ordinal))

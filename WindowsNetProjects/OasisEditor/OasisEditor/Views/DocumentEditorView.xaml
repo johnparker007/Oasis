@@ -69,6 +69,21 @@
                 <cabinetViews:CabinetModelDocumentView />
             </Grid>
 
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer.Style>
+                    <Style TargetType="ScrollViewer"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Machine}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style>
+                </ScrollViewer.Style>
+                <StackPanel Margin="16" MaxWidth="900" HorizontalAlignment="Left">
+                    <TextBlock Text="Machine Composition" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,16"/>
+                    <TextBlock Text="Display name" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding MachineDisplayName, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,12"/>
+                    <TextBlock Text="Cabinet asset" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding MachineCabinetAssetPath, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,12" ToolTip="Project-relative Assets/Cabinet3D/.../asset.cabinet3d reference"/>
+                    <TextBlock Text="Emulation platform" Foreground="{DynamicResource TextSecondaryBrush}"/><ComboBox ItemsSource="{Binding MachinePlatforms}" SelectedItem="{Binding MachinePlatform}" Margin="0,3,0,16"/>
+                    <TextBlock Text="Surface / Face assignments" FontWeight="SemiBold"/><ItemsControl ItemsSource="{Binding MachineSurfaceAssignments}" Margin="0,4,0,16"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Orientation="Horizontal"><TextBlock Text="{Binding TargetId}" Width="240"/><TextBlock Text="{Binding FaceAssetPath}"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                    <TextBlock Text="Logical reel assignments (temporary Cabinet specifications)" FontWeight="SemiBold"/><ItemsControl ItemsSource="{Binding MachineReelAssignments}" Margin="0,4,0,16"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Orientation="Horizontal"><TextBlock Text="{Binding MachineReelReference}" Width="240"/><TextBlock Text="{Binding CabinetReelSpecificationId}"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                    <TextBlock Text="Inputs" FontWeight="SemiBold"/><TextBlock Text="{Binding MachineInputs.Count, StringFormat={}{0} input definitions}" Margin="0,4,0,0"/>
+                </StackPanel>
+            </ScrollViewer>
+
             <Border Padding="10"
                     CornerRadius="4"
                     Background="{DynamicResource SelectionBrush}"
@@ -84,6 +99,7 @@
                             <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Face}">
                                 <Setter Property="Visibility" Value="Collapsed" />
                             </DataTrigger>
+                            <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Machine}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
                             <DataTrigger Binding="{Binding HasCabinetViewer}" Value="True">
                                 <Setter Property="Visibility" Value="Collapsed" />
                             </DataTrigger>

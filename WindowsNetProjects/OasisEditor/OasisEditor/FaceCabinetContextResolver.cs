@@ -8,7 +8,8 @@ public sealed record FaceCabinetContext(
     DocumentTabViewModel? CabinetDocumentTab,
     string? CabinetAssetPath,
     string? DiagnosticCode,
-    string? DiagnosticMessage)
+    string? DiagnosticMessage,
+    IReadOnlyList<MachineReelAssignment>? MachineReelAssignments = null)
 {
     public bool HasCabinet => CabinetDocument is not null;
 }

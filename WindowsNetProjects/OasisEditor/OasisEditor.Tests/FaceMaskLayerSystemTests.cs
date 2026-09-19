@@ -93,7 +93,6 @@ public sealed class FaceMaskLayerSystemTests : IDisposable
             ProjectFilePath = Path.Combine(_projectDirectory, "Project.oasisproj"),
             ProjectDirectory = _projectDirectory,
             AssetsDirectory = Path.Combine(_projectDirectory, "Assets"),
-            MachinesDirectory = Path.Combine(_projectDirectory, "Machines"),
             GeneratedDirectory = Path.Combine(_projectDirectory, "Generated")
         };
     }

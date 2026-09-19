@@ -15,7 +15,6 @@ public sealed class MainWindowViewModelWindowTitleTests
             ProjectFilePath = "C:/temp/Andy Capp.oasisproj",
             ProjectDirectory = "C:/temp",
             AssetsDirectory = "C:/temp/Assets",
-            MachinesDirectory = "C:/temp/Machines",
             GeneratedDirectory = "C:/temp/Generated"
         });
 

@@ -30,6 +30,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _projectFilePath = string.Empty;
     private string _statusMessage = "Create a new project to get started.";
     private EditorProject? _loadedProject;
+    private MachineDocument? _activeMachine;
+    private string? _activeMachineManifestPath;
     private DocumentTabViewModel? _selectedDocument;
     private ThemePreference _selectedThemePreference;
     private string _fabricRuntimeLibraryPath = string.Empty;
@@ -268,9 +270,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             () => OpenDocuments, () => SelectedFruitMachinePlatform, () => false, _ => { }, DispatchToUiThread,
             reelId => SelectedFruitMachinePlatform switch
             {
-                FruitMachinePlatformType.MPU5 => LoadedProject?.Mpu5NativeRoms.Reels.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? System6ReelOptoSettings.DefaultSteps,
-                FruitMachinePlatformType.Epoch => LoadedProject?.EpochNativeRoms.Reels.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? EpochReelSettings.DefaultSteps,
-                FruitMachinePlatformType.Scorpion4 => LoadedProject?.Scorpion4Settings.Reels.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? 96,
+                FruitMachinePlatformType.MPU5 => ActiveSettings<Mpu5NativeRomSettings>().Reels.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? System6ReelOptoSettings.DefaultSteps,
+                FruitMachinePlatformType.Epoch => ActiveSettings<EpochNativeRomSettings>().Reels.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? EpochReelSettings.DefaultSteps,
+                FruitMachinePlatformType.Scorpion4 => ActiveSettings<Scorpion4ProjectSettings>().Reels.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? 96,
                 _ => System6ReelOptos.FirstOrDefault(reel => reel.ReelIndex == reelId)?.Steps ?? System6ReelOptoSettings.DefaultSteps
             });
         _segmentRuntimeAdapter = new MachineSegmentRuntimeAdapter(
@@ -455,7 +457,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public IReadOnlyList<Mpu5PicMode> Mpu5PicModes { get; } = Enum.GetValues<Mpu5PicMode>();
     public IReadOnlyList<Mpu5HopperType> Mpu5HopperTypes { get; } = Enum.GetValues<Mpu5HopperType>();
     public IReadOnlyList<Mpu5ReelJumperProfile> Mpu5ReelJumperProfiles { get; } = Enum.GetValues<Mpu5ReelJumperProfile>();
-    public IReadOnlyList<InputDefinitionModel> InputDefinitions => LoadedProject?.InputDefinitions ?? [];
+    public IReadOnlyList<InputDefinitionModel> InputDefinitions => _activeMachine?.InputDefinitions ?? [];
     public IReadOnlyList<InputMapDiagnostic> InputMapDiagnostics
     {
         get => _inputMapDiagnostics;
@@ -485,7 +487,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         // TODO: Wrap this project-level mutation when the Editor exposes project-scoped undo history;
         // the existing Undo/Redo service is scoped exclusively to the active content document.
-        var deletedCount = InputMapDeletionService.DeleteSelected(LoadedProject.InputDefinitions, selectedInputs);
+        var deletedCount = InputMapDeletionService.DeleteSelected(_activeMachine!.InputDefinitions, selectedInputs);
         if (deletedCount == 0)
         {
             return 0;
@@ -510,21 +512,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 return;
             }
 
-            foreach (var document in OpenDocuments)
+            // Runtime context is Machine-scoped. Do not push one Machine's platform into every open document.
+            if (SelectedDocument is { } activeDocument)
             {
-                document.RuntimeState.FruitMachinePlatform = value;
-                var faceReelObjectIds = document.GetFaceElements()
-                    .OfType<FaceReelDisplayElement>()
-                    .Select(element => element.ObjectId)
-                    .Where(objectId => !string.IsNullOrWhiteSpace(objectId))
-                    .ToArray();
-                document.NotifyFaceVisualPreviewChanged(faceReelObjectIds);
+                activeDocument.RuntimeState.FruitMachinePlatform = value;
+                activeDocument.NotifyFaceVisualPreviewChanged(activeDocument.GetFaceElements().OfType<FaceReelDisplayElement>().Select(element => element.ObjectId).Where(objectId => !string.IsNullOrWhiteSpace(objectId)).ToArray());
             }
 
             if (LoadedProject is not null)
             {
-                LoadedProject.FruitMachinePlatform = value;
-                SaveLoadedProjectMetadata();
+                _activeMachine = _activeMachine with { Runtime = _activeMachine.Runtime.Platform == value ? _activeMachine.Runtime : MachineEmulationRuntime.Create(value) };
+                SaveActiveMachine();
                 RefreshInputMapDiagnostics();
             }
         }
@@ -705,9 +703,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (SetProperty(ref _loadedProject, value))
             {
-                Mpu3ProjectSettings = value is null ? null : new Mpu3ProjectSettingsViewModel(value.Mpu3Settings, SaveMpu3ProjectSettings);
-                M1ProjectSettings = value is null ? null : new M1ProjectSettingsViewModel(value.M1Settings, SaveM1ProjectSettings);
-                Scorpion4ProjectSettings = value is null ? null : new Scorpion4ProjectSettingsViewModel(value.Scorpion4Settings, SaveScorpion4ProjectSettings);
+                Mpu3ProjectSettings = value is null ? null : new Mpu3ProjectSettingsViewModel(ActiveSettings<Mpu3ProjectSettings>(), SaveMpu3ProjectSettings);
+                M1ProjectSettings = value is null ? null : new M1ProjectSettingsViewModel(ActiveSettings<M1ProjectSettings>(), SaveM1ProjectSettings);
+                Scorpion4ProjectSettings = value is null ? null : new Scorpion4ProjectSettingsViewModel(ActiveSettings<Scorpion4ProjectSettings>(), SaveScorpion4ProjectSettings);
                 OnPropertyChanged(nameof(HasLoadedProject));
                 OnPropertyChanged(nameof(InputDefinitions));
                 OnPropertyChanged(nameof(WindowTitle));
@@ -715,6 +713,32 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 NotifyDocumentCommands();
             }
         }
+    }
+
+    public MachineDocument? ActiveMachine => _activeMachine;
+
+    private T ActiveSettings<T>() where T : class, new() => _activeMachine?.Runtime.Settings as T ?? new T();
+
+    private void SelectActiveMachine(string manifestPath, MachineDocument machine)
+    {
+        _activeMachineManifestPath = Path.GetFullPath(manifestPath);
+        _activeMachine = machine;
+        SelectedFruitMachinePlatform = machine.Runtime.Platform;
+        OnPropertyChanged(nameof(ActiveMachine));
+        OnPropertyChanged(nameof(InputDefinitions));
+    }
+
+    private void UpdateActiveRuntime(FruitMachinePlatformType platform, object settings)
+    {
+        if (_activeMachine is null) return;
+        _activeMachine = _activeMachine with { Runtime = new MachineEmulationRuntime(platform, settings) };
+        SaveActiveMachine();
+    }
+
+    private void SaveActiveMachine()
+    {
+        if (_activeMachine is null || string.IsNullOrWhiteSpace(_activeMachineManifestPath)) return;
+        File.WriteAllText(_activeMachineManifestPath, MachineDocumentStorage.Serialize(_activeMachine));
     }
 
     public string WindowTitle => FormatWindowTitle(LoadedProject?.Name);
@@ -1121,9 +1145,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var selectedDocument = SelectedDocument;
-        if (selectedDocument?.Document.DocumentType != EditorDocumentType.Cabinet3D || selectedDocument.Document.IsUntitled)
+        if (selectedDocument?.Document.DocumentType != EditorDocumentType.Machine || selectedDocument.Document.IsUntitled)
         {
-            ReportEditorOperationError("Select a saved Cabinet3D asset before building for Oasis Player.", OutputLogStatus.Warning);
+            ReportEditorOperationError("Select a saved Machine asset before building for Oasis Player.", OutputLogStatus.Warning);
             return;
         }
 
@@ -1134,7 +1158,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var result = await _progressDialogService.RunAsync(
                 new EditorProgressRequest("Building Oasis Player Machine", "Preparing Oasis Player machine build...", EditorProgressMode.Determinate, CanCancel: true),
-                (progress, token) => Task.FromResult(new MachineRuntimeBuildService().BuildFromCabinetDocument(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetCabinetDocument(), progress, token)));
+                (progress, token) => Task.FromResult(new MachineRuntimeBuildService().BuildFromMachineDocument(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetMachineDocument(), progress, token)));
             if (!result.Success)
             {
                 ReportEditorOperationError(result.ErrorMessage ?? "Failed to build Oasis Player runtime output.", OutputLogStatus.Error);
@@ -1169,9 +1193,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var selectedDocument = SelectedDocument;
-        if (selectedDocument?.Document.DocumentType != EditorDocumentType.Cabinet3D || selectedDocument.Document.IsUntitled)
+        if (selectedDocument?.Document.DocumentType != EditorDocumentType.Machine || selectedDocument.Document.IsUntitled)
         {
-            ReportEditorOperationError("Select a saved Cabinet3D asset before previewing in Oasis Player.", OutputLogStatus.Warning);
+            ReportEditorOperationError("Select a saved Machine asset before previewing in Oasis Player.", OutputLogStatus.Warning);
             return;
         }
 
@@ -1182,7 +1206,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var result = await _progressDialogService.RunAsync(
                 new EditorProgressRequest("Preparing Oasis Player Preview", "Preparing Oasis Player machine build...", EditorProgressMode.Determinate, CanCancel: true),
-                (progress, token) => Task.FromResult(_oasisPlayerPreviewService.Preview(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetCabinetDocument(), new OasisPlayerPreferences
+                (progress, token) => Task.FromResult(_oasisPlayerPreviewService.Preview(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetMachineDocument(), new OasisPlayerPreferences
                 {
                     ExecutablePath = OasisPlayerExecutablePath,
                     Fullscreen = OasisPlayerFullscreen,
@@ -1221,7 +1245,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return LoadedProject is not null
                && !_isOasisPlayerMachineOperationInProgress
                && !_progressDialogService.IsOperationActive
-               && SelectedDocument?.Document.DocumentType == EditorDocumentType.Cabinet3D
+               && SelectedDocument?.Document.DocumentType == EditorDocumentType.Machine
                && SelectedDocument.Document.IsUntitled == false;
     }
 
@@ -1386,13 +1410,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ReportEditorProgress("Updating project input definitions...", 0.7);
             if (LoadedProject is not null && ReferenceEquals(LoadedProject, loadedProject) && result.InputDefinitions.Count > 0)
             {
-                LoadedProject.InputDefinitions.Clear();
-                foreach (var inputDefinition in result.InputDefinitions)
-                {
-                    LoadedProject.InputDefinitions.Add(inputDefinition);
-                }
-
-                SaveLoadedProjectMetadata();
+                _activeMachine = _activeMachine! with { InputDefinitions = result.InputDefinitions.ToList() };
+                SaveActiveMachine();
                 OnPropertyChanged(nameof(InputDefinitions));
                 RefreshInputMapDiagnostics();
                 AddOutputEntry($"MFME FML import created {result.InputDefinitions.Count} input definitions.", OutputLogStatus.Info);
@@ -1496,6 +1515,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         var content = File.ReadAllText(path);
         var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData(path, content);
+        if (string.Equals(Path.GetExtension(path), ".machine", StringComparison.OrdinalIgnoreCase)
+            && MachineDocumentStorage.TryRead(content, out var selectedMachine, out _))
+            SelectActiveMachine(path, selectedMachine);
 
         var openedNewTab = _documentWorkspace.OpenOrSelectDocument(
             path,
@@ -1503,7 +1525,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             openData.PanelLayoutJson,
             openData.PanelTitle,
             openData.FaceDocumentJson,
-            openData.CabinetDocumentJson);
+            openData.CabinetDocumentJson,
+            openData.MachineDocumentJson);
         if (!openedNewTab)
         {
             AddOutputEntry($"Switched to already open document tab for {path}", OutputLogStatus.Info);
@@ -1649,6 +1672,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 EditorDocumentType.Face => EditorAssetType.Face,
                 EditorDocumentType.Cabinet3D => EditorAssetType.Cabinet3D,
+                EditorDocumentType.Machine => EditorAssetType.Machine,
                 _ => EditorAssetType.Panel2D
             };
             var assetName = pathService.EnsureUniqueAssetName(LoadedProject, assetType, nameDialog.NameText);
@@ -1803,7 +1827,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return null;
         }
 
-        _playViewInputDispatcher ??= new PlayViewInputDispatcher(_playViewInputRouter!, LoadedProject?.InputDefinitions ?? []);
+        _playViewInputDispatcher ??= new PlayViewInputDispatcher(_playViewInputRouter!, _activeMachine?.InputDefinitions ?? []);
         return _playViewInputDispatcher;
     }
 
@@ -2074,13 +2098,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             FruitMachinePlatformType.Impact => new EmulationLaunchRequest(
                 BuildSystem6NativeRomSettingsForLaunch(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
             FruitMachinePlatformType.MPU5 => EmulationLaunchRequest.ForMpu5(
-                LoadedProject?.Mpu5NativeRoms ?? new Mpu5NativeRomSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
+                ActiveSettings<Mpu5NativeRomSettings>() ?? new Mpu5NativeRomSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
             FruitMachinePlatformType.Epoch => EmulationLaunchRequest.ForEpoch(
-                LoadedProject?.EpochNativeRoms ?? new EpochNativeRomSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
+                ActiveSettings<EpochNativeRomSettings>() ?? new EpochNativeRomSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
             FruitMachinePlatformType.MPU3 => EmulationLaunchRequest.ForMpu3(
-                LoadedProject?.Mpu3Settings ?? new Mpu3ProjectSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
-            FruitMachinePlatformType.MaygayM1 => EmulationLaunchRequest.ForM1(LoadedProject?.M1Settings ?? new M1ProjectSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
-            FruitMachinePlatformType.Scorpion4 => EmulationLaunchRequest.ForScorpion4(LoadedProject?.Scorpion4Settings ?? new Scorpion4ProjectSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
+                ActiveSettings<Mpu3ProjectSettings>() ?? new Mpu3ProjectSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
+            FruitMachinePlatformType.MaygayM1 => EmulationLaunchRequest.ForM1(ActiveSettings<M1ProjectSettings>() ?? new M1ProjectSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
+            FruitMachinePlatformType.Scorpion4 => EmulationLaunchRequest.ForScorpion4(ActiveSettings<Scorpion4ProjectSettings>() ?? new Scorpion4ProjectSettings(), BuildConfiguredLampIdsForLaunch(), BuildConfiguredSevenSegmentDisplayIdsForLaunch()),
             _ => throw new NotSupportedException($"Platform '{SelectedFruitMachinePlatform}' is not supported by Fabric Amber emulation.")
         };
     }
@@ -2162,19 +2186,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void SaveMpu5NativeRomSettings()
     {
         if (LoadedProject is null) return;
-        var settings=LoadedProject.Mpu5NativeRoms;
+        var settings=ActiveSettings<Mpu5NativeRomSettings>();
         settings.ProgramRom1Path=Mpu5ProgramRom1Path; settings.ProgramRom2Path=Mpu5ProgramRom2Path;
         settings.ProgramRom3Path=Mpu5ProgramRom3Path; settings.ProgramRom4Path=Mpu5ProgramRom4Path;
         settings.SoundRom1Path=Mpu5SoundRom1Path; settings.SoundRom2Path=Mpu5SoundRom2Path;
         settings.SoundRom3Path=Mpu5SoundRom3Path; settings.SoundRom4Path=Mpu5SoundRom4Path;
-        SaveLoadedProjectMetadata();
+        UpdateActiveRuntime(FruitMachinePlatformType.MPU5, settings);
     }
 
     private void SaveMpu5ProjectSettings(Mpu5NativeRomSettings settings)
     {
         if (LoadedProject is null) return;
-        LoadedProject.Mpu5NativeRoms = settings;
-        SaveMpu5NativeRomSettings();
+        UpdateActiveRuntime(FruitMachinePlatformType.MPU5, settings);
+        ApplyMpu5NativeRomSettingsToViewModel(settings);
         Mpu5NativeRomStatus = "MPU5 project settings auto-saved.";
     }
 
@@ -2212,7 +2236,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        LoadedProject.System6NativeRoms = new System6NativeRomSettings
+        var machineSettings = new System6NativeRomSettings
         {
             ProgramRom1Path = System6ProgramRom1Path,
             ProgramRom2Path = System6ProgramRom2Path,
@@ -2231,7 +2255,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ReelOptos = System6ReelOptos.Select(reel => reel.ToModel()).ToList(),
             Coins = System6Coins.Select(coin => coin.ToModel()).ToList()
         };
-        SaveLoadedProjectMetadata();
+        UpdateActiveRuntime(SelectedFruitMachinePlatform, machineSettings);
     }
 
     private void ApplySystem6NativeRomSettingsToViewModel(System6NativeRomSettings settings)
@@ -2312,7 +2336,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private System6NativeRomSettings BuildSystem6NativeRomSettingsForLaunch()
     {
-        var settings = LoadedProject?.System6NativeRoms ?? new System6NativeRomSettings();
+        var settings = ActiveSettings<System6NativeRomSettings>() ?? new System6NativeRomSettings();
         if (LoadedProject is null) return settings;
         return new System6NativeRomSettings
         {
@@ -2512,13 +2536,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void LoadStartupProject(string startupProjectFilePath)
     {
         var project = LoadProjectFromFile(startupProjectFilePath);
+        var machineRoot = Path.Combine(project.AssetsDirectory, "Machines");
+        var machineFiles = Directory.Exists(machineRoot)
+            ? Directory.GetFiles(machineRoot, ProjectAssetPathService.MachineManifestFileName, SearchOption.AllDirectories)
+            : [];
+        if (machineFiles.Length == 1 && MachineDocumentStorage.TryRead(File.ReadAllText(machineFiles[0]), out var onlyMachine, out _))
+            SelectActiveMachine(machineFiles[0], onlyMachine);
+        else { _activeMachine = null; _activeMachineManifestPath = null; }
         LoadedProject = project;
-        SelectedFruitMachinePlatform = project.FruitMachinePlatform;
-        ApplySystem6NativeRomSettingsToViewModel(project.System6NativeRoms);
+        SelectedFruitMachinePlatform = _activeMachine?.Runtime.Platform ?? FruitMachinePlatformType.None;
+        ApplySystem6NativeRomSettingsToViewModel(ActiveSettings<System6NativeRomSettings>());
         RefreshSystem6NativeRomStatus();
-        ApplyMpu5NativeRomSettingsToViewModel(project.Mpu5NativeRoms);
+        ApplyMpu5NativeRomSettingsToViewModel(ActiveSettings<Mpu5NativeRomSettings>());
         RefreshMpu5NativeRomStatus();
-        EpochProjectSettings = new EpochProjectSettingsViewModel(project.EpochNativeRoms, SaveEpochProjectSettings);
+        EpochProjectSettings = new EpochProjectSettingsViewModel(ActiveSettings<EpochNativeRomSettings>(), SaveEpochProjectSettings);
         ProjectAssetPathResolver.ProjectDirectoryPath = project.ProjectDirectory;
         ProjectFilePath = project.ProjectFilePath;
         UpdateRecentProjects(project.ProjectFilePath);
@@ -2538,7 +2569,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        InputMapDiagnostics = _inputMapDiagnosticsService.Analyze(SelectedFruitMachinePlatform, LoadedProject.InputDefinitions);
+        InputMapDiagnostics = _inputMapDiagnosticsService.Analyze(SelectedFruitMachinePlatform, _activeMachine!.InputDefinitions);
         OnPropertyChanged(nameof(InputMapWarningCount));
         OnPropertyChanged(nameof(HasInputMapDiagnostics));
         var warningCount = InputMapWarningCount;
@@ -2586,16 +2617,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         var layoutElement = projectDocument.RootElement.GetProperty("layout");
         var assetsDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "assets");
-        var machinesDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "machines");
         var generatedDirectory = ResolveProjectDirectory(projectDirectory, layoutElement, "generated");
-        var fruitMachinePlatform = ResolveFruitMachinePlatform(projectDocument.RootElement);
-        var system6NativeRoms = ResolveSystem6NativeRomSettings(projectDocument.RootElement);
-        var mpu5NativeRoms = ResolveMpu5NativeRomSettings(projectDocument.RootElement);
-        var epochNativeRoms = ResolveEpochNativeRomSettings(projectDocument.RootElement);
-        var mpu3Settings = ResolveMpu3Settings(projectDocument.RootElement);
-        var m1Settings = ResolveM1Settings(projectDocument.RootElement);
-        var scorpion4Settings = ResolveScorpion4Settings(projectDocument.RootElement);
-        var inputDefinitions = ResolveInputDefinitions(projectDocument.RootElement);
 
         return new EditorProject
         {
@@ -2603,16 +2625,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             ProjectFilePath = projectFilePath,
             ProjectDirectory = projectDirectory,
             AssetsDirectory = assetsDirectory,
-            MachinesDirectory = machinesDirectory,
-            GeneratedDirectory = generatedDirectory,
-            FruitMachinePlatform = fruitMachinePlatform,
-            System6NativeRoms = system6NativeRoms,
-            Mpu5NativeRoms = mpu5NativeRoms,
-            EpochNativeRoms = epochNativeRoms,
-            Mpu3Settings = mpu3Settings,
-            M1Settings = m1Settings,
-            Scorpion4Settings = scorpion4Settings
-        }.WithInputDefinitions(inputDefinitions);
+            GeneratedDirectory = generatedDirectory
+        };
     }
 
     public bool CanUndoActiveDocument()
@@ -2768,77 +2782,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
 
-    private void SaveLoadedProjectMetadata()
-    {
-        if (LoadedProject is null)
-        {
-            return;
-        }
-
-        var projectFilePath = LoadedProject.ProjectFilePath;
-        var projectJson = File.ReadAllText(projectFilePath);
-        using var projectDocument = JsonDocument.Parse(projectJson);
-
-        var tempPath = Path.GetTempFileName();
-        try
-        {
-            using (var outputStream = File.Create(tempPath))
-            using (var writer = new Utf8JsonWriter(outputStream, new JsonWriterOptions { Indented = true }))
-            {
-                writer.WriteStartObject();
-                var wroteProjectSettings = false;
-                var wroteInputDefinitions = false;
-
-                foreach (var property in projectDocument.RootElement.EnumerateObject())
-                {
-                    if (property.NameEquals("project_settings"))
-                    {
-                        wroteProjectSettings = true;
-                        writer.WritePropertyName("project_settings");
-                        WriteProjectSettings(writer, property.Value, LoadedProject.FruitMachinePlatform, LoadedProject.System6NativeRoms, LoadedProject.Mpu5NativeRoms, LoadedProject.EpochNativeRoms, LoadedProject.Mpu3Settings, LoadedProject.M1Settings, LoadedProject.Scorpion4Settings);
-                        continue;
-                    }
-
-                    if (property.NameEquals("input_definitions"))
-                    {
-                        wroteInputDefinitions = true;
-                        writer.WritePropertyName("input_definitions");
-                        WriteInputDefinitions(writer, LoadedProject.InputDefinitions);
-                        continue;
-                    }
-
-                    property.WriteTo(writer);
-                }
-
-                if (!wroteProjectSettings)
-                {
-                    writer.WritePropertyName("project_settings");
-                    writer.WriteStartObject();
-                    writer.WriteString("FruitMachine_Platform", LoadedProject.FruitMachinePlatform.ToString());
-                    WriteSystem6NativeRomSettings(writer, LoadedProject.System6NativeRoms);
-                    WriteMpu5NativeRomSettings(writer, LoadedProject.Mpu5NativeRoms);
-                    WriteEpochNativeRomSettings(writer, LoadedProject.EpochNativeRoms);
-                    WriteMpu3Settings(writer, LoadedProject.Mpu3Settings);
-                    WriteM1Settings(writer, LoadedProject.M1Settings);
-                    writer.WriteEndObject();
-                }
-
-                if (!wroteInputDefinitions)
-                {
-                    writer.WritePropertyName("input_definitions");
-                    WriteInputDefinitions(writer, LoadedProject.InputDefinitions);
-                }
-
-                writer.WriteEndObject();
-            }
-
-            File.Copy(tempPath, projectFilePath, overwrite: true);
-        }
-        finally
-        {
-            File.Delete(tempPath);
-        }
-    }
+    private void SaveLoadedProjectMetadata() => SaveActiveMachine();
 
     private static void WriteProjectSettings(Utf8JsonWriter writer, JsonElement existingProjectSettings, FruitMachinePlatformType platform, System6NativeRomSettings system6NativeRoms, Mpu5NativeRomSettings mpu5NativeRoms, EpochNativeRomSettings epochNativeRoms, Mpu3ProjectSettings mpu3Settings, M1ProjectSettings m1Settings, Scorpion4ProjectSettings scorpion4Settings)
     {
@@ -2897,18 +2841,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void SaveEpochProjectSettings(EpochNativeRomSettings settings)
     {
         if (LoadedProject is null) return;
-        LoadedProject.EpochNativeRoms = settings;
-        SaveLoadedProjectMetadata();
+        UpdateActiveRuntime(FruitMachinePlatformType.Epoch, settings);
     }
 
     private void SaveMpu3ProjectSettings(Mpu3ProjectSettings settings)
     {
         if (LoadedProject is null) return;
-        LoadedProject.Mpu3Settings = settings;
-        SaveLoadedProjectMetadata();
+        UpdateActiveRuntime(FruitMachinePlatformType.MPU3, settings);
     }
-    private void SaveM1ProjectSettings(M1ProjectSettings settings) { if (LoadedProject is null) return; LoadedProject.M1Settings = settings; SaveLoadedProjectMetadata(); }
-    private void SaveScorpion4ProjectSettings(Scorpion4ProjectSettings settings) { if (LoadedProject is null) return; LoadedProject.Scorpion4Settings = settings; SaveLoadedProjectMetadata(); }
+    private void SaveM1ProjectSettings(M1ProjectSettings settings) { if (LoadedProject is null) return; UpdateActiveRuntime(FruitMachinePlatformType.MaygayM1, settings); }
+    private void SaveScorpion4ProjectSettings(Scorpion4ProjectSettings settings) { if (LoadedProject is null) return; UpdateActiveRuntime(FruitMachinePlatformType.Scorpion4, settings); }
 
     private static void WriteEpochNativeRomSettings(Utf8JsonWriter writer, EpochNativeRomSettings settings)
     {
@@ -3553,22 +3495,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 }
 
-internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null, string? CabinetDocumentJson = null);
-
-
-internal static class EditorProjectInputDefinitionExtensions
-{
-    public static EditorProject WithInputDefinitions(this EditorProject project, IReadOnlyList<InputDefinitionModel> definitions)
-    {
-        project.InputDefinitions.Clear();
-        foreach (var definition in definitions)
-        {
-            project.InputDefinitions.Add(definition);
-        }
-
-        return project;
-    }
-}
+internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null, string? CabinetDocumentJson = null, string? MachineDocumentJson = null);
 
 
 public sealed class System6CoinSettingsViewModel : INotifyPropertyChanged

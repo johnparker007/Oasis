@@ -20,6 +20,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private bool _faceDocumentJsonIsCurrent = true;
     private string? _cabinetDocumentJson;
     private CabinetDocument _cabinetDocumentModel;
+    private MachineDocument _machineDocumentModel;
     private Panel2DDocumentModel _panelDocumentModel;
     private FaceDocumentModel _faceDocumentModel;
     private Dictionary<string, PanelElementModel> _lampElementsByObjectId = new(StringComparer.Ordinal);
@@ -63,7 +64,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         CommandService? commandService = null,
         MachineRuntimeState? runtimeState = null,
         string? faceDocumentJson = null,
-        string? cabinetDocumentJson = null)
+        string? cabinetDocumentJson = null,
+        string? machineDocumentJson = null)
     {
         _document = document;
         DocumentId = documentId ?? Guid.NewGuid();
@@ -103,6 +105,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _cabinetDocumentModel = CabinetDocumentStorage.TryRead(cabinetDocumentJson, out var cabinetDocument)
             ? cabinetDocument
             : CabinetDocument.Empty;
+        _machineDocumentModel = MachineDocumentStorage.TryRead(machineDocumentJson, out var machineDocument, out _)
+            ? machineDocument
+            : MachineDocument.Create(document.Title);
         RebuildLampCaches();
         _faceWorkspace = document.DocumentType == EditorDocumentType.Face ? new FaceWorkspaceViewModel(this) : null;
     }
@@ -208,6 +213,36 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public CabinetDocument GetCabinetDocument()
     {
         return _cabinetDocumentModel;
+    }
+
+    public MachineDocument GetMachineDocument() => _machineDocumentModel;
+    public string GetMachineDocumentJson() => MachineDocumentStorage.Serialize(_machineDocumentModel);
+    public string MachineDisplayName { get => _machineDocumentModel.DisplayName; set { if (string.IsNullOrWhiteSpace(value) || value == _machineDocumentModel.DisplayName) return; ExecuteMachineMutation(_machineDocumentModel with { DisplayName = value.Trim() }, "Rename Machine"); } }
+    public string MachineCabinetAssetPath { get => _machineDocumentModel.CabinetAssetPath ?? string.Empty; set { var normalized = string.IsNullOrWhiteSpace(value) ? null : ProjectAssetPathService.NormalizeProjectRelativePath(value.Trim()); if (normalized == _machineDocumentModel.CabinetAssetPath) return; ExecuteMachineMutation(_machineDocumentModel with { CabinetAssetPath = normalized }, "Select Machine Cabinet"); } }
+    public FruitMachinePlatformType MachinePlatform { get => _machineDocumentModel.Runtime.Platform; set { if (value == _machineDocumentModel.Runtime.Platform) return; ExecuteMachineMutation(_machineDocumentModel with { Runtime = MachineEmulationRuntime.Create(value) }, "Change Machine runtime platform"); } }
+    public IReadOnlyList<FruitMachinePlatformType> MachinePlatforms { get; } = Enum.GetValues<FruitMachinePlatformType>();
+    public IReadOnlyList<MachineSurfaceAssignment> MachineSurfaceAssignments => _machineDocumentModel.SurfaceAssignments;
+    public IReadOnlyList<MachineReelAssignment> MachineReelAssignments => _machineDocumentModel.ReelAssignments;
+    public IReadOnlyList<InputDefinitionModel> MachineInputs => _machineDocumentModel.InputDefinitions;
+
+    internal void SetMachineDocument(MachineDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        _machineDocumentModel = document;
+        MarkDirty();
+        foreach (var property in new[] { nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineInputs) })
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
+    }
+
+    private void ExecuteMachineMutation(MachineDocument next, string description) => _commandService.Execute(new SetMachineDocumentCommand(this, next, description));
+
+    private sealed class SetMachineDocumentCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly DocumentTabViewModel _owner; private readonly MachineDocument _next; private readonly string _description; private MachineDocument? _previous;
+        public SetMachineDocumentCommand(DocumentTabViewModel owner, MachineDocument next, string description) { _owner = owner; _next = next; _description = description; }
+        public Guid DocumentId => _owner.DocumentId; public string Description => _description; public bool WasExecuted { get; private set; }
+        public void Execute() { _previous ??= _owner._machineDocumentModel; if (_owner._machineDocumentModel == _next) return; _owner.SetMachineDocument(_next); WasExecuted = true; }
+        public void Undo() { if (_previous is not null) _owner.SetMachineDocument(_previous); }
     }
 
     public string GetCabinetDocumentJson()

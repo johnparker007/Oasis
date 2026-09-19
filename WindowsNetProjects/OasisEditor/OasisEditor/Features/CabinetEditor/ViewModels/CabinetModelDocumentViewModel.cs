@@ -220,47 +220,8 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
 
     public void RefreshFacePreviews()
     {
-        _pendingLivePreviewDocumentIds.Clear();
-        _livePreviewRefreshTimer.Stop();
-        _facePreviewEntriesByDocumentId.Clear();
-        var validTargets = FaceTargets.Where(target => target.IsValid).ToDictionary(target => target.Id, StringComparer.Ordinal);
-        if (validTargets.Count == 0 || _openDocumentsAccessor is null)
-        {
-            Viewport.FacePreviewModel = null;
-            return;
-        }
-
-        var previewGroup = new Model3DGroup();
-        foreach (var assignment in _document.GetCabinetDocument().FaceAssignments ?? [])
-        {
-            var project = _projectAccessor?.Invoke();
-            var assignedPath = Path.IsPathRooted(assignment.FaceAssetPath) ? assignment.FaceAssetPath : Path.Combine(project?.ProjectDirectory ?? string.Empty, assignment.FaceAssetPath.Replace('/', Path.DirectorySeparatorChar));
-            var manifestPath = Directory.Exists(assignedPath) ? Path.Combine(assignedPath, ProjectAssetPathService.FaceManifestFileName) : assignedPath;
-            var document = _openDocumentsAccessor().FirstOrDefault(candidate => candidate.Document.DocumentType == EditorDocumentType.Face && string.Equals(Path.GetFullPath(candidate.FilePath ?? string.Empty), Path.GetFullPath(manifestPath), StringComparison.OrdinalIgnoreCase));
-            if (document is null) continue;
-            var faceDocument = document.GetFaceDocument();
-            var targetId = NormalizeTargetId(assignment.TargetId);
-            if (targetId is null || !validTargets.TryGetValue(targetId, out var target))
-            {
-                continue;
-            }
-
-            var previewMode = SelectedLampPreviewMode;
-            var preview = ResolvePreviewImage(document, faceDocument, previewMode, out var livePreviewTexture);
-            if (preview is null)
-            {
-                continue;
-            }
-
-            var targetOverride = _document.GetCabinetDocument().GetTargetOverride(target.Id);
-            if (TryCreatePreviewGeometry(target.Target, targetOverride, preview, out var geometry, out var imageBrush))
-            {
-                _facePreviewEntriesByDocumentId[document.DocumentId] = new CabinetFacePreviewEntry(document.DocumentId, target.Id, geometry, imageBrush, livePreviewTexture);
-                previewGroup.Children.Add(geometry);
-            }
-        }
-
-        Viewport.FacePreviewModel = previewGroup.Children.Count == 0 ? null : previewGroup;
+        // Cabinet is reusable and has no installed Faces. Machine composition preview supplies this context.
+        Viewport.FacePreviewModel = null;
     }
 
     public void QueueFaceRuntimePreviewRefresh(Guid faceDocumentId)
@@ -314,12 +275,6 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         }
 
         var faceDocument = document.GetFaceDocument();
-        var assignment = (_document.GetCabinetDocument().FaceAssignments ?? []).FirstOrDefault(value => string.Equals(value.TargetId, entry.TargetId, StringComparison.Ordinal));
-        if (assignment is null)
-        {
-            RefreshFacePreviews();
-            return;
-        }
 
         if (entry.LivePreviewTexture is null)
         {

@@ -27,10 +27,10 @@ namespace OasisPlayer.RuntimeBuild
             var faces = new RuntimeFace[sources.Length];
             for (var sourceIndex = 0; sourceIndex < sources.Length; sourceIndex++)
             {
-                var source = sources[sourceIndex]; if (!source.Plane.IsValid || string.IsNullOrWhiteSpace(source.FaceId)) { warning = $"Cabinet reflection source {sourceIndex} is invalid."; return false; }
-                var matches = 0; foreach (var candidate in machine.Faces) if (candidate.Reference != null && string.Equals(candidate.Reference.faceId, source.FaceId.Trim(), StringComparison.Ordinal)) { faces[sourceIndex] = candidate; matches++; }
-                if (matches != 1) { warning = $"Cabinet reflection source Face '{source.FaceId}' resolved {matches} times."; return false; }
-                var face = faces[sourceIndex]; if (face.Artwork?.Texture == null || face.Mask?.Texture == null || face.LampIds0?.Texture == null || face.LampWeights0?.Texture == null) { warning = $"Cabinet reflection source Face '{source.FaceId}' is missing required textures."; return false; }
+                var source = sources[sourceIndex]; if (!source.Plane.IsValid || string.IsNullOrWhiteSpace(source.SourceSurfaceTargetId)) { warning = $"Cabinet reflection source {sourceIndex} is invalid."; return false; }
+                var matches = 0; foreach (var candidate in machine.Faces) if (candidate.Reference != null && string.Equals(candidate.Reference.cabinetFaceTargetId, source.SourceSurfaceTargetId.Trim(), StringComparison.Ordinal)) { faces[sourceIndex] = candidate; matches++; }
+                if (matches != 1) { warning = $"Cabinet reflection source surface target '{source.SourceSurfaceTargetId}' resolved {matches} times."; return false; }
+                var face = faces[sourceIndex]; if (face.Artwork?.Texture == null || face.Mask?.Texture == null || face.LampIds0?.Texture == null || face.LampWeights0?.Texture == null) { warning = $"Cabinet reflection source surface target '{source.SourceSurfaceTargetId}' is missing required textures."; return false; }
             }
             var materials = renderer.sharedMaterials; if (materialIndex < 0 || materialIndex >= materials.Length || materials[materialIndex] == null) { warning = $"Cabinet reflection material slot {materialIndex} is invalid."; return false; }
             var shader = Shader.Find(RuntimeCabinetReflectionShaderProperties.ShaderName); if (shader == null) { warning = $"Cabinet reflection shader '{RuntimeCabinetReflectionShaderProperties.ShaderName}' was not found."; return false; }
