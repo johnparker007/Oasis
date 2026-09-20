@@ -136,7 +136,7 @@ public sealed class NativeFaceCreationTests : IDisposable
         var assets=Path.Combine(_root,"Assets"); var generated=Path.Combine(_root,"Generated");
         Directory.CreateDirectory(assets); Directory.CreateDirectory(generated);
         return new EditorProject { Name="Test",ProjectFilePath=Path.Combine(_root,"Test.oasisproj"),ProjectDirectory=_root,
-            AssetsDirectory=assets,MachinesDirectory=Path.Combine(_root,"Machines"),GeneratedDirectory=generated };
+            AssetsDirectory=assets,GeneratedDirectory=generated };
     }
     private static void WritePng(string path,int width,int height)
     { using var bitmap=new SKBitmap(width,height);bitmap.Erase(SKColors.CornflowerBlue);using var image=SKImage.FromBitmap(bitmap);using var data=image.Encode(SKEncodedImageFormat.Png,100);using var stream=File.Create(path);data.SaveTo(stream); }

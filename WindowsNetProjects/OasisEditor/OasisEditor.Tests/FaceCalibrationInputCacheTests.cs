@@ -156,7 +156,6 @@ public sealed class FaceCalibrationInputCacheTests
                 ProjectDirectory = directory,
                 ProjectFilePath = Path.Combine(directory, "test.oasisproj"),
                 AssetsDirectory = Path.Combine(directory, "Assets"),
-                MachinesDirectory = Path.Combine(directory, "Machines"),
                 GeneratedDirectory = Path.Combine(directory, "Generated")
             });
             return new CacheFixture(directory, document, preceding, target);

@@ -99,6 +99,10 @@ public sealed class DocumentSaveService : IDocumentSaveService
         File.WriteAllText(savePath, content);
         progress.Report(0.95, "Updating document state...");
 
+        var machineDocumentJson = current.Document.DocumentType == EditorDocumentType.Machine
+            ? contentSource.GetMachineDocumentJson()
+            : current.MachineDocumentJson;
+
         var savedDocument = new DocumentTabViewModel(
             current.Document.SaveAs(savePath, current.ContentSummary).MarkClean(),
             current.PanelLayoutJson,
@@ -106,7 +110,8 @@ public sealed class DocumentSaveService : IDocumentSaveService
             current.CommandService,
             current.RuntimeState,
             faceDocumentJson,
-            current.CabinetDocumentJson)
+            current.CabinetDocumentJson,
+            machineDocumentJson)
         {
             PanelZoom = current.PanelZoom,
             PanelPanX = current.PanelPanX,

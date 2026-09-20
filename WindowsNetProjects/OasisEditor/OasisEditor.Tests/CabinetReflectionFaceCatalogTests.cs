@@ -32,7 +32,7 @@ public sealed class CabinetReflectionFaceCatalogTests : IDisposable
     }
 
     [Fact]
-    public void UnsavedCabinetViewer_ConstructsWithoutFaceChoices()
+    public void UnsavedCabinetViewer_ConstructsWithoutSurfaceTargetChoices()
     {
         var document = new DocumentTabViewModel(
             EditorDocument.CreateCabinet3DStub("Unsaved Cabinet"),
@@ -41,31 +41,25 @@ public sealed class CabinetReflectionFaceCatalogTests : IDisposable
         var viewer = document.CabinetViewer;
 
         Assert.NotNull(viewer);
-        Assert.Empty(viewer!.ReflectionEditor.FaceChoices);
+        Assert.Empty(viewer!.ReflectionEditor.SurfaceTargetChoices);
         Assert.Equal("missing.glb", viewer.ModelPath);
         document.Dispose();
     }
 
     [Fact]
-    public void ProjectContextRefresh_PopulatesFacePackageChoice()
+    public void Discover_FindsFacePackagesFromAssetsDirectory()
     {
         var assets = Directory.CreateDirectory(Path.Combine(_root, "Assets")).FullName;
         var facePackage = Directory.CreateDirectory(Path.Combine(assets, "Faces", "TopGlass")).FullName;
         File.WriteAllText(Path.Combine(facePackage, ProjectAssetPathService.FaceManifestFileName), FaceDocumentStorage.Serialize(new FaceDocumentModel { Id = "face-top", Title = "Top Glass" }));
         var unrelatedPackage = Directory.CreateDirectory(Path.Combine(assets, "Faces", "Unused")).FullName;
         File.WriteAllText(Path.Combine(unrelatedPackage, ProjectAssetPathService.FaceManifestFileName), FaceDocumentStorage.Serialize(new FaceDocumentModel { Id = "face-unused", Title = "Unused" }));
-        var project = new EditorProject { Name = "Test", ProjectDirectory = _root, ProjectFilePath = Path.Combine(_root, "test.oasis"), AssetsDirectory = assets, MachinesDirectory = Path.Combine(_root, "Machines"), GeneratedDirectory = Path.Combine(_root, "Generated") };
-        var cabinet = CabinetDocument.FromModelPath("missing.glb") with
-        {
-            FaceAssignments = [new CabinetFaceAssignment("top-glass", "Assets/Faces/TopGlass/asset.face")]
-        };
-        var document = new DocumentTabViewModel(EditorDocument.CreateCabinet3DStub("Cabinet"), cabinetDocumentJson: CabinetDocumentStorage.Serialize(cabinet));
-        document.SetProjectAccessor(() => project);
 
-        var choice = Assert.Single(document.CabinetViewer!.ReflectionEditor.FaceChoices);
-        Assert.Equal("face-top", choice.FaceId);
-        Assert.Equal("TopGlass", choice.Label);
-        document.Dispose();
+        var choices = CabinetReflectionFaceCatalog.Discover(assets);
+
+        Assert.Equal(2, choices.Count);
+        Assert.Contains(choices, choice => choice.FaceId == "face-top" && choice.Label == "TopGlass");
+        Assert.Contains(choices, choice => choice.FaceId == "face-unused" && choice.Label == "Unused");
     }
 
     public void Dispose()

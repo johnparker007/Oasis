@@ -2,6 +2,7 @@ using Xunit;
 using OasisEditor.Progress;
 using System.Text.Json;
 using OasisEditor.Features.CabinetEditor.Models;
+using OasisEditor.Features.MachineEditor.Models;
 using SkiaSharp;
 
 namespace OasisEditor.Tests;
@@ -9,50 +10,59 @@ namespace OasisEditor.Tests;
 public sealed class MachineRuntimeBuildServiceTests
 {
     [Fact]
-    public void BuildFromCabinetDocument_ExportsReflectionDefinitionAndVisibilityMask()
+    public void BuildFromMachineDocument_ExportsReflectionDefinitionAndVisibilityMask()
     {
-        var root = CreateTempRoot(); var project = CreateProject(root);
+        var root = CreateTempRoot();
+        var project = CreateProject(root);
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Reflective")).FullName;
-        WriteMinimalGlb(Path.Combine(cabinetDir, "source.glb")); WriteSolidPng(Path.Combine(cabinetDir, "side-mask.png"), 2, 2, SKColors.White);
+        WriteMinimalGlb(Path.Combine(cabinetDir, "source.glb"));
+        WriteSolidPng(Path.Combine(cabinetDir, "side-mask.png"), 2, 2, SKColors.White);
         var reflection = new CabinetReflectionDefinition("side", "SideMesh", 0, [new CabinetReflectionSource("lowerGlass", new CabinetReflectionPlane(new(0, 0, 0), new(1, 0, 0), new(0, 1, 0), 2, 1))], CabinetReflectionSettings.RoughPlastic with { Enabled = false }, "side-mask.png");
         var document = CabinetDocument.FromModelPath("source.glb") with { Reflections = [reflection] };
-        var manifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName); File.WriteAllText(manifestPath, CabinetDocumentStorage.Serialize(document));
+        var cabinetManifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName);
+        File.WriteAllText(cabinetManifestPath, CabinetDocumentStorage.Serialize(document));
+        var machineManifestPath = CreateMachineAsset(project, "Reflective Machine", ToCabinetAssetPath(cabinetManifestPath), MachineDocumentExtensions.Empty("Reflective Machine"));
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, document, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.True(result.Success, result.ErrorMessage);
         using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.runtime.json")));
         var exported = Assert.Single(json.RootElement.GetProperty("reflections").EnumerateArray());
-        Assert.Equal("side", exported.GetProperty("id").GetString()); Assert.Equal("SideMesh", exported.GetProperty("targetId").GetString());
+        Assert.Equal("side", exported.GetProperty("id").GetString());
+        Assert.Equal("SideMesh", exported.GetProperty("targetId").GetString());
         Assert.Equal("reflection-masks/side.png", exported.GetProperty("visibilityMask").GetString());
         Assert.True(File.Exists(Path.Combine(result.BuildRoot, "cabinet", "reflection-masks", "side.png")));
     }
 
     [Fact]
-    public void BuildFromCabinetDocument_WritesDeterministicVersionedBuildAndCopiesGlb()
+    public void BuildFromMachineDocument_WritesDeterministicVersionedBuildAndCopiesGlb()
     {
         var root = CreateTempRoot();
         var project = CreateProject(root);
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Test Cabinet")).FullName;
         var sourceGlb = Path.Combine(cabinetDir, "source.glb");
         WriteMinimalGlb(sourceGlb);
-        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(new CabinetDocument(6, new CabinetModelReference("source.glb", 2.5, "Z"), [], CabinetPreviewSettings.Default)));
-        var stale = Path.Combine(project.GeneratedDirectory, "Builds", "Test Cabinet", "stale.txt");
+        var cabinetManifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName);
+        File.WriteAllText(cabinetManifestPath, CabinetDocumentStorage.Serialize(new CabinetDocument(7, new CabinetModelReference("source.glb", 2.5, "Z"), [], CabinetPreviewSettings.Default)));
+        var machineManifestPath = CreateMachineAsset(project, "Test Machine", ToCabinetAssetPath(cabinetManifestPath), MachineDocumentExtensions.Empty("Test Machine"));
+        var stale = Path.Combine(project.GeneratedDirectory, "Builds", "Test Machine", "stale.txt");
         Directory.CreateDirectory(Path.GetDirectoryName(stale)!);
         File.WriteAllText(stale, "stale");
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.True(result.Success, result.ErrorMessage);
-        Assert.Equal(Path.Combine(project.GeneratedDirectory, "Builds", "Test Cabinet"), result.BuildRoot);
+        Assert.Equal(Path.Combine(project.GeneratedDirectory, "Builds", "Test Machine"), result.BuildRoot);
         Assert.False(File.Exists(stale));
         Assert.Equal(File.ReadAllBytes(sourceGlb), File.ReadAllBytes(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.glb")));
         using var machine = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot, "machine.runtime.json")));
         Assert.Equal("oasis.machine.runtime", machine.RootElement.GetProperty("schema").GetString());
-        Assert.Equal(3, machine.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(4, machine.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Empty(machine.RootElement.GetProperty("faces").EnumerateArray());
-        Assert.Equal("TestProject", machine.RootElement.GetProperty("machineId").GetString());
+        Assert.NotNull(machine.RootElement.GetProperty("machineId").GetString());
+        Assert.Equal("Test Machine", machine.RootElement.GetProperty("displayName").GetString());
         Assert.Equal("cabinet/cabinet.runtime.json", machine.RootElement.GetProperty("cabinetManifest").GetString());
+        Assert.Equal("Emulation", machine.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
         using var cabinet = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot, "cabinet", "cabinet.runtime.json")));
         Assert.Equal("oasis.cabinet.runtime", cabinet.RootElement.GetProperty("schema").GetString());
         Assert.Equal(4, cabinet.RootElement.GetProperty("schemaVersion").GetInt32());
@@ -64,7 +74,7 @@ public sealed class MachineRuntimeBuildServiceTests
     }
 
     [Fact]
-    public void BuildFromCabinetDocument_ExportsAssignedFacesIntoRuntimeBuild()
+    public void BuildFromMachineDocument_ExportsAssignedFacesIntoRuntimeBuild()
     {
         var root = CreateTempRoot();
         var project = CreateProject(root);
@@ -73,11 +83,9 @@ public sealed class MachineRuntimeBuildServiceTests
         WriteMinimalGlb(sourceGlb);
         var cabinetDocument = CabinetDocument.FromModelPath("source.glb")
             .WithTargetOverride(new CabinetTargetOverride("target-front", " INVERTED ", 90, true))
-            .WithTargetOverride(new CabinetTargetOverride("target-back", CabinetTargetOverride.NormalFrontSide)) with
-        {
-            FaceAssignments = [MountedFace("target-front", "Front Face"), MountedFace("target-back", "Back Face")]
-        };
-        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(cabinetDocument));
+            .WithTargetOverride(new CabinetTargetOverride("target-back", CabinetTargetOverride.NormalFrontSide));
+        var cabinetManifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName);
+        File.WriteAllText(cabinetManifestPath, CabinetDocumentStorage.Serialize(cabinetDocument));
         var faceDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Faces", "Front Face")).FullName;
         WriteSolidPng(Path.Combine(faceDir, "artwork.png"), 4, 4, SKColors.Red);
         WriteSolidPng(Path.Combine(faceDir, "mask.png"), 4, 4, SKColors.White);
@@ -88,8 +96,17 @@ public sealed class MachineRuntimeBuildServiceTests
         WriteSolidPng(Path.Combine(backFaceDir, "mask.png"), 4, 4, SKColors.White);
         var backFaceDocument = CreateFaceDocument("face-runtime-back", "target-back", "Assets/Faces/Back Face/artwork.png", "Assets/Faces/Back Face/mask.png");
         File.WriteAllText(Path.Combine(backFaceDir, ProjectAssetPathService.FaceManifestFileName), FaceDocumentStorage.Serialize(backFaceDocument));
+        var machineDocument = MachineDocumentExtensions.Empty("Test Machine") with
+        {
+            SurfaceAssignments =
+            [
+                SurfaceAssignment("target-front", "Front Face"),
+                SurfaceAssignment("target-back", "Back Face")
+            ]
+        };
+        var machineManifestPath = CreateMachineAsset(project, "Test Machine", ToCabinetAssetPath(cabinetManifestPath), machineDocument);
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.True(result.Success, result.ErrorMessage);
         var faceBuildDirectory = Path.Combine(result.BuildRoot!, "faces", "Front Face");
@@ -115,9 +132,9 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.Equal(0, normalFace.GetProperty("faceRotation").GetInt32());
         Assert.False(normalFace.GetProperty("faceFlipHorizontal").GetBoolean());
 
-        File.WriteAllText(Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), CabinetDocumentStorage.Serialize(cabinetDocument
-            .WithTargetOverride(new CabinetTargetOverride("target-front", CabinetTargetOverride.NormalFrontSide, 270, false))));
-        var normalResult = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName), NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        var updatedCabinet = cabinetDocument.WithTargetOverride(new CabinetTargetOverride("target-front", CabinetTargetOverride.NormalFrontSide, 270, false));
+        File.WriteAllText(cabinetManifestPath, CabinetDocumentStorage.Serialize(updatedCabinet));
+        var normalResult = new MachineRuntimeBuildService().BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), NoOpEditorProgressReporter.Instance, CancellationToken.None);
         Assert.True(normalResult.Success, normalResult.ErrorMessage);
         using var normalMachine = JsonDocument.Parse(File.ReadAllText(Path.Combine(normalResult.BuildRoot!, "machine.runtime.json")));
         var changedFace = Assert.Single(normalMachine.RootElement.GetProperty("faces").EnumerateArray(), candidate => candidate.GetProperty("faceId").GetString() == "face-runtime");
@@ -132,51 +149,66 @@ public sealed class MachineRuntimeBuildServiceTests
     }
 
     [Fact]
-    public void BuildFromCabinetDocument_IgnoresInvalidUnreferencedFace()
+    public void BuildFromMachineDocument_IgnoresInvalidUnreferencedFace()
     {
         var root = CreateTempRoot();
         var project = CreateProject(root);
-        var cabinet = CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("top", CabinetTargetOverride.NormalFrontSide)) with { FaceAssignments = [MountedFace("top", "Mounted")] };
-        var manifestPath = CreateCabinetAsset(project, "Root Cabinet", cabinet);
-        CreateFaceAssetWithReel(project, "Mounted", "mounted-face", "top", null, "standard");
+        var cabinet = CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("top", CabinetTargetOverride.NormalFrontSide));
+        var cabinetManifestPath = CreateCabinetAsset(project, "Root Cabinet", cabinet);
+        CreateFaceAssetWithReel(project, "Mounted", "mounted-face", "top", "standard");
         var brokenDirectory = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Faces", "Broken Unused")).FullName;
         File.WriteAllText(Path.Combine(brokenDirectory, ProjectAssetPathService.FaceManifestFileName), "{ not valid json");
+        var machineDocument = MachineDocumentExtensions.Empty("Root Machine") with
+        {
+            SurfaceAssignments = [SurfaceAssignment("top", "Mounted")],
+            ReelAssignments = [new MachineReelAssignment(MachineObjectReference.Reel(1), "standard")]
+        };
+        var machineManifestPath = CreateMachineAsset(project, "Root Machine", ToCabinetAssetPath(cabinetManifestPath), machineDocument);
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.True(result.Success, result.ErrorMessage);
         Assert.True(File.Exists(Path.Combine(result.BuildRoot!, "faces", "Mounted", FaceRuntimeExportService.ManifestFileName)));
     }
 
     [Fact]
-    public void BuildFromCabinetDocument_ReferencedInvalidFaceReportsCompositionPath()
+    public void BuildFromMachineDocument_ReferencedInvalidFaceReportsCompositionPath()
     {
         var root = CreateTempRoot();
         var project = CreateProject(root);
-        var cabinet = CabinetDocument.FromModelPath("source.glb") with { FaceAssignments = [MountedFace("top", "Broken Mounted")] };
-        var manifestPath = CreateCabinetAsset(project, "Root Cabinet", cabinet);
+        var cabinet = CabinetDocument.FromModelPath("source.glb");
+        var cabinetManifestPath = CreateCabinetAsset(project, "Root Cabinet", cabinet);
         var brokenDirectory = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Faces", "Broken Mounted")).FullName;
         File.WriteAllText(Path.Combine(brokenDirectory, ProjectAssetPathService.FaceManifestFileName), "{ not valid json");
+        var machineDocument = MachineDocumentExtensions.Empty("Root Machine") with
+        {
+            SurfaceAssignments = [SurfaceAssignment("top", "Broken Mounted")]
+        };
+        var machineManifestPath = CreateMachineAsset(project, "Root Machine", ToCabinetAssetPath(cabinetManifestPath), machineDocument);
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.False(result.Success);
-        Assert.Contains("Root Cabinet", result.ErrorMessage);
-        Assert.Contains("top", result.ErrorMessage);
         Assert.Contains("Broken Mounted", result.ErrorMessage);
         Assert.Contains("invalid", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("top", result.ErrorMessage);
     }
 
-
     [Fact]
-    public void BuildFromCabinetDocument_ExportsReelDimensionsFromMachineCabinetWithoutFaceCabinetAssetPath()
+    public void BuildFromMachineDocument_ExportsReelDimensionsFromMachineCabinet()
     {
         var root = CreateTempRoot();
         var project = CreateProject(root);
-        var manifestPath = CreateCabinetAsset(project, "Runtime Cabinet", CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)) with { FaceAssignments = [MountedFace("bottomGlass", "Bottom Face")] });
-        CreateFaceAssetWithReel(project, "Bottom Face", "face-bottom", "bottomGlass", null, "standard");
+        var cabinetManifestPath = CreateCabinetAsset(project, "Runtime Cabinet", CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)));
+        CreateFaceAssetWithReel(project, "Bottom Face", "face-bottom", "bottomGlass", "standard");
+        var machineDocument = MachineDocumentExtensions.Empty("Runtime Machine") with
+        {
+            SurfaceAssignments = [SurfaceAssignment("bottomGlass", "Bottom Face")],
+            ReelAssignments = [new MachineReelAssignment(MachineObjectReference.Reel(1), "standard")]
+        };
+        var machineManifestPath = CreateMachineAsset(project, "Runtime Machine", ToCabinetAssetPath(cabinetManifestPath), machineDocument);
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.True(result.Success, result.ErrorMessage);
         using var faceManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "faces", "Bottom Face", "face.runtime.json")));
@@ -186,90 +218,58 @@ public sealed class MachineRuntimeBuildServiceTests
     }
 
     [Fact]
-    public void BuildFromCabinetDocument_ReelExportIgnoresUnrelatedOpenCabinetEquivalentData()
+    public void BuildFromMachineDocument_WithMissingCabinet_ReturnsClearFailure()
     {
         var root = CreateTempRoot();
         var project = CreateProject(root);
-        var manifestPath = CreateCabinetAsset(project, "Runtime Cabinet", CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)) with { FaceAssignments = [MountedFace("bottomGlass", "Bottom Face")] });
-        _ = CreateCabinetAsset(project, "Unrelated Cabinet", new CabinetDocument(6, new CabinetModelReference("source.glb", 1.0, "Y"), [new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.NormalFrontSide)], CabinetPreviewSettings.Default, [new CabinetReelSpecification("standard", "Different", 500, 300)], "standard"));
-        CreateFaceAssetWithReel(project, "Bottom Face", "face-bottom", "bottomGlass", null, "standard");
+        var machineDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Machines", "Missing Cabinet Machine")).FullName;
+        var machineManifestPath = Path.Combine(machineDir, ProjectAssetPathService.MachineManifestFileName);
+        var machineDocument = MachineDocumentExtensions.Empty("Missing Cabinet Machine") with
+        {
+            CabinetAssetPath = "Assets/Cabinet3D/Missing Cabinet"
+        };
+        File.WriteAllText(machineManifestPath, MachineDocumentStorage.Serialize(machineDocument));
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
-
-        Assert.True(result.Success, result.ErrorMessage);
-        using var faceManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "faces", "Bottom Face", "face.runtime.json")));
-        var reel = Assert.Single(faceManifest.RootElement.GetProperty("reels").EnumerateArray());
-        Assert.Equal(50, reel.GetProperty("physicalWidth").GetDouble());
-        Assert.Equal(105, reel.GetProperty("physicalRadius").GetDouble());
-    }
-
-    [Fact]
-    public void BuildFromCabinetDocument_WithMissingMachineCabinet_ReturnsClearFailure()
-    {
-        var root = CreateTempRoot();
-        var project = CreateProject(root);
-        var missingManifest = Path.Combine(project.AssetsDirectory, "Cabinet3D", "Missing Cabinet", ProjectAssetPathService.Cabinet3DManifestFileName);
-
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, missingManifest, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, machineManifestPath, machineDocument, NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.False(result.Success);
         Assert.Contains("Cabinet3D manifest was not found", result.ErrorMessage);
-        Assert.DoesNotContain("open Cabinet documents", result.ErrorMessage);
     }
 
-
     [Fact]
-    public void BuildFromCabinetDocument_UsesProvidedCabinetDocumentForUnsavedTargetOverride()
+    public void BuildFromMachineDocument_WithNoCabinetAssigned_ReturnsClearFailure()
     {
         var root = CreateTempRoot();
         var project = CreateProject(root);
-        var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Realistic Cabinet")).FullName;
-        var sourceGlb = Path.Combine(cabinetDir, "source.glb");
-        WriteMinimalGlb(sourceGlb);
-        var manifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName);
-        var savedCabinet = CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("topGlass1", CabinetTargetOverride.NormalFrontSide)) with { FaceAssignments = [MountedFace("topGlass1", "Top Glass Face")] };
-        File.WriteAllText(manifestPath, CabinetDocumentStorage.Serialize(savedCabinet));
-        var faceDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Faces", "Top Glass Face")).FullName;
-        WriteSolidPng(Path.Combine(faceDir, "artwork.png"), 4, 4, SKColors.Red);
-        WriteSolidPng(Path.Combine(faceDir, "mask.png"), 4, 4, SKColors.White);
-        File.WriteAllText(Path.Combine(faceDir, ProjectAssetPathService.FaceManifestFileName), FaceDocumentStorage.Serialize(CreateFaceDocument("face-top-glass", "topGlass1", "Assets/Faces/Top Glass Face/artwork.png", "Assets/Faces/Top Glass Face/mask.png")));
+        var machineManifestPath = CreateMachineAsset(project, "No Cabinet", null, MachineDocumentExtensions.Empty("No Cabinet"));
 
-        var service = new MachineRuntimeBuildService();
-        var normalResult = service.BuildFromCabinetDocument(project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
-        Assert.True(normalResult.Success, normalResult.ErrorMessage);
-        using var normalMachine = JsonDocument.Parse(File.ReadAllText(Path.Combine(normalResult.BuildRoot!, "machine.runtime.json")));
-        var normalFace = Assert.Single(normalMachine.RootElement.GetProperty("faces").EnumerateArray());
-        Assert.Equal("normal", normalFace.GetProperty("frontSide").GetString());
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
-        var unsavedCabinetDocument = savedCabinet.WithTargetOverride(new CabinetTargetOverride("topGlass1", CabinetTargetOverride.InvertedFrontSide, 180, true));
-        var invertedResult = service.BuildFromCabinetDocument(project, manifestPath, unsavedCabinetDocument, NoOpEditorProgressReporter.Instance, CancellationToken.None);
-        Assert.True(invertedResult.Success, invertedResult.ErrorMessage);
-        using var invertedMachine = JsonDocument.Parse(File.ReadAllText(Path.Combine(invertedResult.BuildRoot!, "machine.runtime.json")));
-        var invertedFace = Assert.Single(invertedMachine.RootElement.GetProperty("faces").EnumerateArray());
-        Assert.Equal("inverted", invertedFace.GetProperty("frontSide").GetString());
-        Assert.Equal(180, invertedFace.GetProperty("faceRotation").GetInt32());
-        Assert.True(invertedFace.GetProperty("faceFlipHorizontal").GetBoolean());
+        Assert.False(result.Success);
+        Assert.Contains("no assigned Cabinet", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void BuildFromCabinetDocument_AssignedTargetMismatch_ReturnsClearFailure()
+    public void BuildFromMachineDocument_AssignedTargetMismatch_ReturnsClearFailure()
     {
         var root = CreateTempRoot();
         var project = CreateProject(root);
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Mismatch Cabinet")).FullName;
         var sourceGlb = Path.Combine(cabinetDir, "source.glb");
         WriteMinimalGlb(sourceGlb);
-        var manifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName);
-        File.WriteAllText(manifestPath, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("topGlass1", CabinetTargetOverride.InvertedFrontSide)) with
-        {
-            FaceAssignments = [MountedFace("OasisFace_Top-Glass 1", "Mismatched Face")]
-        }));
+        var cabinetManifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName);
+        File.WriteAllText(cabinetManifestPath, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb").WithTargetOverride(new CabinetTargetOverride("topGlass1", CabinetTargetOverride.InvertedFrontSide))));
         var faceDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Faces", "Mismatched Face")).FullName;
         WriteSolidPng(Path.Combine(faceDir, "artwork.png"), 4, 4, SKColors.Red);
         WriteSolidPng(Path.Combine(faceDir, "mask.png"), 4, 4, SKColors.White);
         File.WriteAllText(Path.Combine(faceDir, ProjectAssetPathService.FaceManifestFileName), FaceDocumentStorage.Serialize(CreateFaceDocument("face-mismatch", "OasisFace_Top-Glass 1", "Assets/Faces/Mismatched Face/artwork.png", "Assets/Faces/Mismatched Face/mask.png")));
+        var machineDocument = MachineDocumentExtensions.Empty("Mismatch Machine") with
+        {
+            SurfaceAssignments = [SurfaceAssignment("OasisFace_Top-Glass 1", "Mismatched Face")]
+        };
+        var machineManifestPath = CreateMachineAsset(project, "Mismatch Machine", ToCabinetAssetPath(cabinetManifestPath), machineDocument);
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.False(result.Success);
         Assert.Contains("does not contain that target override", result.ErrorMessage);
@@ -280,38 +280,42 @@ public sealed class MachineRuntimeBuildServiceTests
     }
 
     [Fact]
-    public void BuildFromCabinetDocument_MissingGlb_ReturnsClearFailure()
+    public void BuildFromMachineDocument_MissingGlb_ReturnsClearFailure()
     {
         var root = CreateTempRoot();
         var project = CreateProject(root);
         var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Broken Cabinet")).FullName;
-        var manifest = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName);
-        File.WriteAllText(manifest, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("missing.glb")));
+        var cabinetManifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName);
+        File.WriteAllText(cabinetManifestPath, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("missing.glb")));
+        var machineManifestPath = CreateMachineAsset(project, "Broken Machine", ToCabinetAssetPath(cabinetManifestPath), MachineDocumentExtensions.Empty("Broken Machine"));
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifest, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.False(result.Success);
         Assert.Contains("GLB model was not found", result.ErrorMessage);
     }
 
     [Fact]
-    public void BuildFromCabinetDocument_ReportsMonotonicStageAndFaceProgress()
+    public void BuildFromMachineDocument_ReportsMonotonicStageAndFaceProgress()
     {
         var root = CreateTempRoot();
         var project = CreateProject(root);
         var cabinet = CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("top", CabinetTargetOverride.NormalFrontSide))
-            .WithTargetOverride(new CabinetTargetOverride("bottom", CabinetTargetOverride.NormalFrontSide)) with
+            .WithTargetOverride(new CabinetTargetOverride("bottom", CabinetTargetOverride.NormalFrontSide));
+        var cabinetManifestPath = CreateCabinetAsset(project, "Progress Cabinet", cabinet);
+        CreateFaceAssetWithReel(project, "Top Glass", "face-top", "top", "standard");
+        CreateFaceAssetWithReel(project, "Bottom Glass", "face-bottom", "bottom", "standard");
+        var machineDocument = MachineDocumentExtensions.Empty("Progress Machine") with
         {
-            FaceAssignments = [MountedFace("top", "Top Glass"), MountedFace("bottom", "Bottom Glass")]
+            SurfaceAssignments = [SurfaceAssignment("top", "Top Glass"), SurfaceAssignment("bottom", "Bottom Glass")],
+            ReelAssignments = [new MachineReelAssignment(MachineObjectReference.Reel(1), "standard")]
         };
-        var manifestPath = CreateCabinetAsset(project, "Progress Cabinet", cabinet);
-        CreateFaceAssetWithReel(project, "Top Glass", "face-top", "top", null, "standard");
-        CreateFaceAssetWithReel(project, "Bottom Glass", "face-bottom", "bottom", null, "standard");
+        var machineManifestPath = CreateMachineAsset(project, "Progress Machine", ToCabinetAssetPath(cabinetManifestPath), machineDocument);
         var reports = new List<EditorProgressState>();
         var initial = new EditorProgressState("Build", "Starting", EditorProgressMode.Determinate, 0, false, false);
         var reporter = new EditorProgressReporter(initial, reports.Add);
 
-        var result = new MachineRuntimeBuildService().BuildFromCabinetDocument(project, manifestPath, reporter, CancellationToken.None);
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), reporter, CancellationToken.None);
 
         Assert.True(result.Success, result.ErrorMessage);
         var determinate = reports.Where(report => report.Mode == EditorProgressMode.Determinate).ToArray();
@@ -324,15 +328,21 @@ public sealed class MachineRuntimeBuildServiceTests
     }
 
     [Fact]
-    public void BuildFromCabinetDocument_CancellationPreservesExistingBuildAndCleansStaging()
+    public void BuildFromMachineDocument_CancellationPreservesExistingBuildAndCleansStaging()
     {
         var root = CreateTempRoot();
         var project = CreateProject(root);
-        var cabinet = CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("top", CabinetTargetOverride.NormalFrontSide)) with { FaceAssignments = [MountedFace("top", "Top Glass")] };
-        var manifestPath = CreateCabinetAsset(project, "Cancellation Cabinet", cabinet);
-        CreateFaceAssetWithReel(project, "Top Glass", "face-top", "top", null, "standard");
+        var cabinet = CreateCabinetWithSpec("source.glb", new CabinetTargetOverride("top", CabinetTargetOverride.NormalFrontSide));
+        var cabinetManifestPath = CreateCabinetAsset(project, "Cancellation Cabinet", cabinet);
+        CreateFaceAssetWithReel(project, "Top Glass", "face-top", "top", "standard");
+        var machineDocument = MachineDocumentExtensions.Empty("Cancellation Machine") with
+        {
+            SurfaceAssignments = [SurfaceAssignment("top", "Top Glass")],
+            ReelAssignments = [new MachineReelAssignment(MachineObjectReference.Reel(1), "standard")]
+        };
+        var machineManifestPath = CreateMachineAsset(project, "Cancellation Machine", ToCabinetAssetPath(cabinetManifestPath), machineDocument);
         var service = new MachineRuntimeBuildService();
-        var successful = service.BuildFromCabinetDocument(project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        var successful = service.BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), NoOpEditorProgressReporter.Instance, CancellationToken.None);
         Assert.True(successful.Success, successful.ErrorMessage);
         var markerPath = Path.Combine(successful.BuildRoot!, "existing-build.marker");
         File.WriteAllText(markerPath, "keep");
@@ -343,14 +353,13 @@ public sealed class MachineRuntimeBuildServiceTests
             if (state.Message.Contains("Exporting Face", StringComparison.Ordinal)) cancellation.Cancel();
         });
 
-        Assert.ThrowsAny<OperationCanceledException>(() => service.BuildFromCabinetDocument(project, manifestPath, reporter, cancellation.Token));
+        Assert.ThrowsAny<OperationCanceledException>(() => service.BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), reporter, cancellation.Token));
 
         Assert.True(File.Exists(markerPath));
         Assert.False(Directory.Exists(successful.BuildRoot + ".staging"));
     }
 
-
-    private static CabinetFaceAssignment MountedFace(string targetId, string assetName) =>
+    private static MachineSurfaceAssignment SurfaceAssignment(string targetId, string assetName) =>
         new(targetId, $"Assets/Faces/{assetName}/{ProjectAssetPathService.FaceManifestFileName}");
 
     private static string CreateCabinetAsset(EditorProject project, string assetName, CabinetDocument cabinetDocument)
@@ -362,16 +371,37 @@ public sealed class MachineRuntimeBuildServiceTests
         return manifestPath;
     }
 
+    private static string CreateMachineAsset(EditorProject project, string assetName, string? cabinetAssetPath, MachineDocument machineDocument)
+    {
+        var machineDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Machines", assetName)).FullName;
+        var manifestPath = Path.Combine(machineDir, ProjectAssetPathService.MachineManifestFileName);
+        var document = machineDocument with { CabinetAssetPath = cabinetAssetPath };
+        File.WriteAllText(manifestPath, MachineDocumentStorage.Serialize(document));
+        return manifestPath;
+    }
+
+    private static MachineDocument LoadMachine(string manifestPath)
+    {
+        Assert.True(MachineDocumentStorage.TryRead(File.ReadAllText(manifestPath), out var document));
+        return document;
+    }
+
+    private static string ToCabinetAssetPath(string cabinetManifestPath)
+    {
+        var directory = Path.GetDirectoryName(cabinetManifestPath)!;
+        var assetsIndex = directory.IndexOf("Assets", StringComparison.OrdinalIgnoreCase);
+        return ProjectAssetPathService.NormalizeProjectRelativePath(directory[assetsIndex..].Replace('\\', '/'));
+    }
+
     private static CabinetDocument CreateCabinetWithSpec(string modelPath, CabinetTargetOverride targetOverride) => new(
-        6,
+        7,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [targetOverride],
         CabinetPreviewSettings.Default,
         [new CabinetReelSpecification("standard", "Standard", 210, 50)],
-        "standard",
-        ReelAssignments: [new CabinetReelAssignment(MachineObjectReference.Reel(1), "standard")]);
+        "standard");
 
-    private static void CreateFaceAssetWithReel(EditorProject project, string assetName, string faceId, string targetId, string? cabinetAssetPath, string reelSpecificationId)
+    private static void CreateFaceAssetWithReel(EditorProject project, string assetName, string faceId, string targetId, string reelSpecificationId)
     {
         var faceDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Faces", assetName)).FullName;
         var artworkPath = Path.Combine(faceDir, "artwork.png");
@@ -443,14 +473,7 @@ public sealed class MachineRuntimeBuildServiceTests
         data.SaveTo(stream);
     }
 
-    private static EditorProject CreateProject(string root)
-    {
-        var projectDir = Path.Combine(root, "TestProject");
-        var assets = Directory.CreateDirectory(Path.Combine(projectDir, "Assets")).FullName;
-        var machines = Directory.CreateDirectory(Path.Combine(projectDir, "Machines")).FullName;
-        var generated = Directory.CreateDirectory(Path.Combine(projectDir, "Generated")).FullName;
-        return new EditorProject { Name = "TestProject", ProjectFilePath = Path.Combine(projectDir, "TestProject.oasisproj"), ProjectDirectory = projectDir, AssetsDirectory = assets, MachinesDirectory = machines, GeneratedDirectory = generated };
-    }
+    private static EditorProject CreateProject(string root) => TestProjectFactory.Create(root);
 
     private static string CreateTempRoot() => Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "OasisEditorTests", Guid.NewGuid().ToString("N"))).FullName;
 }

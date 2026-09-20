@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text.Json;
 using System.Windows;
 using OasisEditor.Features.CabinetEditor.Models;
+using OasisEditor.Features.MachineEditor.Models;
+using OasisEditor.Features.MachineEditor.Services;
 using EditorCommands = OasisEditor.Commands;
 using OasisEditor.Progress;
 
@@ -27,7 +29,7 @@ public sealed class DocumentWorkspaceViewModel
     private readonly FaceGenerationService _faceGenerationService = new();
     private readonly FaceRuntimeExportService _faceRuntimeExportService = new();
     private readonly FaceValidationService _faceValidationService = new();
-    private readonly FaceCabinetContextResolver _faceCabinetContextResolver = new();
+    private readonly MachineCompositionContextResolver _machineCompositionContextResolver = new();
     private readonly IProgressDialogService _progressDialogService;
 
     private int _untitledDocumentCounter = 1;
@@ -168,9 +170,9 @@ public sealed class DocumentWorkspaceViewModel
         string GeneratedDirectory,
         string PendingFaceAssetDirectory,
         FaceGenerationSettingsModel? Settings,
-        FaceCabinetContext CabinetContext);
+        MachineCompositionContext CabinetContext);
 
-    internal sealed record PreparedFaceDocument(FaceDocumentModel Model, string Json, string SourceShapeName, FaceCabinetContext CabinetContext);
+    internal sealed record PreparedFaceDocument(FaceDocumentModel Model, string Json, string SourceShapeName, MachineCompositionContext CabinetContext);
 
     internal FaceGenerationWorkItem? PrepareFaceGeneration(string? faceAssetName, FaceGenerationSettingsModel? generationSettings)
     {
@@ -185,7 +187,7 @@ public sealed class DocumentWorkspaceViewModel
             .Where(d => d.Document.DocumentType == EditorDocumentType.Cabinet3D)
             .Select(d => d.CabinetViewer?.SelectedFaceTarget?.Target)
             .FirstOrDefault(candidate => candidate is not null);
-        var cabinetContext = _faceCabinetContextResolver.ResolveForGeneration(loadedProject, _openDocuments, target?.Id);
+        var cabinetContext = _machineCompositionContextResolver.ResolveForGeneration(loadedProject, _openDocuments, target?.Id);
         var targetAspect = target is null || target.Corners.Count < 4
             ? (double?)null
             : (target.Corners[1] - target.Corners[0]).Length / Math.Max(0.0001, (target.Corners[3] - target.Corners[0]).Length);
@@ -310,7 +312,7 @@ public sealed class DocumentWorkspaceViewModel
         }
 
         var faceDocument = selectedDocument.GetFaceDocument();
-        return _faceValidationService.Validate(faceDocument, _getLoadedProject(), _openDocuments.ToArray(), _faceCabinetContextResolver.ResolveForFace(_getLoadedProject(), _openDocuments, faceDocument));
+        return _faceValidationService.Validate(faceDocument, _getLoadedProject(), _openDocuments.ToArray(), _machineCompositionContextResolver.ResolveForFace(_getLoadedProject(), _openDocuments, faceDocument));
     }
 
 
@@ -353,7 +355,7 @@ public sealed class DocumentWorkspaceViewModel
 
     private void LogFaceDiagnostics(FaceDocumentModel faceDocument)
     {
-        var diagnostics = _faceValidationService.Validate(faceDocument, _getLoadedProject(), _openDocuments.ToArray(), _faceCabinetContextResolver.ResolveForFace(_getLoadedProject(), _openDocuments, faceDocument));
+        var diagnostics = _faceValidationService.Validate(faceDocument, _getLoadedProject(), _openDocuments.ToArray(), _machineCompositionContextResolver.ResolveForFace(_getLoadedProject(), _openDocuments, faceDocument));
         foreach (var diagnostic in diagnostics)
         {
             _addOutputEntry($"Face validation ({diagnostic.Code}): {diagnostic.Message}", diagnostic.Severity == FaceValidationSeverity.Error ? OutputLogStatus.Error : OutputLogStatus.Warning);
@@ -475,17 +477,31 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry($"Opened cabinet document stub: {document.Title}", OutputLogStatus.Info);
     }
 
-    public void OpenMachineStubDocument()
+    public void OpenMachineDocument()
     {
-        if (_getLoadedProject() is null)
+        var project = _getLoadedProject();
+        if (project is null)
         {
             return;
         }
 
-        var document = CreateDocumentTab(EditorDocument.CreateMachineStub($"Machine {_machineDocumentCounter++}"));
+        var name = $"Machine {_machineDocumentCounter++}";
+        var machineDocument = CreateDefaultMachineAsset(project, name);
+        var document = CreateDocumentTab(
+            EditorDocument.CreateMachineStub(name),
+            machineDocumentJson: MachineDocumentStorage.Serialize(machineDocument));
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
-        _setStatusMessage($"Opened machine document stub: {document.Title}");
-        _addOutputEntry($"Opened machine document stub: {document.Title}", OutputLogStatus.Info);
+        _setStatusMessage($"Opened machine document: {document.Title}");
+        _addOutputEntry($"Opened machine document: {document.Title}", OutputLogStatus.Info);
+    }
+
+    internal static MachineDocument CreateDefaultMachineAsset(EditorProject project, string name)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        var pathService = new ProjectAssetPathService();
+        var assetName = pathService.EnsureUniqueAssetName(project, EditorAssetType.Machine, name);
+        pathService.CreateAssetPackageDirectory(project, EditorAssetType.Machine, assetName);
+        return MachineDocumentExtensions.Empty(assetName) with { Title = assetName };
     }
 
     public void CloseSelectedDocument()
@@ -501,7 +517,7 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry($"Closed document tab: {selectedDocument.Title}", OutputLogStatus.Info);
     }
 
-    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson, string? panelTitle = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null)
+    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson, string? panelTitle = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null, string? machineDocumentJson = null)
     {
         var existing = _openDocuments.FirstOrDefault(tab => string.Equals(tab.FilePath, path, StringComparison.OrdinalIgnoreCase));
         if (existing is not null)
@@ -510,7 +526,7 @@ public sealed class DocumentWorkspaceViewModel
             return false;
         }
 
-        var document = CreateDocumentTab(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson, faceDocumentJson, cabinetDocumentJson);
+        var document = CreateDocumentTab(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson, faceDocumentJson, cabinetDocumentJson, machineDocumentJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         return true;
     }
@@ -608,7 +624,8 @@ public sealed class DocumentWorkspaceViewModel
             selectedDocument.CommandService,
             selectedDocument.RuntimeState,
             selectedDocument.FaceDocumentJson,
-            selectedDocument.CabinetDocumentJson)
+            selectedDocument.CabinetDocumentJson,
+            selectedDocument.MachineDocumentJson)
         {
             PanelZoom = selectedDocument.PanelZoom,
             PanelPanX = selectedDocument.PanelPanX,
@@ -624,18 +641,22 @@ public sealed class DocumentWorkspaceViewModel
         return updated;
     }
 
-    private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null)
+    private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null, string? machineDocumentJson = null)
     {
         var documentId = Guid.NewGuid();
         var runtimeState = _runtimeStateStore.GetOrCreate(documentId);
-        runtimeState.FruitMachinePlatform = _getLoadedProject()?.FruitMachinePlatform ?? FruitMachinePlatformType.None;
+        if (MachineDocumentStorage.TryRead(machineDocumentJson, out var machineDocument))
+        {
+            runtimeState.FruitMachinePlatform = machineDocument.Runtime.Platform;
+        }
         var tab = new DocumentTabViewModel(
             document,
             panelLayoutJson,
             documentId,
             runtimeState: runtimeState,
             faceDocumentJson: faceDocumentJson,
-            cabinetDocumentJson: cabinetDocumentJson);
+            cabinetDocumentJson: cabinetDocumentJson,
+            machineDocumentJson: machineDocumentJson);
         tab.SetOpenDocumentsAccessor(() => _openDocuments);
         tab.SetProjectAccessor(_getLoadedProject);
         tab.SetProgressDialogService(_progressDialogService);
@@ -716,11 +737,36 @@ public sealed class DocumentWorkspaceViewModel
                         Path.GetFileName(path));
                 }
 
-                return new OpenDocumentData(summary, null, assetName, FaceDocumentStorage.Serialize(faceDocument));
+                return new OpenDocumentData(summary, null, assetName, FaceDocumentJson: FaceDocumentStorage.Serialize(faceDocument));
             }
 
             return new OpenDocumentData(
                 $"Failed to open face document: {errorMessage}",
+                null,
+                Path.GetFileName(path));
+        }
+
+        if (string.Equals(Path.GetExtension(path), ".machine", StringComparison.OrdinalIgnoreCase))
+        {
+            if (MachineDocumentStorage.TryRead(content, out var machineDocument))
+            {
+                var summary = string.IsNullOrWhiteSpace(machineDocument.Summary)
+                    ? "Machine document opened."
+                    : machineDocument.Summary.Trim();
+                var assetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(path, EditorAssetType.Machine);
+                if (string.IsNullOrWhiteSpace(assetName))
+                {
+                    return new OpenDocumentData(
+                        "Failed to open machine document: Machine manifests must be stored as Assets/Machines/<AssetName>/asset.machine.",
+                        null,
+                        Path.GetFileName(path));
+                }
+
+                return new OpenDocumentData(summary, null, assetName, MachineDocumentJson: MachineDocumentStorage.Serialize(machineDocument));
+            }
+
+            return new OpenDocumentData(
+                "Failed to open machine document: invalid .machine JSON.",
                 null,
                 Path.GetFileName(path));
         }
@@ -781,6 +827,16 @@ public sealed class DocumentWorkspaceViewModel
                 Elements = faceDocument.Elements
             };
             return FaceDocumentStorage.Serialize(persistedFaceDocument);
+        }
+
+        if (document.Document.DocumentType == EditorDocumentType.Machine)
+        {
+            var machineDocument = document.GetMachineDocument();
+            return MachineDocumentStorage.Serialize(machineDocument with
+            {
+                Title = document.Document.Title,
+                Summary = string.IsNullOrWhiteSpace(document.ContentSummary) ? machineDocument.Summary : document.ContentSummary
+            });
         }
 
         var persisted = new

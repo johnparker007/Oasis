@@ -242,7 +242,6 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
             ProjectFilePath = Path.Combine(_root, "Test.oasisproj"),
             ProjectDirectory = _root,
             AssetsDirectory = assets,
-            MachinesDirectory = Path.Combine(_root, "Machines"),
             GeneratedDirectory = generated
         };
     }

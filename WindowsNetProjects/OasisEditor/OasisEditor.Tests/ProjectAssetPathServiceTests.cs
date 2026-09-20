@@ -15,7 +15,6 @@ public sealed class ProjectAssetPathServiceTests
             ProjectFilePath = Path.Combine(root, "Test.oasisproj"),
             ProjectDirectory = root,
             AssetsDirectory = Path.Combine(root, "Assets"),
-            MachinesDirectory = Path.Combine(root, "Machines"),
             GeneratedDirectory = Path.Combine(root, "Generated")
         };
         var service = new ProjectAssetPathService();
@@ -38,7 +37,6 @@ public sealed class ProjectAssetPathServiceTests
             ProjectFilePath = Path.Combine(root, "Test.oasisproj"),
             ProjectDirectory = root,
             AssetsDirectory = Path.Combine(root, "Assets"),
-            MachinesDirectory = Path.Combine(root, "Machines"),
             GeneratedDirectory = Path.Combine(root, "Generated")
         };
         var service = new ProjectAssetPathService();

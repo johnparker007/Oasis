@@ -6,6 +6,8 @@ using OasisEditor.Commands;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
 using OasisEditor.Features.CabinetEditor.ViewModels;
+using OasisEditor.Features.MachineEditor.Models;
+using OasisEditor.Features.MachineEditor.ViewModels;
 using OasisEditor.Progress;
 using SkiaSharp;
 
@@ -19,7 +21,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private string? _faceDocumentJson;
     private bool _faceDocumentJsonIsCurrent = true;
     private string? _cabinetDocumentJson;
+    private string? _machineDocumentJson;
     private CabinetDocument _cabinetDocumentModel;
+    private MachineDocument _machineDocumentModel;
     private Panel2DDocumentModel _panelDocumentModel;
     private FaceDocumentModel _faceDocumentModel;
     private Dictionary<string, PanelElementModel> _lampElementsByObjectId = new(StringComparer.Ordinal);
@@ -41,6 +45,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
     private Func<EditorProject?>? _projectAccessor;
     private readonly FaceWorkspaceViewModel? _faceWorkspace;
+    private MachineDocumentViewModel? _machineEditor;
     private readonly FaceRuntimeAssetsConfigurationService _runtimeAssetsConfiguration = new();
     private SKBitmap? _correctionInputBitmap;
     private string? _correctionInputCacheKey;
@@ -63,7 +68,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         CommandService? commandService = null,
         MachineRuntimeState? runtimeState = null,
         string? faceDocumentJson = null,
-        string? cabinetDocumentJson = null)
+        string? cabinetDocumentJson = null,
+        string? machineDocumentJson = null)
     {
         _document = document;
         DocumentId = documentId ?? Guid.NewGuid();
@@ -71,6 +77,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _panelLayoutJson = panelLayoutJson;
         _faceDocumentJson = faceDocumentJson;
         _cabinetDocumentJson = cabinetDocumentJson;
+        _machineDocumentJson = machineDocumentJson;
         _runtimeState = runtimeState ?? new MachineRuntimeState();
         _panelDocumentModel = Panel2DDocumentStorage.DeserializeModel(panelLayoutJson);
         SelectionState.SelectionChanged += OnSelectionStateChanged;
@@ -103,8 +110,16 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _cabinetDocumentModel = CabinetDocumentStorage.TryRead(cabinetDocumentJson, out var cabinetDocument)
             ? cabinetDocument
             : CabinetDocument.Empty;
+        _machineDocumentModel = MachineDocumentStorage.TryRead(machineDocumentJson, out var machineDocument)
+            ? machineDocument
+            : MachineDocumentExtensions.Empty(document.Title);
+        if (document.DocumentType == EditorDocumentType.Machine)
+        {
+            _runtimeState.FruitMachinePlatform = _machineDocumentModel.Runtime.Platform;
+        }
         RebuildLampCaches();
         _faceWorkspace = document.DocumentType == EditorDocumentType.Face ? new FaceWorkspaceViewModel(this) : null;
+        _machineEditor = document.DocumentType == EditorDocumentType.Machine ? CreateMachineEditor() : null;
     }
 
     public EditorDocument Document => _document;
@@ -113,6 +128,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public MachineRuntimeState RuntimeState => _runtimeState;
     public DocumentSelectionState SelectionState { get; } = new();
     public FaceWorkspaceViewModel? FaceWorkspace => _faceWorkspace;
+    public MachineDocumentViewModel? MachineEditor => _machineEditor ?? (Document.DocumentType == EditorDocumentType.Machine ? _machineEditor = CreateMachineEditor() : null);
     internal IProgressDialogService ProgressDialogService => _progressDialogService;
     public string Title => Document.IsDirty ? $"{Document.Title}*" : Document.Title;
     public string TypeLabel => Document.DocumentType switch
@@ -139,6 +155,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     }
 
     public void CancelCalibrationPlacement() => CalibrationPlacement = null;
+    public bool HasMachineEditor => Document.DocumentType == EditorDocumentType.Machine;
     public bool HasCabinetViewer => Document.DocumentType == EditorDocumentType.Cabinet3D && !string.IsNullOrWhiteSpace(_cabinetDocumentModel.Model.Path);
     public CabinetModelDocumentViewModel? ExistingCabinetViewer => _cabinetViewer;
     public CabinetModelDocumentViewModel? CabinetViewer => HasCabinetViewer ? GetOrCreateCabinetViewer() : null;
@@ -163,6 +180,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _projectAccessor = projectAccessor;
         ReconcileRuntimeAssetsConfiguration();
         _cabinetViewer?.ReflectionEditor.RefreshProjectContext();
+        _machineEditor?.Refresh();
     }
 
     internal void SetProgressDialogService(IProgressDialogService progressDialogService)
@@ -225,6 +243,47 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetDocumentJson)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasCabinetViewer)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetViewer)));
+    }
+
+    public string? MachineDocumentJson
+    {
+        get => _machineDocumentJson;
+        set
+        {
+            if (string.Equals(_machineDocumentJson, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _machineDocumentJson = value;
+            _machineDocumentModel = MachineDocumentStorage.TryRead(value, out var machineDocument)
+                ? machineDocument
+                : MachineDocumentExtensions.Empty(Document.Title);
+            _runtimeState.FruitMachinePlatform = _machineDocumentModel.Runtime.Platform;
+            _machineEditor?.Refresh();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MachineDocumentJson)));
+        }
+    }
+
+    public MachineDocument GetMachineDocument() => _machineDocumentModel;
+
+    public string GetMachineDocumentJson() => MachineDocumentStorage.Serialize(_machineDocumentModel);
+
+    internal void SetMachineDocument(MachineDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        _machineDocumentModel = document;
+        _machineDocumentJson = GetMachineDocumentJson();
+        _runtimeState.FruitMachinePlatform = document.Runtime.Platform;
+        _machineEditor?.Refresh();
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MachineDocumentJson)));
+    }
+
+    private MachineDocumentViewModel CreateMachineEditor()
+    {
+        var editor = new MachineDocumentViewModel(this, () => _projectAccessor?.Invoke(), () => _openDocumentsAccessor?.Invoke() ?? []);
+        return editor;
     }
 
     internal void DisposeCabinetViewer()

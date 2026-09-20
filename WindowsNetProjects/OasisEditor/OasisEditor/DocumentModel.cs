@@ -101,7 +101,7 @@ public sealed class EditorDocument
             "Project Overview",
             EditorDocumentType.ProjectOverview,
             project.ProjectFilePath,
-            $"Assets: {project.AssetsDirectory}\nMachines: {project.MachinesDirectory}\nGenerated: {project.GeneratedDirectory}",
+            $"Assets: {project.AssetsDirectory}\nGenerated: {project.GeneratedDirectory}",
             false,
             false);
     }

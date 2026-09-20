@@ -463,7 +463,6 @@ internal sealed class FaceGenerationService
             ProjectFilePath = System.IO.Path.Combine(root, $"{System.IO.Path.GetFileName(root)}.oasisproj"),
             ProjectDirectory = root,
             AssetsDirectory = System.IO.Path.Combine(root, "Assets"),
-            MachinesDirectory = System.IO.Path.Combine(root, "Machines"),
             GeneratedDirectory = string.IsNullOrWhiteSpace(generatedDirectory) ? System.IO.Path.Combine(root, "Generated") : generatedDirectory
         };
     }

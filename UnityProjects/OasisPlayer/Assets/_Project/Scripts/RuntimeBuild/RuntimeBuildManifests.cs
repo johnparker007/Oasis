@@ -14,6 +14,28 @@ namespace OasisPlayer.RuntimeBuild
         public string displayName = string.Empty;
         public string cabinetManifest = string.Empty;
         public MachineRuntimeFaceReference[] faces = Array.Empty<MachineRuntimeFaceReference>();
+        // Parsed and validated at load time. Emulation hosting remains Phase 7.
+        public MachineRuntimeDefinition runtime = new MachineRuntimeDefinition();
+    }
+
+    // Parsed/validated but NOT executed in current Player builds.
+    [Serializable]
+    public sealed class MachineRuntimeDefinition
+    {
+        public string kind = string.Empty;
+        public string platform = string.Empty;
+        public MachineRuntimePlatformSettings settings = new MachineRuntimePlatformSettings();
+    }
+
+    [Serializable]
+    public sealed class MachineRuntimePlatformSettings
+    {
+        public string system6NativeRoms = string.Empty;
+        public string mpu5NativeRoms = string.Empty;
+        public string epochNativeRoms = string.Empty;
+        public string mpu3Settings = string.Empty;
+        public string m1Settings = string.Empty;
+        public string scorpion4Settings = string.Empty;
     }
 
     [Serializable]
@@ -240,9 +262,9 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            if (machine == null || machine.schema != MachineSchema || (machine.schemaVersion != 3))
+            if (machine == null || machine.schema != MachineSchema || machine.schemaVersion != 4)
             {
-                error = $"Unsupported machine manifest schema/version in {machinePath}.";
+                error = $"Unsupported machine manifest schema/version in {machinePath}. Expected schema '{MachineSchema}' version 4.";
                 return false;
             }
 

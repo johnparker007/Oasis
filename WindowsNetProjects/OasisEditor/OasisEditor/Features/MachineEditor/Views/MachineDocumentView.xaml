@@ -1,0 +1,75 @@
+<UserControl x:Class="OasisEditor.Features.MachineEditor.Views.MachineDocumentView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:OasisEditor"
+             xmlns:conv="clr-namespace:OasisEditor">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="12" MaxWidth="720">
+            <TextBlock Text="Machine Assembly"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,8" />
+
+            <TextBlock Text="Cabinet Asset"
+                       Margin="0,8,0,4"
+                       Foreground="{DynamicResource TextSecondaryBrush}" />
+            <ComboBox ItemsSource="{Binding CabinetAssetChoices}"
+                      SelectedItem="{Binding SelectedCabinetAssetPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Text="Runtime Platform"
+                       Margin="0,16,0,4"
+                       Foreground="{DynamicResource TextSecondaryBrush}" />
+            <ComboBox ItemsSource="{Binding PlatformChoices}"
+                      SelectedItem="{Binding SelectedPlatform, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Text="Surface Assignments"
+                       Margin="0,16,0,4"
+                       FontWeight="SemiBold" />
+            <ItemsControl ItemsSource="{Binding SurfaceAssignments}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding TargetLabel}" />
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding FaceChoices}"
+                                      SelectedItem="{Binding SelectedFaceAssetPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Text="Reel Assignments"
+                       Margin="0,16,0,4"
+                       FontWeight="SemiBold" />
+            <ItemsControl ItemsSource="{Binding ReelAssignments}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding Label}" />
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding SpecificationChoices}"
+                                      SelectedItem="{Binding SelectedSpecificationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Margin="0,16,0,0"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       Text="Use Project Settings for platform ROM and hardware configuration. Machine runtime settings are stored on this asset." />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

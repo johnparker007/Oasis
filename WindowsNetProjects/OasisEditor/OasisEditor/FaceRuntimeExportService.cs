@@ -34,11 +34,11 @@ public sealed class FaceRuntimeExportService
 
     public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, string? documentPath = null, IEditorProgressReporter? progress = null)
     {
-        var cabinetContext = new FaceCabinetContext(null, null, null, null, null);
+        var cabinetContext = new MachineCompositionContext(null, null, null, null, null, null);
         return Export(faceDocument, project, cabinetContext, documentPath, progress);
     }
 
-    public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, FaceCabinetContext cabinetContext, string? documentPath = null, IEditorProgressReporter? progress = null)
+    public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, MachineCompositionContext cabinetContext, string? documentPath = null, IEditorProgressReporter? progress = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(project);
@@ -131,7 +131,7 @@ public sealed class FaceRuntimeExportService
         return new FaceRuntimeExportResult(updatedDocument, manifest, outputDirectory, manifestPath, artworkPath, maskPath);
     }
 
-    internal void ValidateStandaloneBuildContext(FaceDocumentModel faceDocument, FaceCabinetContext cabinetContext)
+    internal void ValidateStandaloneBuildContext(FaceDocumentModel faceDocument, MachineCompositionContext cabinetContext)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(cabinetContext);
@@ -140,17 +140,17 @@ public sealed class FaceRuntimeExportService
         _runtimeTextureGenerator.CreatePlan(faceDocument, width, height);
     }
 
-    public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceCabinetContext? cabinetContext = null)
+    public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, MachineCompositionContext? cabinetContext = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         var texturePlan = _runtimeTextureGenerator.CreatePlan(faceDocument, width, height);
         return CreateManifest(faceDocument, width, height, texturePlan, cabinetContext);
     }
 
-    public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceRuntimeTextureGenerationPlan texturePlan, FaceCabinetContext? cabinetContext = null)
+    public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceRuntimeTextureGenerationPlan texturePlan, MachineCompositionContext? cabinetContext = null)
         => CreateManifest(faceDocument, width, height, width, height, texturePlan, cabinetContext);
 
-    private FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, int textureWidth, int textureHeight, FaceRuntimeTextureGenerationPlan texturePlan, FaceCabinetContext? cabinetContext)
+    private FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, int textureWidth, int textureHeight, FaceRuntimeTextureGenerationPlan texturePlan, MachineCompositionContext? cabinetContext)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(texturePlan);
@@ -411,7 +411,7 @@ public sealed class FaceRuntimeExportService
     }
 
 
-    private static FaceRuntimeReelManifestEntry CreateReelManifestEntry(FaceDocumentModel faceDocument, FaceReelDisplayElement element, FaceCabinetContext? cabinetContext)
+    private static FaceRuntimeReelManifestEntry CreateReelManifestEntry(FaceDocumentModel faceDocument, FaceReelDisplayElement element, MachineCompositionContext? cabinetContext)
     {
         var dimensions = cabinetContext?.CabinetDocument is null
             ? (ResolvedReelPhysicalDimensions?)null
@@ -447,7 +447,7 @@ public sealed class FaceRuntimeExportService
         Intensity = lamp.Intensity
     };
 
-    private static ResolvedReelPhysicalDimensions ResolveReelPhysicalDimensions(FaceDocumentModel faceDocument, FaceReelDisplayElement reel, FaceCabinetContext? cabinetContext)
+    private static ResolvedReelPhysicalDimensions ResolveReelPhysicalDimensions(FaceDocumentModel faceDocument, FaceReelDisplayElement reel, MachineCompositionContext? cabinetContext)
     {
         var faceAsset = string.IsNullOrWhiteSpace(faceDocument.Title) ? faceDocument.Id : faceDocument.Title;
         var reelName = DisplayName(reel);
@@ -468,7 +468,7 @@ public sealed class FaceRuntimeExportService
             throw Fail("Face reel has no logical machine reel reference.");
         }
 
-        var assignments = cabinetContext.CabinetDocument.ReelAssignments ?? [];
+        var assignments = cabinetContext.MachineDocument?.ReelAssignments ?? [];
         var assignmentMatches = assignments.Where(value => value.MachineReelReference == machineReference.Value).ToArray();
         if (assignmentMatches.Length != 1)
         {

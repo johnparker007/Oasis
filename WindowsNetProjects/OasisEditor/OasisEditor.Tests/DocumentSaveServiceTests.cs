@@ -1,4 +1,5 @@
 using OasisEditor.Automation;
+using OasisEditor.Features.MachineEditor.Models;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -27,6 +28,45 @@ public sealed class DocumentSaveServiceTests
         finally
         {
             if (File.Exists(tempPath)) File.Delete(tempPath);
+        }
+    }
+
+    [Fact]
+    public void SaveDocument_PreservesMachineDocumentState()
+    {
+        var service = new DocumentSaveService();
+        var root = Path.Combine(Path.GetTempPath(), $"oasis-save-machine-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        var savePath = Path.Combine(root, "Assets", "Machines", "Test Machine", ProjectAssetPathService.MachineManifestFileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+
+        try
+        {
+            var machineDocument = MachineDocumentExtensions.Empty("Test Machine") with
+            {
+                CabinetAssetPath = "Assets/Cabinet3D/Demo",
+                Runtime = MachineRuntimeDefinition.CreateDefault() with { Platform = FruitMachinePlatformType.MPU5 }
+            };
+            var current = new DocumentTabViewModel(
+                EditorDocument.CreateMachineStub("Test Machine").MarkDirty(),
+                machineDocumentJson: MachineDocumentStorage.Serialize(machineDocument));
+            current.SetMachineDocument(machineDocument);
+
+            var saved = service.SaveDocument(current, savePath);
+
+            Assert.False(saved.IsDirty);
+            Assert.Equal(FruitMachinePlatformType.MPU5, saved.GetMachineDocument().Runtime.Platform);
+            Assert.Equal("Assets/Cabinet3D/Demo", saved.GetMachineDocument().CabinetAssetPath);
+            Assert.True(MachineDocumentStorage.TryRead(File.ReadAllText(savePath), out var persisted));
+            Assert.Equal(FruitMachinePlatformType.MPU5, persisted.Runtime.Platform);
+            Assert.Equal("Assets/Cabinet3D/Demo", persisted.CabinetAssetPath);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
         }
     }
 

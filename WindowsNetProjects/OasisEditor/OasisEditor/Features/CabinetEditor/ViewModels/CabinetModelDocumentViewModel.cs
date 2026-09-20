@@ -11,6 +11,7 @@ using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
+using OasisEditor.Features.MachineEditor.Models;
 using OasisEditor.Rendering;
 using SkiaSharp;
 
@@ -231,7 +232,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         }
 
         var previewGroup = new Model3DGroup();
-        foreach (var assignment in _document.GetCabinetDocument().FaceAssignments ?? [])
+        foreach (var assignment in ResolveSurfaceAssignmentsForPreview())
         {
             var project = _projectAccessor?.Invoke();
             var assignedPath = Path.IsPathRooted(assignment.FaceAssetPath) ? assignment.FaceAssetPath : Path.Combine(project?.ProjectDirectory ?? string.Empty, assignment.FaceAssetPath.Replace('/', Path.DirectorySeparatorChar));
@@ -314,7 +315,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         }
 
         var faceDocument = document.GetFaceDocument();
-        var assignment = (_document.GetCabinetDocument().FaceAssignments ?? []).FirstOrDefault(value => string.Equals(value.TargetId, entry.TargetId, StringComparison.Ordinal));
+        var assignment = ResolveSurfaceAssignmentsForPreview().FirstOrDefault(value => string.Equals(value.TargetId, entry.TargetId, StringComparison.Ordinal));
         if (assignment is null)
         {
             RefreshFacePreviews();
@@ -623,4 +624,39 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
             return new CabinetLiveBaseCacheKey(faceDocumentId, faceDocumentJson ?? string.Empty, target.Width, target.Height);
         }
     }
+
+    private IEnumerable<MachineSurfaceAssignment> ResolveSurfaceAssignmentsForPreview()
+    {
+        var cabinetAssetPath = ResolveCabinetAssetPath();
+        if (string.IsNullOrWhiteSpace(cabinetAssetPath) || _openDocumentsAccessor is null)
+        {
+            return [];
+        }
+
+        return _openDocumentsAccessor()
+            .Where(document => document.Document.DocumentType == EditorDocumentType.Machine)
+            .SelectMany(document =>
+            {
+                var machine = document.GetMachineDocument();
+                if (!string.Equals(NormalizeAssetPath(machine.CabinetAssetPath), NormalizeAssetPath(cabinetAssetPath), StringComparison.OrdinalIgnoreCase))
+                {
+                    return [];
+                }
+
+                return machine.SurfaceAssignments ?? [];
+            });
+    }
+
+    private string? ResolveCabinetAssetPath()
+    {
+        var project = _projectAccessor?.Invoke();
+        if (project is null || string.IsNullOrWhiteSpace(_document.FilePath))
+        {
+            return null;
+        }
+
+        return new ProjectAssetPathService().ToProjectRelativePath(project, Path.GetDirectoryName(_document.FilePath)!);
+    }
+
+    private static string? NormalizeAssetPath(string? path) => string.IsNullOrWhiteSpace(path) ? null : path.Trim().Replace('\\', '/');
 }

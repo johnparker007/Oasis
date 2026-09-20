@@ -5,6 +5,7 @@
              xmlns:local="clr-namespace:OasisEditor"
              xmlns:views="clr-namespace:OasisEditor.Views"
              xmlns:cabinetViews="clr-namespace:OasisEditor.Features.CabinetEditor.Views"
+             xmlns:machineViews="clr-namespace:OasisEditor.Features.MachineEditor.Views"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:DesignHeight="500"
@@ -69,6 +70,22 @@
                 <cabinetViews:CabinetModelDocumentView />
             </Grid>
 
+            <Grid MinHeight="280"
+                  ClipToBounds="True"
+                  Background="{DynamicResource PanelBackgroundBrush}">
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasMachineEditor}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <machineViews:MachineDocumentView DataContext="{Binding MachineEditor}" />
+            </Grid>
+
             <Border Padding="10"
                     CornerRadius="4"
                     Background="{DynamicResource SelectionBrush}"
@@ -85,6 +102,9 @@
                                 <Setter Property="Visibility" Value="Collapsed" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding HasCabinetViewer}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding HasMachineEditor}" Value="True">
                                 <Setter Property="Visibility" Value="Collapsed" />
                             </DataTrigger>
                         </Style.Triggers>

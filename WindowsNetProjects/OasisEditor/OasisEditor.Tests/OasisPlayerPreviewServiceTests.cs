@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using OasisEditor.Features.CabinetEditor.Models;
+using OasisEditor.Features.MachineEditor.Models;
 using OasisEditor.Progress;
 using Xunit;
 
@@ -17,7 +17,7 @@ public sealed class OasisPlayerPreviewServiceTests
         var starter = new CapturingStarter();
         var service = new OasisPlayerPreviewService(new StubBuildService(MachineRuntimeBuildResult.Fail("machine build failed")), new OasisPlayerLaunchService(starter));
 
-        var result = service.Preview(project, "asset.cabinet3d", CabinetDocument.Empty, new OasisPlayerPreferences { ExecutablePath = exe }, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        var result = service.Preview(project, "Assets/Machines/Test Machine/asset.machine", MachineDocumentExtensions.Empty("Test Machine"), new OasisPlayerPreferences { ExecutablePath = exe }, NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.False(result.Success);
         Assert.Equal("machine build failed", result.ErrorMessage);
@@ -36,7 +36,7 @@ public sealed class OasisPlayerPreviewServiceTests
         var starter = new CapturingStarter();
         var service = new OasisPlayerPreviewService(new StubBuildService(MachineRuntimeBuildResult.Ok(exactBuildRoot)), new OasisPlayerLaunchService(starter));
 
-        var result = service.Preview(project, "asset.cabinet3d", CabinetDocument.Empty, new OasisPlayerPreferences { ExecutablePath = exe, PreviewWidth = 1600, PreviewHeight = 900 }, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        var result = service.Preview(project, "Assets/Machines/Test Machine/asset.machine", MachineDocumentExtensions.Empty("Test Machine"), new OasisPlayerPreferences { ExecutablePath = exe, PreviewWidth = 1600, PreviewHeight = 900 }, NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
         Assert.True(result.Success, result.ErrorMessage);
         Assert.Equal(exactBuildRoot, result.BuildRoot);
@@ -46,23 +46,14 @@ public sealed class OasisPlayerPreviewServiceTests
     private static EditorProject CreateProject()
     {
         var root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "Oasis Player Tests", Guid.NewGuid().ToString("N"))).FullName;
-        return new EditorProject
-        {
-            Name = "TestProject",
-            ProjectFilePath = Path.Combine(root, "TestProject.oasisproj"),
-            ProjectDirectory = root,
-            AssetsDirectory = Path.Combine(root, "Assets"),
-            MachinesDirectory = Path.Combine(root, "Machines"),
-            GeneratedDirectory = Path.Combine(root, "Generated")
-        };
+        return TestProjectFactory.Create(root, "TestProject");
     }
 
     private sealed class StubBuildService : IMachineRuntimeBuildService
     {
         private readonly MachineRuntimeBuildResult _result;
         public StubBuildService(MachineRuntimeBuildResult result) => _result = result;
-        public MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, IEditorProgressReporter progress, CancellationToken cancellationToken) => _result;
-        public MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, CabinetDocument cabinetDocument, IEditorProgressReporter progress, CancellationToken cancellationToken) => _result;
+        public MachineRuntimeBuildResult BuildFromMachineDocument(EditorProject project, string machineManifestPath, MachineDocument machineDocument, IEditorProgressReporter progress, CancellationToken cancellationToken) => _result;
     }
 
     private sealed class CapturingStarter : IOasisPlayerProcessStarter

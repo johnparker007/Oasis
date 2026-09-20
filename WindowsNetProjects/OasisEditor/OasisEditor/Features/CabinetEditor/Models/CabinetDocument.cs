@@ -7,29 +7,17 @@ public sealed record CabinetDocument(
     CabinetPreviewSettings Preview,
     CabinetReelSpecification[] ReelSpecifications = null!,
     string? DefaultReelSpecificationId = null,
-    CabinetReflectionDefinition[]? Reflections = null,
-    CabinetFaceAssignment[]? FaceAssignments = null,
-    CabinetReelAssignment[]? ReelAssignments = null)
+    CabinetReflectionDefinition[]? Reflections = null)
 {
-    public static CabinetDocument Empty => new(6, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
+    public static CabinetDocument Empty => new(7, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
 
     public static CabinetDocument FromModelPath(string modelPath) => new(
-        6,
+        7,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [],
         CabinetPreviewSettings.Default,
         [],
         null);
-}
-
-public sealed record CabinetFaceAssignment(string TargetId, string FaceAssetPath)
-{
-    public CabinetFaceAssignment Normalized() => new(TargetId.Trim(), FaceAssetPath.Trim().Replace('\\', '/'));
-}
-
-public sealed record CabinetReelAssignment(MachineObjectReference MachineReelReference, string ReelSpecificationId)
-{
-    public CabinetReelAssignment Normalized() => new(MachineReelReference, ReelSpecificationId.Trim());
 }
 
 public sealed record CabinetReflectionVector(double X, double Y, double Z);
@@ -43,9 +31,9 @@ public sealed record CabinetReflectionSettings(bool Enabled, double Strength, do
     public CabinetReflectionSettings Normalized() => new(Enabled, Math.Clamp(Strength, 0, 2), Math.Clamp(UnlitArtworkStrength, 0, 2), Math.Clamp(LitLampStrength, 0, 4), Math.Clamp(FresnelPower, .1, 10), Math.Clamp(FresnelStrength, 0, 2), Math.Clamp(Roughness, 0, 1), Math.Clamp(Distortion, 0, .05), Math.Clamp(EdgeFade, 0, .25));
 }
 
-public sealed record CabinetReflectionSource(string FaceId, CabinetReflectionPlane Plane, string PlaneSource = CabinetReflectionPlaneSource.Automatic)
+public sealed record CabinetReflectionSource(string SourceSurfaceTargetId, CabinetReflectionPlane Plane, string PlaneSource = CabinetReflectionPlaneSource.Automatic)
 {
-    public CabinetReflectionSource Normalized() => this with { FaceId = FaceId?.Trim() ?? string.Empty };
+    public CabinetReflectionSource Normalized() => this with { SourceSurfaceTargetId = SourceSurfaceTargetId?.Trim() ?? string.Empty };
 }
 
 public sealed record CabinetReflectionDefinition(string Id, string TargetId, int MaterialSlot, CabinetReflectionSource[] Sources, CabinetReflectionSettings Settings, string? VisibilityMask = null)

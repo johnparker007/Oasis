@@ -5,8 +5,32 @@ namespace OasisEditor.Features.CabinetEditor.Services;
 
 public sealed record CabinetReflectionFaceChoice(string FaceId, string DisplayName, string AssetPath, string Label, string? CabinetTargetId, bool IsMissing = false);
 
+public sealed record CabinetReflectionSurfaceTargetChoice(string TargetId, string DisplayName, string Label, bool IsMissing = false);
+
 public static class CabinetReflectionFaceCatalog
 {
+    public static IReadOnlyList<CabinetReflectionSurfaceTargetChoice> DiscoverSurfaceTargets(CabinetDocument? cabinet)
+    {
+        if (cabinet is null || string.IsNullOrWhiteSpace(cabinet.Model.Path) || !File.Exists(cabinet.Model.Path))
+        {
+            return [];
+        }
+
+        try
+        {
+            return new GlbCabinetFaceTargetDetector()
+                .DetectTargets(cabinet.Model.Path)
+                .Where(target => target.IsValid)
+                .Select(target => new CabinetReflectionSurfaceTargetChoice(target.Id, target.DisplayName, target.DisplayName))
+                .OrderBy(target => target.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+        catch (Exception exception) when (IsExpectedDiscoveryFailure(exception))
+        {
+            return [];
+        }
+    }
+
     public static IReadOnlyList<CabinetReflectionFaceChoice> Discover(string? assetsDirectory, CabinetDocument? cabinet = null)
     {
         if (string.IsNullOrWhiteSpace(assetsDirectory)) return [];
@@ -16,18 +40,16 @@ public static class CabinetReflectionFaceCatalog
             var faceRoot = Path.Combine(assets, "Faces");
             if (!Directory.Exists(faceRoot)) return [];
             var raw = new List<CabinetReflectionFaceChoice>();
-            var mountedFaces = (cabinet?.FaceAssignments ?? []).Select(value => new { value.TargetId, Path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(assets)!, value.FaceAssetPath.Replace('/', Path.DirectorySeparatorChar))) }).ToArray();
-            foreach (var mounted in mountedFaces)
+            foreach (var manifestPath in Directory.EnumerateFiles(faceRoot, ProjectAssetPathService.FaceManifestFileName, SearchOption.AllDirectories))
             {
                 try
                 {
-                    var path = Directory.Exists(mounted.Path) ? Path.Combine(mounted.Path, ProjectAssetPathService.FaceManifestFileName) : mounted.Path;
-                    if (!FaceDocumentStorage.TryReadValidated(File.ReadAllText(path), out var file, out _)) continue;
+                    if (!FaceDocumentStorage.TryReadValidated(File.ReadAllText(manifestPath), out var file, out _)) continue;
                     var face = FaceDocumentStorage.ToModel(file);
                     if (string.IsNullOrWhiteSpace(face.Id)) continue;
-                    var name = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(path, EditorAssetType.Face) ?? Path.GetFileName(Path.GetDirectoryName(path));
-                    var relative = ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(Path.GetFileName(assets), Path.GetRelativePath(assets, Path.GetDirectoryName(path)!)));
-                    raw.Add(new(face.Id.Trim(), name, relative, name, mounted.TargetId));
+                    var name = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(manifestPath, EditorAssetType.Face) ?? Path.GetFileName(Path.GetDirectoryName(manifestPath));
+                    var relative = ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(Path.GetFileName(assets), Path.GetRelativePath(assets, Path.GetDirectoryName(manifestPath)!)));
+                    raw.Add(new(face.Id.Trim(), name, relative, name, null));
                 }
                 catch (Exception exception) when (IsExpectedDiscoveryFailure(exception)) { }
             }

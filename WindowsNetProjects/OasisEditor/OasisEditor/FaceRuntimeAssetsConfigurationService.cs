@@ -1,6 +1,6 @@
 namespace OasisEditor;
 
-public sealed record FaceRuntimeAssetsCapability(bool IsConfigured, FaceCabinetContext? CabinetContext, string? Reason);
+public sealed record FaceRuntimeAssetsCapability(bool IsConfigured, MachineCompositionContext? CabinetContext, string? Reason);
 
 /// <summary>
 /// Determines whether this Face can build its complete runtime render package standalone.
@@ -26,7 +26,7 @@ public sealed class FaceRuntimeAssetsConfigurationService
         {
             return new(false, null, "Face mask output is not configured.");
         }
-        var context = new FaceCabinetContext(null, null, null, null, null);
+        var context = new MachineCompositionContext(null, null, null, null, null, null);
         try
         {
             _runtimeExporter.ValidateStandaloneBuildContext(face, context);

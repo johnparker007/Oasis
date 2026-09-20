@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using OasisEditor.Features.CabinetEditor.Models;
+using OasisEditor.Features.MachineEditor.Models;
 using SkiaSharp;
 
 namespace OasisEditor;
@@ -32,17 +33,21 @@ public sealed class FaceValidationService
         ValidateMachineReferences(faceDocument, diagnostics);
         if (cabinetContextOrDocument is CabinetDocument cabinetDocument)
         {
-            ValidateCabinetComposition(faceDocument, cabinetDocument, diagnostics);
+            ValidateCabinetComposition(faceDocument, cabinetDocument, null, diagnostics);
         }
-        else if (cabinetContextOrDocument is FaceCabinetContext { CabinetDocument: { } contextCabinet })
+        else if (cabinetContextOrDocument is MachineCompositionContext { CabinetDocument: { } contextCabinet, MachineDocument: { } machineDocument })
         {
-            ValidateCabinetComposition(faceDocument, contextCabinet, diagnostics);
+            ValidateCabinetComposition(faceDocument, contextCabinet, machineDocument, diagnostics);
+        }
+        else if (cabinetContextOrDocument is MachineCompositionContext { CabinetDocument: { } cabinetOnly })
+        {
+            ValidateCabinetComposition(faceDocument, cabinetOnly, null, diagnostics);
         }
         diagnostics.AddRange(new FaceTrayAutoAuthoringService().Validate(faceDocument));
         return diagnostics;
     }
 
-    private static void ValidateCabinetComposition(FaceDocumentModel face, CabinetDocument cabinet, List<FaceValidationDiagnostic> diagnostics)
+    private static void ValidateCabinetComposition(FaceDocumentModel face, CabinetDocument cabinet, MachineDocument? machine, List<FaceValidationDiagnostic> diagnostics)
     {
         var specifications = cabinet.ReelSpecifications ?? [];
         if (!string.IsNullOrWhiteSpace(cabinet.DefaultReelSpecificationId)
@@ -58,19 +63,19 @@ public sealed class FaceValidationService
             var machineReference = reel.LinkedMachineObjectReference;
             if (machineReference is null || machineReference.Value.Kind != MachineObjectKind.Reel) continue;
             var reference = machineReference.Value;
-            var assignments = (cabinet.ReelAssignments ?? []).Where(value => value.MachineReelReference == reference).ToArray();
+            var assignments = (machine?.ReelAssignments ?? []).Where(value => value.MachineReelReference == reference).ToArray();
             if (assignments.Length == 0)
             {
-                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.Missing", $"Cabinet has no physical reel assignment for logical reel '{reference}'."));
+                diagnostics.Add(new(FaceValidationSeverity.Error, "Machine.ReelAssignment.Missing", $"Machine has no physical reel assignment for logical reel '{reference}'."));
                 continue;
             }
             if (assignments.Length > 1)
             {
-                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.Duplicate", $"Cabinet has duplicate physical reel assignments for logical reel '{reference}'."));
+                diagnostics.Add(new(FaceValidationSeverity.Error, "Machine.ReelAssignment.Duplicate", $"Machine has duplicate physical reel assignments for logical reel '{reference}'."));
                 continue;
             }
             if (!specifications.Any(value => string.Equals(value.Id, assignments[0].ReelSpecificationId, StringComparison.Ordinal)))
-                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.SpecificationMissing", $"Logical reel '{reference}' references Cabinet reel specification '{assignments[0].ReelSpecificationId}', which does not exist."));
+                diagnostics.Add(new(FaceValidationSeverity.Error, "Machine.ReelAssignment.SpecificationMissing", $"Logical reel '{reference}' references Cabinet reel specification '{assignments[0].ReelSpecificationId}', which does not exist."));
         }
     }
 

@@ -275,7 +275,7 @@ public sealed class FaceDocumentRoundTripTests
             document.SetProjectAccessor(() => new EditorProject
             {
                 Name = "Test", ProjectFilePath = Path.Combine(directory, "test.oasis"), ProjectDirectory = directory,
-                AssetsDirectory = Path.Combine(directory, "Assets"), MachinesDirectory = Path.Combine(directory, "Machines"),
+                AssetsDirectory = Path.Combine(directory, "Assets"),
                 GeneratedDirectory = Path.Combine(directory, "Generated")
             });
 
