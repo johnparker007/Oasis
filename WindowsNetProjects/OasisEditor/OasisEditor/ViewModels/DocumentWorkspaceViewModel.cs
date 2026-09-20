@@ -501,7 +501,7 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry($"Closed document tab: {selectedDocument.Title}", OutputLogStatus.Info);
     }
 
-    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson, string? panelTitle = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null)
+    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson, string? panelTitle = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null, string? machineDocumentJson = null)
     {
         var existing = _openDocuments.FirstOrDefault(tab => string.Equals(tab.FilePath, path, StringComparison.OrdinalIgnoreCase));
         if (existing is not null)
@@ -510,7 +510,7 @@ public sealed class DocumentWorkspaceViewModel
             return false;
         }
 
-        var document = CreateDocumentTab(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson, faceDocumentJson, cabinetDocumentJson);
+        var document = CreateDocumentTab(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson, faceDocumentJson, cabinetDocumentJson, machineDocumentJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         return true;
     }
@@ -624,7 +624,7 @@ public sealed class DocumentWorkspaceViewModel
         return updated;
     }
 
-    private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null)
+    private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null, string? machineDocumentJson = null)
     {
         var documentId = Guid.NewGuid();
         var runtimeState = _runtimeStateStore.GetOrCreate(documentId);
@@ -635,7 +635,8 @@ public sealed class DocumentWorkspaceViewModel
             documentId,
             runtimeState: runtimeState,
             faceDocumentJson: faceDocumentJson,
-            cabinetDocumentJson: cabinetDocumentJson);
+            cabinetDocumentJson: cabinetDocumentJson,
+            machineDocumentJson: machineDocumentJson);
         tab.SetOpenDocumentsAccessor(() => _openDocuments);
         tab.SetProjectAccessor(_getLoadedProject);
         tab.SetProgressDialogService(_progressDialogService);
@@ -725,6 +726,16 @@ public sealed class DocumentWorkspaceViewModel
                 Path.GetFileName(path));
         }
 
+        if (string.Equals(Path.GetExtension(path), ".machine", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!MachineDocumentStorage.TryRead(content, out var machine))
+                return new OpenDocumentData("Failed to open Machine: invalid or unsupported schema.", null, Path.GetFileName(path));
+            var assetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(path, EditorAssetType.Machine);
+            if (string.IsNullOrWhiteSpace(assetName))
+                return new OpenDocumentData("Failed to open Machine: manifests must be stored as Assets/Machines/<Name>/asset.machine.", null, Path.GetFileName(path));
+            return new OpenDocumentData("Machine composition document opened.", null, assetName, MachineDocumentJson: MachineDocumentStorage.Write(machine));
+        }
+
         var preview = content.Length > 300 ? $"{content[..300]}..." : content;
         if (string.IsNullOrWhiteSpace(preview))
         {
@@ -782,6 +793,9 @@ public sealed class DocumentWorkspaceViewModel
             };
             return FaceDocumentStorage.Serialize(persistedFaceDocument);
         }
+
+        if (document.Document.DocumentType == EditorDocumentType.Machine)
+            return MachineDocumentStorage.Write(document.GetMachineDocument());
 
         var persisted = new
         {

@@ -20,6 +20,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private bool _faceDocumentJsonIsCurrent = true;
     private string? _cabinetDocumentJson;
     private CabinetDocument _cabinetDocumentModel;
+    private MachineDocument _machineDocumentModel;
     private Panel2DDocumentModel _panelDocumentModel;
     private FaceDocumentModel _faceDocumentModel;
     private Dictionary<string, PanelElementModel> _lampElementsByObjectId = new(StringComparer.Ordinal);
@@ -63,7 +64,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         CommandService? commandService = null,
         MachineRuntimeState? runtimeState = null,
         string? faceDocumentJson = null,
-        string? cabinetDocumentJson = null)
+        string? cabinetDocumentJson = null,
+        string? machineDocumentJson = null)
     {
         _document = document;
         DocumentId = documentId ?? Guid.NewGuid();
@@ -103,6 +105,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _cabinetDocumentModel = CabinetDocumentStorage.TryRead(cabinetDocumentJson, out var cabinetDocument)
             ? cabinetDocument
             : CabinetDocument.Empty;
+        _machineDocumentModel = MachineDocumentStorage.TryRead(machineDocumentJson ?? string.Empty, out var machineDocument)
+            ? machineDocument
+            : MachineDocument.Create(document.Title);
         RebuildLampCaches();
         _faceWorkspace = document.DocumentType == EditorDocumentType.Face ? new FaceWorkspaceViewModel(this) : null;
     }
@@ -208,6 +213,14 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public CabinetDocument GetCabinetDocument()
     {
         return _cabinetDocumentModel;
+    }
+
+    public MachineDocument GetMachineDocument() => _machineDocumentModel;
+    public void SetMachineDocument(MachineDocument document)
+    {
+        _machineDocumentModel = document ?? throw new ArgumentNullException(nameof(document));
+        MarkDirty();
+        OnPropertyChanged(nameof(Title));
     }
 
     public string GetCabinetDocumentJson()

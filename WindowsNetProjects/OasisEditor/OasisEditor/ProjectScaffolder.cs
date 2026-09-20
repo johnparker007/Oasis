@@ -11,7 +11,7 @@ public sealed class ProjectScaffolder
         "Assets/Panel2D",
         "Assets/Cabinet3D",
         "Assets/Faces",
-        "Machines",
+        "Assets/Machines",
         "Generated",
         "Generated/Build",
         "Generated/Preview"
@@ -54,20 +54,8 @@ public sealed class ProjectScaffolder
             layout = new
             {
                 assets = "Assets",
-                machines = "Machines",
                 generated = "Generated"
-            },
-            project_settings = new
-            {
-                FruitMachine_Platform = FruitMachinePlatformType.None.ToString(),
-                System6NativeRoms = new System6NativeRomSettings(),
-                Mpu5NativeRoms = new Mpu5NativeRomSettings(),
-                EpochNativeRoms = new EpochNativeRomSettings(),
-                Mpu3Settings = new Mpu3ProjectSettings()
-                ,M1Settings = new M1ProjectSettings(),
-                Scorpion4Settings = new Scorpion4ProjectSettings()
-            },
-            input_definitions = Array.Empty<object>()
+            }
         };
 
         var json = JsonSerializer.Serialize(projectMetadata, new JsonSerializerOptions
@@ -76,6 +64,10 @@ public sealed class ProjectScaffolder
         });
 
         File.WriteAllText(projectFilePath, json);
+
+        var machinePath = Path.Combine(projectDirectory, "Assets", "Machines", sanitizedName, ProjectAssetPathService.MachineManifestFileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(machinePath)!);
+        File.WriteAllText(machinePath, MachineDocumentStorage.Write(MachineDocument.Create(sanitizedName)));
 
         return projectDirectory;
     }

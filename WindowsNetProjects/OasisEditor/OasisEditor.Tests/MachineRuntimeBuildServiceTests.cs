@@ -49,9 +49,9 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.Equal(File.ReadAllBytes(sourceGlb), File.ReadAllBytes(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.glb")));
         using var machine = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot, "machine.runtime.json")));
         Assert.Equal("oasis.machine.runtime", machine.RootElement.GetProperty("schema").GetString());
-        Assert.Equal(3, machine.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(4, machine.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Empty(machine.RootElement.GetProperty("faces").EnumerateArray());
-        Assert.Equal("TestProject", machine.RootElement.GetProperty("machineId").GetString());
+        Assert.Equal("11111111-1111-1111-1111-111111111111", machine.RootElement.GetProperty("machineId").GetString());
         Assert.Equal("cabinet/cabinet.runtime.json", machine.RootElement.GetProperty("cabinetManifest").GetString());
         using var cabinet = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot, "cabinet", "cabinet.runtime.json")));
         Assert.Equal("oasis.cabinet.runtime", cabinet.RootElement.GetProperty("schema").GetString());

@@ -1,4 +1,3 @@
-using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Progress;
 
 namespace OasisEditor;
@@ -14,10 +13,9 @@ public sealed class OasisPlayerPreviewService
         _launchService = launchService ?? new OasisPlayerLaunchService();
     }
 
-    public OasisPlayerPreviewResult Preview(EditorProject project, string cabinetManifestPath, CabinetDocument cabinetDocument, OasisPlayerPreferences preferences, IEditorProgressReporter progress, CancellationToken cancellationToken)
+    public OasisPlayerPreviewResult Preview(EditorProject project, string machineManifestPath, OasisPlayerPreferences preferences, IEditorProgressReporter progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(project);
-        ArgumentNullException.ThrowIfNull(cabinetDocument);
         ArgumentNullException.ThrowIfNull(preferences);
         ArgumentNullException.ThrowIfNull(progress);
         cancellationToken.ThrowIfCancellationRequested();
@@ -29,7 +27,7 @@ public sealed class OasisPlayerPreviewService
             return OasisPlayerPreviewResult.Fail(validationError);
         }
 
-        var buildResult = _buildService.BuildFromCabinetDocument(project, cabinetManifestPath, cabinetDocument, progress, cancellationToken);
+        var buildResult = _buildService.BuildFromMachineDocument(project, machineManifestPath, progress, cancellationToken);
         if (!buildResult.Success || string.IsNullOrWhiteSpace(buildResult.BuildRoot))
         {
             return OasisPlayerPreviewResult.Fail(buildResult.ErrorMessage ?? "Failed to build Oasis Player runtime output.");

@@ -2,7 +2,7 @@ namespace OasisEditor;
 
 public sealed class EditorProject
 {
-    public const int CurrentSchemaVersion = 8;
+    public const int CurrentSchemaVersion = 9;
     public required string Name { get; init; }
     public required string ProjectFilePath { get; init; }
     public required string ProjectDirectory { get; init; }

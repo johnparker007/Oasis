@@ -11,10 +11,10 @@ public sealed record CabinetDocument(
     CabinetFaceAssignment[]? FaceAssignments = null,
     CabinetReelAssignment[]? ReelAssignments = null)
 {
-    public static CabinetDocument Empty => new(6, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
+    public static CabinetDocument Empty => new(7, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
 
     public static CabinetDocument FromModelPath(string modelPath) => new(
-        6,
+        7,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [],
         CabinetPreviewSettings.Default,
@@ -43,7 +43,7 @@ public sealed record CabinetReflectionSettings(bool Enabled, double Strength, do
     public CabinetReflectionSettings Normalized() => new(Enabled, Math.Clamp(Strength, 0, 2), Math.Clamp(UnlitArtworkStrength, 0, 2), Math.Clamp(LitLampStrength, 0, 4), Math.Clamp(FresnelPower, .1, 10), Math.Clamp(FresnelStrength, 0, 2), Math.Clamp(Roughness, 0, 1), Math.Clamp(Distortion, 0, .05), Math.Clamp(EdgeFade, 0, .25));
 }
 
-public sealed record CabinetReflectionSource(string FaceId, CabinetReflectionPlane Plane, string PlaneSource = CabinetReflectionPlaneSource.Automatic)
+public sealed record CabinetReflectionSource([property: System.Text.Json.Serialization.JsonPropertyName("sourceSurfaceTargetId")] string FaceId, CabinetReflectionPlane Plane, string PlaneSource = CabinetReflectionPlaneSource.Automatic)
 {
     public CabinetReflectionSource Normalized() => this with { FaceId = FaceId?.Trim() ?? string.Empty };
 }

@@ -28,7 +28,7 @@ namespace OasisPlayer.RuntimeBuild
             for (var sourceIndex = 0; sourceIndex < sources.Length; sourceIndex++)
             {
                 var source = sources[sourceIndex]; if (!source.Plane.IsValid || string.IsNullOrWhiteSpace(source.FaceId)) { warning = $"Cabinet reflection source {sourceIndex} is invalid."; return false; }
-                var matches = 0; foreach (var candidate in machine.Faces) if (candidate.Reference != null && string.Equals(candidate.Reference.faceId, source.FaceId.Trim(), StringComparison.Ordinal)) { faces[sourceIndex] = candidate; matches++; }
+                var matches = 0; foreach (var candidate in machine.Faces) if (candidate.Reference != null && string.Equals(candidate.Reference.cabinetFaceTargetId, source.FaceId.Trim(), StringComparison.Ordinal)) { faces[sourceIndex] = candidate; matches++; }
                 if (matches != 1) { warning = $"Cabinet reflection source Face '{source.FaceId}' resolved {matches} times."; return false; }
                 var face = faces[sourceIndex]; if (face.Artwork?.Texture == null || face.Mask?.Texture == null || face.LampIds0?.Texture == null || face.LampWeights0?.Texture == null) { warning = $"Cabinet reflection source Face '{source.FaceId}' is missing required textures."; return false; }
             }

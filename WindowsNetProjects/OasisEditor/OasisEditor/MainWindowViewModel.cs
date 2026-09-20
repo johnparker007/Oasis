@@ -1121,9 +1121,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var selectedDocument = SelectedDocument;
-        if (selectedDocument?.Document.DocumentType != EditorDocumentType.Cabinet3D || selectedDocument.Document.IsUntitled)
+        if (selectedDocument?.Document.DocumentType != EditorDocumentType.Machine || selectedDocument.Document.IsUntitled)
         {
-            ReportEditorOperationError("Select a saved Cabinet3D asset before building for Oasis Player.", OutputLogStatus.Warning);
+            ReportEditorOperationError("Select a saved Machine asset before building for Oasis Player.", OutputLogStatus.Warning);
             return;
         }
 
@@ -1134,7 +1134,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var result = await _progressDialogService.RunAsync(
                 new EditorProgressRequest("Building Oasis Player Machine", "Preparing Oasis Player machine build...", EditorProgressMode.Determinate, CanCancel: true),
-                (progress, token) => Task.FromResult(new MachineRuntimeBuildService().BuildFromCabinetDocument(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetCabinetDocument(), progress, token)));
+                (progress, token) => Task.FromResult(new MachineRuntimeBuildService().BuildFromMachineDocument(LoadedProject, selectedDocument.Document.FilePath, progress, token)));
             if (!result.Success)
             {
                 ReportEditorOperationError(result.ErrorMessage ?? "Failed to build Oasis Player runtime output.", OutputLogStatus.Error);
@@ -1169,9 +1169,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var selectedDocument = SelectedDocument;
-        if (selectedDocument?.Document.DocumentType != EditorDocumentType.Cabinet3D || selectedDocument.Document.IsUntitled)
+        if (selectedDocument?.Document.DocumentType != EditorDocumentType.Machine || selectedDocument.Document.IsUntitled)
         {
-            ReportEditorOperationError("Select a saved Cabinet3D asset before previewing in Oasis Player.", OutputLogStatus.Warning);
+            ReportEditorOperationError("Select a saved Machine asset before previewing in Oasis Player.", OutputLogStatus.Warning);
             return;
         }
 
@@ -1182,7 +1182,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var result = await _progressDialogService.RunAsync(
                 new EditorProgressRequest("Preparing Oasis Player Preview", "Preparing Oasis Player machine build...", EditorProgressMode.Determinate, CanCancel: true),
-                (progress, token) => Task.FromResult(_oasisPlayerPreviewService.Preview(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetCabinetDocument(), new OasisPlayerPreferences
+                (progress, token) => Task.FromResult(_oasisPlayerPreviewService.Preview(LoadedProject, selectedDocument.Document.FilePath, new OasisPlayerPreferences
                 {
                     ExecutablePath = OasisPlayerExecutablePath,
                     Fullscreen = OasisPlayerFullscreen,
@@ -1503,7 +1503,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             openData.PanelLayoutJson,
             openData.PanelTitle,
             openData.FaceDocumentJson,
-            openData.CabinetDocumentJson);
+            openData.CabinetDocumentJson,
+            openData.MachineDocumentJson);
         if (!openedNewTab)
         {
             AddOutputEntry($"Switched to already open document tab for {path}", OutputLogStatus.Info);
@@ -1632,7 +1633,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var selectedDocument = SelectedDocument;
         var defaultName = selectedDocument?.Document.Title ?? "Document";
 
-        if (selectedDocument?.Document.DocumentType is EditorDocumentType.Panel2D or EditorDocumentType.Cabinet3D or EditorDocumentType.Face)
+        if (selectedDocument?.Document.DocumentType is EditorDocumentType.Panel2D or EditorDocumentType.Cabinet3D or EditorDocumentType.Face or EditorDocumentType.Machine)
         {
             var nameDialog = new HierarchyRenameDialog(defaultName, "Save Asset", "Asset name")
             {
@@ -1649,6 +1650,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             {
                 EditorDocumentType.Face => EditorAssetType.Face,
                 EditorDocumentType.Cabinet3D => EditorAssetType.Cabinet3D,
+                EditorDocumentType.Machine => EditorAssetType.Machine,
                 _ => EditorAssetType.Panel2D
             };
             var assetName = pathService.EnsureUniqueAssetName(LoadedProject, assetType, nameDialog.NameText);
@@ -3553,7 +3555,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 }
 
-internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null, string? CabinetDocumentJson = null);
+internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null, string? CabinetDocumentJson = null, string? MachineDocumentJson = null);
 
 
 internal static class EditorProjectInputDefinitionExtensions
