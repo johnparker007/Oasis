@@ -76,4 +76,22 @@ public sealed class ActiveMachineContext
 
         documentTab.RuntimeState.FruitMachinePlatform = Document.Runtime.Platform;
     }
+
+    public bool TrySyncFromOpenDocument(string manifestPath, MachineDocument document)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(manifestPath);
+        ArgumentNullException.ThrowIfNull(document);
+        if (!HasActiveMachine)
+        {
+            return false;
+        }
+
+        if (!string.Equals(Path.GetFullPath(SelectedManifestPath!), Path.GetFullPath(manifestPath), StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        SetActiveMachine(manifestPath, document);
+        return true;
+    }
 }

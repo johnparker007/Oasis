@@ -62,7 +62,12 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.NotNull(machine.RootElement.GetProperty("machineId").GetString());
         Assert.Equal("Test Machine", machine.RootElement.GetProperty("displayName").GetString());
         Assert.Equal("cabinet/cabinet.runtime.json", machine.RootElement.GetProperty("cabinetManifest").GetString());
-        Assert.Equal("Emulation", machine.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
+        var runtime = machine.RootElement.GetProperty("runtime");
+        Assert.Equal("Emulation", runtime.GetProperty("kind").GetString());
+        Assert.Equal("None", runtime.GetProperty("platform").GetString());
+        Assert.True(runtime.TryGetProperty("settings", out var settings));
+        Assert.True(settings.TryGetProperty("m1Settings", out _));
+        Assert.False(runtime.TryGetProperty("m1Settings", out _));
         using var cabinet = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot, "cabinet", "cabinet.runtime.json")));
         Assert.Equal("oasis.cabinet.runtime", cabinet.RootElement.GetProperty("schema").GetString());
         Assert.Equal(4, cabinet.RootElement.GetProperty("schemaVersion").GetInt32());
@@ -71,6 +76,40 @@ public sealed class MachineRuntimeBuildServiceTests
         Assert.Equal(2.5, cabinet.RootElement.GetProperty("scale").GetDouble());
         Assert.Equal("Z", cabinet.RootElement.GetProperty("upAxis").GetString());
         Assert.Empty(cabinet.RootElement.GetProperty("reflections").EnumerateArray());
+    }
+
+    [Fact]
+    public void BuildFromMachineDocument_EmitsPlayerConsumableRuntimeContract()
+    {
+        var root = CreateTempRoot();
+        var project = CreateProject(root);
+        var cabinetDir = Directory.CreateDirectory(Path.Combine(project.AssetsDirectory, "Cabinet3D", "Test Cabinet")).FullName;
+        WriteMinimalGlb(Path.Combine(cabinetDir, "source.glb"));
+        var cabinetManifestPath = Path.Combine(cabinetDir, ProjectAssetPathService.Cabinet3DManifestFileName);
+        File.WriteAllText(cabinetManifestPath, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("source.glb")));
+        var machineDocument = MachineDocumentExtensions.Empty("Test Machine") with
+        {
+            Runtime = MachineRuntimeDefinition.CreateDefault() with
+            {
+                Platform = FruitMachinePlatformType.MaygayM1,
+                System6NativeRoms = new System6NativeRomSettings { ProgramRom1Path = "sys6.rom", FlashSwitch = true },
+                M1Settings = new M1ProjectSettings { PercentageKey = 42, EdcEnabled = true }
+            }
+        };
+        var machineManifestPath = CreateMachineAsset(project, "Test Machine", ToCabinetAssetPath(cabinetManifestPath), machineDocument);
+
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, machineManifestPath, LoadMachine(machineManifestPath), NoOpEditorProgressReporter.Instance, CancellationToken.None);
+
+        Assert.True(result.Success, result.ErrorMessage);
+        using var machine = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
+        var runtime = machine.RootElement.GetProperty("runtime");
+        Assert.Equal("Emulation", runtime.GetProperty("kind").GetString());
+        Assert.Equal("MaygayM1", runtime.GetProperty("platform").GetString());
+        var settings = runtime.GetProperty("settings");
+        Assert.Equal("sys6.rom", settings.GetProperty("system6NativeRoms").GetProperty("programRom1Path").GetString());
+        Assert.True(settings.GetProperty("system6NativeRoms").GetProperty("flashSwitch").GetBoolean());
+        Assert.Equal(42, settings.GetProperty("m1Settings").GetProperty("percentageKey").GetInt32());
+        Assert.True(settings.GetProperty("m1Settings").GetProperty("edcEnabled").GetBoolean());
     }
 
     [Fact]

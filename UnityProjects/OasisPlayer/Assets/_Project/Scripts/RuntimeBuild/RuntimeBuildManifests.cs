@@ -30,12 +30,53 @@ namespace OasisPlayer.RuntimeBuild
     [Serializable]
     public sealed class MachineRuntimePlatformSettings
     {
-        public string system6NativeRoms = string.Empty;
-        public string mpu5NativeRoms = string.Empty;
-        public string epochNativeRoms = string.Empty;
-        public string mpu3Settings = string.Empty;
-        public string m1Settings = string.Empty;
-        public string scorpion4Settings = string.Empty;
+        public MachineRuntimeSystem6NativeRomSettings system6NativeRoms = new MachineRuntimeSystem6NativeRomSettings();
+        public MachineRuntimeMpu5NativeRomSettings mpu5NativeRoms = new MachineRuntimeMpu5NativeRomSettings();
+        public MachineRuntimeEpochNativeRomSettings epochNativeRoms = new MachineRuntimeEpochNativeRomSettings();
+        public MachineRuntimeMpu3ProjectSettings mpu3Settings = new MachineRuntimeMpu3ProjectSettings();
+        public MachineRuntimeM1ProjectSettings m1Settings = new MachineRuntimeM1ProjectSettings();
+        public MachineRuntimeScorpion4ProjectSettings scorpion4Settings = new MachineRuntimeScorpion4ProjectSettings();
+    }
+
+    [Serializable]
+    public sealed class MachineRuntimeSystem6NativeRomSettings
+    {
+        public string programRom1Path = string.Empty;
+        public bool flashSwitch;
+    }
+
+    [Serializable]
+    public sealed class MachineRuntimeMpu5NativeRomSettings
+    {
+        public string programRom1Path = string.Empty;
+        public bool configureReels;
+    }
+
+    [Serializable]
+    public sealed class MachineRuntimeEpochNativeRomSettings
+    {
+        public string programRomPath = string.Empty;
+        public bool configureReels;
+    }
+
+    [Serializable]
+    public sealed class MachineRuntimeMpu3ProjectSettings
+    {
+        public int percentageKey;
+    }
+
+    [Serializable]
+    public sealed class MachineRuntimeM1ProjectSettings
+    {
+        public int percentageKey;
+        public bool edcEnabled;
+    }
+
+    [Serializable]
+    public sealed class MachineRuntimeScorpion4ProjectSettings
+    {
+        public int percentageKey;
+        public bool edcEnabled;
     }
 
     [Serializable]
@@ -268,6 +309,12 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
+            if (!MachineRuntimeDefinitionValidation.TryValidate(machine.runtime, out error))
+            {
+                error = $"Invalid machine runtime definition in {machinePath}: {error}";
+                return false;
+            }
+
             if (!TryResolveContained(root, root, machine.cabinetManifest, out var cabinetPath, out error))
             {
                 error = $"Invalid cabinet manifest path in {machinePath}: {error}";
@@ -345,6 +392,47 @@ namespace OasisPlayer.RuntimeBuild
             if (!resolved.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase))
             {
                 error = "path traversal outside the build root is not allowed.";
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    public static class MachineRuntimeDefinitionValidation
+    {
+        public const string EmulationKind = "Emulation";
+
+        public static bool TryValidate(MachineRuntimeDefinition runtime, out string error)
+        {
+            error = string.Empty;
+            if (runtime == null)
+            {
+                error = "runtime is missing.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(runtime.kind))
+            {
+                error = "runtime.kind is required.";
+                return false;
+            }
+
+            if (!string.Equals(runtime.kind.Trim(), EmulationKind, StringComparison.OrdinalIgnoreCase))
+            {
+                error = $"runtime.kind '{runtime.kind}' is not supported.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(runtime.platform))
+            {
+                error = "runtime.platform is required.";
+                return false;
+            }
+
+            if (runtime.settings == null)
+            {
+                error = "runtime.settings is required.";
                 return false;
             }
 

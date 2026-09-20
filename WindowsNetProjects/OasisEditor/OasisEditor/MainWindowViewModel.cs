@@ -514,15 +514,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 return;
             }
 
-            foreach (var document in OpenDocuments)
+            var activeMachineTab = OpenDocuments.FirstOrDefault(tab =>
+                tab.Document.DocumentType == EditorDocumentType.Machine
+                && _activeMachineContext.HasActiveMachine
+                && string.Equals(Path.GetFullPath(tab.FilePath), Path.GetFullPath(_activeMachineContext.SelectedManifestPath!), StringComparison.OrdinalIgnoreCase));
+            if (activeMachineTab is not null)
             {
-                document.RuntimeState.FruitMachinePlatform = value;
-                var faceReelObjectIds = document.GetFaceElements()
+                activeMachineTab.RuntimeState.FruitMachinePlatform = value;
+            }
+
+            if (SelectedDocument is not null)
+            {
+                var faceReelObjectIds = SelectedDocument.GetFaceElements()
                     .OfType<FaceReelDisplayElement>()
                     .Select(element => element.ObjectId)
                     .Where(objectId => !string.IsNullOrWhiteSpace(objectId))
                     .ToArray();
-                document.NotifyFaceVisualPreviewChanged(faceReelObjectIds);
+                SelectedDocument.NotifyFaceVisualPreviewChanged(faceReelObjectIds);
             }
 
             PersistActiveMachineRuntime(runtime => runtime with { Platform = value });
@@ -3357,6 +3365,18 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(HierarchyItems));
             NotifyInspectorChanged();
             NotifyHierarchyCommands();
+            return;
+        }
+
+        if (e.PropertyName is nameof(DocumentTabViewModel.MachineDocumentJson)
+            && sender is DocumentTabViewModel document
+            && ReferenceEquals(document, SelectedDocument)
+            && document.Document.DocumentType == EditorDocumentType.Machine
+            && _activeMachineContext.TrySyncFromOpenDocument(document.FilePath, document.GetMachineDocument()))
+        {
+            SyncActiveMachineSettingsToViewModel();
+            OnPropertyChanged(nameof(InputDefinitions));
+            RefreshInputMapDiagnostics();
         }
     }
 

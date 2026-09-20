@@ -18,7 +18,7 @@ namespace OasisPlayer.Tests
                 Directory.CreateDirectory(Path.Combine(root, "cabinet"));
                 File.WriteAllBytes(Path.Combine(root, "cabinet", "cabinet.glb"), new byte[] { 1, 2, 3 });
                 File.WriteAllText(Path.Combine(root, "cabinet", "cabinet.runtime.json"), "{\"schema\":\"oasis.cabinet.runtime\",\"schemaVersion\":4,\"cabinetId\":\"cabinet\",\"glb\":\"cabinet.glb\",\"scale\":1,\"upAxis\":\"Y\",\"reflections\":[]}");
-                File.WriteAllText(Path.Combine(root, "machine.runtime.json"), "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":4,\"machineId\":\"machine\",\"displayName\":\"machine\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"None\",\"settings\":{}},\"faces\":[{\"faceId\":\"face\",\"assetName\":\"Face\",\"cabinetFaceTargetId\":\"target\",\"frontSide\":\"" + frontSide + "\",\"faceRotation\":90,\"faceFlipHorizontal\":true,\"manifest\":\"faces/Face/face.runtime.json\"}]}");
+                File.WriteAllText(Path.Combine(root, "machine.runtime.json"), "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":4,\"machineId\":\"machine\",\"displayName\":\"machine\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"None\",\"settings\":{\"system6NativeRoms\":{},\"mpu5NativeRoms\":{},\"epochNativeRoms\":{},\"mpu3Settings\":{},\"m1Settings\":{},\"scorpion4Settings\":{}}},\"faces\":[{\"faceId\":\"face\",\"assetName\":\"Face\",\"cabinetFaceTargetId\":\"target\",\"frontSide\":\"" + frontSide + "\",\"faceRotation\":90,\"faceFlipHorizontal\":true,\"manifest\":\"faces/Face/face.runtime.json\"}]}");
 
                 Assert.True(RuntimeBuildLoader.TryLoad(root, out var build, out var error), error);
                 var reference = build.Faces.Single();
@@ -52,6 +52,56 @@ namespace OasisPlayer.Tests
                     Object.DestroyImmediate(artworkTexture);
                     Object.DestroyImmediate(maskTexture);
                 }
+            }
+            finally
+            {
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+            }
+        }
+
+        [Test]
+        public void TryLoad_RejectsMissingRuntimeSettings()
+        {
+            var root = Path.Combine(Application.temporaryCachePath, "OasisRuntimeBuildLoaderTests", System.Guid.NewGuid().ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(root, "cabinet"));
+                File.WriteAllBytes(Path.Combine(root, "cabinet", "cabinet.glb"), new byte[] { 1, 2, 3 });
+                File.WriteAllText(Path.Combine(root, "cabinet", "cabinet.runtime.json"), "{\"schema\":\"oasis.cabinet.runtime\",\"schemaVersion\":4,\"cabinetId\":\"cabinet\",\"glb\":\"cabinet.glb\",\"scale\":1,\"upAxis\":\"Y\",\"reflections\":[]}");
+                File.WriteAllText(Path.Combine(root, "machine.runtime.json"), "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":4,\"machineId\":\"machine\",\"displayName\":\"machine\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"MaygayM1\"},\"faces\":[]}");
+
+                Assert.False(RuntimeBuildLoader.TryLoad(root, out _, out var error));
+                StringAssert.Contains("runtime.settings", error);
+            }
+            finally
+            {
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+            }
+        }
+
+        [Test]
+        public void TryLoad_LoadsEditorGeneratedRuntimeSettingsContract()
+        {
+            var root = Path.Combine(Application.temporaryCachePath, "OasisRuntimeBuildLoaderTests", System.Guid.NewGuid().ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(root, "cabinet"));
+                File.WriteAllBytes(Path.Combine(root, "cabinet", "cabinet.glb"), new byte[] { 1, 2, 3 });
+                File.WriteAllText(Path.Combine(root, "cabinet", "cabinet.runtime.json"), "{\"schema\":\"oasis.cabinet.runtime\",\"schemaVersion\":4,\"cabinetId\":\"cabinet\",\"glb\":\"cabinet.glb\",\"scale\":1,\"upAxis\":\"Y\",\"reflections\":[]}");
+                File.WriteAllText(Path.Combine(root, "machine.runtime.json"),
+                    "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":4,\"machineId\":\"machine\",\"displayName\":\"machine\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\"," +
+                    "\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"MaygayM1\",\"settings\":{\"system6NativeRoms\":{\"programRom1Path\":\"sys6.rom\",\"flashSwitch\":true}," +
+                    "\"mpu5NativeRoms\":{},\"epochNativeRoms\":{},\"mpu3Settings\":{},\"m1Settings\":{\"percentageKey\":42,\"edcEnabled\":true},\"scorpion4Settings\":{}}},\"faces\":[]}");
+
+                Assert.True(RuntimeBuildLoader.TryLoad(root, out var build, out var error), error);
+
+                Assert.AreEqual("Emulation", build.Machine.runtime.kind);
+                Assert.AreEqual("MaygayM1", build.Machine.runtime.platform);
+                Assert.NotNull(build.Machine.runtime.settings);
+                Assert.AreEqual("sys6.rom", build.Machine.runtime.settings.system6NativeRoms.programRom1Path);
+                Assert.True(build.Machine.runtime.settings.system6NativeRoms.flashSwitch);
+                Assert.AreEqual(42, build.Machine.runtime.settings.m1Settings.percentageKey);
+                Assert.True(build.Machine.runtime.settings.m1Settings.edcEnabled);
             }
             finally
             {

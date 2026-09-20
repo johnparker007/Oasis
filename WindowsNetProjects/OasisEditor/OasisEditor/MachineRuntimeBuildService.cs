@@ -323,7 +323,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     }
 
     public string GetBuildRoot(EditorProject project, string machineName) => Path.Combine(project.GeneratedDirectory, "Builds", _pathService.SanitizePathSegment(machineName));
-    private static string ResolveCabinetModelPath(string manifestPath, string modelPath) => Path.IsPathFullyQualified(modelPath) ? Path.GetFullPath(modelPath) : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifestPath) ?? string.Empty, modelPath));
+    public static string ResolveCabinetModelPath(string manifestPath, string modelPath) => Path.IsPathFullyQualified(modelPath) ? Path.GetFullPath(modelPath) : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifestPath) ?? string.Empty, modelPath));
     private static void ReplaceEmptyDirectory(string path) { if (Directory.Exists(path)) Directory.Delete(path, true); Directory.CreateDirectory(path); }
     private static void ReplaceFinalDirectory(string stagingRoot, string buildRoot) { if (Directory.Exists(buildRoot)) Directory.Delete(buildRoot, true); Directory.CreateDirectory(Path.GetDirectoryName(buildRoot)!); Directory.Move(stagingRoot, buildRoot); }
 }
@@ -334,25 +334,29 @@ public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, 
     public static MachineRuntimeBuildResult Fail(string errorMessage) => new(false, null, errorMessage);
 }
 
-public sealed record MachineRuntimeDefinitionDto(
-    string Kind,
-    string Platform,
+public sealed record MachineRuntimePlatformSettingsDto(
     System6NativeRomSettings System6NativeRoms,
     Mpu5NativeRomSettings Mpu5NativeRoms,
     EpochNativeRomSettings EpochNativeRoms,
     Mpu3ProjectSettings Mpu3Settings,
     M1ProjectSettings M1Settings,
-    Scorpion4ProjectSettings Scorpion4Settings)
+    Scorpion4ProjectSettings Scorpion4Settings);
+
+public sealed record MachineRuntimeDefinitionDto(
+    string Kind,
+    string Platform,
+    MachineRuntimePlatformSettingsDto Settings)
 {
     public static MachineRuntimeDefinitionDto FromMachineRuntime(MachineRuntimeDefinition runtime) => new(
         runtime.Kind.ToString(),
         runtime.Platform.ToString(),
-        runtime.System6NativeRoms,
-        runtime.Mpu5NativeRoms,
-        runtime.EpochNativeRoms,
-        runtime.Mpu3Settings,
-        runtime.M1Settings,
-        runtime.Scorpion4Settings);
+        new MachineRuntimePlatformSettingsDto(
+            runtime.System6NativeRoms,
+            runtime.Mpu5NativeRoms,
+            runtime.EpochNativeRoms,
+            runtime.Mpu3Settings,
+            runtime.M1Settings,
+            runtime.Scorpion4Settings));
 }
 
 public sealed record MachineRuntimeManifest(

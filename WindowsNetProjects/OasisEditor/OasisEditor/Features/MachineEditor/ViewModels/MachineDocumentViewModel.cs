@@ -168,14 +168,21 @@ public sealed class MachineDocumentViewModel : INotifyPropertyChanged
     private IEnumerable<CabinetFaceTarget> DiscoverCabinetTargets(string? cabinetAssetPath)
     {
         var cabinet = ResolveCabinetDocument(cabinetAssetPath);
-        if (cabinet is null || string.IsNullOrWhiteSpace(cabinet.Model.Path) || !File.Exists(cabinet.Model.Path))
+        var manifestPath = ResolveCabinetManifestPath(cabinetAssetPath);
+        if (cabinet is null || string.IsNullOrWhiteSpace(cabinet.Model.Path) || string.IsNullOrWhiteSpace(manifestPath) || !File.Exists(manifestPath))
+        {
+            return [];
+        }
+
+        var modelPath = MachineRuntimeBuildService.ResolveCabinetModelPath(manifestPath, cabinet.Model.Path);
+        if (!File.Exists(modelPath))
         {
             return [];
         }
 
         try
         {
-            return new GlbCabinetFaceTargetDetector().DetectTargets(cabinet.Model.Path).Where(target => target.IsValid);
+            return new GlbCabinetFaceTargetDetector().DetectTargets(modelPath).Where(target => target.IsValid);
         }
         catch (EndOfStreamException)
         {
@@ -185,6 +192,27 @@ public sealed class MachineDocumentViewModel : INotifyPropertyChanged
         {
             return [];
         }
+    }
+
+    private string? ResolveCabinetManifestPath(string? cabinetAssetPath)
+    {
+        if (string.IsNullOrWhiteSpace(cabinetAssetPath))
+        {
+            return null;
+        }
+
+        var project = _projectAccessor();
+        var manifestPath = Path.IsPathRooted(cabinetAssetPath)
+            ? cabinetAssetPath
+            : project is null
+                ? cabinetAssetPath
+                : Path.Combine(project.ProjectDirectory, cabinetAssetPath.Replace('/', Path.DirectorySeparatorChar));
+        if (Directory.Exists(manifestPath))
+        {
+            manifestPath = Path.Combine(manifestPath, ProjectAssetPathService.Cabinet3DManifestFileName);
+        }
+
+        return File.Exists(manifestPath) ? manifestPath : null;
     }
 
     private CabinetDocument? ResolveCabinetDocument(string? cabinetAssetPath)
