@@ -220,7 +220,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         _machineDocumentModel = document ?? throw new ArgumentNullException(nameof(document));
         MarkDirty();
-        OnPropertyChanged(nameof(Title));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
     }
 
     public string GetCabinetDocumentJson()

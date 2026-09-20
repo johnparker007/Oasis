@@ -350,7 +350,7 @@ public sealed class MachineRuntimeBuildServiceTests
     }
 
 
-    private static CabinetFaceAssignment MountedFace(string targetId, string assetName) =>
+    private static OasisEditor.Features.CabinetEditor.Models.CabinetFaceAssignment MountedFace(string targetId, string assetName) =>
         new(targetId, $"Assets/Faces/{assetName}/{ProjectAssetPathService.FaceManifestFileName}");
 
     private static string CreateCabinetAsset(EditorProject project, string assetName, CabinetDocument cabinetDocument)

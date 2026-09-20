@@ -10,6 +10,7 @@ namespace OasisEditor;
 public interface IMachineRuntimeBuildService
 {
     MachineRuntimeBuildResult BuildFromMachineDocument(EditorProject project, string machineManifestPath, IEditorProgressReporter progress, CancellationToken cancellationToken);
+    MachineRuntimeBuildResult BuildFromMachineDocument(EditorProject project, string machineManifestPath, MachineDocument machineDocument, IEditorProgressReporter progress, CancellationToken cancellationToken);
 }
 
 public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
@@ -47,6 +48,16 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             return MachineRuntimeBuildResult.Fail($"Machine manifest was not found: {machineManifestPath}");
         if (!MachineDocumentStorage.TryRead(File.ReadAllText(machineManifestPath), out var machine))
             return MachineRuntimeBuildResult.Fail($"Machine manifest has an unsupported or invalid schema: {machineManifestPath}");
+        return BuildFromMachineDocument(project, machineManifestPath, machine, progress, cancellationToken);
+    }
+
+    public MachineRuntimeBuildResult BuildFromMachineDocument(EditorProject project, string machineManifestPath, MachineDocument machine, IEditorProgressReporter progress, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(machine);
+        ArgumentNullException.ThrowIfNull(progress);
+        if (string.IsNullOrWhiteSpace(machineManifestPath) || !File.Exists(machineManifestPath))
+            return MachineRuntimeBuildResult.Fail($"Machine manifest was not found: {machineManifestPath}");
         if (string.IsNullOrWhiteSpace(machine.CabinetAssetPath))
             return MachineRuntimeBuildResult.Fail($"Machine '{machine.DisplayName}' does not select a Cabinet asset.");
         var cabinetManifestPath = _pathService.ResolveProjectRelativePath(project, machine.CabinetAssetPath);

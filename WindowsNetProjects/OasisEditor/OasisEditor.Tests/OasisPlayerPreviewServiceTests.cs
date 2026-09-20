@@ -61,6 +61,7 @@ public sealed class OasisPlayerPreviewServiceTests
         private readonly MachineRuntimeBuildResult _result;
         public StubBuildService(MachineRuntimeBuildResult result) => _result = result;
         public MachineRuntimeBuildResult BuildFromMachineDocument(EditorProject project, string machineManifestPath, IEditorProgressReporter progress, CancellationToken cancellationToken) => _result;
+        public MachineRuntimeBuildResult BuildFromMachineDocument(EditorProject project, string machineManifestPath, MachineDocument machineDocument, IEditorProgressReporter progress, CancellationToken cancellationToken) => _result;
     }
 
     private sealed class CapturingStarter : IOasisPlayerProcessStarter
