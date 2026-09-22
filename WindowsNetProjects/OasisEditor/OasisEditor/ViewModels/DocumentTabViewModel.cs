@@ -42,6 +42,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private CabinetModelDocumentViewModel? _cabinetViewer;
     private DocumentTabViewModel? _machineCompositionContext;
     private bool _isRefreshingMachineCompositionChoices;
+    private string? _machineCompositionCatalogSignature;
     private Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
     private Func<EditorProject?>? _projectAccessor;
     private readonly FaceWorkspaceViewModel? _faceWorkspace;
@@ -270,7 +271,10 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineInputs) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
         if (cabinetChanged)
+        {
+            _machineCompositionCatalogSignature = null;
             RefreshMachineCabinetDependentRows(forceRebuild: true);
+        }
         else
             SynchronizeMachineAssignmentRows();
     }
@@ -278,23 +282,32 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     internal void RefreshMachineCompositionChoices()
     {
         if (Document.DocumentType != EditorDocumentType.Machine || _projectAccessor?.Invoke() is not { } project) return;
+        var cabinetChoices = DiscoverProjectAssetChoices(project, EditorAssetType.Cabinet3D);
+        var faceChoices = DiscoverProjectAssetChoices(project, EditorAssetType.Face);
+        var signature = BuildMachineCompositionCatalogSignature(project, cabinetChoices, faceChoices);
+        if (string.Equals(signature, _machineCompositionCatalogSignature, StringComparison.Ordinal)) return;
         _isRefreshingMachineCompositionChoices = true;
-        try { RefreshMachineCompositionChoicesCore(project); }
+        try
+        {
+            RefreshMachineCompositionChoicesCore(project, cabinetChoices, faceChoices);
+            _machineCompositionCatalogSignature = signature;
+        }
         finally { _isRefreshingMachineCompositionChoices = false; }
     }
 
-    private void RefreshMachineCompositionChoicesCore(EditorProject project)
+    private void RefreshMachineCompositionChoicesCore(EditorProject project, IReadOnlyList<MachineAssetChoice> cabinetAssets, IReadOnlyList<MachineAssetChoice> faceAssets)
     {
         var selectedCabinetPath = _machineDocumentModel.CabinetAssetPath;
-        MachineCabinetChoices.Clear();
-        MachineCabinetChoices.Add(new MachineAssetChoice("(None)", null));
-        foreach (var choice in DiscoverProjectAssetChoices(project, EditorAssetType.Cabinet3D)) MachineCabinetChoices.Add(choice);
-        if (!string.IsNullOrWhiteSpace(selectedCabinetPath) && MachineCabinetChoices.All(choice => !SameAssetPath(choice.AssetPath, selectedCabinetPath)))
-            MachineCabinetChoices.Add(new MachineAssetChoice($"Missing: {Path.GetFileName(Path.GetDirectoryName(selectedCabinetPath))}", selectedCabinetPath));
+        var cabinetChoices = new List<MachineAssetChoice> { new("(None)", null) };
+        cabinetChoices.AddRange(cabinetAssets);
+        if (!string.IsNullOrWhiteSpace(selectedCabinetPath) && cabinetChoices.All(choice => !SameAssetPath(choice.AssetPath, selectedCabinetPath)))
+            cabinetChoices.Add(new MachineAssetChoice($"Missing: {Path.GetFileName(Path.GetDirectoryName(selectedCabinetPath))}", selectedCabinetPath));
+        ReconcileMachineAssetChoices(MachineCabinetChoices, cabinetChoices);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MachineCabinetAssetPath)));
 
-        MachineFaceChoices.Clear(); MachineFaceChoices.Add(new MachineAssetChoice("(None)", null));
-        foreach (var choice in DiscoverProjectAssetChoices(project, EditorAssetType.Face)) MachineFaceChoices.Add(choice);
+        var faceChoices = new List<MachineAssetChoice> { new("(None)", null) };
+        faceChoices.AddRange(faceAssets);
+        ReconcileMachineAssetChoices(MachineFaceChoices, faceChoices);
 
         RefreshMachineCabinetDependentRows(project, forceRebuild: false);
     }
@@ -328,8 +341,10 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var modelPath = Path.IsPathFullyQualified(cabinet.Model.Path) ? cabinet.Model.Path : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(cabinetPath)!, cabinet.Model.Path));
         var faceChoices = MachineFaceChoices.ToList();
         var targets = File.Exists(modelPath)
-            ? new GlbCabinetFaceTargetDetector().DetectTargets(modelPath, CancellationToken.None).Where(target => target.IsValid).ToArray()
+            ? new GlbCabinetFaceTargetDetector().DetectTargets(modelPath, CancellationToken.None).Where(target => target.IsValid).Select(target => (target.Id, target.DisplayName)).ToList()
             : [];
+        foreach (var assignment in _machineDocumentModel.SurfaceAssignments.Where(assignment => targets.All(target => !string.Equals(target.Id, assignment.TargetId, StringComparison.Ordinal))))
+            targets.Add((assignment.TargetId, $"Missing target: {assignment.TargetId}"));
         var existingTargets = MachineSurfaceAssignmentRows.ToDictionary(row => row.TargetId, StringComparer.Ordinal);
         var rebuildSurfaceRows = forceRebuild || !MachineSurfaceAssignmentRows.Select(row => row.TargetId).SequenceEqual(targets.Select(target => target.Id), StringComparer.Ordinal);
         if (rebuildSurfaceRows)
@@ -345,7 +360,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                 continue;
             }
             row.RefreshChoices(rowChoices);
-            row.SynchronizeSelectedAssetPath(assignedPath);
+            row.SynchronizeSelectedAssetPath(assignedPath, forceNotification: true);
         }
         var specificationChoices = new List<MachineAssetChoice> { new("(None)", null) };
         specificationChoices.AddRange((cabinet.ReelSpecifications ?? []).Select(spec => new MachineAssetChoice(spec.Name, spec.Id)));
@@ -365,8 +380,50 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                 continue;
             }
             row.RefreshChoices(rowChoices);
-            row.SynchronizeSelectedSpecificationId(assignedId);
+            row.SynchronizeSelectedSpecificationId(assignedId, forceNotification: true);
         }
+    }
+
+    private string BuildMachineCompositionCatalogSignature(EditorProject project, IReadOnlyList<MachineAssetChoice> cabinets, IReadOnlyList<MachineAssetChoice> faces)
+    {
+        var parts = cabinets.Concat(faces).Select(choice => $"{choice.AssetPath}|{choice.DisplayName}").ToList();
+        parts.Add($"selected:{_machineDocumentModel.CabinetAssetPath}");
+        if (!string.IsNullOrWhiteSpace(_machineDocumentModel.CabinetAssetPath))
+        {
+            var cabinetPath = new ProjectAssetPathService().ResolveProjectRelativePath(project, _machineDocumentModel.CabinetAssetPath);
+            AddFileStamp(parts, cabinetPath);
+            if (File.Exists(cabinetPath) && CabinetDocumentStorage.TryRead(File.ReadAllText(cabinetPath), out var cabinet))
+            {
+                var modelPath = Path.IsPathFullyQualified(cabinet.Model.Path) ? cabinet.Model.Path : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(cabinetPath)!, cabinet.Model.Path));
+                AddFileStamp(parts, modelPath);
+            }
+        }
+        return string.Join("\n", parts);
+    }
+
+    private static void AddFileStamp(List<string> parts, string path)
+    {
+        if (!File.Exists(path)) { parts.Add($"missing:{path}"); return; }
+        var info = new FileInfo(path);
+        parts.Add($"file:{path}|{info.Length}|{info.LastWriteTimeUtc.Ticks}");
+    }
+
+    internal static void ReconcileMachineAssetChoices(ObservableCollection<MachineAssetChoice> current, IReadOnlyList<MachineAssetChoice> desired)
+    {
+        for (var index = 0; index < desired.Count; index++)
+        {
+            var desiredChoice = desired[index];
+            var existingIndex = -1;
+            for (var candidate = index; candidate < current.Count; candidate++)
+                if (SameAssetPath(current[candidate].AssetPath, desiredChoice.AssetPath)) { existingIndex = candidate; break; }
+            if (existingIndex < 0) current.Insert(index, desiredChoice);
+            else
+            {
+                if (existingIndex != index) current.Move(existingIndex, index);
+                if (!string.Equals(current[index].DisplayName, desiredChoice.DisplayName, StringComparison.Ordinal)) current[index] = desiredChoice;
+            }
+        }
+        while (current.Count > desired.Count) current.RemoveAt(current.Count - 1);
     }
 
     private void SynchronizeMachineAssignmentRows()
@@ -1830,8 +1887,8 @@ public sealed class MachineSurfaceAssignmentRow : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     public string TargetId { get; } public string DisplayName { get; } public ObservableCollection<MachineAssetChoice> Choices { get; }
     public string? SelectedAssetPath { get => _selectedAssetPath; set { if (_owner.IsRefreshingMachineCompositionChoices || string.Equals(_selectedAssetPath, value, StringComparison.OrdinalIgnoreCase)) return; _selectedAssetPath = value; PropertyChanged?.Invoke(this, new(nameof(SelectedAssetPath))); _owner.SetMachineSurfaceAssignment(TargetId, value); } }
-    internal void SynchronizeSelectedAssetPath(string? value) { if (string.Equals(_selectedAssetPath, value, StringComparison.OrdinalIgnoreCase)) return; _selectedAssetPath = value; PropertyChanged?.Invoke(this, new(nameof(SelectedAssetPath))); }
-    internal void RefreshChoices(IReadOnlyList<MachineAssetChoice> choices) { Choices.Clear(); foreach (var choice in choices) Choices.Add(choice); }
+    internal void SynchronizeSelectedAssetPath(string? value, bool forceNotification = false) { if (!string.Equals(_selectedAssetPath, value, StringComparison.OrdinalIgnoreCase)) _selectedAssetPath = value; else if (!forceNotification) return; PropertyChanged?.Invoke(this, new(nameof(SelectedAssetPath))); }
+    internal void RefreshChoices(IReadOnlyList<MachineAssetChoice> choices) => DocumentTabViewModel.ReconcileMachineAssetChoices(Choices, choices);
 }
 
 public sealed class MachineReelAssignmentRow : INotifyPropertyChanged
@@ -1841,8 +1898,8 @@ public sealed class MachineReelAssignmentRow : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     public MachineObjectReference Reference { get; } public string DisplayName => $"Reel {Reference.Id}"; public ObservableCollection<MachineAssetChoice> Choices { get; }
     public string? SelectedSpecificationId { get => _selectedSpecificationId; set { if (_owner.IsRefreshingMachineCompositionChoices || string.Equals(_selectedSpecificationId, value, StringComparison.Ordinal)) return; _selectedSpecificationId = value; PropertyChanged?.Invoke(this, new(nameof(SelectedSpecificationId))); _owner.SetMachineReelAssignment(Reference, value); } }
-    internal void SynchronizeSelectedSpecificationId(string? value) { if (string.Equals(_selectedSpecificationId, value, StringComparison.Ordinal)) return; _selectedSpecificationId = value; PropertyChanged?.Invoke(this, new(nameof(SelectedSpecificationId))); }
-    internal void RefreshChoices(IReadOnlyList<MachineAssetChoice> choices) { Choices.Clear(); foreach (var choice in choices) Choices.Add(choice); }
+    internal void SynchronizeSelectedSpecificationId(string? value, bool forceNotification = false) { if (!string.Equals(_selectedSpecificationId, value, StringComparison.Ordinal)) _selectedSpecificationId = value; else if (!forceNotification) return; PropertyChanged?.Invoke(this, new(nameof(SelectedSpecificationId))); }
+    internal void RefreshChoices(IReadOnlyList<MachineAssetChoice> choices) => DocumentTabViewModel.ReconcileMachineAssetChoices(Choices, choices);
 }
 
 internal readonly record struct LampVisualState(bool IsLampTestOn, double Intensity);

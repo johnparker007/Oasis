@@ -1,5 +1,6 @@
 using Xunit;
 using System.Text.Json;
+using OasisEditor.Automation;
 using OasisEditor.Features.CabinetEditor.Models;
 
 namespace OasisEditor.Tests;
@@ -275,6 +276,96 @@ public sealed class MachineDocumentTests
             Assert.NotSame(oldReelRow, newReelRow);
             Assert.Contains(newReelRow.Choices, choice => choice.AssetPath == "small" && choice.DisplayName == "Small");
             Assert.DoesNotContain(newReelRow.Choices, choice => choice.AssetPath == "standard");
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void MachineSaveThenAssetRefresh_PreservesVisibleCompositionAndDoesNotAddUndoMutation()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OasisMachineSaveRefresh_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var project = CreateProject(root);
+            var cabinetPath = WriteCabinet(project, "Vogue", [new("standard", "Standard", 210, 50)]);
+            var machine = MachineDocument.Create("Game") with
+            {
+                CabinetAssetPath = cabinetPath,
+                SurfaceAssignments = [new("OasisFace_TopGlass", "Assets/Faces/FaceA/asset.face")],
+                ReelAssignments = [new(MachineObjectReference.Reel(0), "standard")]
+            };
+            var tab = CreateMachineTab(project, machine);
+            var surfaceRow = Assert.Single(tab.MachineSurfaceAssignmentRows);
+            surfaceRow.RefreshChoices([new("Face A", "Assets/Faces/FaceA/asset.face"), new("Face B", "Assets/Faces/FaceB/asset.face")]);
+            var reelRow = tab.MachineReelAssignmentRows.Single(row => row.Reference == MachineObjectReference.Reel(0));
+            var cabinetChoice = tab.MachineCabinetChoices.Single(choice => choice.AssetPath == cabinetPath);
+            var noneFaceChoice = tab.MachineFaceChoices.Single(choice => choice.AssetPath is null);
+            surfaceRow.SelectedAssetPath = "Assets/Faces/FaceB/asset.face";
+            var savePath = new ProjectAssetPathService().GetMachineManifestPath(project, "Game");
+            Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+
+            new DocumentSaveService().SaveDocument(tab, savePath).ApplyTo(tab);
+            tab.RefreshMachineCompositionChoices(); // the effective callback raised by the scheduled Assets refresh
+
+            Assert.Equal(cabinetPath, tab.MachineCabinetAssetPath);
+            Assert.Same(cabinetChoice, tab.MachineCabinetChoices.Single(choice => choice.AssetPath == cabinetPath));
+            Assert.Same(noneFaceChoice, tab.MachineFaceChoices.Single(choice => choice.AssetPath is null));
+            Assert.Same(surfaceRow, Assert.Single(tab.MachineSurfaceAssignmentRows));
+            Assert.Equal("Assets/Faces/FaceB/asset.face", surfaceRow.SelectedAssetPath);
+            Assert.Same(reelRow, tab.MachineReelAssignmentRows.Single(row => row.Reference == MachineObjectReference.Reel(0)));
+            Assert.Equal("standard", reelRow.SelectedSpecificationId);
+            Assert.False(tab.IsDirty);
+            Assert.True(tab.CommandService.CanUndo);
+            Assert.Equal("Assets/Faces/FaceB/asset.face", Assert.Single(tab.GetMachineDocument().SurfaceAssignments).FaceAssetPath);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void ChoiceReconciliation_PreservesStableObjectsAndCanRenotifySelectedValue()
+    {
+        var tab = new DocumentTabViewModel(EditorDocument.CreateMachineStub("Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")));
+        var none = new MachineAssetChoice("(None)", null);
+        var selected = new MachineAssetChoice("Face A", "Assets/Faces/A/asset.face");
+        var choices = new System.Collections.ObjectModel.ObservableCollection<MachineAssetChoice> { none, selected };
+        var row = new MachineSurfaceAssignmentRow(tab, "OasisFace_TopGlass", "Top Glass", choices, selected.AssetPath);
+        var notifications = 0;
+        row.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(row.SelectedAssetPath)) notifications++; };
+
+        row.RefreshChoices([new("(None)", null), new("Face A", selected.AssetPath), new("Face B", "Assets/Faces/B/asset.face")]);
+        row.SynchronizeSelectedAssetPath(selected.AssetPath, forceNotification: true);
+
+        Assert.Same(none, row.Choices[0]);
+        Assert.Same(selected, row.Choices[1]);
+        Assert.Equal(selected.AssetPath, row.SelectedAssetPath);
+        Assert.Equal(1, notifications);
+        Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
+    }
+
+    [Fact]
+    public void CabinetContentRefreshWithoutStructuralChange_PreservesReelRowAndSelection()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OasisCabinetContentRefresh_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var project = CreateProject(root);
+            var cabinetPath = WriteCabinet(project, "Vogue", [new("standard", "Standard", 210, 50)]);
+            var tab = CreateMachineTab(project, MachineDocument.Create("Game") with
+            {
+                CabinetAssetPath = cabinetPath,
+                ReelAssignments = [new(MachineObjectReference.Reel(0), "standard")]
+            });
+            var row = tab.MachineReelAssignmentRows.Single(item => item.Reference == MachineObjectReference.Reel(0));
+            var selectedChoice = row.Choices.Single(choice => choice.AssetPath == "standard");
+            WriteCabinet(project, "Vogue", [new("standard", "Standard", 210, 50)]);
+            File.SetLastWriteTimeUtc(new ProjectAssetPathService().ResolveProjectRelativePath(project, cabinetPath), DateTime.UtcNow.AddSeconds(2));
+
+            tab.RefreshMachineCompositionChoices();
+
+            Assert.Same(row, tab.MachineReelAssignmentRows.Single(item => item.Reference == MachineObjectReference.Reel(0)));
+            Assert.Same(selectedChoice, row.Choices.Single(choice => choice.AssetPath == "standard"));
+            Assert.Equal("standard", row.SelectedSpecificationId);
+            Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
