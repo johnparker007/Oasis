@@ -602,13 +602,14 @@ public sealed class DocumentWorkspaceViewModel
         }
 
         var updated = new DocumentTabViewModel(
-            selectedDocument.Document.WithContentSummary(summary).MarkDirty(),
-            selectedDocument.PanelLayoutJson,
-            selectedDocument.DocumentId,
-            selectedDocument.CommandService,
-            selectedDocument.RuntimeState,
-            selectedDocument.FaceDocumentJson,
-            selectedDocument.CabinetDocumentJson)
+            document: selectedDocument.Document.WithContentSummary(summary).MarkDirty(),
+            panelLayoutJson: selectedDocument.PanelLayoutJson,
+            documentId: selectedDocument.DocumentId,
+            commandService: selectedDocument.CommandService,
+            runtimeState: selectedDocument.RuntimeState,
+            faceDocumentJson: selectedDocument.FaceDocumentJson,
+            cabinetDocumentJson: selectedDocument.CabinetDocumentJson,
+            machineDocumentJson: selectedDocument.GetMachineDocumentJson())
         {
             PanelZoom = selectedDocument.PanelZoom,
             PanelPanX = selectedDocument.PanelPanX,

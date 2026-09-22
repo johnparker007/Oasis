@@ -704,7 +704,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         EditorDocument Document,
         string? PanelLayoutJson,
         string? FaceDocumentJson,
-        string? CabinetDocumentJson);
+        string? CabinetDocumentJson,
+        string? MachineDocumentJson);
 
     internal sealed record FaceBuildWorkItem(
         EditorDocument Document,
@@ -727,7 +728,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                 document.Document,
                 document.PanelLayoutJson,
                 document.FaceDocumentJson,
-                document.CabinetDocumentJson))
+                document.CabinetDocumentJson,
+                document.GetMachineDocumentJson()))
             .ToArray();
         return new FaceBuildWorkItem(_document, GetFaceDocumentJson(), _projectAccessor?.Invoke(), snapshots, force);
     }
@@ -739,10 +741,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
         var openDocuments = workItem.OpenDocuments.Select(snapshot => new DocumentTabViewModel(
-            snapshot.Document,
-            snapshot.PanelLayoutJson,
+            document: snapshot.Document,
+            panelLayoutJson: snapshot.PanelLayoutJson,
             faceDocumentJson: snapshot.FaceDocumentJson,
-            cabinetDocumentJson: snapshot.CabinetDocumentJson)).ToArray();
+            cabinetDocumentJson: snapshot.CabinetDocumentJson,
+            machineDocumentJson: snapshot.MachineDocumentJson)).ToArray();
         try
         {
             foreach (var openDocument in openDocuments)

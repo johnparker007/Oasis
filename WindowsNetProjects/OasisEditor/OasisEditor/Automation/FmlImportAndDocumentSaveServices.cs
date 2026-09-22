@@ -57,6 +57,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
         }
 
         var faceDocumentJson = current.FaceDocumentJson;
+        var machineDocumentJson = current.GetMachineDocumentJson();
         var contentSource = current;
         progress.Report(0.1, "Collecting document content...");
         if (current.Document.DocumentType == EditorDocumentType.Face && project is not null)
@@ -76,13 +77,14 @@ public sealed class DocumentSaveService : IDocumentSaveService
                 faceDocumentJson = FaceDocumentStorage.Serialize(faceWithAuthoredAssets);
             }
             contentSource = new DocumentTabViewModel(
-                current.Document,
-                current.PanelLayoutJson,
-                current.DocumentId,
-                current.CommandService,
-                current.RuntimeState,
-                faceDocumentJson,
-                current.CabinetDocumentJson)
+                document: current.Document,
+                panelLayoutJson: current.PanelLayoutJson,
+                documentId: current.DocumentId,
+                commandService: current.CommandService,
+                runtimeState: current.RuntimeState,
+                faceDocumentJson: faceDocumentJson,
+                cabinetDocumentJson: current.CabinetDocumentJson,
+                machineDocumentJson: machineDocumentJson)
             {
                 PanelZoom = current.PanelZoom,
                 PanelPanX = current.PanelPanX,
@@ -100,13 +102,14 @@ public sealed class DocumentSaveService : IDocumentSaveService
         progress.Report(0.95, "Updating document state...");
 
         var savedDocument = new DocumentTabViewModel(
-            current.Document.SaveAs(savePath, current.ContentSummary).MarkClean(),
-            current.PanelLayoutJson,
-            current.DocumentId,
-            current.CommandService,
-            current.RuntimeState,
-            faceDocumentJson,
-            current.CabinetDocumentJson)
+            document: current.Document.SaveAs(savePath, current.ContentSummary).MarkClean(),
+            panelLayoutJson: current.PanelLayoutJson,
+            documentId: current.DocumentId,
+            commandService: current.CommandService,
+            runtimeState: current.RuntimeState,
+            faceDocumentJson: faceDocumentJson,
+            cabinetDocumentJson: current.CabinetDocumentJson,
+            machineDocumentJson: machineDocumentJson)
         {
             PanelZoom = current.PanelZoom,
             PanelPanX = current.PanelPanX,
