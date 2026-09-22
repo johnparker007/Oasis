@@ -212,6 +212,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             PromptForAssetRename,
             ConfirmAssetDelete);
         _assetBrowser.StateChanged += OnAssetBrowserStateChanged;
+        _assetBrowser.AssetCatalogChanged += OnProjectAssetCatalogChanged;
         _inspector = new InspectorViewModel(
             () => SelectedAsset,
             () => _assetBrowser.SelectedDirectory,
@@ -1586,6 +1587,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedAssetDirectory));
         OnPropertyChanged(nameof(SelectedAssetDirectoryLabel));
         OnPropertyChanged(nameof(HasAssetBrowserItems));
+    }
+
+    private void OnProjectAssetCatalogChanged()
+    {
+        foreach (var machine in OpenDocuments.Where(document => document.Document.DocumentType == EditorDocumentType.Machine))
+            machine.RefreshMachineCompositionChoices();
     }
 
 

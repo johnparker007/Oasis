@@ -25,6 +25,7 @@ public sealed class AssetBrowserViewModel : IDisposable
     private string? _watchedAssetsDirectory;
     private readonly DispatcherTimer _refreshDebounceTimer;
     public event Action? StateChanged;
+    public event Action? AssetCatalogChanged;
 
     public AssetBrowserViewModel(
         Func<EditorProject?> loadedProjectAccessor,
@@ -160,6 +161,7 @@ public sealed class AssetBrowserViewModel : IDisposable
             _notifyInspectorChanged();
             StopWatchingAssetsDirectory();
             _addOutputEntry("Asset browser cleared (no project loaded).", OutputLogStatus.Info);
+            AssetCatalogChanged?.Invoke();
             return;
         }
 
@@ -182,6 +184,7 @@ public sealed class AssetBrowserViewModel : IDisposable
         _notifyInspectorChanged();
         _addOutputEntry($"Asset browser refreshed ({AssetBrowserItems.Count} items).", OutputLogStatus.Info);
         StateChanged?.Invoke();
+        AssetCatalogChanged?.Invoke();
     }
 
 

@@ -7,6 +7,17 @@ namespace OasisEditor.Tests;
 public sealed class AssetBrowserViewModelTests
 {
     [Fact]
+    public void RefreshAssetBrowser_RaisesSingleAssetCatalogChangedNotification()
+    {
+        using var temp = new TempProjectDirectory();
+        var viewModel = CreateViewModel(temp.Project, _ => { });
+        var changes = 0; viewModel.AssetCatalogChanged += () => changes++;
+        viewModel.RefreshAssetBrowser();
+        Assert.Equal(1, changes);
+        viewModel.Dispose();
+    }
+
+    [Fact]
     public void RefreshAssetBrowser_BuildsDirectoryTreeAndSelectedDirectoryContents()
     {
         using var temp = new TempProjectDirectory();
