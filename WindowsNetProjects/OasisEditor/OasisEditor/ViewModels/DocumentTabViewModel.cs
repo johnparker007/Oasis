@@ -199,6 +199,27 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
     }
 
+    internal void ApplySavedDocumentState(string savePath)
+    {
+        _document = _document.SaveAs(savePath, _document.ContentSummary).MarkClean();
+        NotifyDocumentMetadataChanged();
+    }
+
+    internal void ApplyContentSummary(string summary)
+    {
+        _document = _document.WithContentSummary(summary).MarkDirty();
+        NotifyDocumentMetadataChanged();
+    }
+
+    private void NotifyDocumentMetadataChanged()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FilePath)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ContentSummary)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDirty)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
+    }
+
 
     public string? CabinetDocumentJson
     {
@@ -1331,6 +1352,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         {
             PanelChanged?.Invoke(change);
         }
+    }
+
+    internal void ApplySavedFaceDocument(FaceDocumentModel model)
+    {
+        SetFaceDocument(model, affectsPersistence: false);
+        _faceDocumentJson = FaceDocumentStorage.Serialize(model);
+        _faceDocumentJsonIsCurrent = true;
     }
 
     internal void SetFaceElements(IReadOnlyList<FaceElementModel> elements, PanelChangeEvent? faceChange = null, bool updateSerializedDocument = true)

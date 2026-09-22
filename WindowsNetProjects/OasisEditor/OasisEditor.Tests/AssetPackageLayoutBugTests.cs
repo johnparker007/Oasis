@@ -82,7 +82,8 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
             faceDocumentJson: FaceDocumentStorage.Serialize(faceDocument));
         var savePath = Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "asset.face");
 
-        var saved = new DocumentSaveService().SaveDocument(current, savePath, project);
+        new DocumentSaveService().SaveDocument(current, savePath, project).ApplyTo(current);
+        var saved = current;
 
         Assert.Equal("Saved Face", saved.Title);
         Assert.False(saved.Document.IsUntitled);
@@ -111,7 +112,8 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         var current = new DocumentTabViewModel(EditorDocument.CreateFaceStub(faceDocument.Title).MarkDirty(), faceDocumentJson: FaceDocumentStorage.Serialize(faceDocument));
         var savePath = Path.Combine(project.AssetsDirectory, "Faces", "Saved Despite Preview Failure", "asset.face");
 
-        var saved = new DocumentSaveService().SaveDocument(current, savePath, project);
+        new DocumentSaveService().SaveDocument(current, savePath, project).ApplyTo(current);
+        var saved = current;
 
         Assert.True(File.Exists(savePath));
         Assert.Equal(255, Assert.Single(saved.GetFaceDocument().LampEmitters).LampId);
@@ -148,7 +150,7 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         var current=new DocumentTabViewModel(EditorDocument.CreateFaceStub(model.Title).MarkDirty(),faceDocumentJson:FaceDocumentStorage.Serialize(model));
         var savePath=Path.Combine(project.AssetsDirectory,"Faces","Saved Override","asset.face");
 
-        var saved=new DocumentSaveService().SaveDocument(current,savePath,project);
+        new DocumentSaveService().SaveDocument(current,savePath,project).ApplyTo(current); var saved=current;
         Assert.True(FaceDocumentStorage.TryReadValidated(File.ReadAllText(savePath),out var file,out var error),error);
         var persisted=FaceDocumentStorage.ToModel(file);var artwork=Assert.IsType<FaceArtworkModel>(persisted.Artwork);
         var value=Assert.IsType<FaceArtworkOverrideModel>(artwork.Override);

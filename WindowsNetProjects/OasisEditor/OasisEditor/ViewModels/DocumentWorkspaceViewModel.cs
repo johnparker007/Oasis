@@ -515,15 +515,6 @@ public sealed class DocumentWorkspaceViewModel
         return true;
     }
 
-    public void ReplaceDocument(DocumentTabViewModel original, DocumentTabViewModel updated)
-    {
-        updated.SetOpenDocumentsAccessor(() => _openDocuments);
-        updated.SetProjectAccessor(_getLoadedProject);
-        updated.SetProgressDialogService(_progressDialogService);
-        ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, original, updated));
-    }
-
-
     public void ClearProjectSessionState()
     {
         _shellCommandService.History.Clear();
@@ -601,28 +592,10 @@ public sealed class DocumentWorkspaceViewModel
             return null;
         }
 
-        var updated = new DocumentTabViewModel(
-            document: selectedDocument.Document.WithContentSummary(summary).MarkDirty(),
-            panelLayoutJson: selectedDocument.PanelLayoutJson,
-            documentId: selectedDocument.DocumentId,
-            commandService: selectedDocument.CommandService,
-            runtimeState: selectedDocument.RuntimeState,
-            faceDocumentJson: selectedDocument.FaceDocumentJson,
-            cabinetDocumentJson: selectedDocument.CabinetDocumentJson,
-            machineDocumentJson: selectedDocument.GetMachineDocumentJson())
-        {
-            PanelZoom = selectedDocument.PanelZoom,
-            PanelPanX = selectedDocument.PanelPanX,
-            PanelPanY = selectedDocument.PanelPanY
-        };
-        updated.SetOpenDocumentsAccessor(() => _openDocuments);
-        updated.SetProjectAccessor(_getLoadedProject);
-        updated.SetProgressDialogService(_progressDialogService);
-
-        ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, selectedDocument, updated));
-        _setStatusMessage($"Updated inspector summary for {updated.Title}");
-        _addOutputEntry($"Inspector summary updated for {updated.Title}", OutputLogStatus.Info);
-        return updated;
+        selectedDocument.ApplyContentSummary(summary);
+        _setStatusMessage($"Updated inspector summary for {selectedDocument.Title}");
+        _addOutputEntry($"Inspector summary updated for {selectedDocument.Title}", OutputLogStatus.Info);
+        return selectedDocument;
     }
 
     private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null, string? machineDocumentJson = null)
@@ -862,46 +835,6 @@ public sealed class DocumentWorkspaceViewModel
 
         public void Undo()
         {
-            _owner._setSelectedDocument(_previousSelection);
-        }
-    }
-
-    private sealed class ReplaceDocumentTabMutationCommand : EditorCommands.ICommand
-    {
-        private readonly DocumentWorkspaceViewModel _owner;
-        private readonly DocumentTabViewModel _original;
-        private readonly DocumentTabViewModel _updated;
-        private int _index = -1;
-        private DocumentTabViewModel? _previousSelection;
-
-        public ReplaceDocumentTabMutationCommand(DocumentWorkspaceViewModel owner, DocumentTabViewModel original, DocumentTabViewModel updated)
-        {
-            _owner = owner;
-            _original = original;
-            _updated = updated;
-        }
-
-        public string Description => $"Replace document tab {_original.Title}";
-
-        public void Execute()
-        {
-            _index = _owner._openDocuments.IndexOf(_original);
-            _previousSelection = _owner._getSelectedDocument();
-            if (_index >= 0)
-            {
-                _owner._openDocuments[_index] = _updated;
-            }
-
-            _owner._setSelectedDocument(_updated);
-        }
-
-        public void Undo()
-        {
-            if (_index >= 0)
-            {
-                _owner._openDocuments[_index] = _original;
-            }
-
             _owner._setSelectedDocument(_previousSelection);
         }
     }

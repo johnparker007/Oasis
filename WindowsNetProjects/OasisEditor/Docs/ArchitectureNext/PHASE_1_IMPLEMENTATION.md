@@ -18,7 +18,7 @@ Composition selectors bind by stable project-relative asset path/specification I
 
 Face and reel assignment commands synchronize their existing editor rows in place, including during undo/redo; they do not rebuild the active `ItemsControl` during a ComboBox selection transaction. Cabinet changes rebuild only Cabinet-dependent rows, while catalog refreshes preserve row instances whenever target/reel structure is unchanged. Machine choice ComboBoxes use an explicit `DisplayName` data template for both dropdown and collapsed presentation.
 
-Saving or generically replacing a Machine tab carries its serialized Machine model into the clean replacement tab. Save changes only document lifecycle state/path; Cabinet, Face, reel, runtime, input, and display-name state remain authoritative in the replacement selected/active Machine document.
+Saving updates the existing tab's path/title/clean metadata in place. The Machine model, composition rows, command owner, runtime state, selected/active identity, Cabinet context, and event subscriptions remain the same objects; Cabinet, Face, reel, runtime, input, and display-name state are not reconstructed. Face save-time package/export transformations are applied explicitly to the existing Face model after its file is written.
 
 Standalone Cabinet tabs render no mounted Faces without context. When an active Machine references that Cabinet, the Cabinet viewer receives that Machine tab explicitly and previews only its `SurfaceAssignments`; it never scans Machines or persists composition on Cabinet.
 

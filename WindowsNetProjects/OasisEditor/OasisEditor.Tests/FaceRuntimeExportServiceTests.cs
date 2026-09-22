@@ -221,7 +221,8 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             EditorDocument.CreateFaceStub("Front Face").MarkDirty(),
             faceDocumentJson: FaceDocumentStorage.Serialize(document));
 
-        var saved = new DocumentSaveService().SaveDocument(current, facePath, CreateProject());
+        new DocumentSaveService().SaveDocument(current, facePath, CreateProject()).ApplyTo(current);
+        var saved = current;
 
         Assert.False(saved.IsDirty);
         Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "Runtime Face", "runtime", "face.runtime.json")));

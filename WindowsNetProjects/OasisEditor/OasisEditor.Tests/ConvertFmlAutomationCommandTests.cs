@@ -92,14 +92,14 @@ public sealed class ConvertFmlAutomationCommandTests
     {
         public bool WasCalled { get; private set; }
 
-        public DocumentTabViewModel SaveDocument(
+        public DocumentSaveResult SaveDocument(
             DocumentTabViewModel current,
             string savePath,
             EditorProject? project = null,
             IEditorProgressReporter? progress = null)
         {
             WasCalled = true;
-            return current;
+            return new DocumentSaveResult(savePath);
         }
     }
 

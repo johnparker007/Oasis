@@ -1674,12 +1674,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         try
         {
             var documentTitle = current.Title;
-            var updatedDocument = await _progressDialogService.RunAsync(
+            var saveResult = await _progressDialogService.RunAsync(
                 new EditorProgressRequest($"Saving {documentTitle}", "Saving document...", EditorProgressMode.Determinate, ShowDelay: TimeSpan.Zero),
                 (progress, _) => Task.FromResult(_documentSaveService.SaveDocument(current, savePath, LoadedProject, progress)));
-            _documentWorkspace.ReplaceDocument(current, updatedDocument);
+            saveResult.ApplyTo(current);
             _assetBrowser.ScheduleRefreshFromDisk();
-            StatusMessage = $"Saved document: {updatedDocument.Title}";
+            StatusMessage = $"Saved document: {current.Title}";
             AddOutputEntry($"Saved document to {savePath}", OutputLogStatus.Info);
         }
         catch (Exception ex)
@@ -3444,6 +3444,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(DocumentTabViewModel.Document)
+            or nameof(DocumentTabViewModel.Title)
+            or nameof(DocumentTabViewModel.IsDirty)
+            or nameof(DocumentTabViewModel.FilePath))
+        {
+            OnPropertyChanged(nameof(WindowTitle));
+            NotifyDocumentCommands();
+            NotifyInspectorChanged();
+        }
+
         if (e.PropertyName is nameof(DocumentTabViewModel.HierarchySelectedPanelSelection))
         {
             if (SelectedDocument is not null)
