@@ -16,6 +16,8 @@ The Machine editor discovers Cabinet and Face package assets, detects the select
 
 Composition selectors bind by stable project-relative asset path/specification ID rather than transient choice-object identity. The Assets browser publishes one catalog-change notification after disk refresh; every open Machine rebuilds and deduplicates its choices without changing authored assignments, dirty state, or undo history. Missing selected references remain visible as missing choices for diagnostics.
 
+Face and reel assignment commands synchronize their existing editor rows in place, including during undo/redo; they do not rebuild the active `ItemsControl` during a ComboBox selection transaction. Cabinet changes rebuild only Cabinet-dependent rows, while catalog refreshes preserve row instances whenever target/reel structure is unchanged. Machine choice ComboBoxes use an explicit `DisplayName` data template for both dropdown and collapsed presentation.
+
 Standalone Cabinet tabs render no mounted Faces without context. When an active Machine references that Cabinet, the Cabinet viewer receives that Machine tab explicitly and previews only its `SurfaceAssignments`; it never scans Machines or persists composition on Cabinet.
 
 Runtime schema 5 stores the complete selected platform settings in `platformSettingsJson`, a concrete JSON string Unity `JsonUtility` can reliably deserialize and validate. Oasis Player deliberately retains but does not execute those settings in Phase 1.
