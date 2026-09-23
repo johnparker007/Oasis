@@ -1,7 +1,6 @@
 using System.Text.Json;
 using OasisEditor;
 using OasisEditor.Automation;
-using OasisEditor.Features.CabinetEditor.Models;
 using SkiaSharp;
 using Xunit;
 
@@ -76,7 +75,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var maskBefore = File.ReadAllBytes(authoredMaskPath);
 
         var document = CreateDocument("Assets/Faces/Stable Face/artwork.png", "Assets/Faces/Stable Face/mask.png", "Renamed In Inspector");
-        WriteDefaultCabinetAsset();
 
         var result = new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath("Stable Face"));
 
@@ -97,7 +95,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(artworkPath, 4, 4, new SKColor(255, 0, 0, 128));
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
         var document = CreateDocument("Assets/artwork.png", "Generated/source-mask.png");
-        WriteDefaultCabinetAsset();
         var project = CreateProject();
 
         var result = new FaceRuntimeExportService().Export(document, project, GetFaceManifestPath());
@@ -155,7 +152,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteQuadrantPng(finalArtworkPath, 16, 16);
         WriteSolidPng(obsoleteElementArtworkPath, 4, 4, SKColors.Magenta);
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
-        WriteDefaultCabinetAsset();
         var document = new FaceDocumentModel
         {
             Id = "face-runtime",
@@ -216,7 +212,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(artworkPath, 4, 4, new SKColor(0, 255, 0, 192));
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
         var document = CreateDocument("Assets/artwork.png", "Generated/source-mask.png");
-        WriteDefaultCabinetAsset();
         var current = new DocumentTabViewModel(
             EditorDocument.CreateFaceStub("Front Face").MarkDirty(),
             faceDocumentJson: FaceDocumentStorage.Serialize(document));
@@ -922,7 +917,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(bandPath, 2, 2, SKColors.Green);
         WriteSolidPng(transmissionPath, 2, 2, new SKColor(10, 20, 30, 255));
         var document = CreateDocumentWithRuntimeReel("Assets/artwork.png", "Generated/source-mask.png", "Assets/reel-band.png", true, "Generated/reel-transmission.png");
-        WriteDefaultCabinetAsset();
 
         var result = new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath());
 
@@ -947,7 +941,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(bandPath, 2, 2, SKColors.Green);
         WriteSolidPng(transmissionPath, 2, 2, SKColors.Black);
         var document = CreateDocumentWithRuntimeReel("Assets/artwork.png", "Generated/source-mask.png", "Assets/reel-band.png", false, "Generated/reel-transmission.png");
-        WriteDefaultCabinetAsset();
 
         var result = new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath());
 
@@ -965,7 +958,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(faceMaskPath, 4, 4, SKColors.White);
         WriteSolidPng(bandPath, 2, 2, SKColors.Green);
         var document = CreateDocumentWithRuntimeReel("Assets/artwork.png", "Generated/source-mask.png", "Assets/reel-band.png", true, "Generated/missing-transmission.png");
-        WriteDefaultCabinetAsset();
 
         var exception = Assert.Throws<FileNotFoundException>(() => new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath()));
         Assert.Contains("transmission mask", exception.Message, StringComparison.OrdinalIgnoreCase);
@@ -1230,7 +1222,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(artworkPath, 4, 4, new SKColor(0, 0, 255, 128));
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
         var document = CreateDocument("Assets/progress-artwork.png", "Generated/progress-mask.png");
-        WriteDefaultCabinetAsset();
         var project = CreateProject();
         var service = new FaceRuntimeExportService();
         var baseline = service.Export(document, project, GetFaceManifestPath());
