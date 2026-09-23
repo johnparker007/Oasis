@@ -27,7 +27,6 @@ public sealed class DocumentWorkspaceViewModel
     private readonly FaceGenerationService _faceGenerationService = new();
     private readonly FaceRuntimeExportService _faceRuntimeExportService = new();
     private readonly FaceValidationService _faceValidationService = new();
-    private readonly FaceCabinetContextResolver _faceCabinetContextResolver = new();
     private readonly IProgressDialogService _progressDialogService;
 
     private int _untitledDocumentCounter = 1;
@@ -161,16 +160,13 @@ public sealed class DocumentWorkspaceViewModel
         string Title,
         string SourceDocumentId,
         string? SourceDocumentPath,
-        string? AssignedTargetId,
-        string? AssignedCabinetAssetPath,
         double? TargetAspectRatio,
         string ProjectDirectory,
         string GeneratedDirectory,
         string PendingFaceAssetDirectory,
-        FaceGenerationSettingsModel? Settings,
-        FaceCabinetContext CabinetContext);
+        FaceGenerationSettingsModel? Settings);
 
-    internal sealed record PreparedFaceDocument(FaceDocumentModel Model, string Json, string SourceShapeName, FaceCabinetContext CabinetContext);
+    internal sealed record PreparedFaceDocument(FaceDocumentModel Model, string Json, string SourceShapeName);
 
     internal FaceGenerationWorkItem? PrepareFaceGeneration(string? faceAssetName, FaceGenerationSettingsModel? generationSettings)
     {
@@ -185,15 +181,14 @@ public sealed class DocumentWorkspaceViewModel
             .Where(d => d.Document.DocumentType == EditorDocumentType.Cabinet3D)
             .Select(d => d.CabinetViewer?.SelectedFaceTarget?.Target)
             .FirstOrDefault(candidate => candidate is not null);
-        var cabinetContext = _faceCabinetContextResolver.ResolveForGeneration(loadedProject, _openDocuments, target?.Id);
         var targetAspect = target is null || target.Corners.Count < 4
             ? (double?)null
             : (target.Corners[1] - target.Corners[0]).Length / Math.Max(0.0001, (target.Corners[3] - target.Corners[0]).Length);
         var title = string.IsNullOrWhiteSpace(faceAssetName) ? $"{sourceDocument.Title} Face" : faceAssetName.Trim();
         return new FaceGenerationWorkItem(
             sourceDocument.GetPanelDocument(), shape, title, sourceDocument.DocumentId.ToString("N"), sourceDocument.FilePath,
-            target?.Id, cabinetContext.CabinetAssetPath, targetAspect, loadedProject.ProjectDirectory, loadedProject.GeneratedDirectory,
-            Path.Combine(loadedProject.GeneratedDirectory, "Faces", "_unsaved", Guid.NewGuid().ToString("N")), generationSettings, cabinetContext);
+            targetAspect, loadedProject.ProjectDirectory, loadedProject.GeneratedDirectory,
+            Path.Combine(loadedProject.GeneratedDirectory, "Faces", "_unsaved", Guid.NewGuid().ToString("N")), generationSettings);
     }
 
     internal PreparedFaceDocument GenerateFace(FaceGenerationWorkItem workItem, IEditorProgressReporter progress, CancellationToken cancellationToken)
@@ -202,8 +197,6 @@ public sealed class DocumentWorkspaceViewModel
         var result = _faceGenerationService.GenerateFromPanelFaceSourceShape(
             workItem.SourcePanel, workItem.SourceShape, workItem.Title,
             sourcePanel2DDocumentId: workItem.SourceDocumentId,
-            assignedCabinetFaceTargetId: workItem.AssignedTargetId,
-            assignedCabinetAssetPath: workItem.AssignedCabinetAssetPath,
             targetAspectRatio: workItem.TargetAspectRatio,
             projectDirectory: workItem.ProjectDirectory,
             generatedDirectory: workItem.GeneratedDirectory,
@@ -212,11 +205,10 @@ public sealed class DocumentWorkspaceViewModel
             generationSettings: workItem.Settings,
             progress: progress.CreateChild(0.0, 0.8),
             sourcePanel2DDocumentPath: workItem.SourceDocumentPath,
-            cabinetDocument: workItem.CabinetContext.CabinetDocument,
             cancellationToken: cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         progress.Report(1.0, "Face creation from Face Source Shape complete.");
-        return new PreparedFaceDocument(result.Document, FaceDocumentStorage.Serialize(result.Document), workItem.SourceShape.Name, workItem.CabinetContext);
+        return new PreparedFaceDocument(result.Document, FaceDocumentStorage.Serialize(result.Document), workItem.SourceShape.Name);
     }
 
     internal DocumentTabViewModel CompleteFaceGeneration(PreparedFaceDocument prepared)
@@ -226,10 +218,6 @@ public sealed class DocumentWorkspaceViewModel
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         _setStatusMessage($"Generated face document from Face Source Shape '{prepared.SourceShapeName}'.");
         _addOutputEntry($"Generated face '{document.Title}' from Face Source Shape '{prepared.SourceShapeName}'.", OutputLogStatus.Info);
-        if (!prepared.CabinetContext.HasCabinet)
-        {
-            _addOutputEntry($"Face generation did not resolve a Cabinet reel specification context: {prepared.CabinetContext.DiagnosticMessage}", OutputLogStatus.Warning);
-        }
         return document;
     }
 
@@ -310,7 +298,7 @@ public sealed class DocumentWorkspaceViewModel
         }
 
         var faceDocument = selectedDocument.GetFaceDocument();
-        return _faceValidationService.Validate(faceDocument, _getLoadedProject(), _openDocuments.ToArray(), _faceCabinetContextResolver.ResolveForFace(_getLoadedProject(), _openDocuments, faceDocument));
+        return _faceValidationService.Validate(faceDocument, _getLoadedProject(), _openDocuments.ToArray());
     }
 
 
@@ -353,7 +341,7 @@ public sealed class DocumentWorkspaceViewModel
 
     private void LogFaceDiagnostics(FaceDocumentModel faceDocument)
     {
-        var diagnostics = _faceValidationService.Validate(faceDocument, _getLoadedProject(), _openDocuments.ToArray(), _faceCabinetContextResolver.ResolveForFace(_getLoadedProject(), _openDocuments, faceDocument));
+        var diagnostics = _faceValidationService.Validate(faceDocument, _getLoadedProject(), _openDocuments.ToArray());
         foreach (var diagnostic in diagnostics)
         {
             _addOutputEntry($"Face validation ({diagnostic.Code}): {diagnostic.Message}", diagnostic.Severity == FaceValidationSeverity.Error ? OutputLogStatus.Error : OutputLogStatus.Warning);
@@ -501,7 +489,7 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry($"Closed document tab: {selectedDocument.Title}", OutputLogStatus.Info);
     }
 
-    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson, string? panelTitle = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null)
+    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson, string? panelTitle = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null, string? machineDocumentJson = null)
     {
         var existing = _openDocuments.FirstOrDefault(tab => string.Equals(tab.FilePath, path, StringComparison.OrdinalIgnoreCase));
         if (existing is not null)
@@ -510,19 +498,10 @@ public sealed class DocumentWorkspaceViewModel
             return false;
         }
 
-        var document = CreateDocumentTab(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson, faceDocumentJson, cabinetDocumentJson);
+        var document = CreateDocumentTab(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson, faceDocumentJson, cabinetDocumentJson, machineDocumentJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         return true;
     }
-
-    public void ReplaceDocument(DocumentTabViewModel original, DocumentTabViewModel updated)
-    {
-        updated.SetOpenDocumentsAccessor(() => _openDocuments);
-        updated.SetProjectAccessor(_getLoadedProject);
-        updated.SetProgressDialogService(_progressDialogService);
-        ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, original, updated));
-    }
-
 
     public void ClearProjectSessionState()
     {
@@ -601,41 +580,24 @@ public sealed class DocumentWorkspaceViewModel
             return null;
         }
 
-        var updated = new DocumentTabViewModel(
-            selectedDocument.Document.WithContentSummary(summary).MarkDirty(),
-            selectedDocument.PanelLayoutJson,
-            selectedDocument.DocumentId,
-            selectedDocument.CommandService,
-            selectedDocument.RuntimeState,
-            selectedDocument.FaceDocumentJson,
-            selectedDocument.CabinetDocumentJson)
-        {
-            PanelZoom = selectedDocument.PanelZoom,
-            PanelPanX = selectedDocument.PanelPanX,
-            PanelPanY = selectedDocument.PanelPanY
-        };
-        updated.SetOpenDocumentsAccessor(() => _openDocuments);
-        updated.SetProjectAccessor(_getLoadedProject);
-        updated.SetProgressDialogService(_progressDialogService);
-
-        ExecuteDocumentMutation(new ReplaceDocumentTabMutationCommand(this, selectedDocument, updated));
-        _setStatusMessage($"Updated inspector summary for {updated.Title}");
-        _addOutputEntry($"Inspector summary updated for {updated.Title}", OutputLogStatus.Info);
-        return updated;
+        selectedDocument.ApplyContentSummary(summary);
+        _setStatusMessage($"Updated inspector summary for {selectedDocument.Title}");
+        _addOutputEntry($"Inspector summary updated for {selectedDocument.Title}", OutputLogStatus.Info);
+        return selectedDocument;
     }
 
-    private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null)
+    private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null, string? machineDocumentJson = null)
     {
         var documentId = Guid.NewGuid();
         var runtimeState = _runtimeStateStore.GetOrCreate(documentId);
-        runtimeState.FruitMachinePlatform = _getLoadedProject()?.FruitMachinePlatform ?? FruitMachinePlatformType.None;
         var tab = new DocumentTabViewModel(
             document,
             panelLayoutJson,
             documentId,
             runtimeState: runtimeState,
             faceDocumentJson: faceDocumentJson,
-            cabinetDocumentJson: cabinetDocumentJson);
+            cabinetDocumentJson: cabinetDocumentJson,
+            machineDocumentJson: machineDocumentJson);
         tab.SetOpenDocumentsAccessor(() => _openDocuments);
         tab.SetProjectAccessor(_getLoadedProject);
         tab.SetProgressDialogService(_progressDialogService);
@@ -644,6 +606,15 @@ public sealed class DocumentWorkspaceViewModel
 
     internal static OpenDocumentData BuildOpenDocumentData(string path, string content)
     {
+        if (string.Equals(Path.GetExtension(path), ".machine", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!MachineDocumentStorage.TryRead(content, out var machine, out var error))
+                return new OpenDocumentData($"Failed to open Machine document: {error}", null, Path.GetFileName(path));
+            var assetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(path, EditorAssetType.Machine);
+            if (string.IsNullOrWhiteSpace(assetName))
+                return new OpenDocumentData("Failed to open Machine document: manifests must be stored as Assets/Machines/<Name>/asset.machine.", null, Path.GetFileName(path));
+            return new OpenDocumentData("Machine composition document opened.", null, assetName, MachineDocumentJson: MachineDocumentStorage.Serialize(machine));
+        }
         if (string.Equals(Path.GetExtension(path), ".cabinet3d", StringComparison.OrdinalIgnoreCase))
         {
             if (CabinetDocumentStorage.TryRead(content, out var cabinetDocument))
@@ -783,6 +754,9 @@ public sealed class DocumentWorkspaceViewModel
             return FaceDocumentStorage.Serialize(persistedFaceDocument);
         }
 
+        if (document.Document.DocumentType == EditorDocumentType.Machine)
+            return MachineDocumentStorage.Serialize(document.GetMachineDocument());
+
         var persisted = new
         {
             title = document.Title,
@@ -849,46 +823,6 @@ public sealed class DocumentWorkspaceViewModel
 
         public void Undo()
         {
-            _owner._setSelectedDocument(_previousSelection);
-        }
-    }
-
-    private sealed class ReplaceDocumentTabMutationCommand : EditorCommands.ICommand
-    {
-        private readonly DocumentWorkspaceViewModel _owner;
-        private readonly DocumentTabViewModel _original;
-        private readonly DocumentTabViewModel _updated;
-        private int _index = -1;
-        private DocumentTabViewModel? _previousSelection;
-
-        public ReplaceDocumentTabMutationCommand(DocumentWorkspaceViewModel owner, DocumentTabViewModel original, DocumentTabViewModel updated)
-        {
-            _owner = owner;
-            _original = original;
-            _updated = updated;
-        }
-
-        public string Description => $"Replace document tab {_original.Title}";
-
-        public void Execute()
-        {
-            _index = _owner._openDocuments.IndexOf(_original);
-            _previousSelection = _owner._getSelectedDocument();
-            if (_index >= 0)
-            {
-                _owner._openDocuments[_index] = _updated;
-            }
-
-            _owner._setSelectedDocument(_updated);
-        }
-
-        public void Undo()
-        {
-            if (_index >= 0)
-            {
-                _owner._openDocuments[_index] = _original;
-            }
-
             _owner._setSelectedDocument(_previousSelection);
         }
     }

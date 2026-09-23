@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -20,6 +21,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private bool _faceDocumentJsonIsCurrent = true;
     private string? _cabinetDocumentJson;
     private CabinetDocument _cabinetDocumentModel;
+    private MachineDocument _machineDocumentModel;
     private Panel2DDocumentModel _panelDocumentModel;
     private FaceDocumentModel _faceDocumentModel;
     private Dictionary<string, PanelElementModel> _lampElementsByObjectId = new(StringComparer.Ordinal);
@@ -38,6 +40,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private Dictionary<string, object>? _lastVisualStateByObjectId;
     private readonly MachineRuntimeState _runtimeState;
     private CabinetModelDocumentViewModel? _cabinetViewer;
+    private DocumentTabViewModel? _machineCompositionContext;
+    private bool _isRefreshingMachineCompositionChoices;
+    private string? _machineCompositionCatalogSignature;
     private Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
     private Func<EditorProject?>? _projectAccessor;
     private readonly FaceWorkspaceViewModel? _faceWorkspace;
@@ -63,7 +68,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         CommandService? commandService = null,
         MachineRuntimeState? runtimeState = null,
         string? faceDocumentJson = null,
-        string? cabinetDocumentJson = null)
+        string? cabinetDocumentJson = null,
+        string? machineDocumentJson = null)
     {
         _document = document;
         DocumentId = documentId ?? Guid.NewGuid();
@@ -103,6 +109,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _cabinetDocumentModel = CabinetDocumentStorage.TryRead(cabinetDocumentJson, out var cabinetDocument)
             ? cabinetDocument
             : CabinetDocument.Empty;
+        _machineDocumentModel = MachineDocumentStorage.TryRead(machineDocumentJson, out var machineDocument, out _)
+            ? machineDocument
+            : MachineDocument.Create(document.Title);
         RebuildLampCaches();
         _faceWorkspace = document.DocumentType == EditorDocumentType.Face ? new FaceWorkspaceViewModel(this) : null;
     }
@@ -148,6 +157,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         if (_cabinetViewer is not null) return _cabinetViewer;
         var viewer = new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), this, _openDocumentsAccessor, _projectAccessor);
         _cabinetViewer = viewer;
+        viewer.SetMachineCompositionContext(_machineCompositionContext);
         viewer.Initialize();
         return viewer;
     }
@@ -163,6 +173,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _projectAccessor = projectAccessor;
         ReconcileRuntimeAssetsConfiguration();
         _cabinetViewer?.ReflectionEditor.RefreshProjectContext();
+        RefreshMachineCompositionChoices();
+    }
+
+    internal void SetMachineCompositionContext(DocumentTabViewModel? machineDocument)
+    {
+        _machineCompositionContext = machineDocument;
+        _cabinetViewer?.SetMachineCompositionContext(machineDocument);
     }
 
     internal void SetProgressDialogService(IProgressDialogService progressDialogService)
@@ -179,6 +196,27 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
         _document = _document.MarkDirty();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDirty)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
+    }
+
+    internal void ApplySavedDocumentState(string savePath)
+    {
+        _document = _document.SaveAs(savePath, _document.ContentSummary).MarkClean();
+        NotifyDocumentMetadataChanged();
+    }
+
+    internal void ApplyContentSummary(string summary)
+    {
+        _document = _document.WithContentSummary(summary).MarkDirty();
+        NotifyDocumentMetadataChanged();
+    }
+
+    private void NotifyDocumentMetadataChanged()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Document)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FilePath)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ContentSummary)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDirty)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
     }
@@ -208,6 +246,223 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public CabinetDocument GetCabinetDocument()
     {
         return _cabinetDocumentModel;
+    }
+
+    public MachineDocument GetMachineDocument() => _machineDocumentModel;
+    public string GetMachineDocumentJson() => MachineDocumentStorage.Serialize(_machineDocumentModel);
+    public string MachineDisplayName { get => _machineDocumentModel.DisplayName; set { if (string.IsNullOrWhiteSpace(value) || value == _machineDocumentModel.DisplayName) return; ExecuteMachineMutation(_machineDocumentModel with { DisplayName = value.Trim() }, "Rename Machine"); } }
+    public string? MachineCabinetAssetPath { get => _machineDocumentModel.CabinetAssetPath; set { if (_isRefreshingMachineCompositionChoices) return; var normalized = string.IsNullOrWhiteSpace(value) ? null : ProjectAssetPathService.NormalizeProjectRelativePath(value.Trim()); if (SameAssetPath(normalized, _machineDocumentModel.CabinetAssetPath)) return; ExecuteMachineMutation(_machineDocumentModel with { CabinetAssetPath = normalized, SurfaceAssignments = [], ReelAssignments = [] }, "Select Machine Cabinet"); } }
+    public FruitMachinePlatformType MachinePlatform { get => _machineDocumentModel.Runtime.Platform; set { if (value == _machineDocumentModel.Runtime.Platform) return; ExecuteMachineMutation(_machineDocumentModel with { Runtime = MachineEmulationRuntime.Create(value) }, "Change Machine runtime platform"); } }
+    public IReadOnlyList<FruitMachinePlatformType> MachinePlatforms { get; } = Enum.GetValues<FruitMachinePlatformType>();
+    public IReadOnlyList<MachineSurfaceAssignment> MachineSurfaceAssignments => _machineDocumentModel.SurfaceAssignments;
+    public IReadOnlyList<MachineReelAssignment> MachineReelAssignments => _machineDocumentModel.ReelAssignments;
+    public IReadOnlyList<InputDefinitionModel> MachineInputs => _machineDocumentModel.InputDefinitions;
+    public ObservableCollection<MachineAssetChoice> MachineCabinetChoices { get; } = [];
+    public ObservableCollection<MachineAssetChoice> MachineFaceChoices { get; } = [];
+    public ObservableCollection<MachineSurfaceAssignmentRow> MachineSurfaceAssignmentRows { get; } = [];
+    public ObservableCollection<MachineReelAssignmentRow> MachineReelAssignmentRows { get; } = [];
+
+    internal void SetMachineDocument(MachineDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        var cabinetChanged = !SameAssetPath(_machineDocumentModel.CabinetAssetPath, document.CabinetAssetPath);
+        _machineDocumentModel = document;
+        MarkDirty();
+        foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineInputs) })
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
+        if (cabinetChanged)
+        {
+            _machineCompositionCatalogSignature = null;
+            RefreshMachineCabinetDependentRows(forceRebuild: true);
+        }
+        else
+            SynchronizeMachineAssignmentRows();
+    }
+
+    internal void RefreshMachineCompositionChoices()
+    {
+        if (Document.DocumentType != EditorDocumentType.Machine || _projectAccessor?.Invoke() is not { } project) return;
+        var cabinetChoices = DiscoverProjectAssetChoices(project, EditorAssetType.Cabinet3D);
+        var faceChoices = DiscoverProjectAssetChoices(project, EditorAssetType.Face);
+        var signature = BuildMachineCompositionCatalogSignature(project, cabinetChoices, faceChoices);
+        if (string.Equals(signature, _machineCompositionCatalogSignature, StringComparison.Ordinal)) return;
+        _isRefreshingMachineCompositionChoices = true;
+        try
+        {
+            RefreshMachineCompositionChoicesCore(project, cabinetChoices, faceChoices);
+            _machineCompositionCatalogSignature = signature;
+        }
+        finally { _isRefreshingMachineCompositionChoices = false; }
+    }
+
+    private void RefreshMachineCompositionChoicesCore(EditorProject project, IReadOnlyList<MachineAssetChoice> cabinetAssets, IReadOnlyList<MachineAssetChoice> faceAssets)
+    {
+        var selectedCabinetPath = _machineDocumentModel.CabinetAssetPath;
+        var cabinetChoices = new List<MachineAssetChoice> { new("(None)", null) };
+        cabinetChoices.AddRange(cabinetAssets);
+        if (!string.IsNullOrWhiteSpace(selectedCabinetPath) && cabinetChoices.All(choice => !SameAssetPath(choice.AssetPath, selectedCabinetPath)))
+            cabinetChoices.Add(new MachineAssetChoice($"Missing: {Path.GetFileName(Path.GetDirectoryName(selectedCabinetPath))}", selectedCabinetPath));
+        ReconcileMachineAssetChoices(MachineCabinetChoices, cabinetChoices);
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MachineCabinetAssetPath)));
+
+        var faceChoices = new List<MachineAssetChoice> { new("(None)", null) };
+        faceChoices.AddRange(faceAssets);
+        ReconcileMachineAssetChoices(MachineFaceChoices, faceChoices);
+
+        RefreshMachineCabinetDependentRows(project, forceRebuild: false);
+    }
+
+    private void RefreshMachineCabinetDependentRows(bool forceRebuild)
+    {
+        if (_projectAccessor?.Invoke() is { } project)
+            RefreshMachineCabinetDependentRows(project, forceRebuild);
+        else
+        {
+            MachineSurfaceAssignmentRows.Clear();
+            MachineReelAssignmentRows.Clear();
+        }
+    }
+
+    private void RefreshMachineCabinetDependentRows(EditorProject project, bool forceRebuild)
+    {
+        if (string.IsNullOrWhiteSpace(_machineDocumentModel.CabinetAssetPath))
+        {
+            MachineSurfaceAssignmentRows.Clear();
+            MachineReelAssignmentRows.Clear();
+            return;
+        }
+        var cabinetPath = new ProjectAssetPathService().ResolveProjectRelativePath(project, _machineDocumentModel.CabinetAssetPath);
+        if (!File.Exists(cabinetPath) || !CabinetDocumentStorage.TryRead(File.ReadAllText(cabinetPath), out var cabinet))
+        {
+            MachineSurfaceAssignmentRows.Clear();
+            MachineReelAssignmentRows.Clear();
+            return;
+        }
+        var modelPath = Path.IsPathFullyQualified(cabinet.Model.Path) ? cabinet.Model.Path : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(cabinetPath)!, cabinet.Model.Path));
+        var faceChoices = MachineFaceChoices.ToList();
+        var targets = File.Exists(modelPath)
+            ? new GlbCabinetFaceTargetDetector().DetectTargets(modelPath, CancellationToken.None).Where(target => target.IsValid).Select(target => (target.Id, target.DisplayName)).ToList()
+            : [];
+        foreach (var assignment in _machineDocumentModel.SurfaceAssignments.Where(assignment => targets.All(target => !string.Equals(target.Id, assignment.TargetId, StringComparison.Ordinal))))
+            targets.Add((assignment.TargetId, $"Missing target: {assignment.TargetId}"));
+        var existingTargets = MachineSurfaceAssignmentRows.ToDictionary(row => row.TargetId, StringComparer.Ordinal);
+        var rebuildSurfaceRows = forceRebuild || !MachineSurfaceAssignmentRows.Select(row => row.TargetId).SequenceEqual(targets.Select(target => target.Id), StringComparer.Ordinal);
+        if (rebuildSurfaceRows)
+            MachineSurfaceAssignmentRows.Clear();
+        foreach (var target in targets)
+        {
+            var assignedPath = _machineDocumentModel.SurfaceAssignments.FirstOrDefault(item => item.TargetId == target.Id)?.FaceAssetPath;
+            var rowChoices = faceChoices.ToList();
+            if (!string.IsNullOrWhiteSpace(assignedPath) && rowChoices.All(choice => !SameAssetPath(choice.AssetPath, assignedPath))) rowChoices.Add(new MachineAssetChoice($"Missing: {Path.GetFileName(Path.GetDirectoryName(assignedPath))}", assignedPath));
+            if (rebuildSurfaceRows || !existingTargets.TryGetValue(target.Id, out var row))
+            {
+                MachineSurfaceAssignmentRows.Add(new MachineSurfaceAssignmentRow(this, target.Id, target.DisplayName, rowChoices, assignedPath));
+                continue;
+            }
+            row.RefreshChoices(rowChoices);
+            row.SynchronizeSelectedAssetPath(assignedPath, forceNotification: true);
+        }
+        var specificationChoices = new List<MachineAssetChoice> { new("(None)", null) };
+        specificationChoices.AddRange((cabinet.ReelSpecifications ?? []).Select(spec => new MachineAssetChoice(spec.Name, spec.Id)));
+        var references = _machineDocumentModel.ReelAssignments.Select(item => item.MachineReelReference).Concat(Enumerable.Range(0, 4).Select(MachineObjectReference.Reel)).Distinct().OrderBy(item => item.Id).ToArray();
+        var existingReels = MachineReelAssignmentRows.ToDictionary(row => row.Reference);
+        var rebuildReelRows = forceRebuild || !MachineReelAssignmentRows.Select(row => row.Reference).SequenceEqual(references);
+        if (rebuildReelRows)
+            MachineReelAssignmentRows.Clear();
+        foreach (var reference in references)
+        {
+            var assignedId = _machineDocumentModel.ReelAssignments.FirstOrDefault(item => item.MachineReelReference == reference)?.CabinetReelSpecificationId;
+            var rowChoices = specificationChoices.ToList();
+            if (!string.IsNullOrWhiteSpace(assignedId) && rowChoices.All(choice => !string.Equals(choice.AssetPath, assignedId, StringComparison.Ordinal))) rowChoices.Add(new MachineAssetChoice($"Missing: {assignedId}", assignedId));
+            if (rebuildReelRows || !existingReels.TryGetValue(reference, out var row))
+            {
+                MachineReelAssignmentRows.Add(new MachineReelAssignmentRow(this, reference, rowChoices, assignedId));
+                continue;
+            }
+            row.RefreshChoices(rowChoices);
+            row.SynchronizeSelectedSpecificationId(assignedId, forceNotification: true);
+        }
+    }
+
+    private string BuildMachineCompositionCatalogSignature(EditorProject project, IReadOnlyList<MachineAssetChoice> cabinets, IReadOnlyList<MachineAssetChoice> faces)
+    {
+        var parts = cabinets.Concat(faces).Select(choice => $"{choice.AssetPath}|{choice.DisplayName}").ToList();
+        parts.Add($"selected:{_machineDocumentModel.CabinetAssetPath}");
+        if (!string.IsNullOrWhiteSpace(_machineDocumentModel.CabinetAssetPath))
+        {
+            var cabinetPath = new ProjectAssetPathService().ResolveProjectRelativePath(project, _machineDocumentModel.CabinetAssetPath);
+            AddFileStamp(parts, cabinetPath);
+            if (File.Exists(cabinetPath) && CabinetDocumentStorage.TryRead(File.ReadAllText(cabinetPath), out var cabinet))
+            {
+                var modelPath = Path.IsPathFullyQualified(cabinet.Model.Path) ? cabinet.Model.Path : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(cabinetPath)!, cabinet.Model.Path));
+                AddFileStamp(parts, modelPath);
+            }
+        }
+        return string.Join("\n", parts);
+    }
+
+    private static void AddFileStamp(List<string> parts, string path)
+    {
+        if (!File.Exists(path)) { parts.Add($"missing:{path}"); return; }
+        var info = new FileInfo(path);
+        parts.Add($"file:{path}|{info.Length}|{info.LastWriteTimeUtc.Ticks}");
+    }
+
+    internal static void ReconcileMachineAssetChoices(ObservableCollection<MachineAssetChoice> current, IReadOnlyList<MachineAssetChoice> desired)
+    {
+        for (var index = 0; index < desired.Count; index++)
+        {
+            var desiredChoice = desired[index];
+            var existingIndex = -1;
+            for (var candidate = index; candidate < current.Count; candidate++)
+                if (SameAssetPath(current[candidate].AssetPath, desiredChoice.AssetPath)) { existingIndex = candidate; break; }
+            if (existingIndex < 0) current.Insert(index, desiredChoice);
+            else
+            {
+                if (existingIndex != index) current.Move(existingIndex, index);
+                if (!string.Equals(current[index].DisplayName, desiredChoice.DisplayName, StringComparison.Ordinal)) current[index] = desiredChoice;
+            }
+        }
+        while (current.Count > desired.Count) current.RemoveAt(current.Count - 1);
+    }
+
+    private void SynchronizeMachineAssignmentRows()
+    {
+        foreach (var row in MachineSurfaceAssignmentRows)
+            row.SynchronizeSelectedAssetPath(_machineDocumentModel.SurfaceAssignments.FirstOrDefault(item => item.TargetId == row.TargetId)?.FaceAssetPath);
+        foreach (var row in MachineReelAssignmentRows)
+            row.SynchronizeSelectedSpecificationId(_machineDocumentModel.ReelAssignments.FirstOrDefault(item => item.MachineReelReference == row.Reference)?.CabinetReelSpecificationId);
+    }
+
+    private static IEnumerable<string> EnumerateManifests(string root, string manifest) => Directory.Exists(root) ? Directory.EnumerateFiles(root, manifest, SearchOption.AllDirectories).OrderBy(path => path, StringComparer.OrdinalIgnoreCase) : [];
+    internal static IReadOnlyList<MachineAssetChoice> DiscoverProjectAssetChoices(EditorProject project, EditorAssetType type)
+    {
+        var pathService = new ProjectAssetPathService();
+        return EnumerateManifests(pathService.GetAssetTypeDirectory(project, type), type == EditorAssetType.Face ? ProjectAssetPathService.FaceManifestFileName : ProjectAssetPathService.Cabinet3DManifestFileName)
+            .Select(path => new MachineAssetChoice(ProjectAssetPathService.GetPackageAssetNameFromManifestPath(path, type) ?? Path.GetFileName(Path.GetDirectoryName(path)), pathService.ToProjectRelativePath(project, path)))
+            .GroupBy(choice => ProjectAssetPathService.NormalizeProjectRelativePath(choice.AssetPath!), StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderBy(choice => choice.DisplayName, StringComparer.OrdinalIgnoreCase).ThenBy(choice => choice.AssetPath, StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+    private static bool SameAssetPath(string? left, string? right) => string.Equals(left is null ? null : ProjectAssetPathService.NormalizeProjectRelativePath(left), right is null ? null : ProjectAssetPathService.NormalizeProjectRelativePath(right), StringComparison.OrdinalIgnoreCase);
+    internal void SetMachineSurfaceAssignment(string targetId, string? facePath) => ExecuteMachineMutation(machine => machine with { SurfaceAssignments = machine.SurfaceAssignments.Where(item => item.TargetId != targetId).Concat(string.IsNullOrWhiteSpace(facePath) ? [] : [new MachineSurfaceAssignment(targetId, facePath)]).ToArray() }, "Assign Machine Face");
+    internal void SetMachineReelAssignment(MachineObjectReference reference, string? specificationId) => ExecuteMachineMutation(machine => machine with { ReelAssignments = machine.ReelAssignments.Where(item => item.MachineReelReference != reference).Concat(string.IsNullOrWhiteSpace(specificationId) ? [] : [new MachineReelAssignment(reference, specificationId)]).ToArray() }, "Assign Machine reel specification");
+    internal bool IsRefreshingMachineCompositionChoices => _isRefreshingMachineCompositionChoices;
+
+    private void ExecuteMachineMutation(MachineDocument next, string description) => _commandService.Execute(new SetMachineDocumentCommand(this, next, description));
+    internal void ExecuteMachineMutation(Func<MachineDocument, MachineDocument> mutation, string description)
+    {
+        ArgumentNullException.ThrowIfNull(mutation);
+        ExecuteMachineMutation(mutation(_machineDocumentModel), description);
+    }
+
+    private sealed class SetMachineDocumentCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly DocumentTabViewModel _owner; private readonly MachineDocument _next; private readonly string _description; private MachineDocument? _previous;
+        public SetMachineDocumentCommand(DocumentTabViewModel owner, MachineDocument next, string description) { _owner = owner; _next = next; _description = description; }
+        public Guid DocumentId => _owner.DocumentId; public string Description => _description; public bool WasExecuted { get; private set; }
+        public void Execute() { _previous ??= _owner._machineDocumentModel; if (_owner._machineDocumentModel == _next) return; _owner.SetMachineDocument(_next); WasExecuted = true; }
+        public void Undo() { if (_previous is not null) _owner.SetMachineDocument(_previous); }
     }
 
     public string GetCabinetDocumentJson()
@@ -527,7 +782,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         EditorDocument Document,
         string? PanelLayoutJson,
         string? FaceDocumentJson,
-        string? CabinetDocumentJson);
+        string? CabinetDocumentJson,
+        string? MachineDocumentJson);
 
     internal sealed record FaceBuildWorkItem(
         EditorDocument Document,
@@ -550,7 +806,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                 document.Document,
                 document.PanelLayoutJson,
                 document.FaceDocumentJson,
-                document.CabinetDocumentJson))
+                document.CabinetDocumentJson,
+                document.GetMachineDocumentJson()))
             .ToArray();
         return new FaceBuildWorkItem(_document, GetFaceDocumentJson(), _projectAccessor?.Invoke(), snapshots, force);
     }
@@ -562,10 +819,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         cancellationToken.ThrowIfCancellationRequested();
         var openDocuments = workItem.OpenDocuments.Select(snapshot => new DocumentTabViewModel(
-            snapshot.Document,
-            snapshot.PanelLayoutJson,
+            document: snapshot.Document,
+            panelLayoutJson: snapshot.PanelLayoutJson,
             faceDocumentJson: snapshot.FaceDocumentJson,
-            cabinetDocumentJson: snapshot.CabinetDocumentJson)).ToArray();
+            cabinetDocumentJson: snapshot.CabinetDocumentJson,
+            machineDocumentJson: snapshot.MachineDocumentJson)).ToArray();
         try
         {
             foreach (var openDocument in openDocuments)
@@ -1153,6 +1411,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    internal void ApplySavedFaceDocument(FaceDocumentModel model)
+    {
+        SetFaceDocument(model, affectsPersistence: false);
+        _faceDocumentJson = FaceDocumentStorage.Serialize(model);
+        _faceDocumentJsonIsCurrent = true;
+    }
+
     internal void SetFaceElements(IReadOnlyList<FaceElementModel> elements, PanelChangeEvent? faceChange = null, bool updateSerializedDocument = true)
     {
         SetFaceDocument(new FaceDocumentModel
@@ -1611,6 +1876,30 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             .Concat(_vfdDotMatrixElementsByObjectId.Keys)
             .ToHashSet(StringComparer.Ordinal);
     }
+}
+
+public sealed record MachineAssetChoice(string DisplayName, string? AssetPath);
+
+public sealed class MachineSurfaceAssignmentRow : INotifyPropertyChanged
+{
+    private readonly DocumentTabViewModel _owner; private string? _selectedAssetPath;
+    public MachineSurfaceAssignmentRow(DocumentTabViewModel owner, string targetId, string displayName, IReadOnlyList<MachineAssetChoice> choices, string? selectedPath) { _owner = owner; TargetId = targetId; DisplayName = displayName; Choices = new(choices); _selectedAssetPath = selectedPath; }
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public string TargetId { get; } public string DisplayName { get; } public ObservableCollection<MachineAssetChoice> Choices { get; }
+    public string? SelectedAssetPath { get => _selectedAssetPath; set { if (_owner.IsRefreshingMachineCompositionChoices || string.Equals(_selectedAssetPath, value, StringComparison.OrdinalIgnoreCase)) return; _selectedAssetPath = value; PropertyChanged?.Invoke(this, new(nameof(SelectedAssetPath))); _owner.SetMachineSurfaceAssignment(TargetId, value); } }
+    internal void SynchronizeSelectedAssetPath(string? value, bool forceNotification = false) { if (!string.Equals(_selectedAssetPath, value, StringComparison.OrdinalIgnoreCase)) _selectedAssetPath = value; else if (!forceNotification) return; PropertyChanged?.Invoke(this, new(nameof(SelectedAssetPath))); }
+    internal void RefreshChoices(IReadOnlyList<MachineAssetChoice> choices) => DocumentTabViewModel.ReconcileMachineAssetChoices(Choices, choices);
+}
+
+public sealed class MachineReelAssignmentRow : INotifyPropertyChanged
+{
+    private readonly DocumentTabViewModel _owner; private string? _selectedSpecificationId;
+    public MachineReelAssignmentRow(DocumentTabViewModel owner, MachineObjectReference reference, IReadOnlyList<MachineAssetChoice> choices, string? selectedId) { _owner = owner; Reference = reference; Choices = new(choices); _selectedSpecificationId = selectedId; }
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public MachineObjectReference Reference { get; } public string DisplayName => $"Reel {Reference.Id}"; public ObservableCollection<MachineAssetChoice> Choices { get; }
+    public string? SelectedSpecificationId { get => _selectedSpecificationId; set { if (_owner.IsRefreshingMachineCompositionChoices || string.Equals(_selectedSpecificationId, value, StringComparison.Ordinal)) return; _selectedSpecificationId = value; PropertyChanged?.Invoke(this, new(nameof(SelectedSpecificationId))); _owner.SetMachineReelAssignment(Reference, value); } }
+    internal void SynchronizeSelectedSpecificationId(string? value, bool forceNotification = false) { if (!string.Equals(_selectedSpecificationId, value, StringComparison.Ordinal)) _selectedSpecificationId = value; else if (!forceNotification) return; PropertyChanged?.Invoke(this, new(nameof(SelectedSpecificationId))); }
+    internal void RefreshChoices(IReadOnlyList<MachineAssetChoice> choices) => DocumentTabViewModel.ReconcileMachineAssetChoices(Choices, choices);
 }
 
 internal readonly record struct LampVisualState(bool IsLampTestOn, double Intensity);

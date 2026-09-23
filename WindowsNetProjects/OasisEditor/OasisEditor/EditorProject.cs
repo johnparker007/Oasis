@@ -2,21 +2,12 @@ namespace OasisEditor;
 
 public sealed class EditorProject
 {
-    public const int CurrentSchemaVersion = 8;
+    public const int CurrentSchemaVersion = 9;
     public required string Name { get; init; }
     public required string ProjectFilePath { get; init; }
     public required string ProjectDirectory { get; init; }
     public required string AssetsDirectory { get; init; }
-    public required string MachinesDirectory { get; init; }
     public required string GeneratedDirectory { get; init; }
-    public FruitMachinePlatformType FruitMachinePlatform { get; set; } = FruitMachinePlatformType.None;
-    public System6NativeRomSettings System6NativeRoms { get; set; } = new();
-    public Mpu5NativeRomSettings Mpu5NativeRoms { get; set; } = new();
-    public EpochNativeRomSettings EpochNativeRoms { get; set; } = new();
-    public Mpu3ProjectSettings Mpu3Settings { get; set; } = new();
-    public M1ProjectSettings M1Settings { get; set; } = new();
-    public Scorpion4ProjectSettings Scorpion4Settings { get; set; } = new();
-    public List<InputDefinitionModel> InputDefinitions { get; } = [];
 }
 
 public sealed class Scorpion4ProjectSettings

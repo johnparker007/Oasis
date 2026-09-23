@@ -148,7 +148,7 @@ public sealed class FaceArtworkSourceSwitchingTests : IDisposable
     private EditorProject Project() => new()
     {
         Name = "Test", ProjectDirectory = _root, ProjectFilePath = Path.Combine(_root, "test.oasis"),
-        AssetsDirectory = Path.Combine(_root, "Assets"), MachinesDirectory = Path.Combine(_root, "Machines"),
+        AssetsDirectory = Path.Combine(_root, "Assets"),
         GeneratedDirectory = Path.Combine(_root, "Generated")
     };
 

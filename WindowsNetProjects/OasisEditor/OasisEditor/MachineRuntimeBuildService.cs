@@ -9,8 +9,8 @@ namespace OasisEditor;
 
 public interface IMachineRuntimeBuildService
 {
-    MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, IEditorProgressReporter progress, CancellationToken cancellationToken);
-    MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, CabinetDocument cabinetDocument, IEditorProgressReporter progress, CancellationToken cancellationToken);
+    MachineRuntimeBuildResult BuildFromMachineDocument(EditorProject project, string machineManifestPath, IEditorProgressReporter progress, CancellationToken cancellationToken);
+    MachineRuntimeBuildResult BuildFromMachineDocument(EditorProject project, string machineManifestPath, MachineDocument machineDocument, IEditorProgressReporter progress, CancellationToken cancellationToken);
 }
 
 public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
@@ -21,8 +21,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string CabinetGlbFileName = "cabinet.glb";
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
-    public const int MachineSchemaVersion = 3;
-    public const int CabinetSchemaVersion = 4;
+    public const int MachineSchemaVersion = 5;
+    public const int CabinetSchemaVersion = 5;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -40,30 +40,34 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         _faceRuntimeExportService = faceRuntimeExportService ?? new FaceRuntimeExportService();
     }
 
-    public MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, IEditorProgressReporter progress, CancellationToken cancellationToken)
+    public MachineRuntimeBuildResult BuildFromMachineDocument(EditorProject project, string machineManifestPath, IEditorProgressReporter progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(progress);
         cancellationToken.ThrowIfCancellationRequested();
-        if (string.IsNullOrWhiteSpace(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail("A saved Cabinet3D asset must be selected before building for Oasis Player.");
-        if (!File.Exists(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail($"Cabinet3D manifest was not found: {cabinetManifestPath}");
-        if (!CabinetDocumentStorage.TryRead(File.ReadAllText(cabinetManifestPath), out var cabinetDocument)) return MachineRuntimeBuildResult.Fail($"Cabinet3D manifest is invalid or missing model.path: {cabinetManifestPath}");
-        return BuildFromCabinetDocument(project, cabinetManifestPath, cabinetDocument, progress, cancellationToken);
+        if (string.IsNullOrWhiteSpace(machineManifestPath)) return MachineRuntimeBuildResult.Fail("A saved Machine asset must be selected before building for Oasis Player.");
+        if (!File.Exists(machineManifestPath)) return MachineRuntimeBuildResult.Fail($"Machine manifest was not found: {machineManifestPath}");
+        if (!MachineDocumentStorage.TryRead(File.ReadAllText(machineManifestPath), out var machineDocument, out var error)) return MachineRuntimeBuildResult.Fail($"Machine manifest is invalid: {error}");
+        return BuildFromMachineDocument(project, machineManifestPath, machineDocument, progress, cancellationToken);
     }
 
-    public MachineRuntimeBuildResult BuildFromCabinetDocument(EditorProject project, string cabinetManifestPath, CabinetDocument cabinetDocument, IEditorProgressReporter progress, CancellationToken cancellationToken)
+    public MachineRuntimeBuildResult BuildFromMachineDocument(EditorProject project, string machineManifestPath, MachineDocument machineDocument, IEditorProgressReporter progress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(project);
-        ArgumentNullException.ThrowIfNull(cabinetDocument);
+        ArgumentNullException.ThrowIfNull(machineDocument);
         ArgumentNullException.ThrowIfNull(progress);
         cancellationToken.ThrowIfCancellationRequested();
-        if (string.IsNullOrWhiteSpace(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail("A saved Cabinet3D asset must be selected before building for Oasis Player.");
-        if (!File.Exists(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail($"Cabinet3D manifest was not found: {cabinetManifestPath}");
+        var machineAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(machineManifestPath, EditorAssetType.Machine);
+        if (string.IsNullOrWhiteSpace(machineAssetName)) return MachineRuntimeBuildResult.Fail("Machine manifests must be stored as Assets/Machines/<Name>/asset.machine before building for Oasis Player.");
+        if (string.IsNullOrWhiteSpace(machineDocument.CabinetAssetPath)) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' has no Cabinet asset assigned.");
+        var cabinetManifestPath = _pathService.ResolveProjectRelativePath(project, machineDocument.CabinetAssetPath);
+        if (!File.Exists(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references a missing Cabinet: {machineDocument.CabinetAssetPath}");
+        if (!CabinetDocumentStorage.TryRead(File.ReadAllText(cabinetManifestPath), out var cabinetDocument)) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references an invalid Cabinet: {machineDocument.CabinetAssetPath}");
         var cabinetAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(cabinetManifestPath, EditorAssetType.Cabinet3D);
-        if (string.IsNullOrWhiteSpace(cabinetAssetName)) return MachineRuntimeBuildResult.Fail("Cabinet3D manifests must be stored as Assets/Cabinet3D/<AssetName>/asset.cabinet3d before building for Oasis Player.");
+        if (string.IsNullOrWhiteSpace(cabinetAssetName)) return MachineRuntimeBuildResult.Fail("Cabinet3D manifests must be stored as Assets/Cabinet3D/<AssetName>/asset.cabinet3d.");
         var sourceGlb = ResolveCabinetModelPath(cabinetManifestPath, cabinetDocument.Model.Path);
         if (!File.Exists(sourceGlb)) return MachineRuntimeBuildResult.Fail($"Cabinet3D GLB model was not found: {sourceGlb}");
-        var buildRoot = GetBuildRoot(project, cabinetAssetName);
+        var buildRoot = GetBuildRoot(project, machineAssetName);
         var stagingRoot = buildRoot + ".staging";
         try
         {
@@ -76,8 +80,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             File.Copy(sourceGlb, Path.Combine(cabinetRoot, CabinetGlbFileName), overwrite: true);
             cancellationToken.ThrowIfCancellationRequested();
             var cabinetAssetPath = ToProjectRelativePath(project, cabinetManifestPath);
-            ValidateFaceAssignmentTargets(cabinetDocument, sourceGlb, cabinetAssetPath, cancellationToken);
-            var faceReferences = ExportReferencedFaces(project, stagingRoot, cabinetDocument, cabinetAssetPath, progress.CreateChild(0.2, 0.7), cancellationToken);
+            ValidateFaceAssignmentTargets(machineDocument.DisplayName, machineDocument.SurfaceAssignments, sourceGlb, cabinetAssetPath, cancellationToken);
+            var faceReferences = ExportReferencedFaces(project, stagingRoot, machineDocument, cabinetDocument, cabinetAssetPath, progress.CreateChild(0.2, 0.7), cancellationToken);
             progress.Report(0.72, "Validating cabinet reflections...");
             cancellationToken.ThrowIfCancellationRequested();
             ValidateReflections(cabinetDocument.Reflections ?? [], GlbCabinetReflectionReceiverDiscovery.Discover(sourceGlb), faceReferences);
@@ -85,7 +89,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             progress.Report(0.85, "Writing runtime manifests...");
             cancellationToken.ThrowIfCancellationRequested();
             File.WriteAllText(Path.Combine(cabinetRoot, CabinetManifestFileName), JsonSerializer.Serialize(cabinetManifest, JsonOptions));
-            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, project.Name, project.Name, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences);
+            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, machineDocument.Id, machineDocument.DisplayName, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, MachineRuntimeDefinition.From(machineDocument.Runtime), machineDocument.InputDefinitions);
             File.WriteAllText(Path.Combine(stagingRoot, MachineManifestFileName), JsonSerializer.Serialize(machineManifest, JsonOptions));
             progress.Report(0.95, "Finalising Oasis Player machine...");
             cancellationToken.ThrowIfCancellationRequested();
@@ -103,35 +107,40 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         }
     }
 
-    private static void ValidateFaceAssignmentTargets(CabinetDocument cabinet, string sourceGlb, string cabinetAssetPath, CancellationToken cancellationToken)
+    internal static void ValidateFaceAssignmentTargets(string machineDisplayName, IReadOnlyList<MachineSurfaceAssignment> assignments, string sourceGlb, string cabinetAssetPath, CancellationToken cancellationToken)
     {
         var detected = new GlbCabinetFaceTargetDetector().DetectTargets(sourceGlb, cancellationToken);
-        if (detected.Count == 0) return;
         var validIds = detected.Where(value => value.IsValid).Select(value => value.Id).ToHashSet(StringComparer.Ordinal);
-        foreach (var assignment in cabinet.FaceAssignments ?? [])
+        foreach (var assignment in assignments)
         {
-            if (!validIds.Contains(assignment.TargetId)) throw new InvalidOperationException($"Cabinet asset '{cabinetAssetPath}' Face assignment target '{assignment.TargetId}' is not a valid detected OasisFace_* target.");
+            if (!validIds.Contains(assignment.TargetId))
+            {
+                var detectedDescription = validIds.Count == 0
+                    ? "the Cabinet GLB contains no valid OasisFace_* targets"
+                    : $"the valid detected targets are: {string.Join(", ", validIds.OrderBy(value => value, StringComparer.Ordinal).Select(value => $"'{value}'"))}";
+                throw new InvalidOperationException($"Machine '{machineDisplayName}', Cabinet asset '{cabinetAssetPath}', requested Face target '{assignment.TargetId}' is not a valid detected OasisFace_* target; {detectedDescription}.");
+            }
         }
     }
 
     private static void ValidateReflections(IReadOnlyList<CabinetReflectionDefinition> definitions, IReadOnlyList<CabinetReflectionReceiverTarget> targets, IReadOnlyList<MachineRuntimeFaceReference> faces)
     {
-        var ids = new HashSet<string>(StringComparer.Ordinal); var claims = new HashSet<string>(StringComparer.Ordinal); var faceIds = faces.GroupBy(face => face.FaceId).ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
+        var ids = new HashSet<string>(StringComparer.Ordinal); var claims = new HashSet<string>(StringComparer.Ordinal); var mountedTargets = faces.ToDictionary(face => face.CabinetFaceTargetId, StringComparer.Ordinal);
         foreach (var definition in definitions.Where(item => item.Settings.Enabled))
         {
             if (string.IsNullOrWhiteSpace(definition.Id) || !ids.Add(definition.Id)) throw new InvalidOperationException($"Enabled cabinet reflection IDs must be non-empty and unique: '{definition.Id}'.");
             var target = targets.SingleOrDefault(item => item.TargetPath == definition.TargetId) ?? throw new InvalidOperationException($"Reflection '{definition.Id}' cabinet renderer target was not found: '{definition.TargetId}'.");
             if (target.MaterialSlots.All(slot => slot.Index != definition.MaterialSlot)) throw new InvalidOperationException($"Reflection '{definition.Id}' material slot {definition.MaterialSlot} is invalid for '{definition.TargetId}'.");
             if (!claims.Add(definition.TargetId + ":" + definition.MaterialSlot)) throw new InvalidOperationException($"Multiple enabled reflections target '{definition.TargetId}' material slot {definition.MaterialSlot}.");
-            if (definition.Sources.Length == 0) throw new InvalidOperationException($"Reflection '{definition.Id}' in cabinet requires at least one source Face.");
+            if (definition.Sources.Length == 0) throw new InvalidOperationException($"Reflection '{definition.Id}' in cabinet requires at least one source surface target.");
             if (definition.Sources.Length > CabinetReflectionContract.MaximumSources) throw new InvalidOperationException($"Reflection '{definition.Id}' has {definition.Sources.Length} sources; the supported maximum is {CabinetReflectionContract.MaximumSources}.");
             var sourceIds = new HashSet<string>(StringComparer.Ordinal);
             foreach (var source in definition.Sources)
             {
-                var display = faceIds.TryGetValue(source.FaceId, out var matches) && matches.Length > 0 ? matches[0].AssetName : "unknown Face";
-                if (!sourceIds.Add(source.FaceId)) throw new InvalidOperationException($"Reflection '{definition.Id}' contains duplicate source Face '{display}' ({source.FaceId}).");
-                if (matches is null || matches.Length != 1) throw new InvalidOperationException($"Reflection '{definition.Id}' source Face '{display}' ({source.FaceId}) must resolve uniquely; found {matches?.Length ?? 0} matches.");
-                if (!CabinetReflectionPlaneValidation.TryValidate(source.Plane, out var error)) throw new InvalidOperationException($"Reflection '{definition.Id}' source Face '{display}' ({source.FaceId}) plane is invalid: {error}");
+                var found = mountedTargets.ContainsKey(source.SourceSurfaceTargetId);
+                if (!sourceIds.Add(source.SourceSurfaceTargetId)) throw new InvalidOperationException($"Reflection '{definition.Id}' contains duplicate source surface target '{source.SourceSurfaceTargetId}'.");
+                if (!found) throw new InvalidOperationException($"Reflection '{definition.Id}' source surface target '{source.SourceSurfaceTargetId}' must resolve uniquely; it is not assigned by the Machine.");
+                if (!CabinetReflectionPlaneValidation.TryValidate(source.Plane, out var error)) throw new InvalidOperationException($"Reflection '{definition.Id}' source surface target '{source.SourceSurfaceTargetId}' plane is invalid: {error}");
             }
         }
     }
@@ -156,9 +165,9 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         return result;
     }
 
-    private IReadOnlyList<MachineRuntimeFaceReference> ExportReferencedFaces(EditorProject project, string stagingRoot, CabinetDocument cabinetDocument, string cabinetAssetPath, IEditorProgressReporter progress, CancellationToken cancellationToken)
+    private IReadOnlyList<MachineRuntimeFaceReference> ExportReferencedFaces(EditorProject project, string stagingRoot, MachineDocument machineDocument, CabinetDocument cabinetDocument, string cabinetAssetPath, IEditorProgressReporter progress, CancellationToken cancellationToken)
     {
-        var assignments = cabinetDocument.FaceAssignments ?? [];
+        var assignments = machineDocument.SurfaceAssignments ?? [];
         var duplicateTargets = assignments.GroupBy(value => value.TargetId, StringComparer.Ordinal).FirstOrDefault(group => group.Count() > 1);
         if (duplicateTargets is not null) throw new InvalidOperationException($"Cabinet asset '{cabinetAssetPath}' contains duplicate Face assignments for target '{duplicateTargets.Key}'.");
 
@@ -177,21 +186,25 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 var faceDocument = FaceDocumentStorage.ToModel(faceFile);
                 var faceAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(manifestPath, EditorAssetType.Face);
                 if (string.IsNullOrWhiteSpace(faceAssetName)) throw new InvalidOperationException("Face must be stored as Assets/Faces/<AssetName>/asset.face");
-                if (!TryResolveTargetOverride(cabinetDocument, assignment.TargetId, out var targetOverride))
-                    throw new InvalidOperationException(BuildMissingTargetOverrideMessage(faceDocument.Id, faceAssetName, assignment.TargetId, cabinetAssetPath, cabinetDocument.TargetOverrides));
-                var cabinetContext = new FaceCabinetContext(cabinetDocument, null, cabinetAssetPath, null, null);
+                var cabinetContext = new FaceCabinetContext(cabinetDocument, cabinetAssetPath, machineDocument.ReelAssignments);
                 var exportResult = _faceRuntimeExportService.Export(faceDocument, project, cabinetContext, manifestPath);
                 var buildFaceDirectory = Path.Combine(stagingRoot, "faces", _pathService.SanitizePathSegment(faceAssetName));
                 CopyDirectory(exportResult.OutputDirectory, buildFaceDirectory, cancellationToken);
-                references.Add(new MachineRuntimeFaceReference(faceDocument.Id, faceAssetName, assignment.TargetId, targetOverride.FrontSide, targetOverride.FaceRotation, targetOverride.FaceFlipHorizontal, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), FaceRuntimeExportService.ManifestFileName))));
+                references.Add(CreateRuntimeFaceReference(cabinetDocument, faceDocument.Id, faceAssetName, assignment.TargetId, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), FaceRuntimeExportService.ManifestFileName))));
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
             {
-                throw new InvalidOperationException($"Cabinet asset '{cabinetAssetPath}', Face target '{assignment.TargetId}', referenced Face '{assignment.FaceAssetPath}': {exception.Message}", exception);
+                throw new InvalidOperationException($"Machine '{machineDocument.DisplayName}', Cabinet asset '{cabinetAssetPath}', Face target '{assignment.TargetId}', referenced Face '{assignment.FaceAssetPath}': {exception.Message}", exception);
             }
         }
         progress.Report(1, assignments.Length == 0 ? "No mounted Faces to export." : $"Exported {references.Count} mounted Faces.");
         return references;
+    }
+
+    internal static MachineRuntimeFaceReference CreateRuntimeFaceReference(CabinetDocument cabinetDocument, string faceId, string faceAssetName, string targetId, string manifest)
+    {
+        var targetOverride = cabinetDocument.GetTargetOverride(targetId);
+        return new MachineRuntimeFaceReference(faceId, faceAssetName, targetId, targetOverride.FrontSide, targetOverride.FaceRotation, targetOverride.FaceFlipHorizontal, manifest);
     }
 
     private static string ResolveFaceManifestPath(EditorProject project, string assetPath)
@@ -218,35 +231,6 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         }
     }
 
-    private static bool TryResolveTargetOverride(CabinetDocument cabinetDocument, string targetId, out CabinetTargetOverride targetOverride)
-    {
-        var normalizedTargetId = targetId.Trim();
-        var overrides = cabinetDocument.TargetOverrides ?? Array.Empty<CabinetTargetOverride>();
-        var match = overrides.FirstOrDefault(candidate => string.Equals(candidate.TargetId, normalizedTargetId, StringComparison.Ordinal));
-        if (match is not null)
-        {
-            targetOverride = match.Normalized();
-            return true;
-        }
-
-        if (overrides.Length == 0)
-        {
-            targetOverride = CabinetTargetOverride.Default(normalizedTargetId);
-            return true;
-        }
-
-        targetOverride = CabinetTargetOverride.Default(normalizedTargetId);
-        return false;
-    }
-
-    private static string BuildMissingTargetOverrideMessage(string faceId, string faceAssetName, string targetId, string cabinetAssetPath, IReadOnlyList<CabinetTargetOverride> targetOverrides)
-    {
-        var availableIds = targetOverrides.Count == 0
-            ? "<none>"
-            : string.Join(", ", targetOverrides.Select(targetOverride => $"'{targetOverride.TargetId}'"));
-        return $"Face '{faceId}' ({faceAssetName}) is assigned to cabinet target '{targetId}', but Cabinet asset '{cabinetAssetPath}' does not contain that target override. Available target override IDs: {availableIds}.";
-    }
-
     private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static string ToProjectRelativePath(EditorProject project, string path)
@@ -255,7 +239,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         return ProjectAssetPathService.NormalizeProjectRelativePath(Path.GetRelativePath(project.ProjectDirectory, path));
     }
 
-    public string GetBuildRoot(EditorProject project, string machineName) => Path.Combine(project.GeneratedDirectory, "Builds", _pathService.SanitizePathSegment(machineName));
+    public string GetBuildRoot(EditorProject project, string machineAssetName) => Path.Combine(project.GeneratedDirectory, "Builds", _pathService.SanitizePathSegment(machineAssetName));
     private static string ResolveCabinetModelPath(string manifestPath, string modelPath) => Path.IsPathFullyQualified(modelPath) ? Path.GetFullPath(modelPath) : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifestPath) ?? string.Empty, modelPath));
     private static void ReplaceEmptyDirectory(string path) { if (Directory.Exists(path)) Directory.Delete(path, true); Directory.CreateDirectory(path); }
     private static void ReplaceFinalDirectory(string stagingRoot, string buildRoot) { if (Directory.Exists(buildRoot)) Directory.Delete(buildRoot, true); Directory.CreateDirectory(Path.GetDirectoryName(buildRoot)!); Directory.Move(stagingRoot, buildRoot); }
@@ -267,6 +251,10 @@ public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, 
     public static MachineRuntimeBuildResult Fail(string errorMessage) => new(false, null, errorMessage);
 }
 
-public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces);
+public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, MachineRuntimeDefinition Runtime, IReadOnlyList<InputDefinitionModel> Inputs);
+public sealed record MachineRuntimeDefinition(string Kind, string Platform, string PlatformSettingsJson, bool ExecutionSupportedByPlayer)
+{
+    public static MachineRuntimeDefinition From(MachineEmulationRuntime runtime) => new(MachineEmulationRuntime.Kind, runtime.Platform.ToString(), JsonSerializer.Serialize(runtime.Settings, runtime.Settings.GetType(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }), false);
+}
 public sealed record MachineRuntimeFaceReference(string FaceId, string AssetName, string CabinetFaceTargetId, string FrontSide, int FaceRotation, bool FaceFlipHorizontal, string Manifest);
 public sealed record CabinetRuntimeManifest(string Schema, int SchemaVersion, string CabinetId, string Glb, double Scale, string UpAxis, IReadOnlyList<CabinetReflectionDefinition> Reflections);

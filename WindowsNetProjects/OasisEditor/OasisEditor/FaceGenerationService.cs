@@ -1,5 +1,4 @@
 using System.Windows;
-using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Progress;
 
 using SkiaSharp;
@@ -93,8 +92,6 @@ internal sealed class FaceGenerationService
         PanelFaceSourceShapeModel sourceShape,
         string title,
         string? sourcePanel2DDocumentId = null,
-        string? assignedCabinetFaceTargetId = null,
-        string? assignedCabinetAssetPath = null,
         double? targetAspectRatio = null,
         string? projectDirectory = null,
         string? generatedDirectory = null,
@@ -104,7 +101,6 @@ internal sealed class FaceGenerationService
         IEditorProgressReporter? progress = null,
         string? sourcePanel2DDocumentPath = null,
         IReadOnlyList<InputDefinitionModel>? inputDefinitions = null,
-        CabinetDocument? cabinetDocument = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
@@ -463,7 +459,6 @@ internal sealed class FaceGenerationService
             ProjectFilePath = System.IO.Path.Combine(root, $"{System.IO.Path.GetFileName(root)}.oasisproj"),
             ProjectDirectory = root,
             AssetsDirectory = System.IO.Path.Combine(root, "Assets"),
-            MachinesDirectory = System.IO.Path.Combine(root, "Machines"),
             GeneratedDirectory = string.IsNullOrWhiteSpace(generatedDirectory) ? System.IO.Path.Combine(root, "Generated") : generatedDirectory
         };
     }

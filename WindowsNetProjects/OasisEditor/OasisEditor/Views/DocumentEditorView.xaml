@@ -9,6 +9,11 @@
              mc:Ignorable="d"
              d:DesignHeight="500"
              d:DesignWidth="700">
+    <UserControl.Resources>
+        <DataTemplate x:Key="MachineAssetChoiceTemplate">
+            <TextBlock Text="{Binding DisplayName}" />
+        </DataTemplate>
+    </UserControl.Resources>
     <Grid Margin="2">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -69,6 +74,21 @@
                 <cabinetViews:CabinetModelDocumentView />
             </Grid>
 
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer.Style>
+                    <Style TargetType="ScrollViewer"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Machine}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style>
+                </ScrollViewer.Style>
+                <StackPanel Margin="16" MaxWidth="900" HorizontalAlignment="Left">
+                    <TextBlock Text="Machine Composition" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,16"/>
+                    <TextBlock Text="Display name" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding MachineDisplayName, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,12"/>
+                    <TextBlock Text="Cabinet" Foreground="{DynamicResource TextSecondaryBrush}"/><ComboBox ItemsSource="{Binding MachineCabinetChoices}" ItemTemplate="{StaticResource MachineAssetChoiceTemplate}" SelectedValuePath="AssetPath" SelectedValue="{Binding MachineCabinetAssetPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,12"/>
+                    <TextBlock Text="Emulation platform" Foreground="{DynamicResource TextSecondaryBrush}"/><ComboBox ItemsSource="{Binding MachinePlatforms}" SelectedItem="{Binding MachinePlatform}" Margin="0,3,0,16"/>
+                    <TextBlock Text="Face Targets" FontWeight="SemiBold"/><ItemsControl ItemsSource="{Binding MachineSurfaceAssignmentRows}" Margin="0,4,0,16"><ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,2"><Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="240"/><ColumnDefinition Width="300"/></Grid.ColumnDefinitions><TextBlock Text="{Binding DisplayName}"/><TextBlock Grid.Column="1" Text="{Binding TargetId}" Foreground="{DynamicResource TextSecondaryBrush}"/><ComboBox Grid.Column="2" ItemsSource="{Binding Choices}" ItemTemplate="{StaticResource MachineAssetChoiceTemplate}" SelectedValuePath="AssetPath" SelectedValue="{Binding SelectedAssetPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                    <TextBlock Text="Machine Reels (temporary Cabinet specifications)" FontWeight="SemiBold"/><ItemsControl ItemsSource="{Binding MachineReelAssignmentRows}" Margin="0,4,0,16"><ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,2"><Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="300"/></Grid.ColumnDefinitions><TextBlock Text="{Binding DisplayName}"/><ComboBox Grid.Column="1" ItemsSource="{Binding Choices}" ItemTemplate="{StaticResource MachineAssetChoiceTemplate}" SelectedValuePath="AssetPath" SelectedValue="{Binding SelectedSpecificationId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                    <TextBlock Text="Inputs" FontWeight="SemiBold"/><TextBlock Text="{Binding MachineInputs.Count, StringFormat={}{0} input definitions}" Margin="0,4,0,0"/>
+                </StackPanel>
+            </ScrollViewer>
+
             <Border Padding="10"
                     CornerRadius="4"
                     Background="{DynamicResource SelectionBrush}"
@@ -84,6 +104,7 @@
                             <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Face}">
                                 <Setter Property="Visibility" Value="Collapsed" />
                             </DataTrigger>
+                            <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Machine}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
                             <DataTrigger Binding="{Binding HasCabinetViewer}" Value="True">
                                 <Setter Property="Visibility" Value="Collapsed" />
                             </DataTrigger>

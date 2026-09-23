@@ -78,7 +78,8 @@ internal sealed class ConvertFmlAutomationCommand : IOasisAutomationCommand
             panel.CommandService.Execute(importCommand);
             context.Logger.Info($"Imported MFME FML elements: {importResult.ImportedElements.Count}");
 
-            _state.PanelDocument = _documentSaveService.SaveDocument(panel, _options.OutputPanelPath);
+            _documentSaveService.SaveDocument(panel, _options.OutputPanelPath).ApplyTo(panel);
+            _state.PanelDocument = panel;
             context.Logger.Info($"Saved Panel2D document: {_options.OutputPanelPath}");
             return Task.FromResult(OasisAutomationCommandResult.Success("MFME FML conversion automation completed."));
         }

@@ -532,7 +532,8 @@ public sealed class FabricManagedBehaviorTests
         var session = new FakeSession { FramesToWrite = 48 };
         var messages = new List<string>();
         var backend = new FabricEmulationBackend("runtime", "amber", _ => new FakeRuntime(session),
-            new FakeAudioSink { Statistics = new(100, 3, 90, 10, 1, 0, 120, 2400, 1800, 38, 25, true) }, new FakeClock(), null, messages.Add);
+            new FakeAudioSink { Statistics = new(100, 3, 90, 10, 1, 0, 120, 2400, 1800, 38, 25, true) },
+            new FakeClock(ticksPerRead: 10), null, messages.Add);
 
         await backend.StartAsync(CreateRequest(), CancellationToken.None);
         await session.FirstAudioRead.Task.WaitAsync(TimeSpan.FromSeconds(2));
@@ -703,9 +704,11 @@ public sealed class FabricManagedBehaviorTests
 
     private sealed class FakeClock : IFabricClock
     {
+        private readonly long _ticksPerRead;
         private long _timestamp;
+        public FakeClock(long ticksPerRead = 1) => _ticksPerRead = ticksPerRead;
         public long Frequency => 10_000;
-        public long GetTimestamp() => Interlocked.Increment(ref _timestamp);
+        public long GetTimestamp() => Interlocked.Add(ref _timestamp, _ticksPerRead);
     }
 
     private sealed class FakeRuntime(IFabricMachineSession session) : IFabricRuntimeLibrary

@@ -221,7 +221,8 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             EditorDocument.CreateFaceStub("Front Face").MarkDirty(),
             faceDocumentJson: FaceDocumentStorage.Serialize(document));
 
-        var saved = new DocumentSaveService().SaveDocument(current, facePath, CreateProject());
+        new DocumentSaveService().SaveDocument(current, facePath, CreateProject()).ApplyTo(current);
+        var saved = current;
 
         Assert.False(saved.IsDirty);
         Assert.True(File.Exists(Path.Combine(_generatedDirectory, "Faces", "Runtime Face", "runtime", "face.runtime.json")));
@@ -626,12 +627,10 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     public void CreateManifest_WithUnresolvedReelSpecification_Throws(string specificationId, string expected)
     {
         var document = CreateReelDocument(specificationId, 1, 1, 1000, 1000);
-        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50)) with
-        {
-            ReelAssignments = [new CabinetReelAssignment(MachineObjectReference.Reel(1), specificationId)]
-        };
+        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50));
+        var context = new FaceCabinetContext(cabinet, "Assets/Cabinets/cabinet.asset", [new MachineReelAssignment(MachineObjectReference.Reel(1), specificationId)]);
 
-        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet)));
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, context));
 
         Assert.Contains(expected, exception.Message);
         Assert.Contains("Face asset", exception.Message);
@@ -653,9 +652,10 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     public void CreateManifest_WithMissingLogicalReelAssignment_Throws()
     {
         var document = CreateReelDocument("standard", 1, 1, 1000, 1000);
-        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50)) with { ReelAssignments = [] };
+        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50));
+        var context = new FaceCabinetContext(cabinet, "Assets/Cabinets/cabinet.asset", []);
 
-        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet)));
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, context));
 
         Assert.Contains("reel:1", exception.Message);
         Assert.Contains("no assignment", exception.Message, StringComparison.OrdinalIgnoreCase);
@@ -1031,7 +1031,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             ProjectFilePath = Path.Combine(_projectDirectory, "Runtime Export Tests.oasis"),
             ProjectDirectory = _projectDirectory,
             AssetsDirectory = _assetsDirectory,
-            MachinesDirectory = Path.Combine(_projectDirectory, "Machines"),
             GeneratedDirectory = _generatedDirectory
         };
     }
@@ -1133,13 +1132,15 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
 
     private static CabinetDocument CreateCabinet(params CabinetReelSpecification[] specifications)
     {
-        var assignments = Enumerable.Range(0, 4)
-            .Select(index => new CabinetReelAssignment(MachineObjectReference.Reel(index + 1), specifications[Math.Min(index, specifications.Length - 1)].Id))
-            .ToArray();
-        return new CabinetDocument(6, new CabinetModelReference("Assets/Cabinets/cabinet.glb", 1.0, "Y"), [], CabinetPreviewSettings.Default, specifications, specifications.FirstOrDefault()?.Id, ReelAssignments: assignments);
+        return new CabinetDocument(7, new CabinetModelReference("Assets/Cabinets/cabinet.glb", 1.0, "Y"), [], CabinetPreviewSettings.Default, specifications, specifications.FirstOrDefault()?.Id);
     }
 
-    private static FaceCabinetContext CreateCabinetContext(CabinetDocument cabinet) => new(cabinet, null, "Assets/Cabinets/cabinet.asset", null, null);
+    private static FaceCabinetContext CreateCabinetContext(CabinetDocument cabinet)
+    {
+        var specifications = cabinet.ReelSpecifications ?? [];
+        var assignments = Enumerable.Range(0, 4).Select(index => new MachineReelAssignment(MachineObjectReference.Reel(index + 1), specifications[Math.Min(index, specifications.Length - 1)].Id)).ToArray();
+        return new FaceCabinetContext(cabinet, "Assets/Cabinets/cabinet.asset", assignments);
+    }
 
     private static FaceDocumentModel CreateReelDocument(params object[] reelData)
     {

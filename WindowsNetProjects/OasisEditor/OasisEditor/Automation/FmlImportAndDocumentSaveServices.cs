@@ -27,7 +27,18 @@ internal sealed class FmlAutomationImportService : IFmlAutomationImportService
 
 public interface IDocumentSaveService
 {
-    DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null, IEditorProgressReporter? progress = null);
+    DocumentSaveResult SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null, IEditorProgressReporter? progress = null);
+}
+
+public sealed record DocumentSaveResult(string SavePath, FaceDocumentModel? SavedFaceDocument = null)
+{
+    public void ApplyTo(DocumentTabViewModel document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        if (SavedFaceDocument is not null)
+            document.ApplySavedFaceDocument(SavedFaceDocument);
+        document.ApplySavedDocumentState(SavePath);
+    }
 }
 
 public sealed class DocumentSaveService : IDocumentSaveService
@@ -39,7 +50,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
         _faceRuntimeExportService = faceRuntimeExportService ?? new FaceRuntimeExportService();
     }
 
-    public DocumentTabViewModel SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null, IEditorProgressReporter? progress = null)
+    public DocumentSaveResult SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null, IEditorProgressReporter? progress = null)
     {
         ArgumentNullException.ThrowIfNull(current);
         progress ??= NoOpEditorProgressReporter.Instance;
@@ -56,8 +67,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
             throw new InvalidOperationException("Cabinet3D documents must be saved as .cabinet3d metadata files, never as .glb model assets.");
         }
 
-        var faceDocumentJson = current.FaceDocumentJson;
-        var contentSource = current;
+        FaceDocumentModel? savedFaceDocument = null;
         progress.Report(0.1, "Collecting document content...");
         if (current.Document.DocumentType == EditorDocumentType.Face && project is not null)
         {
@@ -66,58 +76,27 @@ public sealed class DocumentSaveService : IDocumentSaveService
             try
             {
                 var exportResult = _faceRuntimeExportService.Export(faceWithAuthoredAssets, project, savePath, progress.CreateChild(0.15, 0.75));
-                faceDocumentJson = FaceDocumentStorage.Serialize(exportResult.Document);
+                savedFaceDocument = exportResult.Document;
             }
             catch (Exception exception)
             {
                 // Runtime preview textures are disposable generated output. Failure to refresh
                 // them must not prevent the authored Face package from being saved.
                 progress.Report(0.75, $"Face runtime preview assets were not generated: {exception.Message}");
-                faceDocumentJson = FaceDocumentStorage.Serialize(faceWithAuthoredAssets);
+                savedFaceDocument = faceWithAuthoredAssets;
             }
-            contentSource = new DocumentTabViewModel(
-                current.Document,
-                current.PanelLayoutJson,
-                current.DocumentId,
-                current.CommandService,
-                current.RuntimeState,
-                faceDocumentJson,
-                current.CabinetDocumentJson)
-            {
-                PanelZoom = current.PanelZoom,
-                PanelPanX = current.PanelPanX,
-                PanelPanY = current.PanelPanY,
-                FaceZoom = current.FaceZoom,
-                FacePanX = current.FacePanX,
-                FacePanY = current.FacePanY
-            };
         }
 
         progress.Report(0.8, "Serializing document...");
-        var content = DocumentWorkspaceViewModel.BuildDocumentContent(contentSource);
+        var content = savedFaceDocument is null
+            ? DocumentWorkspaceViewModel.BuildDocumentContent(current)
+            : FaceDocumentStorage.Serialize(savedFaceDocument);
         progress.Report(0.9, "Writing document file...");
         File.WriteAllText(savePath, content);
-        progress.Report(0.95, "Updating document state...");
-
-        var savedDocument = new DocumentTabViewModel(
-            current.Document.SaveAs(savePath, current.ContentSummary).MarkClean(),
-            current.PanelLayoutJson,
-            current.DocumentId,
-            current.CommandService,
-            current.RuntimeState,
-            faceDocumentJson,
-            current.CabinetDocumentJson)
-        {
-            PanelZoom = current.PanelZoom,
-            PanelPanX = current.PanelPanX,
-            PanelPanY = current.PanelPanY,
-            FaceZoom = current.FaceZoom,
-            FacePanX = current.FacePanX,
-            FacePanY = current.FacePanY
-        };
+        progress.Report(0.95, "Finalizing document save...");
 
         progress.Report(1.0, "Document saved.");
-        return savedDocument;
+        return new DocumentSaveResult(savePath, savedFaceDocument);
     }
 
     private static FaceDocumentModel EnsureFaceAuthoredPackageAssets(FaceDocumentModel faceDocument, EditorProject project, string savePath)

@@ -34,7 +34,7 @@ public sealed class FaceRuntimeExportService
 
     public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, string? documentPath = null, IEditorProgressReporter? progress = null)
     {
-        var cabinetContext = new FaceCabinetContext(null, null, null, null, null);
+        var cabinetContext = new FaceCabinetContext(null, null);
         return Export(faceDocument, project, cabinetContext, documentPath, progress);
     }
 
@@ -459,8 +459,7 @@ public sealed class FaceRuntimeExportService
 
         if (cabinetContext is null || cabinetContext.CabinetDocument is null)
         {
-            var reason = cabinetContext?.DiagnosticMessage ?? "Face has no assigned Cabinet.";
-            throw Fail(reason);
+            throw Fail("No external Cabinet composition context was supplied.");
         }
 
         if (machineReference is null || machineReference.Value.Kind != MachineObjectKind.Reel)
@@ -468,13 +467,13 @@ public sealed class FaceRuntimeExportService
             throw Fail("Face reel has no logical machine reel reference.");
         }
 
-        var assignments = cabinetContext.CabinetDocument.ReelAssignments ?? [];
+        var assignments = cabinetContext.MachineReelAssignments ?? [];
         var assignmentMatches = assignments.Where(value => value.MachineReelReference == machineReference.Value).ToArray();
         if (assignmentMatches.Length != 1)
         {
-            throw Fail(assignmentMatches.Length == 0 ? $"Cabinet has no assignment for logical reel '{machineReference}'." : $"Cabinet has duplicate assignments for logical reel '{machineReference}'.");
+            throw Fail(assignmentMatches.Length == 0 ? $"Machine has no assignment for logical reel '{machineReference}'." : $"Machine has duplicate assignments for logical reel '{machineReference}'.");
         }
-        requestedId = assignmentMatches[0].ReelSpecificationId;
+        requestedId = assignmentMatches[0].CabinetReelSpecificationId;
 
         var matches = (cabinetContext.CabinetDocument.ReelSpecifications ?? [])
             .Where(specification => string.Equals(specification.Id?.Trim(), requestedId, StringComparison.Ordinal))

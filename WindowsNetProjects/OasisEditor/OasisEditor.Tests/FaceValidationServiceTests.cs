@@ -41,7 +41,6 @@ public sealed class FaceValidationServiceTests
             ProjectFilePath = "/tmp/project.oasis",
             ProjectDirectory = "/tmp",
             AssetsDirectory = "/tmp/Assets",
-            MachinesDirectory = "/tmp/Machines",
             GeneratedDirectory = "/tmp/Generated"
         };
 

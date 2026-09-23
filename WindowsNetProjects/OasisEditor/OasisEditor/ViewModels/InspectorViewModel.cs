@@ -25,7 +25,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private readonly Func<DocumentTabViewModel, string, DocumentTabViewModel?> _applySummary;
     private readonly ICommand? _generateFaceFromSourceShapeCommand;
     private readonly BatchedObservableCollection<InspectorPropertyRowViewModel> _propertyRows = [];
-    private readonly FaceCabinetContextResolver _faceCabinetContextResolver = new();
     private string _inspectorEditableSummary = string.Empty;
     private DateTime _suppressPropertyRowRefreshUntilUtc;
     private string? _lastInspectorSelectionObjectId;
@@ -1322,17 +1321,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             : "(None)";
         _propertyRows.Add(new InspectorChoicePropertyViewModel("Default Reel Specification", "Reel Specifications", defaultChoices, currentDefaultChoice, commit: choice => TrySetDefaultReelSpecification(selectedDocument, choice)));
 
-        var project = _loadedProjectAccessor();
-        var faceChoices = new[] { "(None)" }.Concat(DiscoverFaceAssetPaths(project)).ToArray();
-        foreach (var target in selectedDocument.CabinetViewer?.FaceTargets.Where(value => value.IsValid) ?? [])
-        {
-            var assignment = (cabinetDocument.FaceAssignments ?? []).FirstOrDefault(value => string.Equals(value.TargetId, target.Id, StringComparison.Ordinal));
-            var currentFace = assignment?.FaceAssetPath ?? "(None)";
-            var choices = faceChoices.Contains(currentFace, StringComparer.OrdinalIgnoreCase) ? faceChoices : faceChoices.Append(currentFace).ToArray();
-            _propertyRows.Add(new InspectorChoicePropertyViewModel("Face", $"Face Target: {target.DisplayName}", choices, currentFace, commit: choice => ExecuteCabinetCommand(selectedDocument, CabinetMutationCommands.CreateSetFaceAssignmentCommand(selectedDocument.DocumentId, selectedDocument, target.Id, choice == "(None)" ? null : choice)) ? null : "Unable to assign Face."));
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("Target", $"Face Target: {target.DisplayName}", target.Id));
-        }
-
         foreach (var specification in specifications)
         {
             var group = $"Reel: {specification.Name}";
@@ -1341,17 +1329,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             _propertyRows.Add(new InspectorDoublePropertyViewModel("Diameter mm", group, specification.DiameterMm, commit: value => value > 0 && PanelElementValidation.IsFinite(value) ? TryUpdateCabinetReelSpecification(selectedDocument, specification with { DiameterMm = value }) : "Diameter must be positive and finite."));
             _propertyRows.Add(new InspectorDoublePropertyViewModel("Width mm", group, specification.WidthMm, commit: value => value > 0 && PanelElementValidation.IsFinite(value) ? TryUpdateCabinetReelSpecification(selectedDocument, specification with { WidthMm = value }) : "Width must be positive and finite."));
             _propertyRows.Add(new InspectorActionPropertyViewModel("Delete", group, new RelayCommand(() => { ExecuteCabinetCommand(selectedDocument, CabinetMutationCommands.CreateDeleteReelSpecificationCommand(selectedDocument.DocumentId, selectedDocument, specification.Id)); })));
-        }
-
-        var reelChoices = new[] { "(None)" }.Concat(specifications.Select(FormatReelSpecificationChoice)).ToArray();
-        var knownReels = (cabinetDocument.ReelAssignments ?? []).Select(value => value.MachineReelReference)
-            .Concat(Enumerable.Range(0, 4).Select(MachineObjectReference.Reel)).Distinct().OrderBy(value => value.Id).ToArray();
-        foreach (var reelReference in knownReels)
-        {
-            var assignment = (cabinetDocument.ReelAssignments ?? []).FirstOrDefault(value => value.MachineReelReference == reelReference);
-            var selected = specifications.FirstOrDefault(value => string.Equals(value.Id, assignment?.ReelSpecificationId, StringComparison.Ordinal));
-            var current = selected is null ? "(None)" : FormatReelSpecificationChoice(selected);
-            _propertyRows.Add(new InspectorChoicePropertyViewModel(reelReference.ToString(), "Machine Reels", reelChoices, current, commit: choice => ExecuteCabinetCommand(selectedDocument, CabinetMutationCommands.CreateSetReelAssignmentCommand(selectedDocument.DocumentId, selectedDocument, reelReference, ParseReelSpecificationChoice(choice))) ? null : "Unable to assign reel specification."));
         }
 
         _hadInspectorSelection = false;

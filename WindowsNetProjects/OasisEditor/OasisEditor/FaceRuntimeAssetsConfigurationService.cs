@@ -26,7 +26,7 @@ public sealed class FaceRuntimeAssetsConfigurationService
         {
             return new(false, null, "Face mask output is not configured.");
         }
-        var context = new FaceCabinetContext(null, null, null, null, null);
+        var context = new FaceCabinetContext(null, null);
         try
         {
             _runtimeExporter.ValidateStandaloneBuildContext(face, context);

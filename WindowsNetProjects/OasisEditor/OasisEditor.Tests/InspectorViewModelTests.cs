@@ -222,7 +222,7 @@ public sealed class InspectorViewModelTests
     {
         var selectedDocument = new DocumentTabViewModel(
             EditorDocument.CreateCabinet3DStub("Cabinet"),
-            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(6, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
+            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(7, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
         var context = new ActiveDocumentContextService();
         context.SetActiveDocument(selectedDocument);
         var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
@@ -247,7 +247,7 @@ public sealed class InspectorViewModelTests
     {
         var selectedDocument = new DocumentTabViewModel(
             EditorDocument.CreateCabinet3DStub("Cabinet"),
-            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(6, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
+            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(7, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
         var context = new ActiveDocumentContextService();
         context.SetActiveDocument(selectedDocument);
         InspectorViewModel? viewModel = null;

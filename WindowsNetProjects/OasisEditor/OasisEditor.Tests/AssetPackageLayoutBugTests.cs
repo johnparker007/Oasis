@@ -21,6 +21,8 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         Assert.True(Directory.Exists(Path.Combine(projectDirectory, "Assets", "Panel2D")));
         Assert.True(Directory.Exists(Path.Combine(projectDirectory, "Assets", "Faces")));
         Assert.True(Directory.Exists(Path.Combine(projectDirectory, "Assets", "Cabinet3D")));
+        Assert.True(File.Exists(Path.Combine(projectDirectory, "Assets", "Machines", "PackageProject", "asset.machine")));
+        Assert.False(Directory.Exists(Path.Combine(projectDirectory, "Machines")));
     }
 
     [Fact]
@@ -29,12 +31,16 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         var directory = new ProjectScaffolder().CreateProject("SchemaProject", _root);
         using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, "SchemaProject.oasisproj")));
         Assert.Equal(EditorProject.CurrentSchemaVersion, document.RootElement.GetProperty("version").GetInt32());
+        Assert.False(document.RootElement.TryGetProperty("project_settings", out _));
+        Assert.False(document.RootElement.TryGetProperty("input_definitions", out _));
+        Assert.False(document.RootElement.GetProperty("layout").TryGetProperty("machines", out _));
     }
 
     [Theory]
     [InlineData("Assets/Panel2D/Main Panel/asset.panel2d", "Main Panel")]
     [InlineData("Assets/Faces/Top Glass/asset.face", "Top Glass")]
     [InlineData("Assets/Cabinet3D/Vogue/asset.cabinet3d", "Vogue")]
+    [InlineData("Assets/Machines/Bonanza/asset.machine", "Bonanza")]
     public void CreateFromFile_ForPackageManifest_UsesEnclosingFolderAsTitle(string relativePath, string expectedTitle)
     {
         var path = Path.Combine(_root, relativePath.Replace('/', Path.DirectorySeparatorChar));
@@ -76,7 +82,8 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
             faceDocumentJson: FaceDocumentStorage.Serialize(faceDocument));
         var savePath = Path.Combine(project.AssetsDirectory, "Faces", "Saved Face", "asset.face");
 
-        var saved = new DocumentSaveService().SaveDocument(current, savePath, project);
+        new DocumentSaveService().SaveDocument(current, savePath, project).ApplyTo(current);
+        var saved = current;
 
         Assert.Equal("Saved Face", saved.Title);
         Assert.False(saved.Document.IsUntitled);
@@ -105,7 +112,8 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         var current = new DocumentTabViewModel(EditorDocument.CreateFaceStub(faceDocument.Title).MarkDirty(), faceDocumentJson: FaceDocumentStorage.Serialize(faceDocument));
         var savePath = Path.Combine(project.AssetsDirectory, "Faces", "Saved Despite Preview Failure", "asset.face");
 
-        var saved = new DocumentSaveService().SaveDocument(current, savePath, project);
+        new DocumentSaveService().SaveDocument(current, savePath, project).ApplyTo(current);
+        var saved = current;
 
         Assert.True(File.Exists(savePath));
         Assert.Equal(255, Assert.Single(saved.GetFaceDocument().LampEmitters).LampId);
@@ -142,7 +150,7 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         var current=new DocumentTabViewModel(EditorDocument.CreateFaceStub(model.Title).MarkDirty(),faceDocumentJson:FaceDocumentStorage.Serialize(model));
         var savePath=Path.Combine(project.AssetsDirectory,"Faces","Saved Override","asset.face");
 
-        var saved=new DocumentSaveService().SaveDocument(current,savePath,project);
+        new DocumentSaveService().SaveDocument(current,savePath,project).ApplyTo(current); var saved=current;
         Assert.True(FaceDocumentStorage.TryReadValidated(File.ReadAllText(savePath),out var file,out var error),error);
         var persisted=FaceDocumentStorage.ToModel(file);var artwork=Assert.IsType<FaceArtworkModel>(persisted.Artwork);
         var value=Assert.IsType<FaceArtworkOverrideModel>(artwork.Override);
@@ -242,7 +250,6 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
             ProjectFilePath = Path.Combine(_root, "Test.oasisproj"),
             ProjectDirectory = _root,
             AssetsDirectory = assets,
-            MachinesDirectory = Path.Combine(_root, "Machines"),
             GeneratedDirectory = generated
         };
     }

@@ -216,7 +216,8 @@ public sealed class FaceDocumentRoundTripTests
                 EditorDocument.CreateFaceStub("Face Save").MarkDirty(),
                 faceDocumentJson: FaceDocumentStorage.Serialize(FaceDocumentStorage.CreateEmpty("Face Save")));
 
-            var saved = service.SaveDocument(current, tempPath);
+            service.SaveDocument(current, tempPath).ApplyTo(current);
+            var saved = current;
 
             Assert.False(saved.IsDirty);
             Assert.Equal(EditorDocumentType.Face, saved.Document.DocumentType);
@@ -247,7 +248,8 @@ public sealed class FaceDocumentRoundTripTests
             Assert.True(current.IsDirty);
             Assert.Equal(FaceBuildStatus.Stale, current.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
 
-            var saved = new DocumentSaveService().SaveDocument(current, tempPath);
+            new DocumentSaveService().SaveDocument(current, tempPath).ApplyTo(current);
+            var saved = current;
 
             Assert.False(saved.IsDirty);
             Assert.Equal(FaceBuildStatus.Stale, saved.GetFaceDocument().BuildState.Get(FaceGeneratedProduct.ArtworkOutput).Status);
@@ -275,7 +277,7 @@ public sealed class FaceDocumentRoundTripTests
             document.SetProjectAccessor(() => new EditorProject
             {
                 Name = "Test", ProjectFilePath = Path.Combine(directory, "test.oasis"), ProjectDirectory = directory,
-                AssetsDirectory = Path.Combine(directory, "Assets"), MachinesDirectory = Path.Combine(directory, "Machines"),
+                AssetsDirectory = Path.Combine(directory, "Assets"),
                 GeneratedDirectory = Path.Combine(directory, "Generated")
             });
 

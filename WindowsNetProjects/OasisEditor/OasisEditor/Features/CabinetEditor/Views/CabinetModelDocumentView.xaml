@@ -80,10 +80,10 @@
                                     <TextBlock Margin="0,5,0,2" Text="Cabinet Renderer"/><ComboBox ItemsSource="{Binding Targets}" SelectedItem="{Binding Target}" DisplayMemberPath="DisplayName"/>
                                     <TextBlock Margin="0,5,0,2" Text="Material Slot"/><ComboBox ItemsSource="{Binding Slots}" SelectedItem="{Binding Slot}" DisplayMemberPath="DisplayName"/>
                                     <TextBlock Margin="0,5,0,2" Text="Surface Preset"/><ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding Preset}"/>
-                                    <TextBlock Margin="0,8,0,2" FontWeight="SemiBold" Text="Source Faces"/>
+                                    <TextBlock Margin="0,8,0,2" FontWeight="SemiBold" Text="Source Surfaces"/>
                                     <ListBox ItemsSource="{Binding Sources}" SelectedItem="{Binding SelectedSource}" BorderThickness="0" Background="Transparent">
                                         <ListBox.ItemTemplate><DataTemplate><Expander Margin="0,2" Header="{Binding Choice.Label}" IsExpanded="True"><StackPanel Margin="8,3,0,5">
-                                            <ComboBox ItemsSource="{Binding DataContext.FaceChoices, RelativeSource={RelativeSource AncestorType=ListBox}}" SelectedItem="{Binding Choice}" DisplayMemberPath="Label"/>
+                                            <ComboBox ItemsSource="{Binding DataContext.SurfaceChoices, RelativeSource={RelativeSource AncestorType=ListBox}}" SelectedItem="{Binding Choice}" DisplayMemberPath="Label"/>
                                             <TextBlock Margin="0,4,0,2" Text="Plane Source"/><ComboBox ItemsSource="{Binding DataContext.PlaneSources, RelativeSource={RelativeSource AncestorType=ListBox}}" SelectedItem="{Binding PlaneSource}"/>
                                             <Button Margin="0,4,0,0" Command="{Binding DataContext.DeriveCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" Content="Derive Plane"/>
                                             <TextBlock Margin="0,5,0,2" Text="Origin X / Y / Z"/><StackPanel Orientation="Horizontal"><TextBox Width="65" Text="{Binding OriginX}"/><TextBox Width="65" Text="{Binding OriginY}"/><TextBox Width="65" Text="{Binding OriginZ}"/></StackPanel>
@@ -92,7 +92,7 @@
                                             <TextBlock Margin="0,5,0,2" Text="Width / Height"/><StackPanel Orientation="Horizontal"><TextBox Width="95" Text="{Binding Width}"/><TextBox Width="95" Text="{Binding Height}"/></StackPanel>
                                         </StackPanel></Expander></DataTemplate></ListBox.ItemTemplate>
                                     </ListBox>
-                                    <StackPanel Orientation="Horizontal"><Button Margin="0,4,5,0" Command="{Binding AddSourceCommand}" Content="Add Source Face"/><Button Margin="0,4,0,0" Command="{Binding RemoveSourceCommand}" Content="Remove Source"/></StackPanel>
+                                    <StackPanel Orientation="Horizontal"><Button Margin="0,4,5,0" Command="{Binding AddSourceCommand}" Content="Add Source Surface"/><Button Margin="0,4,0,0" Command="{Binding RemoveSourceCommand}" Content="Remove Source"/></StackPanel>
                                     <TextBlock Margin="0,5,0,2" Text="Visibility Mask (cabinet UVs; white=on)"/><TextBox Text="{Binding Mask}"/><StackPanel Orientation="Horizontal"><Button Margin="0,3,5,0" Command="{Binding BrowseMaskCommand}" Content="Choose..."/><Button Margin="0,3,0,0" Command="{Binding ClearMaskCommand}" Content="Clear"/></StackPanel>
                                     <TextBlock Margin="0,5,0,2" Text="Reflection / Artwork / Lamp Strength"/><StackPanel Orientation="Horizontal"><TextBox Width="65" Text="{Binding Strength}"/><TextBox Width="65" Text="{Binding Artwork}"/><TextBox Width="65" Text="{Binding Lamps}"/></StackPanel>
                                     <TextBlock Margin="0,5,0,2" Text="Roughness / Distortion"/><StackPanel Orientation="Horizontal"><TextBox Width="95" Text="{Binding Roughness}"/><TextBox Width="95" Text="{Binding Distortion}"/></StackPanel>

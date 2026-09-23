@@ -8,6 +8,21 @@ namespace OasisEditor.Tests;
 public sealed class FaceGenerationServiceTests
 {
     [Fact]
+    public void GenerateFromPanelFaceSourceShape_DoesNotAcceptCabinetOwnershipParameters()
+    {
+        var parameterNames = typeof(FaceGenerationService)
+            .GetMethod(nameof(FaceGenerationService.GenerateFromPanelFaceSourceShape))!
+            .GetParameters()
+            .Select(parameter => parameter.Name)
+            .ToArray();
+
+        Assert.DoesNotContain("assignedCabinetFaceTargetId", parameterNames);
+        Assert.DoesNotContain("assignedCabinetAssetPath", parameterNames);
+        Assert.DoesNotContain("cabinetDocument", parameterNames);
+        Assert.Contains("targetAspectRatio", parameterNames);
+    }
+
+    [Fact]
     public void SourceShapeLampMask_MultipleWorkersMatchesSerialForOverlapThresholdAndPerspective()
     {
         const int width = 37, height = 29;
@@ -333,26 +348,6 @@ public sealed class FaceGenerationServiceTests
         Assert.Contains(result.Document.Elements, e => e.ObjectId == "manual-art");
     }
 
-
-    [Fact]
-    public void GenerateFromPanelFaceSourceShape_AssignsCabinetDefaultReelSpecification()
-    {
-        var panel = new Panel2DDocumentModel
-        {
-            Elements = [new PanelElementModel { ObjectId = "reel-1", Kind = PanelElementKind.Reel, X = 10, Y = 10, Width = 20, Height = 40, DisplayNumber = 1 }]
-        };
-        var cabinet = new CabinetDocument(
-            6,
-            new CabinetModelReference("source.glb", 1, "Y"),
-            [],
-            CabinetPreviewSettings.Default,
-            [new CabinetReelSpecification("default-reel", "Default", 210, 50)],
-            "default-reel");
-
-        var result = new FaceGenerationService().GenerateFromPanelFaceSourceShape(panel, CreateSourceShape(), "Face", cabinetDocument: cabinet);
-
-        var reel = Assert.Single(result.Document.Elements.OfType<FaceReelDisplayElement>());
-    }
 
     [Fact]
     public void GenerateFromPanelFaceSourceShape_LocksGeneratedArtworkTransformByDefault()

@@ -68,7 +68,7 @@ public sealed class EditorDocument
             title,
             EditorDocumentType.Machine,
             "Not saved yet (.machine)",
-            "Machine stub:\n- Reference panel and cabinet docs\n- Configure runtime metadata\n- Set default generated output targets");
+            "Machine composition:\n- Select a Cabinet\n- Assign Faces to surface targets\n- Configure reels, runtime and inputs");
     }
 
     public static EditorDocument CreateFaceStub(string title)
@@ -101,7 +101,7 @@ public sealed class EditorDocument
             "Project Overview",
             EditorDocumentType.ProjectOverview,
             project.ProjectFilePath,
-            $"Assets: {project.AssetsDirectory}\nMachines: {project.MachinesDirectory}\nGenerated: {project.GeneratedDirectory}",
+            $"Assets: {project.AssetsDirectory}\nMachines: {System.IO.Path.Combine(project.AssetsDirectory, "Machines")}\nGenerated: {project.GeneratedDirectory}",
             false,
             false);
     }

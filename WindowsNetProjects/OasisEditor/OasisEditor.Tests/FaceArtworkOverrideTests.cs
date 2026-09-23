@@ -218,7 +218,7 @@ public sealed class FaceArtworkOverrideTests : IDisposable
         Write(path,1,1,(_,_)=>SKColors.Blue);var rebuilt=ReloadableBitmapImageLoader.Load(path)!;Assert.Equal((byte)0,Red(rebuilt));
     }
 
-    private EditorProject Project(){var assets=Path.Combine(_root,"Assets");var generated=Path.Combine(_root,"Generated");Directory.CreateDirectory(assets);return new EditorProject{Name="Test",ProjectDirectory=_root,ProjectFilePath=Path.Combine(_root,"test.oasisproj"),AssetsDirectory=assets,GeneratedDirectory=generated,MachinesDirectory=Path.Combine(_root,"Machines")};}
+    private EditorProject Project(){var assets=Path.Combine(_root,"Assets");var generated=Path.Combine(_root,"Generated");Directory.CreateDirectory(assets);return new EditorProject{Name="Test",ProjectDirectory=_root,ProjectFilePath=Path.Combine(_root,"test.oasisproj"),AssetsDirectory=assets,GeneratedDirectory=generated};}
     private static void Write(string path,int width,int height,Func<int,int,SKColor> pixel){Directory.CreateDirectory(Path.GetDirectoryName(path)!);using var bitmap=new SKBitmap(width,height);for(var y=0;y<height;y++)for(var x=0;x<width;x++)bitmap.SetPixel(x,y,pixel(x,y));using var image=SKImage.FromBitmap(bitmap);using var data=image.Encode(SKEncodedImageFormat.Png,100);using var stream=File.Create(path);data.SaveTo(stream);}
     private static byte Red(System.Windows.Media.Imaging.BitmapSource source){var converted=new System.Windows.Media.Imaging.FormatConvertedBitmap(source,PixelFormats.Bgra32,null,0);var pixels=new byte[4];converted.CopyPixels(new System.Windows.Int32Rect(0,0,1,1),pixels,4,0);return pixels[2];}
     private static NormalizedFacePointModel P(double x,double y)=>new(){X=x,Y=y};
