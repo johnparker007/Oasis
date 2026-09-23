@@ -41,6 +41,8 @@ Machine reel choices are valid Reel manifests discovered from the current projec
 
 During Machine build each assigned Face supplies its required logical reels. Only those references are followed. Every reference must have exactly one assignment; the selected package must exist at the canonical path and parse as a valid version-1 Reel. Diagnostics retain Machine, logical reel and Reel path context. Invalid unused Reel packages and unused assignments are not traversed. Face runtime export continues to flatten Reel width and radius, so Player's runtime schema/rendering contract is unchanged and Cabinet runtime has no reel definitions.
 
+Reel resolution crosses the authoring/runtime boundary through `FaceRuntimeCompositionContext`, which contains only the Machine's reel assignments and the Reel documents resolved for the current Face. The dependency is therefore `Face logical reference -> Machine composition context -> Reel asset`; Cabinet is not present in the Reel resolution API. Standalone Face export supplies no composition context and deliberately leaves physical width/radius unresolved.
+
 ## Removed bridge
 
 `CabinetReelSpecification`, Cabinet specification/default fields, Cabinet Inspector actions, Cabinet mutation commands, temporary Machine selector terminology and Cabinet-based dimension resolution were removed rather than deprecated. There is no migration, fallback or dual-format reader.

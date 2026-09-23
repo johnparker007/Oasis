@@ -1,6 +1,5 @@
 using System.IO;
 using System.Linq;
-using OasisEditor.Features.CabinetEditor.Models;
 using SkiaSharp;
 
 namespace OasisEditor;
@@ -20,7 +19,7 @@ public sealed class FaceValidationService
         FaceDocumentModel faceDocument,
         EditorProject? project,
         IReadOnlyList<DocumentTabViewModel> openDocuments,
-        object? cabinetContextOrDocument = null)
+        FaceRuntimeCompositionContext? compositionContext = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(openDocuments);
@@ -30,26 +29,19 @@ public sealed class FaceValidationService
         ValidateArtworkAssets(faceDocument, project, diagnostics);
         ValidateMaskLayer(faceDocument, project, diagnostics);
         ValidateMachineReferences(faceDocument, diagnostics);
-        if (cabinetContextOrDocument is CabinetDocument cabinetDocument)
-        {
-            ValidateCabinetComposition(faceDocument, cabinetDocument, diagnostics);
-        }
-        else if (cabinetContextOrDocument is FaceCabinetContext { CabinetDocument: { } contextCabinet })
-        {
-            ValidateCabinetComposition(faceDocument, contextCabinet, diagnostics, ((FaceCabinetContext)cabinetContextOrDocument).MachineReelAssignments);
-        }
+        if (compositionContext is not null) ValidateMachineComposition(faceDocument, compositionContext, diagnostics);
         diagnostics.AddRange(new FaceTrayAutoAuthoringService().Validate(faceDocument));
         return diagnostics;
     }
 
-    private static void ValidateCabinetComposition(FaceDocumentModel face, CabinetDocument cabinet, List<FaceValidationDiagnostic> diagnostics, IReadOnlyList<MachineReelAssignment>? machineAssignments = null)
+    private static void ValidateMachineComposition(FaceDocumentModel face, FaceRuntimeCompositionContext compositionContext, List<FaceValidationDiagnostic> diagnostics)
     {
         foreach (var reel in face.Elements.OfType<FaceReelDisplayElement>())
         {
             var machineReference = reel.LinkedMachineObjectReference;
             if (machineReference is null || machineReference.Value.Kind != MachineObjectKind.Reel) continue;
             var reference = machineReference.Value;
-            var assignments = (machineAssignments ?? []).Where(value => value.MachineReelReference == reference).ToArray();
+            var assignments = compositionContext.MachineReelAssignments.Where(value => value.MachineReelReference == reference).ToArray();
             if (assignments.Length == 0)
             {
                 diagnostics.Add(new(FaceValidationSeverity.Error, "Machine.ReelAssignment.Missing", $"Machine has no Reel asset assignment for logical reel '{reference}'."));

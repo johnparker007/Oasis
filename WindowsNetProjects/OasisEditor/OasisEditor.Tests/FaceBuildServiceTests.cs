@@ -423,6 +423,29 @@ public sealed class FaceBuildServiceTests
             return new FaceBuildNodeResult(product, true);
         }));
 
+    [Fact]
+    public void StandaloneRuntimeCapability_DoesNotDependOnCabinetOrReelPresence()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"oasis-runtime-capability-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var face = new FaceDocumentModel
+            {
+                Artwork = new FaceArtworkModel { OutputWidth = 4, OutputHeight = 4 },
+                MaskLayer = new FaceMaskLayerModel { AssetPath = "Generated/Faces/Face/mask.png", Width = 4, Height = 4 },
+                Elements = [new FaceReelDisplayElement { ObjectId = "reel-1" }],
+                BuildState = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false)
+            };
+            var service = new FaceRuntimeAssetsConfigurationService();
+            var configured = service.Evaluate(face, Project(directory), []);
+            service.Reconcile(face, configured);
+            Assert.True(configured.IsConfigured, configured.Reason);
+            Assert.Equal(FaceBuildStatus.Stale, face.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
     private sealed class RecordingProgressReporter : IEditorProgressReporter
     {
         private readonly Action<double, string>? _onReport;

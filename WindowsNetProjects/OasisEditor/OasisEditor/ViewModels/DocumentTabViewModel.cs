@@ -266,7 +266,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     }
     public string GetMachineDocumentJson() => MachineDocumentStorage.Serialize(_machineDocumentModel);
     public string MachineDisplayName { get => _machineDocumentModel.DisplayName; set { if (string.IsNullOrWhiteSpace(value) || value == _machineDocumentModel.DisplayName) return; ExecuteMachineMutation(_machineDocumentModel with { DisplayName = value.Trim() }, "Rename Machine"); } }
-    public string? MachineCabinetAssetPath { get => _machineDocumentModel.CabinetAssetPath; set { if (_isRefreshingMachineCompositionChoices) return; var normalized = string.IsNullOrWhiteSpace(value) ? null : ProjectAssetPathService.NormalizeProjectRelativePath(value.Trim()); if (SameAssetPath(normalized, _machineDocumentModel.CabinetAssetPath)) return; ExecuteMachineMutation(_machineDocumentModel with { CabinetAssetPath = normalized, SurfaceAssignments = [], ReelAssignments = [] }, "Select Machine Cabinet"); } }
+    public string? MachineCabinetAssetPath { get => _machineDocumentModel.CabinetAssetPath; set { if (_isRefreshingMachineCompositionChoices) return; var normalized = string.IsNullOrWhiteSpace(value) ? null : ProjectAssetPathService.NormalizeProjectRelativePath(value.Trim()); if (SameAssetPath(normalized, _machineDocumentModel.CabinetAssetPath)) return; ExecuteMachineMutation(_machineDocumentModel with { CabinetAssetPath = normalized, SurfaceAssignments = [] }, "Select Machine Cabinet"); } }
     public FruitMachinePlatformType MachinePlatform { get => _machineDocumentModel.Runtime.Platform; set { if (value == _machineDocumentModel.Runtime.Platform) return; ExecuteMachineMutation(_machineDocumentModel with { Runtime = MachineEmulationRuntime.Create(value) }, "Change Machine runtime platform"); } }
     public IReadOnlyList<FruitMachinePlatformType> MachinePlatforms { get; } = Enum.GetValues<FruitMachinePlatformType>();
     public IReadOnlyList<MachineSurfaceAssignment> MachineSurfaceAssignments => _machineDocumentModel.SurfaceAssignments;
@@ -1150,13 +1150,12 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         if (project is null) return new(FaceGeneratedProduct.RuntimeAssets, false, "No project is open.");
         var capability = _runtimeAssetsConfiguration.Evaluate(
             _faceDocumentModel, project, _openDocumentsAccessor?.Invoke() ?? []);
-        if (!capability.IsConfigured || capability.CabinetContext is null)
+        if (!capability.IsConfigured)
         {
             return new(FaceGeneratedProduct.RuntimeAssets, false,
                 capability.Reason ?? "Standalone Face runtime assets are not configured.");
         }
-        var exported = new FaceRuntimeExportService().Export(
-            _faceDocumentModel, project, capability.CabinetContext, FilePath);
+        var exported = new FaceRuntimeExportService().Export(_faceDocumentModel, project, FilePath);
         _faceDocumentModel = exported.Document;
         return new(FaceGeneratedProduct.RuntimeAssets, true);
     }

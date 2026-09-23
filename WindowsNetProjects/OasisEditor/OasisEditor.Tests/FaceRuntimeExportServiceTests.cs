@@ -556,6 +556,84 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Fact]
+    public void CreateManifest_IncludesTexturePathsEmitterMetadataAndTrayMetadata()
+    {
+        var manifest = new FaceRuntimeExportService().CreateManifest(CreateDocument("Assets/artwork.png", "Generated/source-mask.png"), 4, 4);
+        Assert.Equal("trayId.png", manifest.TrayId);
+        Assert.Equal("lampIds0.png", manifest.LampIds0);
+        Assert.Equal("lampWeights0.png", manifest.LampWeights0);
+        Assert.Equal("trayId_debug.png", manifest.TrayIdDebug);
+        Assert.Equal("lampWeights_debug.png", manifest.LampWeightsDebug);
+        Assert.Equal(24, Assert.Single(manifest.Lamps).LampId);
+        Assert.Equal("runtime-emitter-lamp-24", Assert.Single(manifest.Trays).LampEmitterObjectId);
+    }
+
+    [Fact]
+    public void CreateManifest_ReelDimensionsComeFromResolvedReelAsset()
+    {
+        var document = CreateReelDocument("ignored", 10, 20, 300, 400);
+        var context = Composition((MachineObjectReference.Reel(1), "Assets/Reels/Standard/asset.reel", ReelDocument.Create("Standard") with { DiameterMm = 290, WidthMm = 70 }));
+        var reel = Assert.Single(new FaceRuntimeExportService().CreateManifest(document, 100, 100, context).Reels);
+        Assert.Equal(70, reel.PhysicalWidth);
+        Assert.Equal(145, reel.PhysicalRadius);
+    }
+
+    [Fact]
+    public void CreateManifest_FaceRectangleDoesNotAffectSharedPhysicalDimensions()
+    {
+        var document = CreateReelDocument("ignored", 1, 1, 10, 10, "ignored", 50, 60, 700, 800);
+        var asset = ReelDocument.Create("Standard") with { DiameterMm = 290, WidthMm = 70 };
+        var context = Composition(
+            (MachineObjectReference.Reel(1), "Assets/Reels/Standard/asset.reel", asset),
+            (MachineObjectReference.Reel(2), "Assets/Reels/Standard/asset.reel", asset));
+        var reels = new FaceRuntimeExportService().CreateManifest(document, 1000, 1000, context).Reels;
+        Assert.All(reels, reel => { Assert.Equal(70, reel.PhysicalWidth); Assert.Equal(145, reel.PhysicalRadius); });
+    }
+
+    [Fact]
+    public void CreateManifest_DifferentLogicalReelsUseDifferentAssets()
+    {
+        var document = CreateReelDocument("ignored", 1, 1, 10, 10, "ignored", 20, 20, 200, 40);
+        var context = Composition(
+            (MachineObjectReference.Reel(1), "Assets/Reels/Standard/asset.reel", ReelDocument.Create("Standard") with { DiameterMm = 290, WidthMm = 70 }),
+            (MachineObjectReference.Reel(2), "Assets/Reels/Small/asset.reel", ReelDocument.Create("Small") with { DiameterMm = 230, WidthMm = 60 }));
+        var reels = new FaceRuntimeExportService().CreateManifest(document, 100, 100, context).Reels;
+        Assert.Equal((70d, 145d), (reels[0].PhysicalWidth!.Value, reels[0].PhysicalRadius!.Value));
+        Assert.Equal((60d, 115d), (reels[1].PhysicalWidth!.Value, reels[1].PhysicalRadius!.Value));
+    }
+
+    [Fact]
+    public void CreateManifest_MissingLogicalAssignmentFailsWithFaceAndLogicalReel()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(
+            CreateReelDocument("ignored", 1, 1, 10, 10), 100, 100, new FaceRuntimeCompositionContext([], new Dictionary<MachineObjectReference, ReelDocument>())));
+        Assert.Contains("Runtime Face", exception.Message);
+        Assert.Contains("reel:1", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("no assignment", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Cabinet", exception.Message);
+    }
+
+    [Fact]
+    public void CreateManifest_MissingResolvedReelFailsWithAssetPath()
+    {
+        var path = "Assets/Reels/Missing/asset.reel";
+        var context = new FaceRuntimeCompositionContext([new(MachineObjectReference.Reel(1), path)], new Dictionary<MachineObjectReference, ReelDocument>());
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(CreateReelDocument("ignored", 1, 1, 10, 10), 100, 100, context));
+        Assert.Contains("reel:1", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(path, exception.Message);
+        Assert.Contains("not resolved", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void CreateManifest_InvalidResolvedReelFailsValidation()
+    {
+        var invalid = ReelDocument.Create("Invalid") with { DiameterMm = 0 };
+        var context = Composition((MachineObjectReference.Reel(1), "Assets/Reels/Invalid/asset.reel", invalid));
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(CreateReelDocument("ignored", 1, 1, 10, 10), 100, 100, context));
+        Assert.Contains("diameter", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void CreateManifest_StandaloneReelLeavesPhysicalDimensionsUnresolved()
     {
         var document = CreateReelDocument("standard", 1, 1, 1000, 1000);
@@ -563,6 +641,27 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var reel = Assert.Single(new FaceRuntimeExportService().CreateManifest(document, 100, 100).Reels);
         Assert.Null(reel.PhysicalWidth);
         Assert.Null(reel.PhysicalRadius);
+    }
+
+    [Fact]
+    public void CreateManifest_UnassignedReelLamp_UsesNegativeSentinel()
+    {
+        var document = CreateReelDocumentWithLamps([new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = null, LocalVerticalCenter = 1d / 6d, Radius = 0d, Intensity = 1d }]);
+        var manifest = new FaceRuntimeExportService().CreateManifest(document, 100, 100);
+        Assert.Equal(-1, Assert.Single(Assert.Single(manifest.Reels).ReelLamps).LampId);
+    }
+
+    [Fact]
+    public void CreateManifest_ReelLamps_ExportsEnabledFlagAndCommonLampIds()
+    {
+        var document = CreateReelDocumentWithLamps([
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = 5, LocalVerticalCenter = 1d / 6d, Radius = 0d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = 4, LocalVerticalCenter = .5d, Radius = 0d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LampNumber = 3, LocalVerticalCenter = 5d / 6d, Radius = 0d, Intensity = 1d }
+        ], reelLampsEnabled: false);
+        var reel = Assert.Single(new FaceRuntimeExportService().CreateManifest(document, 100, 100).Reels);
+        Assert.False(reel.ReelLampsEnabled);
+        Assert.Equal([5, 4, 3], reel.ReelLamps.Select(lamp => lamp.LampId).ToArray());
     }
 
     [Fact]
@@ -998,6 +1097,11 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             Elements = elements
         };
     }
+
+    private static FaceRuntimeCompositionContext Composition(params (MachineObjectReference Reference, string Path, ReelDocument Reel)[] values)
+        => new(
+            values.Select(value => new MachineReelAssignment(value.Reference, value.Path)).ToArray(),
+            values.ToDictionary(value => value.Reference, value => value.Reel));
 
 
     private static FaceDocumentModel CreateDocumentWithLampWindows(params FaceLampWindowElement[] lampWindows)

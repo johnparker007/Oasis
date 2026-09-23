@@ -51,4 +51,17 @@ public sealed class FaceValidationServiceTests
         Assert.Contains(diagnostics, diagnostic => diagnostic.Code == "Face.MachineReference.Missing");
         Assert.Contains(diagnostics, diagnostic => diagnostic.Code == "Face.MachineReference.KindMismatch");
     }
+
+    [Fact]
+    public void ReelAssignmentValidationRunsOnlyWithMachineCompositionContext()
+    {
+        var face = new FaceDocumentModel
+        {
+            Elements = [new FaceReelDisplayElement { ObjectId = "reel-3", LinkedMachineObjectReference = MachineObjectReference.Reel(3) }]
+        };
+        var service = new FaceValidationService();
+        Assert.DoesNotContain(service.Validate(face, null, []), diagnostic => diagnostic.Code == "Machine.ReelAssignment.Missing");
+        var context = new FaceRuntimeCompositionContext([], new Dictionary<MachineObjectReference, ReelDocument>());
+        Assert.Contains(service.Validate(face, null, [], context), diagnostic => diagnostic.Code == "Machine.ReelAssignment.Missing" && diagnostic.Message.Contains("reel:3", StringComparison.OrdinalIgnoreCase));
+    }
 }

@@ -2,7 +2,6 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SkiaSharp;
-using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Progress;
 
 namespace OasisEditor;
@@ -34,15 +33,16 @@ public sealed class FaceRuntimeExportService
 
     public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, string? documentPath = null, IEditorProgressReporter? progress = null)
     {
-        var cabinetContext = new FaceCabinetContext(null, null);
-        return Export(faceDocument, project, cabinetContext, documentPath, progress);
+        return ExportCore(faceDocument, project, null, documentPath, progress);
     }
 
-    public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, FaceCabinetContext cabinetContext, string? documentPath = null, IEditorProgressReporter? progress = null)
+    public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, FaceRuntimeCompositionContext compositionContext, string? documentPath = null, IEditorProgressReporter? progress = null)
+        => ExportCore(faceDocument, project, compositionContext ?? throw new ArgumentNullException(nameof(compositionContext)), documentPath, progress);
+
+    private FaceRuntimeExportResult ExportCore(FaceDocumentModel faceDocument, EditorProject project, FaceRuntimeCompositionContext? compositionContext, string? documentPath, IEditorProgressReporter? progress)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(project);
-        ArgumentNullException.ThrowIfNull(cabinetContext);
         progress ??= NoOpEditorProgressReporter.Instance;
         progress.Report(0.0, "Resolving dimensions/output directory...");
 
@@ -76,7 +76,7 @@ public sealed class FaceRuntimeExportService
 
         var generatedUtc = DateTime.UtcNow;
         progress.Report(0.8, "Writing manifest...");
-        var manifest = CreateManifest(faceDocument, width, height, textureWidth, textureHeight, textureResult.Plan, cabinetContext);
+        var manifest = CreateManifest(faceDocument, width, height, textureWidth, textureHeight, textureResult.Plan, compositionContext);
         var manifestPath = Path.Combine(outputDirectory, ManifestFileName);
         File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, s_manifestJsonOptions));
 
@@ -99,7 +99,7 @@ public sealed class FaceRuntimeExportService
         };
         var runtimeBuildState = faceDocument.BuildState.Get(FaceGeneratedProduct.RuntimeAssets);
         // This persisted node describes standalone Face Build capability. Machine export may
-        // successfully supply Cabinet context while the standalone node remains NotConfigured.
+        // successfully supply Machine composition while the standalone node remains NotConfigured.
         if (runtimeBuildState.Status != FaceBuildStatus.NotConfigured)
         {
             runtimeBuildState.Status = FaceBuildStatus.Current;
@@ -131,26 +131,25 @@ public sealed class FaceRuntimeExportService
         return new FaceRuntimeExportResult(updatedDocument, manifest, outputDirectory, manifestPath, artworkPath, maskPath);
     }
 
-    internal void ValidateStandaloneBuildContext(FaceDocumentModel faceDocument, FaceCabinetContext cabinetContext)
+    internal void ValidateStandaloneBuildContext(FaceDocumentModel faceDocument)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
-        ArgumentNullException.ThrowIfNull(cabinetContext);
         var width = ResolveRuntimeWidth(faceDocument);
         var height = ResolveRuntimeHeight(faceDocument);
         _runtimeTextureGenerator.CreatePlan(faceDocument, width, height);
     }
 
-    public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceCabinetContext? cabinetContext = null)
+    public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceRuntimeCompositionContext? compositionContext = null)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         var texturePlan = _runtimeTextureGenerator.CreatePlan(faceDocument, width, height);
-        return CreateManifest(faceDocument, width, height, texturePlan, cabinetContext);
+        return CreateManifest(faceDocument, width, height, texturePlan, compositionContext);
     }
 
-    public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceRuntimeTextureGenerationPlan texturePlan, FaceCabinetContext? cabinetContext = null)
-        => CreateManifest(faceDocument, width, height, width, height, texturePlan, cabinetContext);
+    public FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, FaceRuntimeTextureGenerationPlan texturePlan, FaceRuntimeCompositionContext? compositionContext = null)
+        => CreateManifest(faceDocument, width, height, width, height, texturePlan, compositionContext);
 
-    private FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, int textureWidth, int textureHeight, FaceRuntimeTextureGenerationPlan texturePlan, FaceCabinetContext? cabinetContext)
+    private FaceRuntimeManifest CreateManifest(FaceDocumentModel faceDocument, int width, int height, int textureWidth, int textureHeight, FaceRuntimeTextureGenerationPlan texturePlan, FaceRuntimeCompositionContext? compositionContext)
     {
         ArgumentNullException.ThrowIfNull(faceDocument);
         ArgumentNullException.ThrowIfNull(texturePlan);
@@ -183,7 +182,7 @@ public sealed class FaceRuntimeExportService
             LampWeightsDebug = FaceRuntimeTextureGenerator.LampWeightsDebugFileName,
             Lamps = texturePlan.Emitters.Select(CreateLampManifestEntry).ToArray(),
             Trays = texturePlan.Trays.Select(CreateTrayManifestEntry).ToArray(),
-            Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Select(reel => CreateReelManifestEntry(faceDocument, reel, cabinetContext)).ToArray(),
+            Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Select(reel => CreateReelManifestEntry(faceDocument, reel, compositionContext)).ToArray(),
             SevenSegmentDisplays = faceDocument.Elements.OfType<FaceSevenSegmentDisplayElement>().Select(CreateSevenSegmentDisplayManifestEntry).ToArray(),
             AlphaSegmentDisplays = faceDocument.Elements.OfType<FaceAlphaDisplayElement>().Select(CreateAlphaSegmentDisplayManifestEntry).ToArray(),
             Buttons = faceDocument.Elements.OfType<FaceButtonElement>().Select(CreateButtonManifestEntry).ToArray()
@@ -411,11 +410,11 @@ public sealed class FaceRuntimeExportService
     }
 
 
-    private static FaceRuntimeReelManifestEntry CreateReelManifestEntry(FaceDocumentModel faceDocument, FaceReelDisplayElement element, FaceCabinetContext? cabinetContext)
+    private static FaceRuntimeReelManifestEntry CreateReelManifestEntry(FaceDocumentModel faceDocument, FaceReelDisplayElement element, FaceRuntimeCompositionContext? compositionContext)
     {
-        var dimensions = cabinetContext?.CabinetDocument is null
+        var dimensions = compositionContext is null
             ? (ResolvedReelPhysicalDimensions?)null
-            : ResolveReelPhysicalDimensions(faceDocument, element, cabinetContext);
+            : ResolveReelPhysicalDimensions(faceDocument, element, compositionContext);
         return new FaceRuntimeReelManifestEntry
         {
             ObjectId = element.ObjectId,
@@ -447,36 +446,31 @@ public sealed class FaceRuntimeExportService
         Intensity = lamp.Intensity
     };
 
-    private static ResolvedReelPhysicalDimensions ResolveReelPhysicalDimensions(FaceDocumentModel faceDocument, FaceReelDisplayElement reel, FaceCabinetContext? cabinetContext)
+    private static ResolvedReelPhysicalDimensions ResolveReelPhysicalDimensions(FaceDocumentModel faceDocument, FaceReelDisplayElement reel, FaceRuntimeCompositionContext compositionContext)
     {
         var faceAsset = string.IsNullOrWhiteSpace(faceDocument.Title) ? faceDocument.Id : faceDocument.Title;
         var reelName = DisplayName(reel);
         var machineReference = reel.LinkedMachineObjectReference;
-        var cabinetAsset = cabinetContext?.CabinetAssetPath ?? string.Empty;
         var requestedPath = string.Empty;
 
-        InvalidOperationException Fail(string reason) => new($"Unable to resolve physical reel dimensions. Face asset '{faceAsset}', reel '{reelName}' (objectId '{reel.ObjectId}'), Cabinet asset '{cabinetAsset}', Reel asset '{requestedPath}': {reason}");
-
-        if (cabinetContext is null || cabinetContext.CabinetDocument is null)
-        {
-            throw Fail("No external Cabinet composition context was supplied.");
-        }
+        InvalidOperationException Fail(string reason) => new($"Unable to resolve physical reel dimensions. Face asset '{faceAsset}', reel '{reelName}' (objectId '{reel.ObjectId}'), logical reel '{machineReference?.ToString() ?? "(missing)"}', Reel asset '{requestedPath}': {reason}");
 
         if (machineReference is null || machineReference.Value.Kind != MachineObjectKind.Reel)
         {
             throw Fail("Face reel has no logical machine reel reference.");
         }
 
-        var assignments = cabinetContext.MachineReelAssignments ?? [];
+        var assignments = compositionContext.MachineReelAssignments ?? [];
         var assignmentMatches = assignments.Where(value => value.MachineReelReference == machineReference.Value).ToArray();
         if (assignmentMatches.Length != 1)
         {
             throw Fail(assignmentMatches.Length == 0 ? $"Machine has no assignment for logical reel '{machineReference}'." : $"Machine has duplicate assignments for logical reel '{machineReference}'.");
         }
         requestedPath = assignmentMatches[0].ReelAssetPath;
-        if (cabinetContext.ResolvedReels is null || !cabinetContext.ResolvedReels.TryGetValue(machineReference.Value, out var reelAsset))
+        if (compositionContext.ResolvedReels is null || !compositionContext.ResolvedReels.TryGetValue(machineReference.Value, out var reelAsset))
             throw Fail("Referenced Reel asset was not resolved by the Machine build.");
-        ReelDocumentStorage.Validate(reelAsset);
+        try { ReelDocumentStorage.Validate(reelAsset); }
+        catch (InvalidOperationException exception) { throw Fail(exception.Message); }
         return new ResolvedReelPhysicalDimensions(reelAsset.WidthMm, reelAsset.DiameterMm / 2d);
     }
 

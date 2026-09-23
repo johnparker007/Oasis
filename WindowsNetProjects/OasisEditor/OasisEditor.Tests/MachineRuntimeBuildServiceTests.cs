@@ -1,6 +1,8 @@
 using OasisEditor.Progress;
 using OasisEditor.Features.CabinetEditor.Models;
 using System.Text;
+using System.Text.Json;
+using SkiaSharp;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -136,6 +138,124 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
             "Assets/Cabinet3D/Cabinet/asset.cabinet3d", CancellationToken.None));
         Assert.Contains("topGlass", exception.Message);
         Assert.Contains("bottomGlass", exception.Message);
+    }
+
+    [Fact]
+    public void Build_ResolvesReferencedReelAssetIntoFaceRuntimeDimensions()
+    {
+        var setup = CreateReelBuild([0], [(0, "Standard", 290d, 70d)]);
+        var result = Build(setup.Project, setup.Machine);
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal(new[] { (70d, 145d) }, ReadRuntimeReelDimensions(result.BuildRoot!));
+    }
+
+    [Fact]
+    public void Build_MultipleLogicalReelsCanShareOneAsset()
+    {
+        var setup = CreateReelBuild([0, 1, 2], [(0, "Standard", 290d, 70d), (1, "Standard", 290d, 70d), (2, "Standard", 290d, 70d)]);
+        var result = Build(setup.Project, setup.Machine);
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal(new[] { (70d, 145d), (70d, 145d), (70d, 145d) }, ReadRuntimeReelDimensions(result.BuildRoot!));
+    }
+
+    [Fact]
+    public void Build_DifferentLogicalReelsResolveDifferentAssets()
+    {
+        var setup = CreateReelBuild([0, 3], [(0, "Standard", 290d, 70d), (3, "Small", 230d, 60d)]);
+        var result = Build(setup.Project, setup.Machine);
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal(new[] { (70d, 145d), (60d, 115d) }, ReadRuntimeReelDimensions(result.BuildRoot!));
+    }
+
+    [Fact]
+    public void Build_MissingLogicalAssignmentNamesMachineAndReel()
+    {
+        var setup = CreateReelBuild([3], []);
+        var result = Build(setup.Project, setup.Machine);
+        Assert.False(result.Success);
+        Assert.Contains("Reel Machine", result.ErrorMessage);
+        Assert.Contains("reel:3", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Build_MissingReelAssetNamesMachineLogicalReelAndPath()
+    {
+        var setup = CreateReelBuild([3], []);
+        const string missing = "Assets/Reels/Small/asset.reel";
+        var machine = setup.Machine with { ReelAssignments = [new(MachineObjectReference.Reel(3), missing)] };
+        var result = Build(setup.Project, machine);
+        Assert.False(result.Success);
+        Assert.Contains("Reel Machine", result.ErrorMessage);
+        Assert.Contains("reel:3", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(missing, result.ErrorMessage);
+    }
+
+    [Fact]
+    public void Build_InvalidReferencedReelFailsButUnusedBrokenReelIsIgnored()
+    {
+        var setup = CreateReelBuild([0], [(0, "Standard", 290d, 70d)]);
+        var unused = new ProjectAssetPathService().GetReelManifestPath(setup.Project, "Broken");
+        Directory.CreateDirectory(Path.GetDirectoryName(unused)!);
+        File.WriteAllText(unused, "{ broken");
+        Assert.True(Build(setup.Project, setup.Machine).Success);
+
+        var standard = new ProjectAssetPathService().GetReelManifestPath(setup.Project, "Standard");
+        File.WriteAllText(standard, "{ \"version\": 99 }");
+        var invalid = Build(setup.Project, setup.Machine);
+        Assert.False(invalid.Success);
+        Assert.Contains("invalid", invalid.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Assets/Reels/Standard/asset.reel", invalid.ErrorMessage);
+    }
+
+    private (EditorProject Project, MachineDocument Machine) CreateReelBuild(int[] logicalReels, (int Logical, string Asset, double Diameter, double Width)[] assignments)
+    {
+        var project = Project();
+        var paths = new ProjectAssetPathService();
+        var cabinetManifest = paths.GetCabinet3DManifestPath(project, "Cabinet");
+        Directory.CreateDirectory(Path.GetDirectoryName(cabinetManifest)!);
+        WriteTwoTargetGlb(Path.Combine(Path.GetDirectoryName(cabinetManifest)!, "cabinet.glb"), "OasisFace_glass", "unused");
+        File.WriteAllText(cabinetManifest, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb")));
+        var faceManifest = paths.GetFaceManifestPath(project, "Glass");
+        Directory.CreateDirectory(Path.GetDirectoryName(faceManifest)!);
+        var maskPath = Path.Combine(Path.GetDirectoryName(faceManifest)!, "mask.png");
+        using (var bitmap = new SKBitmap(2, 2))
+        {
+            bitmap.Erase(SKColors.White);
+            using var image = SKImage.FromBitmap(bitmap);
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            using var stream = File.Create(maskPath);
+            data.SaveTo(stream);
+        }
+        var face = new FaceDocumentModel
+        {
+            Id = Guid.NewGuid().ToString("D"), Title = "Glass", SourceRegion = new FaceSourceRegionModel { Width = 100, Height = 100 },
+            MaskLayer = new FaceMaskLayerModel { AssetPath = paths.ToProjectRelativePath(project, maskPath), Width = 2, Height = 2 },
+            Elements = logicalReels.Select((logical, index) => (FaceElementModel)new FaceReelDisplayElement { ObjectId = $"reel-{logical}", Name = $"Reel {logical}", X = index * 10, Y = 0, Width = 10, Height = 20, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(logical) }).ToArray()
+        };
+        File.WriteAllText(faceManifest, FaceDocumentStorage.Serialize(face));
+        foreach (var asset in assignments.GroupBy(value => value.Asset).Select(group => group.First()))
+        {
+            var reelManifest = paths.GetReelManifestPath(project, asset.Asset);
+            Directory.CreateDirectory(Path.GetDirectoryName(reelManifest)!);
+            File.WriteAllText(reelManifest, ReelDocumentStorage.Serialize(ReelDocument.Create(asset.Asset) with { DiameterMm = asset.Diameter, WidthMm = asset.Width }));
+        }
+        var machine = MachineDocument.Create("Reel Machine") with
+        {
+            CabinetAssetPath = paths.ToProjectRelativePath(project, cabinetManifest),
+            SurfaceAssignments = [new("glass", paths.ToProjectRelativePath(project, faceManifest))],
+            ReelAssignments = assignments.Select(value => new MachineReelAssignment(MachineObjectReference.Reel(value.Logical), paths.ToProjectRelativePath(project, paths.GetReelManifestPath(project, value.Asset)))).ToArray()
+        };
+        return (project, machine);
+    }
+
+    private MachineRuntimeBuildResult Build(EditorProject project, MachineDocument machine)
+        => new MachineRuntimeBuildService().BuildFromMachineDocument(project, WriteMachine(project, machine), NoOpEditorProgressReporter.Instance, CancellationToken.None);
+
+    private static (double Width, double Radius)[] ReadRuntimeReelDimensions(string buildRoot)
+    {
+        var path = Directory.EnumerateFiles(Path.Combine(buildRoot, "faces"), FaceRuntimeExportService.ManifestFileName, SearchOption.AllDirectories).Single();
+        using var json = JsonDocument.Parse(File.ReadAllText(path));
+        return json.RootElement.GetProperty("reels").EnumerateArray().Select(reel => (reel.GetProperty("physicalWidth").GetDouble(), reel.GetProperty("physicalRadius").GetDouble())).ToArray();
     }
 
     private EditorProject Project()

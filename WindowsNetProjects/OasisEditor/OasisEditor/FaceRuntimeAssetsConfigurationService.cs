@@ -1,10 +1,10 @@
 namespace OasisEditor;
 
-public sealed record FaceRuntimeAssetsCapability(bool IsConfigured, FaceCabinetContext? CabinetContext, string? Reason);
+public sealed record FaceRuntimeAssetsCapability(bool IsConfigured, string? Reason);
 
 /// <summary>
 /// Determines whether this Face can build its complete runtime render package standalone.
-/// Machine builds are separate: they supply their own Cabinet context directly to the exporter.
+/// Machine builds are separate: they supply their own composition context directly to the exporter.
 /// </summary>
 public sealed class FaceRuntimeAssetsConfigurationService
 {
@@ -16,25 +16,24 @@ public sealed class FaceRuntimeAssetsConfigurationService
         ArgumentNullException.ThrowIfNull(face);
         if (project is null)
         {
-            return new(false, null, "No project is open.");
+            return new(false, "No project is open.");
         }
         if (face.Artwork is null)
         {
-            return new(false, null, "Face artwork is not configured.");
+            return new(false, "Face artwork is not configured.");
         }
         if (face.MaskLayer is null || string.IsNullOrWhiteSpace(face.MaskLayer.AssetPath))
         {
-            return new(false, null, "Face mask output is not configured.");
+            return new(false, "Face mask output is not configured.");
         }
-        var context = new FaceCabinetContext(null, null);
         try
         {
-            _runtimeExporter.ValidateStandaloneBuildContext(face, context);
-            return new(true, context, null);
+            _runtimeExporter.ValidateStandaloneBuildContext(face);
+            return new(true, null);
         }
         catch (Exception exception)
         {
-            return new(false, context, exception.Message);
+            return new(false, exception.Message);
         }
     }
 

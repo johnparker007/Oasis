@@ -187,8 +187,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 var faceAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(manifestPath, EditorAssetType.Face);
                 if (string.IsNullOrWhiteSpace(faceAssetName)) throw new InvalidOperationException("Face must be stored as Assets/Faces/<AssetName>/asset.face");
                 var resolvedReels = ResolveFaceReels(project, machineDocument, faceDocument);
-                var cabinetContext = new FaceCabinetContext(cabinetDocument, cabinetAssetPath, machineDocument.ReelAssignments, resolvedReels);
-                var exportResult = _faceRuntimeExportService.Export(faceDocument, project, cabinetContext, manifestPath);
+                var compositionContext = new FaceRuntimeCompositionContext(machineDocument.ReelAssignments, resolvedReels);
+                var exportResult = _faceRuntimeExportService.Export(faceDocument, project, compositionContext, manifestPath);
                 var buildFaceDirectory = Path.Combine(stagingRoot, "faces", _pathService.SanitizePathSegment(faceAssetName));
                 CopyDirectory(exportResult.OutputDirectory, buildFaceDirectory, cancellationToken);
                 references.Add(CreateRuntimeFaceReference(cabinetDocument, faceDocument.Id, faceAssetName, assignment.TargetId, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), FaceRuntimeExportService.ManifestFileName))));
