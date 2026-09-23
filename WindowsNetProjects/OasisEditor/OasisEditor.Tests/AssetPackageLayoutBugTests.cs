@@ -21,6 +21,7 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
         Assert.True(Directory.Exists(Path.Combine(projectDirectory, "Assets", "Panel2D")));
         Assert.True(Directory.Exists(Path.Combine(projectDirectory, "Assets", "Faces")));
         Assert.True(Directory.Exists(Path.Combine(projectDirectory, "Assets", "Cabinet3D")));
+        Assert.True(Directory.Exists(Path.Combine(projectDirectory, "Assets", "Reels")));
         Assert.True(File.Exists(Path.Combine(projectDirectory, "Assets", "Machines", "PackageProject", "asset.machine")));
         Assert.False(Directory.Exists(Path.Combine(projectDirectory, "Machines")));
     }
@@ -41,6 +42,7 @@ public sealed class AssetPackageLayoutBugTests : IDisposable
     [InlineData("Assets/Faces/Top Glass/asset.face", "Top Glass")]
     [InlineData("Assets/Cabinet3D/Vogue/asset.cabinet3d", "Vogue")]
     [InlineData("Assets/Machines/Bonanza/asset.machine", "Bonanza")]
+    [InlineData("Assets/Reels/JPM Standard Reel/asset.reel", "JPM Standard Reel")]
     public void CreateFromFile_ForPackageManifest_UsesEnclosingFolderAsTitle(string relativePath, string expectedTitle)
     {
         var path = Path.Combine(_root, relativePath.Replace('/', Path.DirectorySeparatorChar));

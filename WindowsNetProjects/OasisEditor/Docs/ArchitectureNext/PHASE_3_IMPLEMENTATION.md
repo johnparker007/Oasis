@@ -35,7 +35,7 @@ Face schema did not change and contains no Cabinet, Machine or final Reel-asset 
 
 ## Editor and build behavior
 
-The Assets/document infrastructure recognizes `asset.reel`, provides New Reel, package-aware open/save and a dedicated editor for display name, diameter and width. Changes use document commands and participate in dirty/save/undo/redo. Reel values are also exposed in Inspector.
+The Assets/document infrastructure recognizes `asset.reel`, provides `File -> New -> Reel`, package-aware open/save and a dedicated editor for display name, diameter and width. Saving creates `Assets/Reels/<Name>/asset.reel`, and new projects pre-create the `Assets/Reels` package root consistently with the other authored asset roots. Changes use document commands and participate in dirty/save/undo/redo. Reel values are also exposed in Inspector.
 
 Machine reel choices are valid Reel manifests discovered from the current project's `Assets/Reels` catalog and selected by stable project-relative path. Missing authored selections remain visible. Catalog refresh reconciles choices without changing the Machine. Rows are the union of authored mappings and logical reel references found by traversing only Faces explicitly assigned to the Machine; unrelated project Faces are never scanned.
 
