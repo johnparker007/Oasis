@@ -34,6 +34,31 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
     }
 
     [Fact]
+    public void BuildRootUsesMachinePackageName_NotEditableDisplayName()
+    {
+        var project = Project();
+        var service = new MachineRuntimeBuildService();
+        var firstManifest = new ProjectAssetPathService().GetMachineManifestPath(project, "PartyTimeSlave1");
+        var secondManifest = new ProjectAssetPathService().GetMachineManifestPath(project, "PartyTimeSlave2");
+        var firstMachine = MachineDocument.Create("Party Time");
+        var secondMachine = MachineDocument.Create("Party Time");
+        var firstAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(firstManifest, EditorAssetType.Machine);
+        var secondAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(secondManifest, EditorAssetType.Machine);
+
+        var firstRoot = service.GetBuildRoot(project, firstAssetName!);
+        var secondRoot = service.GetBuildRoot(project, secondAssetName!);
+
+        Assert.Equal(firstMachine.DisplayName, secondMachine.DisplayName);
+        Assert.NotEqual(firstRoot, secondRoot);
+        Assert.EndsWith(Path.Combine("Builds", "PartyTimeSlave1"), firstRoot);
+        Assert.EndsWith(Path.Combine("Builds", "PartyTimeSlave2"), secondRoot);
+        Assert.DoesNotContain("Party Time", firstRoot);
+        firstMachine = firstMachine with { DisplayName = "Renamed Party Time" };
+        Assert.Equal("Renamed Party Time", firstMachine.DisplayName);
+        Assert.Equal(firstRoot, service.GetBuildRoot(project, firstAssetName!));
+    }
+
+    [Fact]
     public void RuntimeFaceMapping_SparseOverridesUseDefaultsForUnconfiguredTarget()
     {
         var cabinet = CabinetDocument.FromModelPath("cabinet.glb") with
@@ -72,13 +97,45 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         var glb = Path.Combine(_root, "cabinet.glb");
         WriteTwoTargetGlb(glb);
 
-        MachineRuntimeBuildService.ValidateFaceAssignmentTargets(
+        MachineRuntimeBuildService.ValidateFaceAssignmentTargets("Machine",
             [new("topGlass", "Assets/Faces/Top/asset.face"), new("bottomGlass", "Assets/Faces/Bottom/asset.face")],
             glb, "Assets/Cabinet3D/Cabinet/asset.cabinet3d", CancellationToken.None);
         var exception = Assert.Throws<InvalidOperationException>(() => MachineRuntimeBuildService.ValidateFaceAssignmentTargets(
-            [new("doesNotExist", "Assets/Faces/Missing/asset.face")], glb, "Assets/Cabinet3D/Cabinet/asset.cabinet3d", CancellationToken.None));
+            "Machine", [new("doesNotExist", "Assets/Faces/Missing/asset.face")], glb, "Assets/Cabinet3D/Cabinet/asset.cabinet3d", CancellationToken.None));
         Assert.Contains("not a valid detected OasisFace_* target", exception.Message);
         Assert.DoesNotContain("override", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TargetValidationAllowsNoDetectedTargetsOnlyWhenMachineHasNoAssignments()
+    {
+        Directory.CreateDirectory(_root);
+        var glb = Path.Combine(_root, "cabinet.glb");
+        WriteTwoTargetGlb(glb, "Cabinet_topGlass", "Cabinet_bottomGlass");
+
+        MachineRuntimeBuildService.ValidateFaceAssignmentTargets(
+            "Empty Machine", [], glb, "Assets/Cabinet3D/Cabinet/asset.cabinet3d", CancellationToken.None);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => MachineRuntimeBuildService.ValidateFaceAssignmentTargets(
+            "Assigned Machine", [new("topGlass", "Assets/Faces/Top/asset.face")], glb,
+            "Assets/Cabinet3D/Cabinet/asset.cabinet3d", CancellationToken.None));
+        Assert.Contains("Assigned Machine", exception.Message);
+        Assert.Contains("topGlass", exception.Message);
+        Assert.Contains("no valid OasisFace_* targets", exception.Message);
+    }
+
+    [Fact]
+    public void TargetValidationRejectsAssignmentWhenOnlyAnotherTargetIsDetected()
+    {
+        Directory.CreateDirectory(_root);
+        var glb = Path.Combine(_root, "cabinet.glb");
+        WriteTwoTargetGlb(glb, "Cabinet_topGlass", "OasisFace_bottomGlass");
+
+        var exception = Assert.Throws<InvalidOperationException>(() => MachineRuntimeBuildService.ValidateFaceAssignmentTargets(
+            "Machine", [new("topGlass", "Assets/Faces/Top/asset.face")], glb,
+            "Assets/Cabinet3D/Cabinet/asset.cabinet3d", CancellationToken.None));
+        Assert.Contains("topGlass", exception.Message);
+        Assert.Contains("bottomGlass", exception.Message);
     }
 
     private EditorProject Project()
@@ -96,7 +153,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         return path;
     }
 
-    private static void WriteTwoTargetGlb(string path)
+    private static void WriteTwoTargetGlb(string path, string firstNodeName = "OasisFace_topGlass", string secondNodeName = "OasisFace_bottomGlass")
     {
         var binary = new byte[92];
         var positions = new float[] { 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0 };
@@ -105,7 +162,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Buffer.BlockCopy(positions, 0, binary, 0, positions.Length * sizeof(float));
         Buffer.BlockCopy(uvs, 0, binary, 48, uvs.Length * sizeof(float));
         Buffer.BlockCopy(indices, 0, binary, 80, indices.Length * sizeof(ushort));
-        var json = """{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0,1]}],"nodes":[{"name":"OasisFace_topGlass","mesh":0},{"name":"OasisFace_bottomGlass","mesh":1}],"meshes":[{"primitives":[{"attributes":{"POSITION":0,"TEXCOORD_0":1},"indices":2}]},{"primitives":[{"attributes":{"POSITION":0,"TEXCOORD_0":1},"indices":2}]}],"buffers":[{"byteLength":92}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":48},{"buffer":0,"byteOffset":48,"byteLength":32},{"buffer":0,"byteOffset":80,"byteLength":12}],"accessors":[{"bufferView":0,"componentType":5126,"count":4,"type":"VEC3"},{"bufferView":1,"componentType":5126,"count":4,"type":"VEC2"},{"bufferView":2,"componentType":5123,"count":6,"type":"SCALAR"}]}""";
+        var json = $$"""{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0,1]}],"nodes":[{"name":"{{firstNodeName}}","mesh":0},{"name":"{{secondNodeName}}","mesh":1}],"meshes":[{"primitives":[{"attributes":{"POSITION":0,"TEXCOORD_0":1},"indices":2}]},{"primitives":[{"attributes":{"POSITION":0,"TEXCOORD_0":1},"indices":2}]}],"buffers":[{"byteLength":92}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":48},{"buffer":0,"byteOffset":48,"byteLength":32},{"buffer":0,"byteOffset":80,"byteLength":12}],"accessors":[{"bufferView":0,"componentType":5126,"count":4,"type":"VEC3"},{"bufferView":1,"componentType":5126,"count":4,"type":"VEC2"},{"bufferView":2,"componentType":5123,"count":6,"type":"SCALAR"}]}""";
         var jsonBytes = Encoding.UTF8.GetBytes(json);
         var paddedJsonLength = (jsonBytes.Length + 3) & ~3;
         using var stream = File.Create(path);

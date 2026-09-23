@@ -34,7 +34,7 @@ public sealed class FaceRuntimeExportService
 
     public FaceRuntimeExportResult Export(FaceDocumentModel faceDocument, EditorProject project, string? documentPath = null, IEditorProgressReporter? progress = null)
     {
-        var cabinetContext = new FaceCabinetContext(null, null, null, null, null);
+        var cabinetContext = new FaceCabinetContext(null, null);
         return Export(faceDocument, project, cabinetContext, documentPath, progress);
     }
 
@@ -459,8 +459,7 @@ public sealed class FaceRuntimeExportService
 
         if (cabinetContext is null || cabinetContext.CabinetDocument is null)
         {
-            var reason = cabinetContext?.DiagnosticMessage ?? "Face has no assigned Cabinet.";
-            throw Fail(reason);
+            throw Fail("No external Cabinet composition context was supplied.");
         }
 
         if (machineReference is null || machineReference.Value.Kind != MachineObjectKind.Reel)

@@ -628,7 +628,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     {
         var document = CreateReelDocument(specificationId, 1, 1, 1000, 1000);
         var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50));
-        var context = new FaceCabinetContext(cabinet, null, "Assets/Cabinets/cabinet.asset", null, null, [new MachineReelAssignment(MachineObjectReference.Reel(1), specificationId)]);
+        var context = new FaceCabinetContext(cabinet, "Assets/Cabinets/cabinet.asset", [new MachineReelAssignment(MachineObjectReference.Reel(1), specificationId)]);
 
         var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, context));
 
@@ -653,7 +653,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     {
         var document = CreateReelDocument("standard", 1, 1, 1000, 1000);
         var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50));
-        var context = new FaceCabinetContext(cabinet, null, "Assets/Cabinets/cabinet.asset", null, null, []);
+        var context = new FaceCabinetContext(cabinet, "Assets/Cabinets/cabinet.asset", []);
 
         var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, context));
 
@@ -1139,7 +1139,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     {
         var specifications = cabinet.ReelSpecifications ?? [];
         var assignments = Enumerable.Range(0, 4).Select(index => new MachineReelAssignment(MachineObjectReference.Reel(index + 1), specifications[Math.Min(index, specifications.Length - 1)].Id)).ToArray();
-        return new FaceCabinetContext(cabinet, null, "Assets/Cabinets/cabinet.asset", null, null, assignments);
+        return new FaceCabinetContext(cabinet, "Assets/Cabinets/cabinet.asset", assignments);
     }
 
     private static FaceDocumentModel CreateReelDocument(params object[] reelData)

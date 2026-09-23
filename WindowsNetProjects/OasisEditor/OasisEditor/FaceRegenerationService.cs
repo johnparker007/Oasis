@@ -1,4 +1,3 @@
-using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Progress;
 
 namespace OasisEditor;
@@ -40,8 +39,7 @@ internal sealed class FaceRegenerationService
         string? generatedDirectory = null,
         FaceGenerationSettingsModel? generationSettings = null,
         IEditorProgressReporter? progress = null,
-        string? documentPath = null,
-        CabinetDocument? cabinetDocument = null)
+        string? documentPath = null)
     {
         ArgumentNullException.ThrowIfNull(existingFace);
         ArgumentNullException.ThrowIfNull(sourcePanel);
@@ -88,8 +86,7 @@ internal sealed class FaceRegenerationService
             faceAssetName: ResolveFaceAssetName(documentPath),
             generationSettings: settings,
             progress: progress.CreateChild(0.15, 0.45),
-            sourcePanel2DDocumentPath: existingFace.SourcePanel2DDocumentPath,
-            cabinetDocument: cabinetDocument);
+            sourcePanel2DDocumentPath: existingFace.SourcePanel2DDocumentPath);
 
         var artwork = PreserveArtwork(existingFace.Artwork, generated.Document.Artwork);
         if (artwork is not null && !string.IsNullOrWhiteSpace(projectDirectory)

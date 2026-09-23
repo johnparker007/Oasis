@@ -67,7 +67,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         if (string.IsNullOrWhiteSpace(cabinetAssetName)) return MachineRuntimeBuildResult.Fail("Cabinet3D manifests must be stored as Assets/Cabinet3D/<AssetName>/asset.cabinet3d.");
         var sourceGlb = ResolveCabinetModelPath(cabinetManifestPath, cabinetDocument.Model.Path);
         if (!File.Exists(sourceGlb)) return MachineRuntimeBuildResult.Fail($"Cabinet3D GLB model was not found: {sourceGlb}");
-        var buildRoot = GetBuildRoot(project, machineDocument.DisplayName);
+        var buildRoot = GetBuildRoot(project, machineAssetName);
         var stagingRoot = buildRoot + ".staging";
         try
         {
@@ -80,7 +80,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             File.Copy(sourceGlb, Path.Combine(cabinetRoot, CabinetGlbFileName), overwrite: true);
             cancellationToken.ThrowIfCancellationRequested();
             var cabinetAssetPath = ToProjectRelativePath(project, cabinetManifestPath);
-            ValidateFaceAssignmentTargets(machineDocument.SurfaceAssignments, sourceGlb, cabinetAssetPath, cancellationToken);
+            ValidateFaceAssignmentTargets(machineDocument.DisplayName, machineDocument.SurfaceAssignments, sourceGlb, cabinetAssetPath, cancellationToken);
             var faceReferences = ExportReferencedFaces(project, stagingRoot, machineDocument, cabinetDocument, cabinetAssetPath, progress.CreateChild(0.2, 0.7), cancellationToken);
             progress.Report(0.72, "Validating cabinet reflections...");
             cancellationToken.ThrowIfCancellationRequested();
@@ -107,13 +107,19 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         }
     }
 
-    internal static void ValidateFaceAssignmentTargets(IReadOnlyList<MachineSurfaceAssignment> assignments, string sourceGlb, string cabinetAssetPath, CancellationToken cancellationToken)
+    internal static void ValidateFaceAssignmentTargets(string machineDisplayName, IReadOnlyList<MachineSurfaceAssignment> assignments, string sourceGlb, string cabinetAssetPath, CancellationToken cancellationToken)
     {
         var detected = new GlbCabinetFaceTargetDetector().DetectTargets(sourceGlb, cancellationToken);
         var validIds = detected.Where(value => value.IsValid).Select(value => value.Id).ToHashSet(StringComparer.Ordinal);
         foreach (var assignment in assignments)
         {
-            if (!validIds.Contains(assignment.TargetId)) throw new InvalidOperationException($"Cabinet asset '{cabinetAssetPath}' Face assignment target '{assignment.TargetId}' is not a valid detected OasisFace_* target.");
+            if (!validIds.Contains(assignment.TargetId))
+            {
+                var detectedDescription = validIds.Count == 0
+                    ? "the Cabinet GLB contains no valid OasisFace_* targets"
+                    : $"the valid detected targets are: {string.Join(", ", validIds.OrderBy(value => value, StringComparer.Ordinal).Select(value => $"'{value}'"))}";
+                throw new InvalidOperationException($"Machine '{machineDisplayName}', Cabinet asset '{cabinetAssetPath}', requested Face target '{assignment.TargetId}' is not a valid detected OasisFace_* target; {detectedDescription}.");
+            }
         }
     }
 
@@ -180,7 +186,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 var faceDocument = FaceDocumentStorage.ToModel(faceFile);
                 var faceAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(manifestPath, EditorAssetType.Face);
                 if (string.IsNullOrWhiteSpace(faceAssetName)) throw new InvalidOperationException("Face must be stored as Assets/Faces/<AssetName>/asset.face");
-                var cabinetContext = new FaceCabinetContext(cabinetDocument, null, cabinetAssetPath, null, null, machineDocument.ReelAssignments);
+                var cabinetContext = new FaceCabinetContext(cabinetDocument, cabinetAssetPath, machineDocument.ReelAssignments);
                 var exportResult = _faceRuntimeExportService.Export(faceDocument, project, cabinetContext, manifestPath);
                 var buildFaceDirectory = Path.Combine(stagingRoot, "faces", _pathService.SanitizePathSegment(faceAssetName));
                 CopyDirectory(exportResult.OutputDirectory, buildFaceDirectory, cancellationToken);
@@ -233,7 +239,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         return ProjectAssetPathService.NormalizeProjectRelativePath(Path.GetRelativePath(project.ProjectDirectory, path));
     }
 
-    public string GetBuildRoot(EditorProject project, string machineName) => Path.Combine(project.GeneratedDirectory, "Builds", _pathService.SanitizePathSegment(machineName));
+    public string GetBuildRoot(EditorProject project, string machineAssetName) => Path.Combine(project.GeneratedDirectory, "Builds", _pathService.SanitizePathSegment(machineAssetName));
     private static string ResolveCabinetModelPath(string manifestPath, string modelPath) => Path.IsPathFullyQualified(modelPath) ? Path.GetFullPath(modelPath) : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifestPath) ?? string.Empty, modelPath));
     private static void ReplaceEmptyDirectory(string path) { if (Directory.Exists(path)) Directory.Delete(path, true); Directory.CreateDirectory(path); }
     private static void ReplaceFinalDirectory(string stagingRoot, string buildRoot) { if (Directory.Exists(buildRoot)) Directory.Delete(buildRoot, true); Directory.CreateDirectory(Path.GetDirectoryName(buildRoot)!); Directory.Move(stagingRoot, buildRoot); }

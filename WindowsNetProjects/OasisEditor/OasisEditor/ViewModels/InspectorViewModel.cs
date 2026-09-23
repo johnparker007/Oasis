@@ -25,7 +25,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private readonly Func<DocumentTabViewModel, string, DocumentTabViewModel?> _applySummary;
     private readonly ICommand? _generateFaceFromSourceShapeCommand;
     private readonly BatchedObservableCollection<InspectorPropertyRowViewModel> _propertyRows = [];
-    private readonly FaceCabinetContextResolver _faceCabinetContextResolver = new();
     private string _inspectorEditableSummary = string.Empty;
     private DateTime _suppressPropertyRowRefreshUntilUtc;
     private string? _lastInspectorSelectionObjectId;

@@ -16,6 +16,8 @@ The Machine editor discovers Cabinet and Face package assets, detects the select
 
 Cabinet target existence comes only from valid `OasisFace_*` GLB detection. `TargetOverrides` is sparse optional orientation configuration: any detected target without an explicit entry builds with the Cabinet model defaults (`normal`, rotation `0`, no horizontal flip).
 
+Face generation retains only transient target aspect-ratio geometry when a Cabinet target is selected; it does not resolve or persist Cabinet ownership. Cabinet and Machine reel context is supplied externally only while a Machine build exports its composed Faces.
+
 Composition selectors bind by stable project-relative asset path/specification ID rather than transient choice-object identity. The Assets browser publishes one catalog-change notification after disk refresh; every open Machine rebuilds and deduplicates its choices without changing authored assignments, dirty state, or undo history. Missing selected references remain visible as missing choices for diagnostics.
 
 Each Machine keeps an effective Cabinet/Face catalog signature, including the selected Cabinet manifest/model stamps. An Assets refresh caused only by saving a Machine is therefore a no-op for composition UI. Genuine Cabinet/Face changes reconcile choice collections by stable path/specification ID, preserve unchanged choice and row objects, and explicitly re-notify authored selected values without creating mutations; removed Cabinet targets remain as missing target rows.
@@ -29,6 +31,8 @@ Standalone Cabinet tabs render no mounted Faces without context. When an active 
 For each assigned surface, Cabinet preview prefers an open Face tab's in-memory model and runtime state, but otherwise validates and loads the saved Face manifest from disk. Closed Faces use a static lamps-off fallback when the Cabinet is in Live mode; opening upgrades them to live automatically, and closing falls back to the saved version. Preview caches key saved Faces by normalized asset path plus serialized manifest content so disk changes cannot reuse stale imagery.
 
 Runtime schema 5 stores the complete selected platform settings in `platformSettingsJson`, a concrete JSON string Unity `JsonUtility` can reliably deserialize and validate. Oasis Player deliberately retains but does not execute those settings in Phase 1.
+
+Machine build directories use the canonical Machine package name from `Assets/Machines/<Name>/asset.machine`, not the editable display name. Builds reject every assigned surface whose ID is absent from valid detected `OasisFace_*` GLB targets, including Cabinets with no detected targets; a Machine with no surface assignments may build a Cabinet with no Face targets.
 
 ## Phase-1 reel bridge
 
