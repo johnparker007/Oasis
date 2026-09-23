@@ -38,6 +38,8 @@ Intrinsic authoring does not require a Machine. Model loading performs GLB targe
 
 A reflection belongs to the Cabinet because it describes reusable receiver geometry/material slots, Cabinet-local render settings, an optional Cabinet-local visibility mask, and planes sourced by stable Cabinet surface-target IDs. Reflection source choices now come from the currently detected GLB targets, not sparse settings and not project Face assets. The obsolete Faces-directory watcher was removed. Machine build still resolves each source target through that Machine's surface assignment before producing the existing Player runtime contract; rendering behavior is unchanged.
 
+If the GLB becomes unavailable or definitively fails to reload, the viewer clears transient receiver/surface discovery while preserving authored reflection definitions; persisted source IDs remain visible only as explicitly missing choices until valid geometry is loaded again.
+
 ## Reel bridge and material roles
 
 `CabinetReelSpecification` remains deliberately temporary and contains physical Cabinet-family definitions only. Machine continues to own logical Reel-to-specification assignments, and build continues to flatten the resolved dimensions. Phase 3 will replace this bridge with first-class Reel assets; Phase 2 does not expand it.

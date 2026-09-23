@@ -187,11 +187,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
             if (_disposed) return;
             if (!result.Succeeded || result.Model is null)
             {
-                Viewport.Model = null;
-                Viewport.FacePreviewModel = null;
-                FaceTargets.Clear();
-                OnPropertyChanged(nameof(HasFaceTargets));
-                OnPropertyChanged(nameof(FaceTargetStatus));
+                ClearLoadedModelDiscovery();
                 ErrorMessage = result.ErrorMessage ?? "Unable to load the cabinet model.";
                 LoadStatus = "Cabinet model load failed.";
                 return;
@@ -230,14 +226,24 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         _lifetimeCancellation.Dispose();
         _livePreviewRefreshTimer.Stop();
         _livePreviewRefreshTimer.Tick -= OnLivePreviewRefreshTimerTick;
-        ReflectionEditor.Dispose();
         foreach (var liveBase in _liveBaseCache.Values) liveBase.Dispose();
         _liveBaseCache.Clear();
         _staticPreviewCache.Clear();
         _facePreviewEntriesByDocumentId.Clear();
         _pendingLivePreviewDocumentIds.Clear();
-        Viewport.FacePreviewModel = null;
+        ClearLoadedModelDiscovery();
+        ReflectionEditor.Dispose();
+    }
+
+    private void ClearLoadedModelDiscovery()
+    {
         Viewport.Model = null;
+        Viewport.FacePreviewModel = null;
+        FaceTargets.Clear();
+        SelectedFaceTarget = null;
+        ReflectionEditor.ClearDiscovery();
+        OnPropertyChanged(nameof(HasFaceTargets));
+        OnPropertyChanged(nameof(FaceTargetStatus));
     }
 
     public void RefreshFacePreviews()

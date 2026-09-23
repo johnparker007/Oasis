@@ -64,6 +64,7 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
 
     public void Dispose() => _disposed = true;
     public void SetDiscovery(IEnumerable<CabinetReflectionReceiverTarget> targets, IEnumerable<CabinetFaceTarget> faceTargets) { Targets.Clear(); foreach (var item in targets) Targets.Add(item); FaceTargets.Clear(); foreach (var item in faceTargets) FaceTargets.Add(item); Refresh(); }
+    public void ClearDiscovery() => SetDiscovery([], []);
     public void Refresh()
     {
         if (_disposed) return;
