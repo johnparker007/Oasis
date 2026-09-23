@@ -425,7 +425,7 @@ public sealed class FaceBuildServiceTests
         {
             var cabinetPath = Path.Combine(directory, "cabinet.cabinet3d");
             File.WriteAllText(cabinetPath, CabinetDocumentStorage.Serialize(new CabinetDocument(
-                5, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default,
+                8, new CabinetModelReference("cabinet.glb", 1, "Y"), [],
                 [new CabinetReelSpecification("standard", "Standard", 210, 50)], "standard")));
             var face = new FaceDocumentModel
             {

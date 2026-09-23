@@ -1,3 +1,4 @@
+using System.Windows.Media.Media3D;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
 using Xunit;
@@ -7,15 +8,33 @@ namespace OasisEditor.Tests;
 public sealed class CabinetReflectionSurfaceCatalogTests
 {
     [Fact]
-    public void Discover_ReturnsReusableCabinetTargetIds_NotInstalledFaces()
+    public void CatalogUsesDetectedGlbTargets_NotSparseAuthoredSettings()
+    {
+        var detected = new[]
+        {
+            Target("OasisFace_TopGlass", true),
+            Target("OasisFace_Invalid", false)
+        };
+
+        var choices = CabinetReflectionSurfaceCatalog.FromDetectedTargets(detected);
+
+        var choice = Assert.Single(choices);
+        Assert.Equal("OasisFace_TopGlass", choice.SourceSurfaceTargetId);
+        Assert.Equal(choice.SourceSurfaceTargetId, choice.CabinetTargetId);
+    }
+
+    [Fact]
+    public void NoDetectedTargetMeansNoChoice_EvenWhenSettingsExist()
     {
         var cabinet = CabinetDocument.FromModelPath("cabinet.glb") with
         {
-            TargetOverrides = [CabinetTargetOverride.Default("OasisFace_TopGlass"), CabinetTargetOverride.Default("OasisFace_BottomGlass")]
+            SurfaceTargetSettings = [CabinetSurfaceTargetSettings.Default("OasisFace_NotInGlb")]
         };
-        var choices = CabinetReflectionSurfaceCatalog.Discover("ignored", cabinet);
-        Assert.Equal(2, choices.Count);
-        Assert.Contains(choices, item => item.SourceSurfaceTargetId == "OasisFace_TopGlass");
-        Assert.All(choices, item => Assert.Equal(item.SourceSurfaceTargetId, item.CabinetTargetId));
+
+        Assert.NotEmpty(cabinet.SurfaceTargetSettings);
+        Assert.Empty(CabinetReflectionSurfaceCatalog.FromDetectedTargets([]));
     }
+
+    private static CabinetFaceTarget Target(string id, bool valid) =>
+        new(id, id, id, [], new Vector3D(), new Point3D(), valid, valid ? null : "invalid");
 }

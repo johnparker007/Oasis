@@ -222,15 +222,15 @@ public sealed class InspectorViewModelTests
     {
         var selectedDocument = new DocumentTabViewModel(
             EditorDocument.CreateCabinet3DStub("Cabinet"),
-            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(7, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
+            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(8, new CabinetModelReference("cabinet.glb", 1, "Y"), [], [], null)));
         var context = new ActiveDocumentContextService();
         context.SetActiveDocument(selectedDocument);
         var viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteImmediately);
 
         viewModel.NotifyContextChanged();
 
-        var addRow = Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Add Reel Specification"));
-        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Default Reel Specification" && row.GroupName == "Reel Specifications");
+        var addRow = Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Add Temporary Reel Specification"));
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Default Reel Specification" && row.GroupName == "Temporary Physical Reel Specifications");
 
         addRow.Command.Execute(null);
         viewModel.NotifyContextChanged();
@@ -247,7 +247,7 @@ public sealed class InspectorViewModelTests
     {
         var selectedDocument = new DocumentTabViewModel(
             EditorDocument.CreateCabinet3DStub("Cabinet"),
-            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(7, new CabinetModelReference("cabinet.glb", 1, "Y"), [], CabinetPreviewSettings.Default, [], null)));
+            cabinetDocumentJson: CabinetDocumentStorage.Serialize(new CabinetDocument(8, new CabinetModelReference("cabinet.glb", 1, "Y"), [], [], null)));
         var context = new ActiveDocumentContextService();
         context.SetActiveDocument(selectedDocument);
         InspectorViewModel? viewModel = null;
@@ -271,7 +271,7 @@ public sealed class InspectorViewModelTests
         viewModel = CreateInspectorViewModel(selectedDocument, context, ExecuteViaDocumentCommandHistory);
         viewModel.NotifyContextChanged();
 
-        Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Add Reel Specification")).Command.Execute(null);
+        Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Add Temporary Reel Specification")).Command.Execute(null);
 
         var specification = Assert.Single(selectedDocument.GetCabinetDocument().ReelSpecifications);
         Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Name" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));

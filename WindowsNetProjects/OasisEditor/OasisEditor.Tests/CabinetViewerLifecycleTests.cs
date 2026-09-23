@@ -38,18 +38,86 @@ public sealed class CabinetViewerLifecycleTests
         field!.SetValue(document, viewer);
         Assert.Same(viewer, document.ExistingCabinetViewer);
 
-        var replacement = document.GetCabinetDocument() with { Preview = new CabinetPreviewSettings(false, false) };
+        var replacement = document.GetCabinetDocument() with { Model = new CabinetModelReference("replacement.glb", 1, "Y") };
         document.CabinetDocumentJson = CabinetDocumentStorage.Serialize(replacement);
 
         Assert.Null(document.ExistingCabinetViewer);
         Assert.Null(viewer!.Viewport.Model);
     }
 
-    private static DocumentTabViewModel CreateDocument()
+    [Fact]
+    public void PreviewStateAndMachineContext_DoNotDirtyOrMutateCabinet()
     {
-        var cabinet = CabinetDocument.FromModelPath("cabinet.glb");
+        var document = CreateDocument();
+        var original = document.GetCabinetDocument();
+        var viewer = new CabinetModelDocumentViewModel(new CountingLoader(CreateModel()), document);
+        var firstMachine = MachineTab("First");
+        var secondMachine = MachineTab("Second");
+
+        viewer.SelectedLampPreviewMode = CabinetLampPreviewMode.LampsAllOn;
+        viewer.SetMachineCompositionContext(firstMachine);
+        viewer.SetMachineCompositionContext(secondMachine);
+        viewer.SetMachineCompositionContext(null);
+
+        Assert.False(document.IsDirty);
+        Assert.Equal(original, document.GetCabinetDocument());
+        Assert.Equal("No Machine context", viewer.PreviewingMachine);
+        Assert.Null(viewer.Viewport.FacePreviewModel);
+        viewer.Dispose();
+    }
+
+    [Fact]
+    public async Task FailedReload_ClearsDiscoveredReflectionGeometry_WithoutMutatingAuthoredReflections()
+    {
+        var sourceId = "OasisFace_TopGlass";
+        var plane = new CabinetReflectionPlane(new(0, 0, 0), new(1, 0, 0), new(0, 1, 0), 1, 1);
+        var reflection = new CabinetReflectionDefinition(
+            "glass-reflection",
+            "Cabinet/Glass",
+            0,
+            [new CabinetReflectionSource(sourceId, plane)],
+            CabinetReflectionSettings.RoughPlastic);
+        var cabinet = CabinetDocument.FromModelPath("cabinet.glb") with { Reflections = [reflection] };
+        var document = CreateDocument(cabinet);
+        var authoredReflection = Assert.Single(document.GetCabinetDocument().Reflections!);
+        var faceTarget = new CabinetFaceTarget(sourceId, sourceId, "Top Glass", [], new Vector3D(), new Point3D(), true, null);
+        var receiverTarget = new CabinetReflectionReceiverTarget(
+            "Cabinet/Glass",
+            "Glass",
+            "GlassMesh",
+            [new CabinetReflectionMaterialSlot(0, "Glass", "glTF PBR")]);
+        var loader = new SequenceLoader(
+            CabinetModelLoadResult.Success(CreateModel(), [faceTarget], [receiverTarget]),
+            CabinetModelLoadResult.Failure("GLB unavailable"));
+        var viewer = new CabinetModelDocumentViewModel(loader, document);
+
+        await viewer.LoadAsync();
+        Assert.Single(viewer.ReflectionEditor.Targets);
+        Assert.Single(viewer.ReflectionEditor.FaceTargets);
+        Assert.Contains(viewer.ReflectionEditor.SurfaceChoices, choice => choice.SourceSurfaceTargetId == sourceId && !choice.IsMissing);
+
+        await viewer.LoadAsync();
+
+        Assert.Empty(viewer.ReflectionEditor.Targets);
+        Assert.Empty(viewer.ReflectionEditor.FaceTargets);
+        var missingChoice = Assert.Single(viewer.ReflectionEditor.SurfaceChoices);
+        Assert.True(missingChoice.IsMissing);
+        Assert.Equal(sourceId, missingChoice.SourceSurfaceTargetId);
+        Assert.Same(authoredReflection, Assert.Single(viewer.ReflectionEditor.Items));
+        Assert.Same(authoredReflection, Assert.Single(document.GetCabinetDocument().Reflections!));
+        Assert.False(document.IsDirty);
+        viewer.Dispose();
+    }
+
+    private static DocumentTabViewModel CreateDocument(CabinetDocument? cabinet = null)
+    {
+        cabinet ??= CabinetDocument.FromModelPath("cabinet.glb");
         return new DocumentTabViewModel(EditorDocument.CreateCabinet3DStub("Cabinet"), cabinetDocumentJson: CabinetDocumentStorage.Serialize(cabinet));
     }
+
+    private static DocumentTabViewModel MachineTab(string name) => new(
+        EditorDocument.CreateMachineStub(name),
+        machineDocumentJson: MachineDocumentStorage.Serialize(MachineDocument.Create(name)));
 
     private static Model3DGroup CreateModel()
     {
@@ -72,6 +140,18 @@ public sealed class CabinetViewerLifecycleTests
         {
             LoadCount++;
             return Task.FromResult(CabinetModelLoadResult.Success(Model));
+        }
+    }
+
+    private sealed class SequenceLoader(params CabinetModelLoadResult[] results) : ICabinetModelLoader
+    {
+        private int _index;
+
+        public Task<CabinetModelLoadResult> LoadAsync(string modelPath, CancellationToken cancellationToken = default)
+        {
+            var result = results[Math.Min(_index, results.Length - 1)];
+            _index++;
+            return Task.FromResult(result);
         }
     }
 }

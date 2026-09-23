@@ -6,23 +6,67 @@ namespace OasisEditor.Tests;
 public sealed class CabinetDocumentTests
 {
     [Fact]
-    public void NewCabinetDocumentsDefaultToLiveLampPreview()
+    public void Schema8_RoundTripsOnlyIntrinsicCabinetStateAndTemporaryPhysicalReels()
     {
-        Assert.Equal(CabinetLampPreviewMode.Live, new CabinetPreviewSettings(true, true).LampPreviewMode);
-        Assert.Equal(CabinetLampPreviewMode.Live, CabinetPreviewSettings.Default.LampPreviewMode);
-        Assert.Equal(CabinetLampPreviewMode.Live, CabinetDocument.Empty.Preview.LampPreviewMode);
-        Assert.Equal(CabinetLampPreviewMode.Live, CabinetDocument.FromModelPath("cabinet.glb").Preview.LampPreviewMode);
+        var plane = new CabinetReflectionPlane(new(0, 0, 0), new(1, 0, 0), new(0, 1, 0), 2, 1);
+        var source = CabinetDocument.FromModelPath("cabinet.glb") with
+        {
+            Model = new("cabinet.glb", 0.01, "Z"),
+            SurfaceTargetSettings = [new("OasisFace_Top", CabinetSurfaceTargetSettings.InvertedFrontSide, 90, true)],
+            ReelSpecifications = [new("standard", "Standard physical reel", 210, 50)],
+            DefaultReelSpecificationId = "standard",
+            Reflections = [new("glass", "Cabinet/Glass", 0, [new("OasisFace_Top", plane)], CabinetReflectionSettings.RoughPlastic)]
+        };
+
+        var json = CabinetDocumentStorage.Serialize(source);
+        Assert.True(CabinetDocumentStorage.TryRead(json, out var parsed));
+        Assert.Equal(8, parsed.Version);
+        Assert.Equal(source.Model, parsed.Model);
+        Assert.Equal(source.SurfaceTargetSettings, parsed.SurfaceTargetSettings);
+        Assert.Equal(source.ReelSpecifications, parsed.ReelSpecifications);
+        Assert.Equal(source.DefaultReelSpecificationId, parsed.DefaultReelSpecificationId);
+        var expectedReflection = Assert.Single(source.Reflections!);
+        var actualReflection = Assert.Single(parsed.Reflections!);
+        Assert.Equal(expectedReflection.Id, actualReflection.Id);
+        Assert.Equal(expectedReflection.TargetId, actualReflection.TargetId);
+        Assert.Equal(expectedReflection.MaterialSlot, actualReflection.MaterialSlot);
+        Assert.Equal(expectedReflection.Settings, actualReflection.Settings);
+        Assert.Equal(expectedReflection.VisibilityMask, actualReflection.VisibilityMask);
+        Assert.Equal(expectedReflection.Sources, actualReflection.Sources);
+        Assert.DoesNotContain("preview", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("faceAssignments", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("reelAssignments", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("machine", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("runtime", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("input", json, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void ExplicitlySavedLampPreviewModeIsPreserved()
+    public void SparseSurfaceSettings_DefaultWithoutCreatingTargetRegistry()
     {
-        var source = CabinetDocument.FromModelPath("cabinet.glb") with
-        {
-            Preview = CabinetPreviewSettings.Default with { LampPreviewMode = CabinetLampPreviewMode.BackgroundOnly }
-        };
+        var cabinet = CabinetDocument.FromModelPath("cabinet.glb");
+        var defaults = cabinet.GetSurfaceTargetSettings("OasisFace_Unconfigured");
+        Assert.Equal(CabinetSurfaceTargetSettings.NormalFrontSide, defaults.FrontSide);
+        Assert.Equal(0, defaults.FaceRotation);
+        Assert.False(defaults.FaceFlipHorizontal);
+        Assert.Empty(cabinet.SurfaceTargetSettings);
+    }
 
-        Assert.True(CabinetDocumentStorage.TryRead(CabinetDocumentStorage.Serialize(source), out var parsed));
-        Assert.Equal(CabinetLampPreviewMode.BackgroundOnly, parsed.Preview.LampPreviewMode);
+    [Theory]
+    [InlineData(7)]
+    [InlineData(9)]
+    public void ReaderRejectsNonCurrentSchema(int version)
+    {
+        var json = CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb"));
+        json = json.Replace("\"version\": 8", $"\"version\": {version}", StringComparison.Ordinal);
+        Assert.False(CabinetDocumentStorage.TryRead(json, out _));
+    }
+
+    [Fact]
+    public void ReaderRejectsSupersededPreviewState()
+    {
+        var json = CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb"));
+        json = json.TrimEnd('}', '\r', '\n') + ",\n  \"preview\": { \"lampPreviewMode\": \"Live\" }\n}";
+        Assert.False(CabinetDocumentStorage.TryRead(json, out _));
     }
 }

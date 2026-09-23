@@ -13,17 +13,17 @@ internal static class CabinetMutationCommands
     public static Commands.ICommand CreateDeleteReflectionCommand(Guid documentId, DocumentTabViewModel document, string id) { var current = document.GetCabinetDocument(); return new SetCabinetDocumentCommand(documentId, document, current with { Reflections = (current.Reflections ?? []).Where(item => item.Id != id).ToArray() }, "Delete reflection receiver"); }
     public static Commands.ICommand CreateSetTargetFrontSideCommand(Guid documentId, DocumentTabViewModel document, string targetId, string frontSide)
     {
-        return new SetCabinetTargetOverrideCommand(documentId, document, targetId, CabinetTargetOverride.NormalizeFrontSide(frontSide), null, null, "Set cabinet target front side");
+        return new SetCabinetSurfaceTargetSettingsCommand(documentId, document, targetId, CabinetSurfaceTargetSettings.NormalizeFrontSide(frontSide), null, null, "Set cabinet target front side");
     }
 
     public static Commands.ICommand CreateSetTargetFaceRotationCommand(Guid documentId, DocumentTabViewModel document, string targetId, int faceRotation)
     {
-        return new SetCabinetTargetOverrideCommand(documentId, document, targetId, null, CabinetTargetOverride.NormalizeFaceRotation(faceRotation), null, "Set cabinet target face rotation");
+        return new SetCabinetSurfaceTargetSettingsCommand(documentId, document, targetId, null, CabinetSurfaceTargetSettings.NormalizeFaceRotation(faceRotation), null, "Set cabinet target face rotation");
     }
 
     public static Commands.ICommand CreateSetTargetFaceFlipHorizontalCommand(Guid documentId, DocumentTabViewModel document, string targetId, bool faceFlipHorizontal)
     {
-        return new SetCabinetTargetOverrideCommand(documentId, document, targetId, null, null, faceFlipHorizontal, "Set cabinet target horizontal flip");
+        return new SetCabinetSurfaceTargetSettingsCommand(documentId, document, targetId, null, null, faceFlipHorizontal, "Set cabinet target horizontal flip");
     }
 
 
@@ -70,12 +70,6 @@ internal static class CabinetMutationCommands
         return new SetCabinetDocumentCommand(documentId, document, current with { DefaultReelSpecificationId = normalizedId }, "Set default cabinet reel specification");
     }
 
-    public static Commands.ICommand CreateSetPreviewLampModeCommand(Guid documentId, DocumentTabViewModel document, string lampPreviewMode)
-    {
-        return new SetCabinetPreviewLampModeCommand(documentId, document, CabinetLampPreviewMode.Normalize(lampPreviewMode));
-    }
-
-
     private sealed class SetCabinetDocumentCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
@@ -113,52 +107,7 @@ internal static class CabinetMutationCommands
         }
     }
 
-    private sealed class SetCabinetPreviewLampModeCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
-    {
-        private readonly Guid _documentId;
-        private readonly DocumentTabViewModel _document;
-        private readonly string _lampPreviewMode;
-        private CabinetDocument? _originalDocument;
-
-        public SetCabinetPreviewLampModeCommand(Guid documentId, DocumentTabViewModel document, string lampPreviewMode)
-        {
-            _documentId = documentId;
-            _document = document;
-            _lampPreviewMode = CabinetLampPreviewMode.Normalize(lampPreviewMode);
-        }
-
-        public Guid DocumentId => _documentId;
-        public string Description => "Set cabinet lamp preview mode";
-        public bool WasExecuted { get; private set; }
-
-        public void Execute()
-        {
-            WasExecuted = false;
-            var current = _document.GetCabinetDocument();
-            if (string.Equals(CabinetLampPreviewMode.Normalize(current.Preview.LampPreviewMode), _lampPreviewMode, StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            _originalDocument ??= current;
-            _document.SetCabinetDocument(current with { Preview = current.Preview with { LampPreviewMode = _lampPreviewMode } });
-            _document.MarkDirty();
-            WasExecuted = true;
-        }
-
-        public void Undo()
-        {
-            if (_originalDocument is null)
-            {
-                return;
-            }
-
-            _document.SetCabinetDocument(_originalDocument);
-            _document.MarkDirty();
-        }
-    }
-
-    private sealed class SetCabinetTargetOverrideCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    private sealed class SetCabinetSurfaceTargetSettingsCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly Guid _documentId;
         private readonly DocumentTabViewModel _document;
@@ -169,7 +118,7 @@ internal static class CabinetMutationCommands
         private readonly string _description;
         private CabinetDocument? _originalDocument;
 
-        public SetCabinetTargetOverrideCommand(Guid documentId, DocumentTabViewModel document, string targetId, string? frontSide, int? faceRotation, bool? faceFlipHorizontal, string description)
+        public SetCabinetSurfaceTargetSettingsCommand(Guid documentId, DocumentTabViewModel document, string targetId, string? frontSide, int? faceRotation, bool? faceFlipHorizontal, string description)
         {
             _documentId = documentId;
             _document = document;
@@ -193,8 +142,8 @@ internal static class CabinetMutationCommands
             }
 
             var current = _document.GetCabinetDocument();
-            var currentOverride = current.GetTargetOverride(_targetId);
-            var nextOverride = new CabinetTargetOverride(
+            var currentOverride = current.GetSurfaceTargetSettings(_targetId);
+            var nextOverride = new CabinetSurfaceTargetSettings(
                 _targetId,
                 _frontSide ?? currentOverride.FrontSide,
                 _faceRotation ?? currentOverride.FaceRotation,
@@ -208,7 +157,7 @@ internal static class CabinetMutationCommands
             }
 
             _originalDocument ??= current;
-            _document.SetCabinetDocument(current.WithTargetOverride(nextOverride));
+            _document.SetCabinetDocument(current.WithSurfaceTargetSettings(nextOverride));
             _document.MarkDirty();
             WasExecuted = true;
         }

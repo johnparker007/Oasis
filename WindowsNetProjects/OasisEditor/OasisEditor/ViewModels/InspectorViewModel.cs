@@ -1314,12 +1314,12 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         var cabinetDocument = selectedDocument.GetCabinetDocument();
         var specifications = cabinetDocument.ReelSpecifications ?? [];
         var defaultId = cabinetDocument.DefaultReelSpecificationId ?? string.Empty;
-        _propertyRows.Add(new InspectorActionPropertyViewModel("Add Reel Specification", "Reel Specifications", new RelayCommand(() => { ExecuteCabinetCommand(selectedDocument, CabinetMutationCommands.CreateAddReelSpecificationCommand(selectedDocument.DocumentId, selectedDocument)); })));
+        _propertyRows.Add(new InspectorActionPropertyViewModel("Add Temporary Reel Specification", "Temporary Physical Reel Specifications", new RelayCommand(() => { ExecuteCabinetCommand(selectedDocument, CabinetMutationCommands.CreateAddReelSpecificationCommand(selectedDocument.DocumentId, selectedDocument)); })));
         var defaultChoices = new[] { "(None)" }.Concat(specifications.Select(FormatReelSpecificationChoice)).ToArray();
         var currentDefaultChoice = specifications.FirstOrDefault(specification => string.Equals(specification.Id, defaultId, StringComparison.Ordinal)) is { } currentDefault
             ? FormatReelSpecificationChoice(currentDefault)
             : "(None)";
-        _propertyRows.Add(new InspectorChoicePropertyViewModel("Default Reel Specification", "Reel Specifications", defaultChoices, currentDefaultChoice, commit: choice => TrySetDefaultReelSpecification(selectedDocument, choice)));
+        _propertyRows.Add(new InspectorChoicePropertyViewModel("Default Reel Specification", "Temporary Physical Reel Specifications", defaultChoices, currentDefaultChoice, commit: choice => TrySetDefaultReelSpecification(selectedDocument, choice)));
 
         foreach (var specification in specifications)
         {

@@ -203,8 +203,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
 
     internal static MachineRuntimeFaceReference CreateRuntimeFaceReference(CabinetDocument cabinetDocument, string faceId, string faceAssetName, string targetId, string manifest)
     {
-        var targetOverride = cabinetDocument.GetTargetOverride(targetId);
-        return new MachineRuntimeFaceReference(faceId, faceAssetName, targetId, targetOverride.FrontSide, targetOverride.FaceRotation, targetOverride.FaceFlipHorizontal, manifest);
+        var targetSettings = cabinetDocument.GetSurfaceTargetSettings(targetId);
+        return new MachineRuntimeFaceReference(faceId, faceAssetName, targetId, targetSettings.FrontSide, targetSettings.FaceRotation, targetSettings.FaceFlipHorizontal, manifest);
     }
 
     private static string ResolveFaceManifestPath(EditorProject project, string assetPath)

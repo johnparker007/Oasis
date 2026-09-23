@@ -1,4 +1,3 @@
-using System.Text.Json;
 using OasisEditor.Features.CabinetEditor.Models;
 using Xunit;
 
@@ -7,7 +6,7 @@ namespace OasisEditor.Tests;
 public sealed class CabinetReelSpecificationTests
 {
     [Fact]
-    public void CabinetV7_RetainsPhysicalSpecificationsButNotCompositionAssignments()
+    public void CabinetV8_RetainsPhysicalSpecificationsButNotCompositionAssignments()
     {
         var cabinet = CabinetDocument.FromModelPath("cabinet.glb") with
         {
@@ -16,18 +15,17 @@ public sealed class CabinetReelSpecificationTests
         };
         var json = CabinetDocumentStorage.Serialize(cabinet);
         Assert.True(CabinetDocumentStorage.TryRead(json, out var parsed));
-        Assert.Equal(7, parsed.Version);
+        Assert.Equal(8, parsed.Version);
         Assert.Single(parsed.ReelSpecifications);
         Assert.DoesNotContain("faceAssignments", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("reelAssignments", json, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void CabinetV6_IsRejectedRatherThanMigrated()
+    public void CabinetV7_IsRejectedRatherThanMigrated()
     {
         var json = CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb"));
-        using var parsed = JsonDocument.Parse(json);
-        var old = json.Replace("\"version\": 7", "\"version\": 6");
+        var old = json.Replace("\"version\": 8", "\"version\": 7", StringComparison.Ordinal);
         Assert.False(CabinetDocumentStorage.TryRead(old, out _));
     }
 
