@@ -14,6 +14,8 @@ The active Machine is the actual open `DocumentTabViewModel`; there is no second
 
 The Machine editor discovers Cabinet and Face package assets, detects the selected Cabinet's valid `OasisFace_*` targets, and exposes Face and temporary Cabinet reel-specification dropdowns including `(None)`. The package directory supplies the asset/tab title while `Machine.DisplayName` remains independently authored.
 
+Cabinet target existence comes only from valid `OasisFace_*` GLB detection. `TargetOverrides` is sparse optional orientation configuration: any detected target without an explicit entry builds with the Cabinet model defaults (`normal`, rotation `0`, no horizontal flip).
+
 Composition selectors bind by stable project-relative asset path/specification ID rather than transient choice-object identity. The Assets browser publishes one catalog-change notification after disk refresh; every open Machine rebuilds and deduplicates its choices without changing authored assignments, dirty state, or undo history. Missing selected references remain visible as missing choices for diagnostics.
 
 Each Machine keeps an effective Cabinet/Face catalog signature, including the selected Cabinet manifest/model stamps. An Assets refresh caused only by saving a Machine is therefore a no-op for composition UI. Genuine Cabinet/Face changes reconcile choice collections by stable path/specification ID, preserve unchanged choice and row objects, and explicitly re-notify authored selected values without creating mutations; removed Cabinet targets remain as missing target rows.

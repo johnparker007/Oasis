@@ -107,10 +107,9 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         }
     }
 
-    private static void ValidateFaceAssignmentTargets(IReadOnlyList<MachineSurfaceAssignment> assignments, string sourceGlb, string cabinetAssetPath, CancellationToken cancellationToken)
+    internal static void ValidateFaceAssignmentTargets(IReadOnlyList<MachineSurfaceAssignment> assignments, string sourceGlb, string cabinetAssetPath, CancellationToken cancellationToken)
     {
         var detected = new GlbCabinetFaceTargetDetector().DetectTargets(sourceGlb, cancellationToken);
-        if (detected.Count == 0) return;
         var validIds = detected.Where(value => value.IsValid).Select(value => value.Id).ToHashSet(StringComparer.Ordinal);
         foreach (var assignment in assignments)
         {
@@ -181,13 +180,11 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 var faceDocument = FaceDocumentStorage.ToModel(faceFile);
                 var faceAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(manifestPath, EditorAssetType.Face);
                 if (string.IsNullOrWhiteSpace(faceAssetName)) throw new InvalidOperationException("Face must be stored as Assets/Faces/<AssetName>/asset.face");
-                if (!TryResolveTargetOverride(cabinetDocument, assignment.TargetId, out var targetOverride))
-                    throw new InvalidOperationException(BuildMissingTargetOverrideMessage(faceDocument.Id, faceAssetName, assignment.TargetId, cabinetAssetPath, cabinetDocument.TargetOverrides));
                 var cabinetContext = new FaceCabinetContext(cabinetDocument, null, cabinetAssetPath, null, null, machineDocument.ReelAssignments);
                 var exportResult = _faceRuntimeExportService.Export(faceDocument, project, cabinetContext, manifestPath);
                 var buildFaceDirectory = Path.Combine(stagingRoot, "faces", _pathService.SanitizePathSegment(faceAssetName));
                 CopyDirectory(exportResult.OutputDirectory, buildFaceDirectory, cancellationToken);
-                references.Add(new MachineRuntimeFaceReference(faceDocument.Id, faceAssetName, assignment.TargetId, targetOverride.FrontSide, targetOverride.FaceRotation, targetOverride.FaceFlipHorizontal, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), FaceRuntimeExportService.ManifestFileName))));
+                references.Add(CreateRuntimeFaceReference(cabinetDocument, faceDocument.Id, faceAssetName, assignment.TargetId, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), FaceRuntimeExportService.ManifestFileName))));
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
             {
@@ -196,6 +193,12 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         }
         progress.Report(1, assignments.Length == 0 ? "No mounted Faces to export." : $"Exported {references.Count} mounted Faces.");
         return references;
+    }
+
+    internal static MachineRuntimeFaceReference CreateRuntimeFaceReference(CabinetDocument cabinetDocument, string faceId, string faceAssetName, string targetId, string manifest)
+    {
+        var targetOverride = cabinetDocument.GetTargetOverride(targetId);
+        return new MachineRuntimeFaceReference(faceId, faceAssetName, targetId, targetOverride.FrontSide, targetOverride.FaceRotation, targetOverride.FaceFlipHorizontal, manifest);
     }
 
     private static string ResolveFaceManifestPath(EditorProject project, string assetPath)
@@ -220,35 +223,6 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             var relativePath = Path.GetRelativePath(sourceDirectory, file);
             File.Copy(file, Path.Combine(destinationDirectory, relativePath), overwrite: true);
         }
-    }
-
-    private static bool TryResolveTargetOverride(CabinetDocument cabinetDocument, string targetId, out CabinetTargetOverride targetOverride)
-    {
-        var normalizedTargetId = targetId.Trim();
-        var overrides = cabinetDocument.TargetOverrides ?? Array.Empty<CabinetTargetOverride>();
-        var match = overrides.FirstOrDefault(candidate => string.Equals(candidate.TargetId, normalizedTargetId, StringComparison.Ordinal));
-        if (match is not null)
-        {
-            targetOverride = match.Normalized();
-            return true;
-        }
-
-        if (overrides.Length == 0)
-        {
-            targetOverride = CabinetTargetOverride.Default(normalizedTargetId);
-            return true;
-        }
-
-        targetOverride = CabinetTargetOverride.Default(normalizedTargetId);
-        return false;
-    }
-
-    private static string BuildMissingTargetOverrideMessage(string faceId, string faceAssetName, string targetId, string cabinetAssetPath, IReadOnlyList<CabinetTargetOverride> targetOverrides)
-    {
-        var availableIds = targetOverrides.Count == 0
-            ? "<none>"
-            : string.Join(", ", targetOverrides.Select(targetOverride => $"'{targetOverride.TargetId}'"));
-        return $"Face '{faceId}' ({faceAssetName}) is assigned to cabinet target '{targetId}', but Cabinet asset '{cabinetAssetPath}' does not contain that target override. Available target override IDs: {availableIds}.";
     }
 
     private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
