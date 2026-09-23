@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Windows.Input;
 using Microsoft.Win32;
 using OasisEditor.Features.CabinetEditor.Models;
@@ -13,19 +12,14 @@ namespace OasisEditor.Features.CabinetEditor.ViewModels;
 public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly DocumentTabViewModel _document;
-    private readonly Func<EditorProject?>? _projectAccessor;
-    private readonly SynchronizationContext? _context;
-    private FileSystemWatcher? _watcher;
-    private Timer? _refreshDebounce;
-    private readonly object _refreshGate = new();
     private bool _attached;
     private bool _disposed;
     private CabinetReflectionDefinition? _selected;
     private CabinetReflectionSourceViewModel? _selectedSource;
 
-    public CabinetReflectionEditorViewModel(DocumentTabViewModel document, Func<EditorProject?>? projectAccessor = null)
+    public CabinetReflectionEditorViewModel(DocumentTabViewModel document)
     {
-        _document = document; _projectAccessor = projectAccessor; _context = SynchronizationContext.Current;
+        _document = document;
         AddCommand = new RelayCommand(Add, () => Targets.Count > 0); RemoveCommand = new RelayCommand(Remove, () => Selected is not null); DuplicateCommand = new RelayCommand(Duplicate, () => Selected is not null);
         AddSourceCommand = new RelayCommand(AddSource, () => Selected is not null && Selected.Sources.Length < CabinetReflectionContract.MaximumSources && SurfaceChoices.Count > 0);
         RemoveSourceCommand = new RelayCommand(RemoveSource, () => SelectedSource is not null); DeriveCommand = new RelayCommand(Derive, () => SelectedSource is not null);
@@ -60,76 +54,27 @@ public sealed class CabinetReflectionEditorViewModel : INotifyPropertyChanged, I
         if (_attached || _disposed) return;
         _attached = true;
         Refresh();
-        StartWatcher();
     }
 
     public void RefreshProjectContext()
     {
         if (_disposed) return;
         Refresh();
-        if (_watcher is null) StartWatcher();
     }
 
-    public void Dispose()
-    {
-        if (_disposed) return;
-        lock (_refreshGate)
-        {
-            _disposed = true;
-            _watcher?.Dispose();
-            _watcher = null;
-            _refreshDebounce?.Dispose();
-            _refreshDebounce = null;
-        }
-    }
-    public void SetDiscovery(IEnumerable<CabinetReflectionReceiverTarget> targets, IEnumerable<CabinetFaceTarget> faceTargets) { Targets.Clear(); foreach (var item in targets) Targets.Add(item); FaceTargets.Clear(); foreach (var item in faceTargets) FaceTargets.Add(item); RaiseAll(); }
+    public void Dispose() => _disposed = true;
+    public void SetDiscovery(IEnumerable<CabinetReflectionReceiverTarget> targets, IEnumerable<CabinetFaceTarget> faceTargets) { Targets.Clear(); foreach (var item in targets) Targets.Add(item); FaceTargets.Clear(); foreach (var item in faceTargets) FaceTargets.Add(item); Refresh(); }
     public void Refresh()
     {
         if (_disposed) return;
         var receiverId = Selected?.Id; var sourceIndex = SelectedSource?.Index;
-        List<CabinetReflectionSurfaceChoice> discovered;
-        try { discovered = CabinetReflectionSurfaceCatalog.Discover(_projectAccessor?.Invoke()?.AssetsDirectory, _document.GetCabinetDocument()).ToList(); }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or ObjectDisposedException or System.Security.SecurityException) { discovered = []; }
+        var discovered = CabinetReflectionSurfaceCatalog.FromDetectedTargets(FaceTargets).ToList();
         var storedIds = (_document.GetCabinetDocument().Reflections ?? []).SelectMany(item => item.Sources ?? []).Select(item => item.SourceSurfaceTargetId).Where(id => !string.IsNullOrWhiteSpace(id));
         foreach (var missing in storedIds.Where(id => discovered.All(choice => choice.SourceSurfaceTargetId != id)).Distinct(StringComparer.Ordinal)) discovered.Add(new(missing, $"Missing surface target ({missing})", string.Empty, $"Missing surface target ({missing})", null, true));
         SurfaceChoices.Clear(); foreach (var choice in discovered) SurfaceChoices.Add(choice);
         Items.Clear(); foreach (var item in _document.GetCabinetDocument().Reflections ?? []) Items.Add(item);
         _selected = Items.FirstOrDefault(item => item.Id == receiverId) ?? Items.FirstOrDefault(); RebuildSources();
         SelectedSource = sourceIndex is int index ? Sources.ElementAtOrDefault(index) : Sources.FirstOrDefault(); RaiseAll();
-    }
-    private void StartWatcher()
-    {
-        if (_disposed || _watcher is not null) return;
-        string? faces;
-        try
-        {
-            var assets = _projectAccessor?.Invoke()?.AssetsDirectory;
-            if (string.IsNullOrWhiteSpace(assets)) return;
-            faces = Path.Combine(Path.GetFullPath(assets), "Faces");
-            if (!Directory.Exists(faces)) return;
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { return; }
-        try
-        {
-            _watcher = new FileSystemWatcher(faces) { IncludeSubdirectories = true, NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite };
-            FileSystemEventHandler changed = (_, _) => ScheduleRefresh(); RenamedEventHandler renamed = (_, _) => ScheduleRefresh();
-            _watcher.Created += changed; _watcher.Deleted += changed; _watcher.Changed += changed; _watcher.Renamed += renamed; _watcher.EnableRaisingEvents = true;
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or ObjectDisposedException or System.Security.SecurityException)
-        {
-            _watcher?.Dispose();
-            _watcher = null;
-        }
-    }
-
-    private void ScheduleRefresh()
-    {
-        lock (_refreshGate)
-        {
-            if (_disposed) return;
-            _refreshDebounce ??= new Timer(_ => _context?.Post(_ => { if (!_disposed) Refresh(); }, null), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-            _refreshDebounce.Change(TimeSpan.FromMilliseconds(150), Timeout.InfiniteTimeSpan);
-        }
     }
     private void RebuildSources() { Sources.Clear(); if (_selected is not null) for (var i = 0; i < _selected.Sources.Length; i++) Sources.Add(new(this, i, _selected.Sources[i])); _selectedSource = Sources.FirstOrDefault(); }
     private void Add() { var target = Targets.FirstOrDefault(); if (target is null) return; var sources = SurfaceChoices.FirstOrDefault(choice => !choice.IsMissing) is { } choice ? new[] { NewSource(choice.SourceSurfaceTargetId) } : []; var item = new CabinetReflectionDefinition("reflection-" + Guid.NewGuid().ToString("N"), target.TargetPath, 0, sources, CabinetReflectionSettings.RoughPlastic); ExecuteAdd(item); if (Sources.Count > 0) Derive(); }

@@ -9,13 +9,14 @@ public static class CabinetDocumentStorage
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
 
     public static string Serialize(CabinetDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
-        return JsonSerializer.Serialize(document with { Version = 7 }, Options);
+        return JsonSerializer.Serialize(document with { Version = 8 }, Options);
     }
 
     public static bool TryRead(string? json, out CabinetDocument document)
@@ -29,18 +30,17 @@ public static class CabinetDocumentStorage
         try
         {
             var parsed = JsonSerializer.Deserialize<CabinetDocument>(json, Options);
-            if (parsed?.Model is null || string.IsNullOrWhiteSpace(parsed.Model.Path) || parsed.Version != 7)
+            if (parsed?.Model is null || string.IsNullOrWhiteSpace(parsed.Model.Path) || parsed.Version != 8)
             {
                 return false;
             }
 
             document = parsed with
             {
-                TargetOverrides = (parsed.TargetOverrides ?? [])
-                    .Where(targetOverride => !string.IsNullOrWhiteSpace(targetOverride.TargetId))
-                    .Select(targetOverride => targetOverride.Normalized())
+                SurfaceTargetSettings = (parsed.SurfaceTargetSettings ?? [])
+                    .Where(targetSettings => !string.IsNullOrWhiteSpace(targetSettings.TargetId))
+                    .Select(targetSettings => targetSettings.Normalized())
                     .ToArray(),
-                Preview = (parsed.Preview ?? CabinetPreviewSettings.Default).Normalized(),
                 ReelSpecifications = (parsed.ReelSpecifications ?? [])
                     .Where(specification => !string.IsNullOrWhiteSpace(specification.Id))
                     .Select(specification => specification.Normalized())

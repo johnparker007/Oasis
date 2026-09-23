@@ -1132,7 +1132,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
 
     private static CabinetDocument CreateCabinet(params CabinetReelSpecification[] specifications)
     {
-        return new CabinetDocument(7, new CabinetModelReference("Assets/Cabinets/cabinet.glb", 1.0, "Y"), [], CabinetPreviewSettings.Default, specifications, specifications.FirstOrDefault()?.Id);
+        return new CabinetDocument(8, new CabinetModelReference("Assets/Cabinets/cabinet.glb", 1.0, "Y"), [], specifications, specifications.FirstOrDefault()?.Id);
     }
 
     private static FaceCabinetContext CreateCabinetContext(CabinetDocument cabinet)

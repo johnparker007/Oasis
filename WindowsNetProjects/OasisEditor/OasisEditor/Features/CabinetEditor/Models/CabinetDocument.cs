@@ -3,19 +3,17 @@ namespace OasisEditor.Features.CabinetEditor.Models;
 public sealed record CabinetDocument(
     int Version,
     CabinetModelReference Model,
-    CabinetTargetOverride[] TargetOverrides,
-    CabinetPreviewSettings Preview,
+    CabinetSurfaceTargetSettings[] SurfaceTargetSettings,
     CabinetReelSpecification[] ReelSpecifications = null!,
     string? DefaultReelSpecificationId = null,
     CabinetReflectionDefinition[]? Reflections = null)
 {
-    public static CabinetDocument Empty => new(7, new CabinetModelReference(string.Empty, 1.0, "Y"), [], CabinetPreviewSettings.Default, [], null);
+    public static CabinetDocument Empty => new(8, new CabinetModelReference(string.Empty, 1.0, "Y"), [], [], null);
 
     public static CabinetDocument FromModelPath(string modelPath) => new(
-        7,
+        8,
         new CabinetModelReference(modelPath, 1.0, "Y"),
         [],
-        CabinetPreviewSettings.Default,
         [],
         null);
 }
@@ -80,14 +78,14 @@ public sealed record CabinetReelSpecification(string Id, string Name, double Dia
         && WidthMm > 0;
 }
 
-public sealed record CabinetTargetOverride(string TargetId, string FrontSide, int FaceRotation = 0, bool FaceFlipHorizontal = false)
+public sealed record CabinetSurfaceTargetSettings(string TargetId, string FrontSide, int FaceRotation = 0, bool FaceFlipHorizontal = false)
 {
     public const string NormalFrontSide = "normal";
     public const string InvertedFrontSide = "inverted";
 
-    public static CabinetTargetOverride Default(string targetId) => new(targetId, NormalFrontSide, 0, false);
+    public static CabinetSurfaceTargetSettings Default(string targetId) => new(targetId, NormalFrontSide, 0, false);
 
-    public CabinetTargetOverride Normalized() => new(TargetId, NormalizeFrontSide(FrontSide), NormalizeFaceRotation(FaceRotation), FaceFlipHorizontal);
+    public CabinetSurfaceTargetSettings Normalized() => new(TargetId, NormalizeFrontSide(FrontSide), NormalizeFaceRotation(FaceRotation), FaceFlipHorizontal);
 
     public static string NormalizeFrontSide(string? frontSide)
     {
@@ -105,31 +103,24 @@ public sealed record CabinetTargetOverride(string TargetId, string FrontSide, in
     };
 }
 
-public static class CabinetDocumentTargetOverrideExtensions
+public static class CabinetDocumentSurfaceTargetSettingsExtensions
 {
-    public static CabinetTargetOverride GetTargetOverride(this CabinetDocument document, string targetId)
+    public static CabinetSurfaceTargetSettings GetSurfaceTargetSettings(this CabinetDocument document, string targetId)
     {
         var normalizedTargetId = targetId.Trim();
-        return (document.TargetOverrides ?? []).FirstOrDefault(candidate => string.Equals(candidate.TargetId, normalizedTargetId, StringComparison.Ordinal))?.Normalized()
-            ?? CabinetTargetOverride.Default(normalizedTargetId);
+        return (document.SurfaceTargetSettings ?? []).FirstOrDefault(candidate => string.Equals(candidate.TargetId, normalizedTargetId, StringComparison.Ordinal))?.Normalized()
+            ?? CabinetSurfaceTargetSettings.Default(normalizedTargetId);
     }
 
-    public static CabinetDocument WithTargetOverride(this CabinetDocument document, CabinetTargetOverride targetOverride)
+    public static CabinetDocument WithSurfaceTargetSettings(this CabinetDocument document, CabinetSurfaceTargetSettings targetSettings)
     {
-        var normalizedOverride = targetOverride.Normalized();
-        var overrides = (document.TargetOverrides ?? [])
-            .Where(candidate => !string.Equals(candidate.TargetId, normalizedOverride.TargetId, StringComparison.Ordinal))
-            .Append(normalizedOverride)
+        var normalizedSettings = targetSettings.Normalized();
+        var settings = (document.SurfaceTargetSettings ?? [])
+            .Where(candidate => !string.Equals(candidate.TargetId, normalizedSettings.TargetId, StringComparison.Ordinal))
+            .Append(normalizedSettings)
             .ToArray();
-        return document with { TargetOverrides = overrides };
+        return document with { SurfaceTargetSettings = settings };
     }
-}
-
-public sealed record CabinetPreviewSettings(bool ShowTargetOverlays, bool ShowFaceBackgrounds, string LampPreviewMode = CabinetLampPreviewMode.Live)
-{
-    public static CabinetPreviewSettings Default => new(true, true, CabinetLampPreviewMode.Live);
-
-    public CabinetPreviewSettings Normalized() => new(ShowTargetOverlays, ShowFaceBackgrounds, CabinetLampPreviewMode.Normalize(LampPreviewMode));
 }
 
 public static class CabinetLampPreviewMode

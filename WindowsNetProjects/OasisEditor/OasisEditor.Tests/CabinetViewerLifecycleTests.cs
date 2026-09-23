@@ -38,11 +38,32 @@ public sealed class CabinetViewerLifecycleTests
         field!.SetValue(document, viewer);
         Assert.Same(viewer, document.ExistingCabinetViewer);
 
-        var replacement = document.GetCabinetDocument() with { Preview = new CabinetPreviewSettings(false, false) };
+        var replacement = document.GetCabinetDocument() with { Model = new CabinetModelReference("replacement.glb", 1, "Y") };
         document.CabinetDocumentJson = CabinetDocumentStorage.Serialize(replacement);
 
         Assert.Null(document.ExistingCabinetViewer);
         Assert.Null(viewer!.Viewport.Model);
+    }
+
+    [Fact]
+    public void PreviewStateAndMachineContext_DoNotDirtyOrMutateCabinet()
+    {
+        var document = CreateDocument();
+        var original = document.GetCabinetDocument();
+        var viewer = new CabinetModelDocumentViewModel(new CountingLoader(CreateModel()), document);
+        var firstMachine = MachineTab("First");
+        var secondMachine = MachineTab("Second");
+
+        viewer.SelectedLampPreviewMode = CabinetLampPreviewMode.LampsAllOn;
+        viewer.SetMachineCompositionContext(firstMachine);
+        viewer.SetMachineCompositionContext(secondMachine);
+        viewer.SetMachineCompositionContext(null);
+
+        Assert.False(document.IsDirty);
+        Assert.Equal(original, document.GetCabinetDocument());
+        Assert.Equal("No Machine context", viewer.PreviewingMachine);
+        Assert.Null(viewer.Viewport.FacePreviewModel);
+        viewer.Dispose();
     }
 
     private static DocumentTabViewModel CreateDocument()
@@ -50,6 +71,10 @@ public sealed class CabinetViewerLifecycleTests
         var cabinet = CabinetDocument.FromModelPath("cabinet.glb");
         return new DocumentTabViewModel(EditorDocument.CreateCabinet3DStub("Cabinet"), cabinetDocumentJson: CabinetDocumentStorage.Serialize(cabinet));
     }
+
+    private static DocumentTabViewModel MachineTab(string name) => new(
+        EditorDocument.CreateMachineStub(name),
+        machineDocumentJson: MachineDocumentStorage.Serialize(MachineDocument.Create(name)));
 
     private static Model3DGroup CreateModel()
     {

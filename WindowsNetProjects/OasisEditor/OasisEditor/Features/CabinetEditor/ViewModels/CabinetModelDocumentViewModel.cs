@@ -39,6 +39,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
     private bool _disposed;
     private bool _initialized;
     private DocumentTabViewModel? _machineCompositionContext;
+    private string _selectedLampPreviewMode = CabinetLampPreviewMode.Live;
 
     public CabinetModelDocumentViewModel(ICabinetModelLoader modelLoader, DocumentTabViewModel document, Func<IReadOnlyList<DocumentTabViewModel>>? openDocumentsAccessor = null, Func<EditorProject?>? projectAccessor = null)
     {
@@ -55,7 +56,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         _livePreviewRefreshTimer.Tick += OnLivePreviewRefreshTimerTick;
         ReloadCommand = new RelayCommand(async () => await LoadAsync(), CanLoad);
         ResetCameraCommand = Viewport.ResetCameraCommand;
-        ReflectionEditor = new CabinetReflectionEditorViewModel(document, projectAccessor);
+        ReflectionEditor = new CabinetReflectionEditorViewModel(document);
     }
 
     public void Initialize()
@@ -71,7 +72,9 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
 
     public void SetMachineCompositionContext(DocumentTabViewModel? machineDocument)
     {
+        if (ReferenceEquals(_machineCompositionContext, machineDocument)) return;
         _machineCompositionContext = machineDocument;
+        OnPropertyChanged(nameof(PreviewingMachine));
         RefreshFacePreviews();
     }
 
@@ -94,9 +97,10 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
     public bool IsLoading { get => _isLoading; private set { _isLoading = value; OnPropertyChanged(); if (ReloadCommand is RelayCommand relay) relay.RaiseCanExecuteChanged(); } }
     public ICommand ReloadCommand { get; }
     public ICommand ResetCameraCommand { get; }
-    public IReadOnlyList<string> FrontSideOptions { get; } = new[] { CabinetTargetOverride.NormalFrontSide, CabinetTargetOverride.InvertedFrontSide };
+    public IReadOnlyList<string> FrontSideOptions { get; } = new[] { CabinetSurfaceTargetSettings.NormalFrontSide, CabinetSurfaceTargetSettings.InvertedFrontSide };
     public IReadOnlyList<int> FaceRotationOptions { get; } = new[] { 0, 90, 180, 270 };
     public IReadOnlyList<string> LampPreviewModeOptions { get; } = new[] { CabinetLampPreviewMode.Live, CabinetLampPreviewMode.BackgroundOnly, CabinetLampPreviewMode.LampsOff, CabinetLampPreviewMode.LampsAllOn };
+    public string PreviewingMachine => _machineCompositionContext is null ? "No Machine context" : $"Previewing Machine: {_machineCompositionContext.Title}";
 
     public CabinetFaceTargetViewModel? SelectedFaceTarget
     {
@@ -115,15 +119,23 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
 
     public string SelectedLampPreviewMode
     {
-        get => CabinetLampPreviewMode.Normalize(_document.GetCabinetDocument().Preview.LampPreviewMode);
-        set => _document.CommandService.Execute(CabinetMutationCommands.CreateSetPreviewLampModeCommand(_document.DocumentId, _document, value));
+        get => _selectedLampPreviewMode;
+        set
+        {
+            var normalized = CabinetLampPreviewMode.Normalize(value);
+            if (string.Equals(_selectedLampPreviewMode, normalized, StringComparison.Ordinal)) return;
+            _selectedLampPreviewMode = normalized;
+            OnPropertyChanged();
+            InvalidatePreviewCache();
+            RefreshFacePreviews();
+        }
     }
 
     public bool HasSelectedFaceTarget => SelectedFaceTarget is not null;
 
     public string SelectedFrontSide
     {
-        get => SelectedFaceTarget is null ? CabinetTargetOverride.NormalFrontSide : _document.GetCabinetDocument().GetTargetOverride(SelectedFaceTarget.Id).FrontSide;
+        get => SelectedFaceTarget is null ? CabinetSurfaceTargetSettings.NormalFrontSide : _document.GetCabinetDocument().GetSurfaceTargetSettings(SelectedFaceTarget.Id).FrontSide;
         set
         {
             if (SelectedFaceTarget is null) return;
@@ -133,7 +145,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
 
     public int SelectedFaceRotation
     {
-        get => SelectedFaceTarget is null ? 0 : _document.GetCabinetDocument().GetTargetOverride(SelectedFaceTarget.Id).FaceRotation;
+        get => SelectedFaceTarget is null ? 0 : _document.GetCabinetDocument().GetSurfaceTargetSettings(SelectedFaceTarget.Id).FaceRotation;
         set
         {
             if (SelectedFaceTarget is null) return;
@@ -143,7 +155,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
 
     public bool IsSelectedFaceFlippedHorizontally
     {
-        get => SelectedFaceTarget is not null && _document.GetCabinetDocument().GetTargetOverride(SelectedFaceTarget.Id).FaceFlipHorizontal;
+        get => SelectedFaceTarget is not null && _document.GetCabinetDocument().GetSurfaceTargetSettings(SelectedFaceTarget.Id).FaceFlipHorizontal;
         set
         {
             if (SelectedFaceTarget is null) return;
@@ -254,8 +266,8 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
             }
             var preview = ResolvePreviewImage(source, SelectedLampPreviewMode, out var livePreviewTexture);
             if (preview is null) continue;
-            var targetOverride = _document.GetCabinetDocument().GetTargetOverride(target.Id);
-            if (!TryCreatePreviewGeometry(target.Target, targetOverride, preview, out var geometry, out var imageBrush)) continue;
+            var targetSettings = _document.GetCabinetDocument().GetSurfaceTargetSettings(target.Id);
+            if (!TryCreatePreviewGeometry(target.Target, targetSettings, preview, out var geometry, out var imageBrush)) continue;
             if (source.OpenDocument is { } faceTab)
                 _facePreviewEntriesByDocumentId[faceTab.DocumentId] = new CabinetFacePreviewEntry(faceTab.DocumentId, target.Id, geometry, imageBrush, livePreviewTexture);
             previewGroup.Children.Add(geometry);
@@ -449,7 +461,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         }
     }
 
-    private static bool TryCreatePreviewGeometry(CabinetFaceTarget target, CabinetTargetOverride targetOverride, BitmapSource bitmap, out GeometryModel3D geometry, out ImageBrush imageBrush)
+    private static bool TryCreatePreviewGeometry(CabinetFaceTarget target, CabinetSurfaceTargetSettings targetSettings, BitmapSource bitmap, out GeometryModel3D geometry, out ImageBrush imageBrush)
     {
         geometry = default!;
         imageBrush = default!;
@@ -458,9 +470,9 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
             return false;
         }
 
-        var positions = GetRenderQuadCorners(target.Corners, targetOverride);
-        var isInverted = CabinetTargetOverride.NormalizeFrontSide(targetOverride.FrontSide) == CabinetTargetOverride.InvertedFrontSide;
-        var reverseWinding = targetOverride.FaceFlipHorizontal ^ isInverted;
+        var positions = GetRenderQuadCorners(target.Corners, targetSettings);
+        var isInverted = CabinetSurfaceTargetSettings.NormalizeFrontSide(targetSettings.FrontSide) == CabinetSurfaceTargetSettings.InvertedFrontSide;
+        var reverseWinding = targetSettings.FaceFlipHorizontal ^ isInverted;
         var triangleIndices = reverseWinding
             ? new[] { 0, 2, 1, 0, 3, 2 }
             : new[] { 0, 1, 2, 0, 2, 3 };
@@ -482,9 +494,9 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         return true;
     }
 
-    private static Point3D[] GetRenderQuadCorners(IReadOnlyList<Point3D> sourceCorners, CabinetTargetOverride targetOverride)
+    private static Point3D[] GetRenderQuadCorners(IReadOnlyList<Point3D> sourceCorners, CabinetSurfaceTargetSettings targetSettings)
     {
-        var rotated = CabinetTargetOverride.NormalizeFaceRotation(targetOverride.FaceRotation) switch
+        var rotated = CabinetSurfaceTargetSettings.NormalizeFaceRotation(targetSettings.FaceRotation) switch
         {
             90 => new[] { sourceCorners[3], sourceCorners[0], sourceCorners[1], sourceCorners[2] },
             180 => new[] { sourceCorners[2], sourceCorners[3], sourceCorners[0], sourceCorners[1] },
@@ -492,7 +504,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
             _ => new[] { sourceCorners[0], sourceCorners[1], sourceCorners[2], sourceCorners[3] }
         };
 
-        return targetOverride.FaceFlipHorizontal
+        return targetSettings.FaceFlipHorizontal
             ? new[] { rotated[1], rotated[0], rotated[3], rotated[2] }
             : rotated;
     }

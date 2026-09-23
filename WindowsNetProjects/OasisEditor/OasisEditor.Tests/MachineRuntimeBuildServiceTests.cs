@@ -59,39 +59,39 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
     }
 
     [Fact]
-    public void RuntimeFaceMapping_SparseOverridesUseDefaultsForUnconfiguredTarget()
+    public void RuntimeFaceMapping_SparseSettingsUseDefaultsForUnconfiguredTarget()
     {
         var cabinet = CabinetDocument.FromModelPath("cabinet.glb") with
         {
-            TargetOverrides = [new CabinetTargetOverride("bottomGlass", CabinetTargetOverride.InvertedFrontSide, 90, true)]
+            SurfaceTargetSettings = [new CabinetSurfaceTargetSettings("bottomGlass", CabinetSurfaceTargetSettings.InvertedFrontSide, 90, true)]
         };
 
         var top = MachineRuntimeBuildService.CreateRuntimeFaceReference(cabinet, "top-id", "TopGlass", "topGlass", "faces/top/face.runtime.json");
         var bottom = MachineRuntimeBuildService.CreateRuntimeFaceReference(cabinet, "bottom-id", "BottomGlass", "bottomGlass", "faces/bottom/face.runtime.json");
 
-        Assert.Equal(CabinetTargetOverride.NormalFrontSide, top.FrontSide);
+        Assert.Equal(CabinetSurfaceTargetSettings.NormalFrontSide, top.FrontSide);
         Assert.Equal(0, top.FaceRotation);
         Assert.False(top.FaceFlipHorizontal);
-        Assert.Equal(CabinetTargetOverride.InvertedFrontSide, bottom.FrontSide);
+        Assert.Equal(CabinetSurfaceTargetSettings.InvertedFrontSide, bottom.FrontSide);
         Assert.Equal(90, bottom.FaceRotation);
         Assert.True(bottom.FaceFlipHorizontal);
     }
 
     [Fact]
-    public void RuntimeFaceMapping_EmptyOverridesUseDefaultsForEveryTarget()
+    public void RuntimeFaceMapping_EmptySettingsUseDefaultsForEveryTarget()
     {
         var cabinet = CabinetDocument.FromModelPath("cabinet.glb");
         foreach (var targetId in new[] { "topGlass", "bottomGlass" })
         {
             var reference = MachineRuntimeBuildService.CreateRuntimeFaceReference(cabinet, targetId + "-face", targetId, targetId, "face.runtime.json");
-            Assert.Equal(CabinetTargetOverride.NormalFrontSide, reference.FrontSide);
+            Assert.Equal(CabinetSurfaceTargetSettings.NormalFrontSide, reference.FrontSide);
             Assert.Equal(0, reference.FaceRotation);
             Assert.False(reference.FaceFlipHorizontal);
         }
     }
 
     [Fact]
-    public void TargetValidationUsesDetectedGlbTargets_NotSparseOverrides()
+    public void TargetValidationUsesDetectedGlbTargets_NotSparseSettings()
     {
         Directory.CreateDirectory(_root);
         var glb = Path.Combine(_root, "cabinet.glb");
