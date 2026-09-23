@@ -25,6 +25,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
     private readonly Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
     private readonly Func<EditorProject?>? _projectAccessor;
     private readonly FaceDocumentArtworkPreviewRenderer _previewRenderer = new();
+    private readonly CabinetFacePreviewSourceResolver _facePreviewSourceResolver = new();
     private readonly DispatcherTimer _livePreviewRefreshTimer;
     private readonly HashSet<Guid> _pendingLivePreviewDocumentIds = new();
     private readonly Dictionary<Guid, CabinetFacePreviewEntry> _facePreviewEntriesByDocumentId = new();
@@ -85,6 +86,8 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasError)); } }
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool HasFaceTargets => FaceTargets.Count > 0;
+    public IReadOnlyList<string> FacePreviewDiagnostics { get; private set; } = [];
+    public bool HasFacePreviewDiagnostics => FacePreviewDiagnostics.Count > 0;
     public string FaceTargetStatus => FaceTargets.Count == 0
         ? "No Oasis face targets found."
         : $"Detected {FaceTargets.Count} Oasis face target{(FaceTargets.Count == 1 ? string.Empty : "s")}.";
@@ -228,6 +231,10 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
     public void RefreshFacePreviews()
     {
         _pendingLivePreviewDocumentIds.Clear(); _livePreviewRefreshTimer.Stop(); _facePreviewEntriesByDocumentId.Clear();
+        FacePreviewDiagnostics = [];
+        OnPropertyChanged(nameof(FacePreviewDiagnostics));
+        OnPropertyChanged(nameof(HasFacePreviewDiagnostics));
+        var diagnostics = new List<string>();
         var validTargets = FaceTargets.Where(target => target.IsValid).ToDictionary(target => target.Id, StringComparer.Ordinal);
         var project = _projectAccessor?.Invoke();
         if (validTargets.Count == 0 || _openDocumentsAccessor is null || project is null || _machineCompositionContext is null)
@@ -239,16 +246,23 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         var previewGroup = new Model3DGroup();
         foreach (var assignment in machine.SurfaceAssignments)
         {
-            var manifestPath = new ProjectAssetPathService().ResolveProjectRelativePath(project, assignment.FaceAssetPath);
-            var faceTab = _openDocumentsAccessor().FirstOrDefault(candidate => candidate.Document.DocumentType == EditorDocumentType.Face && string.Equals(Path.GetFullPath(candidate.FilePath), Path.GetFullPath(manifestPath), StringComparison.OrdinalIgnoreCase));
-            if (faceTab is null || !validTargets.TryGetValue(assignment.TargetId, out var target)) continue;
-            var preview = ResolvePreviewImage(faceTab, faceTab.GetFaceDocument(), SelectedLampPreviewMode, out var livePreviewTexture);
+            if (!validTargets.TryGetValue(assignment.TargetId, out var target)) continue;
+            if (!_facePreviewSourceResolver.TryResolve(project, assignment.FaceAssetPath, _openDocumentsAccessor(), out var source, out var diagnostic))
+            {
+                if (!string.IsNullOrWhiteSpace(diagnostic)) diagnostics.Add(diagnostic);
+                continue;
+            }
+            var preview = ResolvePreviewImage(source, SelectedLampPreviewMode, out var livePreviewTexture);
             if (preview is null) continue;
             var targetOverride = _document.GetCabinetDocument().GetTargetOverride(target.Id);
             if (!TryCreatePreviewGeometry(target.Target, targetOverride, preview, out var geometry, out var imageBrush)) continue;
-            _facePreviewEntriesByDocumentId[faceTab.DocumentId] = new CabinetFacePreviewEntry(faceTab.DocumentId, target.Id, geometry, imageBrush, livePreviewTexture);
+            if (source.OpenDocument is { } faceTab)
+                _facePreviewEntriesByDocumentId[faceTab.DocumentId] = new CabinetFacePreviewEntry(faceTab.DocumentId, target.Id, geometry, imageBrush, livePreviewTexture);
             previewGroup.Children.Add(geometry);
         }
+        FacePreviewDiagnostics = diagnostics;
+        OnPropertyChanged(nameof(FacePreviewDiagnostics));
+        OnPropertyChanged(nameof(HasFacePreviewDiagnostics));
         Viewport.FacePreviewModel = previewGroup.Children.Count == 0 ? null : previewGroup;
     }
 
@@ -331,12 +345,12 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
             $"Cabinet3D Live preview update face={faceDocumentId} staticBaseCacheHit={stats.StaticBaseCacheHit} staticBaseRenderMs={stats.StaticBaseRenderMilliseconds:0.00} lampOverlayRenderMs={stats.LampOverlayRenderMilliseconds:0.00} finalComposeOrCopyMs={stats.FinalComposeOrCopyMilliseconds:0.00} textureUploadMs={textureStopwatch.Elapsed.TotalMilliseconds:0.00} materialMs={materialStopwatch.Elapsed.TotalMilliseconds:0.00} totalMs={totalStopwatch.Elapsed.TotalMilliseconds:0.00} textureRecreated={textureRecreated}");
     }
 
-    private BitmapSource? ResolvePreviewImage(DocumentTabViewModel document, FaceDocumentModel faceDocument, string previewMode, out CabinetLivePreviewTexture? livePreviewTexture)
+    private BitmapSource? ResolvePreviewImage(CabinetFacePreviewSource source, string previewMode, out CabinetLivePreviewTexture? livePreviewTexture)
     {
         livePreviewTexture = null;
-        if (previewMode == CabinetLampPreviewMode.Live)
+        if (previewMode == CabinetLampPreviewMode.Live && source.OpenDocument is { } document)
         {
-            var frame = ComposeLivePreviewFrame(document, faceDocument, out _);
+            var frame = ComposeLivePreviewFrame(document, source.FaceDocument, out _);
             if (frame is null)
             {
                 return null;
@@ -346,13 +360,14 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
             return livePreviewTexture.Bitmap;
         }
 
-        var cacheKey = CabinetStaticPreviewCacheKey.Create(document.DocumentId, document.FaceDocumentJson, previewMode);
+        var effectivePreviewMode = previewMode == CabinetLampPreviewMode.Live ? CabinetLampPreviewMode.LampsOff : previewMode;
+        var cacheKey = new CabinetStaticPreviewCacheKey(source.CacheIdentity, source.ContentIdentity, effectivePreviewMode);
         if (!_staticPreviewCache.TryGetValue(cacheKey, out var preview))
         {
             preview = _previewRenderer.RenderPreview(
-                faceDocument,
-                document.RuntimeState,
-                previewMode,
+                source.FaceDocument,
+                source.RuntimeState,
+                effectivePreviewMode,
                 FaceDocumentArtworkPreviewRenderer.StaticPreviewRenderOptions);
             if (preview is not null)
             {
@@ -591,13 +606,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         }
     }
 
-    private sealed record CabinetStaticPreviewCacheKey(Guid FaceDocumentId, string FaceDocumentJson, string PreviewMode)
-    {
-        public static CabinetStaticPreviewCacheKey Create(Guid faceDocumentId, string? faceDocumentJson, string previewMode)
-        {
-            return new CabinetStaticPreviewCacheKey(faceDocumentId, faceDocumentJson ?? string.Empty, previewMode);
-        }
-    }
+    private sealed record CabinetStaticPreviewCacheKey(string SourceIdentity, string ContentIdentity, string PreviewMode);
 
     private sealed record CabinetLiveBaseCacheKey(Guid FaceDocumentId, string FaceDocumentJson, int TextureWidth, int TextureHeight)
     {

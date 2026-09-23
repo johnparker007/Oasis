@@ -24,6 +24,8 @@ Saving updates the existing tab's path/title/clean metadata in place. The Machin
 
 Standalone Cabinet tabs render no mounted Faces without context. When an active Machine references that Cabinet, the Cabinet viewer receives that Machine tab explicitly and previews only its `SurfaceAssignments`; it never scans Machines or persists composition on Cabinet.
 
+For each assigned surface, Cabinet preview prefers an open Face tab's in-memory model and runtime state, but otherwise validates and loads the saved Face manifest from disk. Closed Faces use a static lamps-off fallback when the Cabinet is in Live mode; opening upgrades them to live automatically, and closing falls back to the saved version. Preview caches key saved Faces by normalized asset path plus serialized manifest content so disk changes cannot reuse stale imagery.
+
 Runtime schema 5 stores the complete selected platform settings in `platformSettingsJson`, a concrete JSON string Unity `JsonUtility` can reliably deserialize and validate. Oasis Player deliberately retains but does not execute those settings in Phase 1.
 
 ## Phase-1 reel bridge
