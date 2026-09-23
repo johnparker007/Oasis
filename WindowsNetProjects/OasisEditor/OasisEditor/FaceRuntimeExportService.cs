@@ -453,9 +453,9 @@ public sealed class FaceRuntimeExportService
         var reelName = DisplayName(reel);
         var machineReference = reel.LinkedMachineObjectReference;
         var cabinetAsset = cabinetContext?.CabinetAssetPath ?? string.Empty;
-        var requestedId = string.Empty;
+        var requestedPath = string.Empty;
 
-        InvalidOperationException Fail(string reason) => new($"Unable to resolve physical reel dimensions. Face asset '{faceAsset}', reel '{reelName}' (objectId '{reel.ObjectId}'), Cabinet asset '{cabinetAsset}', requested specification ID '{requestedId}': {reason}");
+        InvalidOperationException Fail(string reason) => new($"Unable to resolve physical reel dimensions. Face asset '{faceAsset}', reel '{reelName}' (objectId '{reel.ObjectId}'), Cabinet asset '{cabinetAsset}', Reel asset '{requestedPath}': {reason}");
 
         if (cabinetContext is null || cabinetContext.CabinetDocument is null)
         {
@@ -473,33 +473,11 @@ public sealed class FaceRuntimeExportService
         {
             throw Fail(assignmentMatches.Length == 0 ? $"Machine has no assignment for logical reel '{machineReference}'." : $"Machine has duplicate assignments for logical reel '{machineReference}'.");
         }
-        requestedId = assignmentMatches[0].CabinetReelSpecificationId;
-
-        var matches = (cabinetContext.CabinetDocument.ReelSpecifications ?? [])
-            .Where(specification => string.Equals(specification.Id?.Trim(), requestedId, StringComparison.Ordinal))
-            .ToArray();
-        if (matches.Length == 0)
-        {
-            throw Fail("Referenced Cabinet reel specification does not exist.");
-        }
-
-        if (matches.Length > 1)
-        {
-            throw Fail("Cabinet contains duplicate matching reel specification IDs.");
-        }
-
-        var specification = matches[0];
-        if (!PanelElementValidation.IsFinite(specification.DiameterMm) || specification.DiameterMm <= 0d)
-        {
-            throw Fail($"Cabinet reel specification diameter '{specification.DiameterMm}' is not a positive finite millimetre value.");
-        }
-
-        if (!PanelElementValidation.IsFinite(specification.WidthMm) || specification.WidthMm <= 0d)
-        {
-            throw Fail($"Cabinet reel specification width '{specification.WidthMm}' is not a positive finite millimetre value.");
-        }
-
-        return new ResolvedReelPhysicalDimensions(specification.WidthMm, specification.DiameterMm / 2d);
+        requestedPath = assignmentMatches[0].ReelAssetPath;
+        if (cabinetContext.ResolvedReels is null || !cabinetContext.ResolvedReels.TryGetValue(machineReference.Value, out var reelAsset))
+            throw Fail("Referenced Reel asset was not resolved by the Machine build.");
+        ReelDocumentStorage.Validate(reelAsset);
+        return new ResolvedReelPhysicalDimensions(reelAsset.WidthMm, reelAsset.DiameterMm / 2d);
     }
 
     private readonly record struct ResolvedReelPhysicalDimensions(double WidthMm, double RadiusMm);

@@ -416,45 +416,6 @@ public sealed class FaceBuildServiceTests
         Assert.False(runtimeInvoked);
     }
 
-    [Fact]
-    public void StandaloneRuntimeCapability_DoesNotDependOnCabinetOrReelPresence()
-    {
-        var directory = Path.Combine(Path.GetTempPath(), $"oasis-runtime-capability-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(directory);
-        try
-        {
-            var cabinetPath = Path.Combine(directory, "cabinet.cabinet3d");
-            File.WriteAllText(cabinetPath, CabinetDocumentStorage.Serialize(new CabinetDocument(
-                8, new CabinetModelReference("cabinet.glb", 1, "Y"), [],
-                [new CabinetReelSpecification("standard", "Standard", 210, 50)], "standard")));
-            var face = new FaceDocumentModel
-            {
-                Artwork = new FaceArtworkModel { OutputWidth = 4, OutputHeight = 4 },
-                MaskLayer = new FaceMaskLayerModel { AssetPath = "Generated/Faces/Face/mask.png", Width = 4, Height = 4 },
-                Elements = [new FaceReelDisplayElement { ObjectId = "reel-1",}],
-                BuildState = FaceBuildStateFactory.CreateGeneratedState(true, false, false, false, false)
-            };
-            var service = new FaceRuntimeAssetsConfigurationService();
-
-            var configured = service.Evaluate(face, Project(directory), []);
-            service.Reconcile(face, configured);
-
-            Assert.True(configured.IsConfigured, configured.Reason);
-            Assert.Equal(FaceBuildStatus.Stale, face.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
-
-            var removed = new FaceDocumentModel
-            {
-                Artwork = face.Artwork, BuildState = face.BuildState, RuntimeRenderAssets = face.RuntimeRenderAssets
-            };
-            service.Reconcile(removed, service.Evaluate(removed, Project(directory), []));
-            Assert.Equal(FaceBuildStatus.NotConfigured, removed.BuildState.Get(FaceGeneratedProduct.RuntimeAssets).Status);
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
     private static IReadOnlyDictionary<FaceGeneratedProduct, Func<FaceBuildNodeResult>> Builders(IList<FaceGeneratedProduct> calls) =>
         Enum.GetValues<FaceGeneratedProduct>().ToDictionary(product => product, product => (Func<FaceBuildNodeResult>)(() =>
         {

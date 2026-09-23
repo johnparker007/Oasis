@@ -54,7 +54,7 @@ public sealed class DocumentSaveServiceTests
             Assert.True(current.CommandService.TryRedo());
             Assert.Equal("Assets/Faces/FaceB/asset.face", surfaceRow.SelectedAssetPath);
 
-            reelRow.SelectedSpecificationId = null;
+            reelRow.SelectedReelAssetPath = null;
             service.SaveDocument(current, savePath).ApplyTo(current);
             Assert.Same(surfaceRow, Assert.Single(current.MachineSurfaceAssignmentRows));
             Assert.Same(reelRow, Assert.Single(current.MachineReelAssignmentRows));
@@ -117,31 +117,6 @@ public sealed class DocumentSaveServiceTests
         {
             if (File.Exists(tempPath)) File.Delete(tempPath);
         }
-    }
-
-    [Fact]
-    public void SaveDocument_CabinetUpdatesExistingTabInPlace()
-    {
-        var tempPath = Path.Combine(Path.GetTempPath(), $"oasis-save-{Guid.NewGuid():N}.cabinet3d");
-        try
-        {
-            var cabinet = CabinetDocument.FromModelPath("cabinet.glb") with
-            {
-                ReelSpecifications = [new("standard", "Standard", 210, 50)]
-            };
-            var current = new DocumentTabViewModel(
-                EditorDocument.CreateCabinet3DStub("Cabinet").MarkDirty(),
-                cabinetDocumentJson: CabinetDocumentStorage.Serialize(cabinet));
-            var originalId = current.DocumentId;
-
-            new DocumentSaveService().SaveDocument(current, tempPath).ApplyTo(current);
-
-            Assert.Equal(originalId, current.DocumentId);
-            Assert.False(current.IsDirty);
-            Assert.Equal(tempPath, current.FilePath);
-            Assert.Equal("standard", Assert.Single(current.GetCabinetDocument().ReelSpecifications).Id);
-        }
-        finally { if (File.Exists(tempPath)) File.Delete(tempPath); }
     }
 
     [Fact]

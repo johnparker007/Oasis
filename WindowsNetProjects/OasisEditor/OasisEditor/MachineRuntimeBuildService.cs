@@ -186,7 +186,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 var faceDocument = FaceDocumentStorage.ToModel(faceFile);
                 var faceAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(manifestPath, EditorAssetType.Face);
                 if (string.IsNullOrWhiteSpace(faceAssetName)) throw new InvalidOperationException("Face must be stored as Assets/Faces/<AssetName>/asset.face");
-                var cabinetContext = new FaceCabinetContext(cabinetDocument, cabinetAssetPath, machineDocument.ReelAssignments);
+                var resolvedReels = ResolveFaceReels(project, machineDocument, faceDocument);
+                var cabinetContext = new FaceCabinetContext(cabinetDocument, cabinetAssetPath, machineDocument.ReelAssignments, resolvedReels);
                 var exportResult = _faceRuntimeExportService.Export(faceDocument, project, cabinetContext, manifestPath);
                 var buildFaceDirectory = Path.Combine(stagingRoot, "faces", _pathService.SanitizePathSegment(faceAssetName));
                 CopyDirectory(exportResult.OutputDirectory, buildFaceDirectory, cancellationToken);
@@ -199,6 +200,31 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         }
         progress.Report(1, assignments.Length == 0 ? "No mounted Faces to export." : $"Exported {references.Count} mounted Faces.");
         return references;
+    }
+
+    private IReadOnlyDictionary<MachineObjectReference, ReelDocument> ResolveFaceReels(EditorProject project, MachineDocument machine, FaceDocumentModel face)
+    {
+        var result = new Dictionary<MachineObjectReference, ReelDocument>();
+        var required = face.Elements.OfType<FaceReelDisplayElement>()
+            .Select(element => element.LinkedMachineObjectReference)
+            .Where(reference => reference is { Kind: MachineObjectKind.Reel })
+            .Select(reference => reference!.Value).Distinct();
+        foreach (var reference in required)
+        {
+            var matches = machine.ReelAssignments.Where(assignment => assignment.MachineReelReference == reference).ToArray();
+            if (matches.Length != 1) throw new InvalidOperationException(matches.Length == 0
+                ? $"Machine '{machine.DisplayName}' has no Reel asset assignment for logical reel '{reference}'."
+                : $"Machine '{machine.DisplayName}' has duplicate Reel asset assignments for logical reel '{reference}'.");
+            var assetPath = matches[0].ReelAssetPath;
+            var manifestPath = _pathService.ResolveProjectRelativePath(project, assetPath);
+            if (!File.Exists(manifestPath)) throw new InvalidOperationException($"Machine '{machine.DisplayName}' {reference} -> Reel asset '{assetPath}' was not found.");
+            if (ProjectAssetPathService.GetPackageAssetNameFromManifestPath(manifestPath, EditorAssetType.Reel) is null)
+                throw new InvalidOperationException($"Machine '{machine.DisplayName}' {reference} -> Reel asset '{assetPath}' is not stored as Assets/Reels/<Name>/asset.reel.");
+            if (!ReelDocumentStorage.TryRead(File.ReadAllText(manifestPath), out var reel, out var error))
+                throw new InvalidOperationException($"Machine '{machine.DisplayName}' {reference} -> Reel asset '{assetPath}' is invalid: {error}");
+            result.Add(reference, reel);
+        }
+        return result;
     }
 
     internal static MachineRuntimeFaceReference CreateRuntimeFaceReference(CabinetDocument cabinetDocument, string faceId, string faceAssetName, string targetId, string manifest)

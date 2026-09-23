@@ -16,7 +16,7 @@ public static class CabinetDocumentStorage
     public static string Serialize(CabinetDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
-        return JsonSerializer.Serialize(document with { Version = 8 }, Options);
+        return JsonSerializer.Serialize(document with { Version = 9 }, Options);
     }
 
     public static bool TryRead(string? json, out CabinetDocument document)
@@ -30,7 +30,7 @@ public static class CabinetDocumentStorage
         try
         {
             var parsed = JsonSerializer.Deserialize<CabinetDocument>(json, Options);
-            if (parsed?.Model is null || string.IsNullOrWhiteSpace(parsed.Model.Path) || parsed.Version != 8)
+            if (parsed?.Model is null || string.IsNullOrWhiteSpace(parsed.Model.Path) || parsed.Version != 9)
             {
                 return false;
             }
@@ -41,11 +41,6 @@ public static class CabinetDocumentStorage
                     .Where(targetSettings => !string.IsNullOrWhiteSpace(targetSettings.TargetId))
                     .Select(targetSettings => targetSettings.Normalized())
                     .ToArray(),
-                ReelSpecifications = (parsed.ReelSpecifications ?? [])
-                    .Where(specification => !string.IsNullOrWhiteSpace(specification.Id))
-                    .Select(specification => specification.Normalized())
-                    .ToArray(),
-                DefaultReelSpecificationId = string.IsNullOrWhiteSpace(parsed.DefaultReelSpecificationId) ? null : parsed.DefaultReelSpecificationId.Trim(),
                 Reflections = (parsed.Reflections ?? []).Where(reflection => !string.IsNullOrWhiteSpace(reflection.Id) && reflection.Sources is not null && reflection.Settings is not null).Select(reflection => reflection.Normalized()).ToArray()
             };
             return true;

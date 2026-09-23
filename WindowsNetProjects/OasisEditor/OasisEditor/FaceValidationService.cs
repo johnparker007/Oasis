@@ -44,15 +44,6 @@ public sealed class FaceValidationService
 
     private static void ValidateCabinetComposition(FaceDocumentModel face, CabinetDocument cabinet, List<FaceValidationDiagnostic> diagnostics, IReadOnlyList<MachineReelAssignment>? machineAssignments = null)
     {
-        var specifications = cabinet.ReelSpecifications ?? [];
-        if (!string.IsNullOrWhiteSpace(cabinet.DefaultReelSpecificationId)
-            && !specifications.Any(value => string.Equals(value.Id, cabinet.DefaultReelSpecificationId, StringComparison.Ordinal)))
-            diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelSpecification.DefaultMissing", $"Cabinet default reel specification '{cabinet.DefaultReelSpecificationId}' does not exist."));
-        foreach (var group in specifications.Where(value => !string.IsNullOrWhiteSpace(value.Id)).GroupBy(value => value.Id, StringComparer.Ordinal).Where(value => value.Count() > 1))
-            diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelSpecification.DuplicateId", $"Cabinet contains duplicate reel specification ID '{group.Key}'."));
-        foreach (var specification in specifications.Where(value => !value.HasValidDimensions))
-            diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelSpecification.InvalidDimensions", $"Cabinet reel specification '{specification.Id}' must have positive finite diameter and width values."));
-
         foreach (var reel in face.Elements.OfType<FaceReelDisplayElement>())
         {
             var machineReference = reel.LinkedMachineObjectReference;
@@ -61,16 +52,14 @@ public sealed class FaceValidationService
             var assignments = (machineAssignments ?? []).Where(value => value.MachineReelReference == reference).ToArray();
             if (assignments.Length == 0)
             {
-                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.Missing", $"Machine has no physical reel assignment for logical reel '{reference}'."));
+                diagnostics.Add(new(FaceValidationSeverity.Error, "Machine.ReelAssignment.Missing", $"Machine has no Reel asset assignment for logical reel '{reference}'."));
                 continue;
             }
             if (assignments.Length > 1)
             {
-                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.Duplicate", $"Machine has duplicate physical reel assignments for logical reel '{reference}'."));
+                diagnostics.Add(new(FaceValidationSeverity.Error, "Machine.ReelAssignment.Duplicate", $"Machine has duplicate Reel asset assignments for logical reel '{reference}'."));
                 continue;
             }
-            if (!specifications.Any(value => string.Equals(value.Id, assignments[0].CabinetReelSpecificationId, StringComparison.Ordinal)))
-                diagnostics.Add(new(FaceValidationSeverity.Error, "Cabinet.ReelAssignment.SpecificationMissing", $"Logical reel '{reference}' references Cabinet reel specification '{assignments[0].CabinetReelSpecificationId}', which does not exist."));
         }
     }
 

@@ -6,25 +6,21 @@ namespace OasisEditor.Tests;
 public sealed class CabinetDocumentTests
 {
     [Fact]
-    public void Schema8_RoundTripsOnlyIntrinsicCabinetStateAndTemporaryPhysicalReels()
+    public void Schema9_RoundTripsOnlyIntrinsicCabinetState()
     {
         var plane = new CabinetReflectionPlane(new(0, 0, 0), new(1, 0, 0), new(0, 1, 0), 2, 1);
         var source = CabinetDocument.FromModelPath("cabinet.glb") with
         {
             Model = new("cabinet.glb", 0.01, "Z"),
             SurfaceTargetSettings = [new("OasisFace_Top", CabinetSurfaceTargetSettings.InvertedFrontSide, 90, true)],
-            ReelSpecifications = [new("standard", "Standard physical reel", 210, 50)],
-            DefaultReelSpecificationId = "standard",
             Reflections = [new("glass", "Cabinet/Glass", 0, [new("OasisFace_Top", plane)], CabinetReflectionSettings.RoughPlastic)]
         };
 
         var json = CabinetDocumentStorage.Serialize(source);
         Assert.True(CabinetDocumentStorage.TryRead(json, out var parsed));
-        Assert.Equal(8, parsed.Version);
+        Assert.Equal(9, parsed.Version);
         Assert.Equal(source.Model, parsed.Model);
         Assert.Equal(source.SurfaceTargetSettings, parsed.SurfaceTargetSettings);
-        Assert.Equal(source.ReelSpecifications, parsed.ReelSpecifications);
-        Assert.Equal(source.DefaultReelSpecificationId, parsed.DefaultReelSpecificationId);
         var expectedReflection = Assert.Single(source.Reflections!);
         var actualReflection = Assert.Single(parsed.Reflections!);
         Assert.Equal(expectedReflection.Id, actualReflection.Id);
@@ -54,11 +50,11 @@ public sealed class CabinetDocumentTests
 
     [Theory]
     [InlineData(7)]
-    [InlineData(9)]
+    [InlineData(8)]
     public void ReaderRejectsNonCurrentSchema(int version)
     {
         var json = CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb"));
-        json = json.Replace("\"version\": 8", $"\"version\": {version}", StringComparison.Ordinal);
+        json = json.Replace("\"version\": 9", $"\"version\": {version}", StringComparison.Ordinal);
         Assert.False(CabinetDocumentStorage.TryRead(json, out _));
     }
 

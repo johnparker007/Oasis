@@ -25,6 +25,7 @@ public sealed class ProjectAssetPathServiceTests
         Assert.Equal(Path.Combine(root, "Assets", "Faces", "Top Glass", "mask.png"), service.GetFaceMaskPath(project, "Top Glass"));
         Assert.Equal(Path.Combine(root, "Assets", "Cabinet3D", "Vogue", "asset.cabinet3d"), service.GetCabinet3DManifestPath(project, "Vogue"));
         Assert.Equal(Path.Combine(root, "Assets", "Machines", "Bonanza", "asset.machine"), service.GetMachineManifestPath(project, "Bonanza"));
+        Assert.Equal(Path.Combine(root, "Assets", "Reels", "Standard Reel", "asset.reel"), service.GetReelManifestPath(project, "Standard Reel"));
         Assert.Equal(Path.Combine(root, "Generated", "Faces", "Top Glass", "runtime"), service.GetFaceRuntimeDirectory(project, "Top Glass"));
     }
 

@@ -15,7 +15,7 @@ public sealed record MachineDocument(
     MachineEmulationRuntime Runtime,
     List<InputDefinitionModel> InputDefinitions)
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public static MachineDocument Create(string displayName) => new(
         CurrentSchemaVersion,
@@ -33,10 +33,10 @@ public sealed record MachineSurfaceAssignment(string TargetId, string FaceAssetP
     public MachineSurfaceAssignment Normalized() => new(TargetId.Trim(), ProjectAssetPathService.NormalizeProjectRelativePath(FaceAssetPath.Trim()));
 }
 
-/// <summary>Phase-1 bridge only: resolves a logical reel to a selected Cabinet's embedded specification.</summary>
-public sealed record MachineReelAssignment(MachineObjectReference MachineReelReference, string CabinetReelSpecificationId)
+/// <summary>Resolves a logical Face reel to a reusable physical Reel asset.</summary>
+public sealed record MachineReelAssignment(MachineObjectReference MachineReelReference, string ReelAssetPath)
 {
-    public MachineReelAssignment Normalized() => new(MachineReelReference, CabinetReelSpecificationId.Trim());
+    public MachineReelAssignment Normalized() => new(MachineReelReference, ProjectAssetPathService.NormalizeProjectRelativePath(ReelAssetPath.Trim()));
 }
 
 /// <summary>
@@ -140,6 +140,8 @@ public static class MachineDocumentStorage
         if (!Guid.TryParse(document.Id, out _)) throw new InvalidOperationException("Machine ID must be a stable GUID.");
         if (string.IsNullOrWhiteSpace(document.DisplayName)) throw new InvalidOperationException("Machine display name is required.");
         if (document.SurfaceAssignments.GroupBy(x => x.TargetId, StringComparer.Ordinal).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine surface target assignments must be unique.");
+        if (document.ReelAssignments.GroupBy(x => x.MachineReelReference).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine reel assignments must be unique.");
+        if (document.ReelAssignments.Any(x => x.MachineReelReference.Kind != MachineObjectKind.Reel || string.IsNullOrWhiteSpace(x.ReelAssetPath))) throw new InvalidOperationException("Machine reel assignments require a logical Reel reference and Reel asset path.");
     }
 }
 
