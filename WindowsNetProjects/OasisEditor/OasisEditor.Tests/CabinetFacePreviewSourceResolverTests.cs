@@ -22,14 +22,18 @@ public sealed class CabinetFacePreviewSourceResolverTests
         Assert.StartsWith("saved:", closedTop.CacheIdentity);
 
         var topManifest = new ProjectAssetPathService().ResolveProjectRelativePath(fixture.Project, topPath);
+        var liveTopFile = FaceDocumentStorage.CreateEmpty("Top") with
+        {
+            Summary = "Unsaved live summary"
+        };
         var openTop = new DocumentTabViewModel(
             EditorDocument.CreateFromFile(topManifest, "Face", "Top"),
-            faceDocumentJson: FaceDocumentStorage.Serialize(FaceDocumentStorage.CreateEmpty("Unsaved Live Top")));
+            faceDocumentJson: FaceDocumentStorage.Serialize(liveTopFile));
         Assert.True(resolver.TryResolve(fixture.Project, topPath, [openTop], out var liveTop, out var liveError), liveError);
         Assert.True(liveTop.IsLive);
         Assert.Same(openTop, liveTop.OpenDocument);
         Assert.Same(openTop.RuntimeState, liveTop.RuntimeState);
-        Assert.Equal("Unsaved Live Top", liveTop.FaceDocument.Title);
+        Assert.Equal("Unsaved live summary", liveTop.FaceDocument.Summary);
         Assert.StartsWith("open:", liveTop.CacheIdentity);
 
         Assert.True(resolver.TryResolve(fixture.Project, topPath, [], out var fallbackTop, out var fallbackError), fallbackError);
