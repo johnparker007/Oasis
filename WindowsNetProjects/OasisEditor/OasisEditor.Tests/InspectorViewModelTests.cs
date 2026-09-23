@@ -218,7 +218,7 @@ public sealed class InspectorViewModelTests
 
 
     [Fact]
-    public void InspectorPropertyRows_SelectedCabinetDocument_ShowsReachableReelSpecificationEditor()
+    public void InspectorPropertyRows_SelectedCabinetDocument_HasNoReelSpecificationEditor()
     {
         var selectedDocument = new DocumentTabViewModel(
             EditorDocument.CreateCabinet3DStub("Cabinet"),
@@ -229,16 +229,8 @@ public sealed class InspectorViewModelTests
 
         viewModel.NotifyContextChanged();
 
-        var addRow = Assert.IsType<InspectorActionPropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Add Temporary Reel Specification"));
-        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Default Reel Specification" && row.GroupName == "Temporary Physical Reel Specifications");
-
-        addRow.Command.Execute(null);
-        viewModel.NotifyContextChanged();
-
-        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Name" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
-        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Diameter mm" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
-        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Width mm" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
-        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Delete" && row.GroupName.StartsWith("Reel:", StringComparison.Ordinal));
+        Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.DisplayName.Contains("Reel Specification", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.GroupName.Contains("Reel", StringComparison.OrdinalIgnoreCase));
     }
 
 
