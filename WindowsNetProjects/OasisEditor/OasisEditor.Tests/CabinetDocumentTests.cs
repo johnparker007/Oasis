@@ -25,7 +25,14 @@ public sealed class CabinetDocumentTests
         Assert.Equal(source.SurfaceTargetSettings, parsed.SurfaceTargetSettings);
         Assert.Equal(source.ReelSpecifications, parsed.ReelSpecifications);
         Assert.Equal(source.DefaultReelSpecificationId, parsed.DefaultReelSpecificationId);
-        Assert.Equal(source.Reflections, parsed.Reflections);
+        var expectedReflection = Assert.Single(source.Reflections!);
+        var actualReflection = Assert.Single(parsed.Reflections!);
+        Assert.Equal(expectedReflection.Id, actualReflection.Id);
+        Assert.Equal(expectedReflection.TargetId, actualReflection.TargetId);
+        Assert.Equal(expectedReflection.MaterialSlot, actualReflection.MaterialSlot);
+        Assert.Equal(expectedReflection.Settings, actualReflection.Settings);
+        Assert.Equal(expectedReflection.VisibilityMask, actualReflection.VisibilityMask);
+        Assert.Equal(expectedReflection.Sources, actualReflection.Sources);
         Assert.DoesNotContain("preview", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("faceAssignments", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("reelAssignments", json, StringComparison.OrdinalIgnoreCase);
