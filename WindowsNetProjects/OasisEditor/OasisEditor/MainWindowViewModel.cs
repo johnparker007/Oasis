@@ -53,6 +53,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private CpuImageProcessingMode _cpuImageProcessingMode = CpuImageProcessingMode.Auto;
     private int _customMaximumProcessingWorkers = 1;
     private string _selectedPreferencesCategory = "Appearance";
+    private string _oasisAssetLibraryRoot = string.Empty;
     private string _selectedProjectSettingsCategory = "General";
     private string _selectedNativeProjectSettingsTab = "ROMS";
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
@@ -238,6 +239,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var preferences = _preferencesStore.Load();
             _selectedThemePreference = preferences.ThemePreference;
+            _oasisAssetLibraryRoot = preferences.AssetLibrary.RootPath;
             _fabricRuntimeLibraryPath = preferences.NativeEmulation.FabricRuntimeLibraryPath;
             _productionAmberLibraryPath = preferences.NativeEmulation.ProductionAmberLibraryPath;
             _mpu5AmberLibraryPath = preferences.NativeEmulation.Mpu5AmberLibraryPath;
@@ -449,7 +451,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
-    public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "Player", "Processing", "Fabric Emulation"];
+    public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "Asset Library", "Player", "Processing", "Fabric Emulation"];
+    public string OasisAssetLibraryRoot { get => _oasisAssetLibraryRoot; set { if (SetProperty(ref _oasisAssetLibraryRoot, value)) { SavePreferences(); foreach (var document in OpenDocuments) { document.SetLibraryRootAccessor(() => OasisAssetLibraryRoot); document.RefreshMachineCompositionChoices(); } } } }
     public IReadOnlyList<string> CpuImageProcessingModes { get; } = ["Auto (Recommended)", "Maximum", "Custom"];
     public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "Platform Settings"];
     public IReadOnlyList<string> NativeProjectSettingsTabs { get; } = ["ROMS", "Stake/Prize", "Reels", "Coins"];
@@ -1197,7 +1200,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var result = await _progressDialogService.RunAsync(
                 new EditorProgressRequest("Building Oasis Player Machine", "Preparing Oasis Player machine build...", EditorProgressMode.Determinate, CanCancel: true),
-                (progress, token) => Task.FromResult(new MachineRuntimeBuildService().BuildFromMachineDocument(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetMachineDocument(), progress, token)));
+                (progress, token) => Task.FromResult(new MachineRuntimeBuildService(libraryRoot: OasisAssetLibraryRoot).BuildFromMachineDocument(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetMachineDocument(), progress, token)));
             if (!result.Success)
             {
                 ReportEditorOperationError(result.ErrorMessage ?? "Failed to build Oasis Player runtime output.", OutputLogStatus.Error);
@@ -1954,6 +1957,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 PreviewWidth = OasisPlayerPreviewWidth,
                 PreviewHeight = OasisPlayerPreviewHeight
             },
+            AssetLibrary = new AssetLibraryPreferences { RootPath = OasisAssetLibraryRoot },
             FaceGeneration = FaceGenerationPreferences.FromSettings(_defaultFaceGenerationSettings),
             Processing = CurrentProcessingPreferences(),
             OutputLog = new OutputLogPreferences

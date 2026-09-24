@@ -1098,7 +1098,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
 
     private static FaceRuntimeCompositionContext Composition(params (MachineObjectReference Reference, string Path, ReelDocument Reel)[] values)
         => new(
-            values.Select(value => new MachineReelAssignment(value.Reference, value.Path)).ToArray(),
+            values.Select(value => new MachineReelAssignment(value.Reference, AssetReference.Project(value.Path))).ToArray(),
             values.ToDictionary(value => value.Reference, value => value.Reel));
 
 

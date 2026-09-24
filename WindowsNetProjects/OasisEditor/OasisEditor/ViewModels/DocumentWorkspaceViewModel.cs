@@ -619,8 +619,7 @@ public sealed class DocumentWorkspaceViewModel
         if (string.Equals(Path.GetExtension(path), ".reel", StringComparison.OrdinalIgnoreCase))
         {
             if (!ReelDocumentStorage.TryRead(content, out var reel, out var error)) return new OpenDocumentData($"Failed to open Reel document: {error}", null, Path.GetFileName(path));
-            var assetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(path, EditorAssetType.Reel);
-            if (string.IsNullOrWhiteSpace(assetName)) return new OpenDocumentData("Failed to open Reel document: manifests must be stored as Assets/Reels/<Name>/asset.reel.", null, Path.GetFileName(path));
+            var assetName = Path.GetFileName(Path.GetDirectoryName(path));
             return new OpenDocumentData("Reusable Reel document opened.", null, assetName, ReelDocumentJson: ReelDocumentStorage.Serialize(reel));
         }
         if (string.Equals(Path.GetExtension(path), ".machine", StringComparison.OrdinalIgnoreCase))
@@ -644,14 +643,7 @@ public sealed class DocumentWorkspaceViewModel
                 }
 
                 var summary = "Cabinet 3D document opened.";
-                var assetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(path, EditorAssetType.Cabinet3D);
-                if (string.IsNullOrWhiteSpace(assetName))
-                {
-                    return new OpenDocumentData(
-                        "Failed to open cabinet document: Cabinet3D manifests must be stored as Assets/Cabinet3D/<AssetName>/asset.cabinet3d.",
-                        null,
-                        Path.GetFileName(path));
-                }
+                var assetName = Path.GetFileName(Path.GetDirectoryName(path));
 
                 return new OpenDocumentData(summary, null, assetName, CabinetDocumentJson: CabinetDocumentStorage.Serialize(cabinetDocument));
             }

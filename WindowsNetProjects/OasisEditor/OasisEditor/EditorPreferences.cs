@@ -9,9 +9,15 @@ public sealed class EditorPreferences
     public FaceGenerationPreferences FaceGeneration { get; init; } = new();
     public ProcessingPreferences Processing { get; init; } = new();
     public OasisPlayerPreferences Player { get; init; } = new();
+    public AssetLibraryPreferences AssetLibrary { get; init; } = new();
     public string LastMfmeFmlImportDirectory { get; init; } = string.Empty;
 
     public Dictionary<string, ProjectWindowState> ProjectWindowStates { get; init; } = new();
+}
+
+public sealed class AssetLibraryPreferences
+{
+    public string RootPath { get; init; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Oasis Library");
 }
 
 public enum CpuImageProcessingMode { Auto, Maximum, Custom }

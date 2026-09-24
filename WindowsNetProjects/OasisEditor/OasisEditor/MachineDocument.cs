@@ -9,13 +9,13 @@ public sealed record MachineDocument(
     int SchemaVersion,
     string Id,
     string DisplayName,
-    string? CabinetAssetPath,
+    AssetReference? CabinetAsset,
     MachineSurfaceAssignment[] SurfaceAssignments,
     MachineReelAssignment[] ReelAssignments,
     MachineEmulationRuntime Runtime,
     List<InputDefinitionModel> InputDefinitions)
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     public static MachineDocument Create(string displayName) => new(
         CurrentSchemaVersion,
@@ -34,9 +34,9 @@ public sealed record MachineSurfaceAssignment(string TargetId, string FaceAssetP
 }
 
 /// <summary>Resolves a logical Face reel to a reusable physical Reel asset.</summary>
-public sealed record MachineReelAssignment(MachineObjectReference MachineReelReference, string ReelAssetPath)
+public sealed record MachineReelAssignment(MachineObjectReference MachineReelReference, AssetReference ReelAsset)
 {
-    public MachineReelAssignment Normalized() => new(MachineReelReference, ProjectAssetPathService.NormalizeProjectRelativePath(ReelAssetPath.Trim()));
+    public MachineReelAssignment Normalized() => new(MachineReelReference, new AssetReference(ReelAsset.Scope, ReelAsset.Path));
 }
 
 /// <summary>
@@ -81,7 +81,7 @@ public static class MachineDocumentStorage
             writer.WriteNumber("schemaVersion", MachineDocument.CurrentSchemaVersion);
             writer.WriteString("id", document.Id);
             writer.WriteString("displayName", document.DisplayName);
-            if (!string.IsNullOrWhiteSpace(document.CabinetAssetPath)) writer.WriteString("cabinetAssetPath", ProjectAssetPathService.NormalizeProjectRelativePath(document.CabinetAssetPath));
+            if (document.CabinetAsset is not null) { writer.WritePropertyName("cabinetAsset"); JsonSerializer.Serialize(writer, document.CabinetAsset, Options); }
             writer.WritePropertyName("surfaceAssignments"); JsonSerializer.Serialize(writer, document.SurfaceAssignments.Select(x => x.Normalized()), Options);
             writer.WritePropertyName("reelAssignments"); JsonSerializer.Serialize(writer, document.ReelAssignments.Select(x => x.Normalized()), Options);
             writer.WritePropertyName("runtime");
@@ -122,7 +122,7 @@ public static class MachineDocumentStorage
             document = new MachineDocument(
                 version.GetInt32(), root.GetProperty("id").GetString() ?? string.Empty,
                 root.GetProperty("displayName").GetString() ?? string.Empty,
-                root.TryGetProperty("cabinetAssetPath", out var cabinet) ? cabinet.GetString() : null,
+                root.TryGetProperty("cabinetAsset", out var cabinet) ? cabinet.Deserialize<AssetReference>(Options) : null,
                 root.TryGetProperty("surfaceAssignments", out var surfaces) ? surfaces.Deserialize<MachineSurfaceAssignment[]>(Options) ?? [] : [],
                 root.TryGetProperty("reelAssignments", out var reels) ? reels.Deserialize<MachineReelAssignment[]>(Options) ?? [] : [],
                 new MachineEmulationRuntime(platform, settings),
@@ -141,7 +141,9 @@ public static class MachineDocumentStorage
         if (string.IsNullOrWhiteSpace(document.DisplayName)) throw new InvalidOperationException("Machine display name is required.");
         if (document.SurfaceAssignments.GroupBy(x => x.TargetId, StringComparer.Ordinal).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine surface target assignments must be unique.");
         if (document.ReelAssignments.GroupBy(x => x.MachineReelReference).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine reel assignments must be unique.");
-        if (document.ReelAssignments.Any(x => x.MachineReelReference.Kind != MachineObjectKind.Reel || string.IsNullOrWhiteSpace(x.ReelAssetPath))) throw new InvalidOperationException("Machine reel assignments require a logical Reel reference and Reel asset path.");
+        if (document.ReelAssignments.Any(x => x.MachineReelReference.Kind != MachineObjectKind.Reel || x.ReelAsset is null)) throw new InvalidOperationException("Machine reel assignments require a logical Reel reference and Reel asset reference.");
+        if (document.CabinetAsset is not null) _ = new AssetReference(document.CabinetAsset.Scope, document.CabinetAsset.Path);
+        foreach (var assignment in document.ReelAssignments) _ = new AssetReference(assignment.ReelAsset.Scope, assignment.ReelAsset.Path);
     }
 }
 

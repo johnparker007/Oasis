@@ -16,9 +16,9 @@ public sealed class DocumentSaveServiceTests
         {
             var machine = MachineDocument.Create("Custom display name") with
             {
-                CabinetAssetPath = "Assets/Cabinet3D/Vogue/asset.cabinet3d",
+                CabinetAsset = AssetReference.Project("Assets/Cabinet3D/Vogue/asset.cabinet3d"),
                 SurfaceAssignments = [new("OasisFace_TopGlass", "Assets/Faces/FaceA/asset.face")],
-                ReelAssignments = [new(MachineObjectReference.Reel(0), "Assets/Reels/Standard/asset.reel")],
+                ReelAssignments = [new(MachineObjectReference.Reel(0), AssetReference.Project("Assets/Reels/Standard/asset.reel"))],
                 Runtime = new(FruitMachinePlatformType.MPU5, new Mpu5NativeRomSettings { ProgramRom1Path = "Assets/ROMs/game.bin" }),
                 InputDefinitions = [new InputDefinitionModel { Id = "start", Name = "Start", ButtonNumber = "1" }]
             };
@@ -69,9 +69,9 @@ public sealed class DocumentSaveServiceTests
     {
         var machine = MachineDocument.Create("Machine") with
         {
-            CabinetAssetPath = "Assets/Cabinet3D/Vogue/asset.cabinet3d",
+            CabinetAsset = AssetReference.Project("Assets/Cabinet3D/Vogue/asset.cabinet3d"),
             SurfaceAssignments = [new("OasisFace_TopGlass", "Assets/Faces/TopGlass/asset.face")],
-            ReelAssignments = [new(MachineObjectReference.Reel(0), "Assets/Reels/Standard/asset.reel")]
+            ReelAssignments = [new(MachineObjectReference.Reel(0), AssetReference.Project("Assets/Reels/Standard/asset.reel"))]
         };
         var original = new DocumentTabViewModel(
             EditorDocument.CreateFromFile("C:/Project/Assets/Machines/Game/asset.machine", "Machine"),
@@ -148,7 +148,7 @@ public sealed class DocumentSaveServiceTests
     {
         Assert.Equal(expected.Id, actual.Id);
         Assert.Equal(expected.DisplayName, actual.DisplayName);
-        Assert.Equal(expected.CabinetAssetPath, actual.CabinetAssetPath);
+        Assert.Equal(expected.CabinetAsset!.Path, actual.CabinetAsset!.Path);
         Assert.Equal(expected.SurfaceAssignments, actual.SurfaceAssignments);
         Assert.Equal(expected.ReelAssignments, actual.ReelAssignments);
         Assert.Equal(expected.Runtime.Platform, actual.Runtime.Platform);

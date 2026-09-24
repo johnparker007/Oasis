@@ -15,7 +15,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
     public void BuildFromMachineDocument_MissingCabinetReportsMachineContext()
     {
         var project = Project();
-        var machine = MachineDocument.Create("Bonanza") with { CabinetAssetPath = "Assets/Cabinet3D/Missing/asset.cabinet3d" };
+        var machine = MachineDocument.Create("Bonanza") with { CabinetAsset = AssetReference.Project("Assets/Cabinet3D/Missing/asset.cabinet3d") };
         var path = WriteMachine(project, machine);
         var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None);
         Assert.False(result.Success);
@@ -182,7 +182,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
     {
         var setup = CreateReelBuild([3], []);
         const string missing = "Assets/Reels/Small/asset.reel";
-        var machine = setup.Machine with { ReelAssignments = [new(MachineObjectReference.Reel(3), missing)] };
+        var machine = setup.Machine with { ReelAssignments = [new(MachineObjectReference.Reel(3), AssetReference.Project(missing))] };
         var result = Build(setup.Project, machine);
         Assert.False(result.Success);
         Assert.Contains("Reel Machine", result.ErrorMessage);
@@ -241,9 +241,9 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         }
         var machine = MachineDocument.Create("Reel Machine") with
         {
-            CabinetAssetPath = paths.ToProjectRelativePath(project, cabinetManifest),
+            CabinetAsset = AssetReference.Project(paths.ToProjectRelativePath(project, cabinetManifest)),
             SurfaceAssignments = [new("glass", paths.ToProjectRelativePath(project, faceManifest))],
-            ReelAssignments = assignments.Select(value => new MachineReelAssignment(MachineObjectReference.Reel(value.Logical), paths.ToProjectRelativePath(project, paths.GetReelManifestPath(project, value.Asset)))).ToArray()
+            ReelAssignments = assignments.Select(value => new MachineReelAssignment(MachineObjectReference.Reel(value.Logical), AssetReference.Project(paths.ToProjectRelativePath(project, paths.GetReelManifestPath(project, value.Asset))))).ToArray()
         };
         return (project, machine);
     }

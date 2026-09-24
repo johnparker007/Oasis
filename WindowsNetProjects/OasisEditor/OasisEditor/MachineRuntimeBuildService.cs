@@ -33,11 +33,14 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
 
     private readonly ProjectAssetPathService _pathService;
     private readonly FaceRuntimeExportService _faceRuntimeExportService;
+    private readonly string _libraryRoot;
+    private readonly AssetReferenceResolver _assetResolver = new();
 
-    public MachineRuntimeBuildService(ProjectAssetPathService? pathService = null, FaceRuntimeExportService? faceRuntimeExportService = null)
+    public MachineRuntimeBuildService(ProjectAssetPathService? pathService = null, FaceRuntimeExportService? faceRuntimeExportService = null, string? libraryRoot = null)
     {
         _pathService = pathService ?? new ProjectAssetPathService();
         _faceRuntimeExportService = faceRuntimeExportService ?? new FaceRuntimeExportService();
+        _libraryRoot = libraryRoot ?? new EditorPreferencesStore().Load().AssetLibrary.RootPath;
     }
 
     public MachineRuntimeBuildResult BuildFromMachineDocument(EditorProject project, string machineManifestPath, IEditorProgressReporter progress, CancellationToken cancellationToken)
@@ -59,13 +62,16 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         cancellationToken.ThrowIfCancellationRequested();
         var machineAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(machineManifestPath, EditorAssetType.Machine);
         if (string.IsNullOrWhiteSpace(machineAssetName)) return MachineRuntimeBuildResult.Fail("Machine manifests must be stored as Assets/Machines/<Name>/asset.machine before building for Oasis Player.");
-        if (string.IsNullOrWhiteSpace(machineDocument.CabinetAssetPath)) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' has no Cabinet asset assigned.");
-        var cabinetManifestPath = _pathService.ResolveProjectRelativePath(project, machineDocument.CabinetAssetPath);
-        if (!File.Exists(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references a missing Cabinet: {machineDocument.CabinetAssetPath}");
-        if (!CabinetDocumentStorage.TryRead(File.ReadAllText(cabinetManifestPath), out var cabinetDocument)) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references an invalid Cabinet: {machineDocument.CabinetAssetPath}");
-        var cabinetAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(cabinetManifestPath, EditorAssetType.Cabinet3D);
-        if (string.IsNullOrWhiteSpace(cabinetAssetName)) return MachineRuntimeBuildResult.Fail("Cabinet3D manifests must be stored as Assets/Cabinet3D/<AssetName>/asset.cabinet3d.");
-        var sourceGlb = ResolveCabinetModelPath(cabinetManifestPath, cabinetDocument.Model.Path);
+        if (machineDocument.CabinetAsset is null) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' has no Cabinet asset assigned.");
+        string cabinetManifestPath;
+        try { cabinetManifestPath = _assetResolver.Resolve(project, _libraryRoot, machineDocument.CabinetAsset); }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException) { return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' cannot resolve Cabinet {machineDocument.CabinetAsset}: {exception.Message}"); }
+        if (!File.Exists(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references a missing Cabinet {machineDocument.CabinetAsset}. Library root: '{_libraryRoot}'.");
+        if (!CabinetDocumentStorage.TryRead(File.ReadAllText(cabinetManifestPath), out var cabinetDocument)) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references an invalid Cabinet: {machineDocument.CabinetAsset}");
+        var cabinetAssetName = Path.GetFileName(Path.GetDirectoryName(cabinetManifestPath));
+        string sourceGlb;
+        try { sourceGlb = ResolveCabinetModelPath(cabinetManifestPath, cabinetDocument.Model.Path); }
+        catch (InvalidOperationException exception) { return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references an invalid Cabinet {machineDocument.CabinetAsset}: {exception.Message}"); }
         if (!File.Exists(sourceGlb)) return MachineRuntimeBuildResult.Fail($"Cabinet3D GLB model was not found: {sourceGlb}");
         var buildRoot = GetBuildRoot(project, machineAssetName);
         var stagingRoot = buildRoot + ".staging";
@@ -219,13 +225,13 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             if (matches.Length != 1) throw new InvalidOperationException(matches.Length == 0
                 ? $"{context} -> no Reel asset assignment."
                 : $"{context} -> duplicate Reel asset assignments.");
-            var assetPath = matches[0].ReelAssetPath;
-            var manifestPath = _pathService.ResolveProjectRelativePath(project, assetPath);
-            if (!File.Exists(manifestPath)) throw new InvalidOperationException($"{context} -> Reel asset '{assetPath}' was not found.");
-            if (ProjectAssetPathService.GetPackageAssetNameFromManifestPath(manifestPath, EditorAssetType.Reel) is null)
-                throw new InvalidOperationException($"{context} -> Reel asset '{assetPath}' is not stored as Assets/Reels/<Name>/asset.reel.");
+            var asset = matches[0].ReelAsset;
+            var manifestPath = _assetResolver.Resolve(project, _libraryRoot, asset);
+            if (!File.Exists(manifestPath)) throw new InvalidOperationException($"{context} -> Reel asset '{asset}' was not found. Library root: '{_libraryRoot}'.");
+            if (!string.Equals(Path.GetFileName(manifestPath), ProjectAssetPathService.ReelManifestFileName, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"{context} -> Reel asset '{asset}' is not an asset.reel package manifest.");
             if (!ReelDocumentStorage.TryRead(File.ReadAllText(manifestPath), out var reel, out var error))
-                throw new InvalidOperationException($"{context} -> Reel asset '{assetPath}' is invalid: {error}");
+                throw new InvalidOperationException($"{context} -> Reel asset '{asset}' is invalid: {error}");
             result.Add(reference, reel);
         }
         return result;
@@ -270,7 +276,14 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     }
 
     public string GetBuildRoot(EditorProject project, string machineAssetName) => Path.Combine(project.GeneratedDirectory, "Builds", _pathService.SanitizePathSegment(machineAssetName));
-    private static string ResolveCabinetModelPath(string manifestPath, string modelPath) => Path.IsPathFullyQualified(modelPath) ? Path.GetFullPath(modelPath) : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifestPath) ?? string.Empty, modelPath));
+    private static string ResolveCabinetModelPath(string manifestPath, string modelPath)
+    {
+        if (Path.IsPathFullyQualified(modelPath)) throw new InvalidOperationException("Cabinet model paths must be package-relative.");
+        var packageRoot = Path.GetFullPath(Path.GetDirectoryName(manifestPath) ?? string.Empty).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var resolved = Path.GetFullPath(Path.Combine(packageRoot, modelPath));
+        if (!resolved.StartsWith(packageRoot, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Cabinet model path escapes the Cabinet package.");
+        return resolved;
+    }
     private static void ReplaceEmptyDirectory(string path) { if (Directory.Exists(path)) Directory.Delete(path, true); Directory.CreateDirectory(path); }
     private static void ReplaceFinalDirectory(string stagingRoot, string buildRoot) { if (Directory.Exists(buildRoot)) Directory.Delete(buildRoot, true); Directory.CreateDirectory(Path.GetDirectoryName(buildRoot)!); Directory.Move(stagingRoot, buildRoot); }
 }

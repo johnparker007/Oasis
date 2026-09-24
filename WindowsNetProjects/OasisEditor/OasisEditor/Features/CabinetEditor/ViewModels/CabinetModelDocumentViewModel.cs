@@ -258,8 +258,8 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         if (validTargets.Count == 0 || _openDocumentsAccessor is null || project is null || _machineCompositionContext is null)
         { Viewport.FacePreviewModel = null; return; }
         var machine = _machineCompositionContext.GetMachineDocument();
-        if (string.IsNullOrWhiteSpace(machine.CabinetAssetPath)
-            || !string.Equals(Path.GetFullPath(_document.FilePath), new ProjectAssetPathService().ResolveProjectRelativePath(project, machine.CabinetAssetPath), StringComparison.OrdinalIgnoreCase))
+        if (machine.CabinetAsset is not { Scope: AssetReferenceScope.Project } cabinetAsset
+            || !string.Equals(Path.GetFullPath(_document.FilePath), new AssetReferenceResolver().Resolve(project, string.Empty, cabinetAsset), StringComparison.OrdinalIgnoreCase))
         { Viewport.FacePreviewModel = null; return; }
         var previewGroup = new Model3DGroup();
         foreach (var assignment in machine.SurfaceAssignments)

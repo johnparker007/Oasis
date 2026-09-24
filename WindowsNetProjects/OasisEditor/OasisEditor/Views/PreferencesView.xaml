@@ -20,6 +20,13 @@
 
         <Grid Grid.Column="2">
             <StackPanel>
+                <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding SelectedPreferencesCategory}" Value="Asset Library"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+                <TextBlock FontSize="18" FontWeight="SemiBold" Text="Oasis Asset Library"/>
+                <TextBlock Margin="0,16,0,6" Foreground="{DynamicResource TextSecondaryBrush}" Text="Local library root"/>
+                <TextBox Text="{Binding OasisAssetLibraryRoot, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" Text="Reusable Cabinets and Reels are resolved relative to this user setting; projects store no absolute library path."/>
+            </StackPanel>
+            <StackPanel>
                 <StackPanel.Style>
                     <Style TargetType="StackPanel">
                         <Setter Property="Visibility" Value="Collapsed" />
