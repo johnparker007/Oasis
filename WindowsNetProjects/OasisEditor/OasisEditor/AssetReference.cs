@@ -83,7 +83,7 @@ public sealed class OasisAssetLibraryCatalog
             {
                 var json = File.ReadAllText(manifest);
                 var valid = type == EditorAssetType.Cabinet3D
-                    ? CabinetDocumentStorage.TryRead(json, out var cabinet) && !string.IsNullOrWhiteSpace(cabinet.Id)
+                    ? CabinetDocumentStorage.TryRead(json, out _)
                     : ReelDocumentStorage.TryRead(json, out var reel, out _) && !string.IsNullOrWhiteSpace(reel.Id);
                 if (!valid) continue;
                 var displayName = type == EditorAssetType.Reel && ReelDocumentStorage.TryRead(json, out var reelDocument, out _)
