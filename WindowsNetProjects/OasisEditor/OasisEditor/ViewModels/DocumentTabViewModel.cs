@@ -281,6 +281,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         ArgumentNullException.ThrowIfNull(document);
         var cabinetChanged = !SameAssetPath(_machineDocumentModel.CabinetAssetPath, document.CabinetAssetPath);
+        var surfaceAssignmentsChanged = !_machineDocumentModel.SurfaceAssignments.SequenceEqual(document.SurfaceAssignments);
+        var reelAssignmentsChanged = !_machineDocumentModel.ReelAssignments.SequenceEqual(document.ReelAssignments);
         _machineDocumentModel = document;
         MarkDirty();
         foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineInputs) })
@@ -291,7 +293,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             RefreshMachineCabinetDependentRows(forceRebuild: true);
         }
         else
+        {
             SynchronizeMachineAssignmentRows();
+            if ((surfaceAssignmentsChanged || reelAssignmentsChanged) && _projectAccessor?.Invoke() is { } project)
+                RefreshMachineReelRowsFromAssignedFaces(project);
+        }
     }
 
     internal void RefreshMachineCompositionChoices()
@@ -378,27 +384,37 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             row.RefreshChoices(rowChoices);
             row.SynchronizeSelectedAssetPath(assignedPath, forceNotification: true);
         }
-        var specificationChoices = new List<MachineAssetChoice> { new("(None)", null) };
-        specificationChoices.AddRange(DiscoverProjectAssetChoices(project, EditorAssetType.Reel));
+        RefreshMachineReelRowsFromAssignedFaces(project);
+    }
+
+    private void RefreshMachineReelRowsFromAssignedFaces(EditorProject project)
+    {
+        var reelChoices = new List<MachineAssetChoice> { new("(None)", null) };
+        reelChoices.AddRange(DiscoverProjectAssetChoices(project, EditorAssetType.Reel));
         var requiredReferences = _machineDocumentModel.SurfaceAssignments.SelectMany(assignment => DiscoverFaceReelReferences(project, assignment.FaceAssetPath));
         var references = _machineDocumentModel.ReelAssignments.Select(item => item.MachineReelReference).Concat(requiredReferences).Distinct().OrderBy(item => item.Id).ToArray();
-        var existingReels = MachineReelAssignmentRows.ToDictionary(row => row.Reference);
-        var rebuildReelRows = forceRebuild || !MachineReelAssignmentRows.Select(row => row.Reference).SequenceEqual(references);
-        if (rebuildReelRows)
-            MachineReelAssignmentRows.Clear();
-        foreach (var reference in references)
+        for (var index = 0; index < references.Length; index++)
         {
-            var assignedId = _machineDocumentModel.ReelAssignments.FirstOrDefault(item => item.MachineReelReference == reference)?.ReelAssetPath;
-            var rowChoices = specificationChoices.ToList();
-            if (!string.IsNullOrWhiteSpace(assignedId) && rowChoices.All(choice => !string.Equals(choice.AssetPath, assignedId, StringComparison.Ordinal))) rowChoices.Add(new MachineAssetChoice($"Missing: {assignedId}", assignedId));
-            if (rebuildReelRows || !existingReels.TryGetValue(reference, out var row))
+            var reference = references[index];
+            var existingIndex = -1;
+            for (var candidate = index; candidate < MachineReelAssignmentRows.Count; candidate++)
             {
-                MachineReelAssignmentRows.Add(new MachineReelAssignmentRow(this, reference, rowChoices, assignedId));
-                continue;
+                if (MachineReelAssignmentRows[candidate].Reference == reference) { existingIndex = candidate; break; }
             }
+            var assignedPath = _machineDocumentModel.ReelAssignments.FirstOrDefault(item => item.MachineReelReference == reference)?.ReelAssetPath;
+            var rowChoices = reelChoices.ToList();
+            if (!string.IsNullOrWhiteSpace(assignedPath) && rowChoices.All(choice => !SameAssetPath(choice.AssetPath, assignedPath)))
+                rowChoices.Add(new MachineAssetChoice($"Missing: {assignedPath}", assignedPath));
+            if (existingIndex < 0)
+                MachineReelAssignmentRows.Insert(index, new MachineReelAssignmentRow(this, reference, rowChoices, assignedPath));
+            else if (existingIndex != index)
+                MachineReelAssignmentRows.Move(existingIndex, index);
+            var row = MachineReelAssignmentRows[index];
             row.RefreshChoices(rowChoices);
-            row.SynchronizeSelectedReelAssetPath(assignedId, forceNotification: true);
+            row.SynchronizeSelectedReelAssetPath(assignedPath, forceNotification: true);
         }
+        while (MachineReelAssignmentRows.Count > references.Length)
+            MachineReelAssignmentRows.RemoveAt(MachineReelAssignmentRows.Count - 1);
     }
 
     private string BuildMachineCompositionCatalogSignature(EditorProject project, IReadOnlyList<MachineAssetChoice> cabinets, IReadOnlyList<MachineAssetChoice> faces)
@@ -414,6 +430,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                 var modelPath = Path.IsPathFullyQualified(cabinet.Model.Path) ? cabinet.Model.Path : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(cabinetPath)!, cabinet.Model.Path));
                 AddFileStamp(parts, modelPath);
             }
+        }
+        foreach (var assignment in _machineDocumentModel.SurfaceAssignments.OrderBy(item => item.TargetId, StringComparer.Ordinal))
+        {
+            var facePath = new ProjectAssetPathService().ResolveProjectRelativePath(project, assignment.FaceAssetPath);
+            AddFileStamp(parts, facePath);
         }
         return string.Join("\n", parts);
     }

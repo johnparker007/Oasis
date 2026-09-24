@@ -222,13 +222,15 @@ public sealed class MachineDocumentTests
             var project = CreateProject(root);
             const string reelPath = "Assets/Reels/Standard/asset.reel";
             var tab = CreateMachineTab(project, MachineDocument.Create("Game") with { ReelAssignments = [new(MachineObjectReference.Reel(0), reelPath), new(MachineObjectReference.Reel(1), reelPath)] });
+            using var browser = new AssetBrowserViewModel(() => project, () => { }, () => { }, (_, _) => { }, _ => { }, _ => null, _ => true);
+            browser.AssetCatalogChanged += tab.RefreshMachineCompositionChoices;
             var rows = tab.MachineReelAssignmentRows.ToArray();
             Assert.All(rows, row => Assert.Contains(row.Choices, choice => choice.AssetPath == reelPath && choice.DisplayName.StartsWith("Missing:", StringComparison.Ordinal)));
             var absolute = new ProjectAssetPathService().GetReelManifestPath(project, "Standard");
             Directory.CreateDirectory(Path.GetDirectoryName(absolute)!);
             File.WriteAllText(absolute, ReelDocumentStorage.Serialize(ReelDocument.Create("Standard Reel")));
 
-            tab.RefreshMachineCompositionChoices();
+            browser.RefreshAssetBrowser();
 
             Assert.All(rows, row =>
             {
@@ -237,6 +239,107 @@ public sealed class MachineDocumentTests
                 Assert.Contains(row.Choices, choice => choice.AssetPath == reelPath && choice.DisplayName == "Standard Reel");
             });
             Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void AssigningFaceImmediatelyCreatesRequiredReelRows()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OasisMachineFaceReels_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var project = CreateProject(root);
+            var cabinetPath = WriteCabinet(project, "Vogue", []);
+            var facePath = WriteFace(project, "Glass", 0, 1, 2, 3);
+            var tab = CreateMachineTab(project, MachineDocument.Create("Game") with { CabinetAssetPath = cabinetPath });
+            Assert.Empty(tab.MachineReelAssignmentRows);
+
+            tab.SetMachineSurfaceAssignment("OasisFace_Glass", facePath);
+
+            Assert.Equal([0, 1, 2, 3], tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void ChangingFaceAssignmentAndUndoRedoUpdateOnlyReelTopology()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OasisMachineFaceSwitch_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var project = CreateProject(root);
+            var cabinetPath = WriteCabinet(project, "Vogue", []);
+            var faceA = WriteFace(project, "A", 0, 1);
+            var faceB = WriteFace(project, "B", 0, 1, 2, 3);
+            var tab = CreateMachineTab(project, MachineDocument.Create("Game") with { CabinetAssetPath = cabinetPath, SurfaceAssignments = [new("OasisFace_Glass", faceA)] });
+            var surfaceRows = tab.MachineSurfaceAssignmentRows.ToArray();
+            var reelZero = tab.MachineReelAssignmentRows.Single(row => row.Reference == MachineObjectReference.Reel(0));
+
+            tab.SetMachineSurfaceAssignment("OasisFace_Glass", faceB);
+            Assert.Equal([0, 1, 2, 3], tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
+            Assert.Same(reelZero, tab.MachineReelAssignmentRows[0]);
+            Assert.Equal(surfaceRows, tab.MachineSurfaceAssignmentRows);
+
+            Assert.True(tab.CommandService.TryUndo());
+            Assert.Equal([0, 1], tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
+            Assert.Same(reelZero, tab.MachineReelAssignmentRows[0]);
+            Assert.True(tab.CommandService.TryRedo());
+            Assert.Equal([0, 1, 2, 3], tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void RemovingFaceRetainsExplicitAuthoredReelAssignmentAndRow()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OasisMachineRetainedReel_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var project = CreateProject(root);
+            var cabinetPath = WriteCabinet(project, "Vogue", [new("Assets/Reels/Small/asset.reel", "Small", 230, 70)]);
+            var facePath = WriteFace(project, "Glass", 3);
+            var machine = MachineDocument.Create("Game") with
+            {
+                CabinetAssetPath = cabinetPath,
+                SurfaceAssignments = [new("OasisFace_Glass", facePath)],
+                ReelAssignments = [new(MachineObjectReference.Reel(3), "Assets/Reels/Small/asset.reel")]
+            };
+            var tab = CreateMachineTab(project, machine);
+            var row = Assert.Single(tab.MachineReelAssignmentRows);
+
+            tab.SetMachineSurfaceAssignment("OasisFace_Glass", null);
+
+            Assert.Equal("Assets/Reels/Small/asset.reel", Assert.Single(tab.GetMachineDocument().ReelAssignments).ReelAssetPath);
+            Assert.Same(row, Assert.Single(tab.MachineReelAssignmentRows));
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void SavedAssignedFaceRefreshUpdatesRequirementsButUnrelatedFaceDoesNot()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OasisMachineSavedFace_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var project = CreateProject(root);
+            var cabinetPath = WriteCabinet(project, "Vogue", []);
+            var assigned = WriteFace(project, "Assigned", 0);
+            var unrelated = WriteFace(project, "Unrelated", 7);
+            var tab = CreateMachineTab(project, MachineDocument.Create("Game") with { CabinetAssetPath = cabinetPath, SurfaceAssignments = [new("OasisFace_Glass", assigned)] });
+            var reelZero = Assert.Single(tab.MachineReelAssignmentRows);
+
+            WriteFace(project, "Unrelated", 7, 8);
+            File.SetLastWriteTimeUtc(new ProjectAssetPathService().ResolveProjectRelativePath(project, unrelated), DateTime.UtcNow.AddSeconds(2));
+            tab.RefreshMachineCompositionChoices();
+            Assert.Same(reelZero, Assert.Single(tab.MachineReelAssignmentRows));
+
+            WriteFace(project, "Assigned", 0, 1);
+            File.SetLastWriteTimeUtc(new ProjectAssetPathService().ResolveProjectRelativePath(project, assigned), DateTime.UtcNow.AddSeconds(3));
+            tab.RefreshMachineCompositionChoices();
+            Assert.Equal([0, 1], tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
+            Assert.Same(reelZero, tab.MachineReelAssignmentRows[0]);
+            Assert.False(tab.IsDirty);
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
@@ -428,6 +531,25 @@ public sealed class MachineDocumentTests
             Directory.CreateDirectory(Path.GetDirectoryName(reelPath)!);
             File.WriteAllText(reelPath, ReelDocumentStorage.Serialize(ReelDocument.Create(specification.Name) with { DiameterMm = specification.Diameter, WidthMm = specification.Width }));
         }
+        return new ProjectAssetPathService().ToProjectRelativePath(project, path);
+    }
+
+    private static string WriteFace(EditorProject project, string name, params int[] logicalReels)
+    {
+        var path = new ProjectAssetPathService().GetFaceManifestPath(project, name);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var face = new FaceDocumentModel
+        {
+            Id = Guid.NewGuid().ToString("D"),
+            Title = name,
+            SourceRegion = new FaceSourceRegionModel { Width = 100, Height = 100 },
+            Elements = logicalReels.Select((reel, index) => (FaceElementModel)new FaceReelDisplayElement
+            {
+                ObjectId = $"reel-{reel}", Name = $"Reel {reel}", X = index * 10, Y = 0, Width = 10, Height = 20,
+                LinkedMachineObjectReference = MachineObjectReference.Reel(reel)
+            }).ToArray()
+        };
+        File.WriteAllText(path, FaceDocumentStorage.Serialize(face));
         return new ProjectAssetPathService().ToProjectRelativePath(project, path);
     }
 }
