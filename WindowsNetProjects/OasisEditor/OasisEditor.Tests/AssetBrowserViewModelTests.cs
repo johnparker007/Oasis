@@ -261,7 +261,7 @@ public sealed class AssetBrowserViewModelTests
         File.WriteAllText(Path.Combine(package, "cabinet.glb"), "glb");
         var reelPackage = Path.Combine(temp.AssetsDirectory, "Reels", "Standard");
         Directory.CreateDirectory(reelPackage);
-        File.WriteAllText(Path.Combine(reelPackage, "asset.reel"), "{}");
+        File.WriteAllText(Path.Combine(reelPackage, "asset.reel"), ReelDocumentStorage.Serialize(ReelDocument.Create("Standard") with { DiameterMm = 290, WidthMm = 70 }));
         string? opened = null;
         var viewModel = new AssetBrowserViewModel(() => temp.Project, () => { }, () => { }, (_, _) => { }, item => opened = item?.FullPath, _ => null, _ => true, () => library);
         viewModel.RefreshAssetBrowser();
@@ -299,6 +299,28 @@ public sealed class AssetBrowserViewModelTests
         Assert.False(Directory.Exists(Path.Combine(library, "Cabinets", "Broken")));
         Assert.Contains(output, message => message.Contains("self-contained", StringComparison.OrdinalIgnoreCase));
         viewModel.Dispose();
+    }
+
+    [Fact]
+    public void CopyReelPackageRejectsMalformedAndInvalidCurrentDocuments()
+    {
+        using var temp = new TempProjectDirectory();
+        var library = Path.Combine(temp.RootDirectory, "Library");
+        var malformed = Path.Combine(temp.AssetsDirectory, "Reels", "Malformed"); Directory.CreateDirectory(malformed);
+        File.WriteAllText(Path.Combine(malformed, "asset.reel"), "{ broken");
+        var invalid = Path.Combine(temp.AssetsDirectory, "Reels", "Invalid"); Directory.CreateDirectory(invalid);
+        var invalidJson = ReelDocumentStorage.Serialize(ReelDocument.Create("Invalid")).Replace("\"diameterMm\": 200", "\"diameterMm\": 0");
+        File.WriteAllText(Path.Combine(invalid, "asset.reel"), invalidJson);
+        var output = new List<string>();
+        using var viewModel = new AssetBrowserViewModel(() => temp.Project, () => { }, () => { }, (message, _) => output.Add(message), _ => { }, _ => null, _ => true, () => library);
+
+        viewModel.CopyToLibraryCommand.Execute(new AssetBrowserItemViewModel("asset.reel", Path.Combine(malformed, "asset.reel"), false));
+        viewModel.CopyToLibraryCommand.Execute(new AssetBrowserItemViewModel("asset.reel", Path.Combine(invalid, "asset.reel"), false));
+
+        Assert.False(Directory.Exists(Path.Combine(library, "Reels", "Malformed")));
+        Assert.False(Directory.Exists(Path.Combine(library, "Reels", "Invalid")));
+        Assert.Equal(2, output.Count(message => message.Contains("Reel was not copied", StringComparison.OrdinalIgnoreCase)));
+        Assert.Contains(output, message => message.Contains("positive finite", StringComparison.OrdinalIgnoreCase));
     }
 
     private static AssetDirectoryNodeViewModel? Find(IEnumerable<AssetDirectoryNodeViewModel> nodes, string path)

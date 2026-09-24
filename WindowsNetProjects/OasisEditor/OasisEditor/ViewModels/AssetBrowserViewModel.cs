@@ -514,6 +514,11 @@ public sealed class AssetBrowserViewModel : IDisposable
             _addOutputEntry($"Cabinet was not copied to the Oasis Library: {validationError} Save/re-author the Cabinet as a self-contained package first.", OutputLogStatus.Warning);
             return;
         }
+        if (typeFolder == "Reels" && !TryValidateReelPackage(package, out validationError))
+        {
+            _addOutputEntry($"Reel was not copied to the Oasis Library: {validationError}", OutputLogStatus.Warning);
+            return;
+        }
         var libraryRoot = _libraryRootAccessor();
         if (string.IsNullOrWhiteSpace(libraryRoot)) { _addOutputEntry("Configure the Oasis Library root in Preferences before copying an asset.", OutputLogStatus.Warning); return; }
         var packageName = Path.GetFileName(package);
@@ -564,6 +569,16 @@ public sealed class AssetBrowserViewModel : IDisposable
             if (string.IsNullOrWhiteSpace(reflection.VisibilityMask)) continue;
             if (!TryResolveContained(reflection.VisibilityMask, out var mask) || !File.Exists(mask)) { error = $"Reflection '{reflection.Id}' mask is missing or outside the package."; return false; }
         }
+        return true;
+    }
+
+    public static bool TryValidateReelPackage(string package, out string error)
+    {
+        var manifest = Path.Combine(package, ProjectAssetPathService.ReelManifestFileName);
+        if (!File.Exists(manifest)) { error = "asset.reel is missing."; return false; }
+        if (!ReelDocumentStorage.TryRead(File.ReadAllText(manifest), out _, out var readerError))
+        { error = $"asset.reel is missing or invalid: {readerError}"; return false; }
+        error = string.Empty;
         return true;
     }
 
