@@ -294,6 +294,9 @@ public sealed class AssetBrowserViewModelTests
         return null;
     }
 
+    private static AssetDirectoryNodeViewModel? Find(AssetDirectoryNodeViewModel node, string path)
+        => Find([node], path);
+
     private static AssetBrowserViewModel CreateViewModel(EditorProject project, Action<AssetBrowserItemViewModel?> openAsset)
     {
         return new AssetBrowserViewModel(
