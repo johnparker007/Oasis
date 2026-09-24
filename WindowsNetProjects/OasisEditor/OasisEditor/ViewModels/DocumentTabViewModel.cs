@@ -324,7 +324,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var selectedCabinetPath = _machineDocumentModel.CabinetAsset;
         var cabinetChoices = new List<MachineAssetChoice> { new("(None)", null) };
         cabinetChoices.AddRange(cabinetAssets);
-        if (selectedCabinetPath is not null && cabinetChoices.All(choice => choice.AssetPath != selectedCabinetPath))
+        if (selectedCabinetPath is not null && cabinetChoices.All(choice => !Equals(choice.AssetPath, selectedCabinetPath)))
             cabinetChoices.Add(new MachineAssetChoice($"Missing: {selectedCabinetPath.Path} [{selectedCabinetPath.Scope}]", selectedCabinetPath));
         ReconcileMachineAssetChoices(MachineCabinetChoices, cabinetChoices);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MachineCabinetAssetPath)));
@@ -404,7 +404,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             }
             var assignedPath = _machineDocumentModel.ReelAssignments.FirstOrDefault(item => item.MachineReelReference == reference)?.ReelAsset;
             var rowChoices = reelChoices.ToList();
-            if (assignedPath is not null && rowChoices.All(choice => choice.AssetPath != assignedPath))
+            if (assignedPath is not null && rowChoices.All(choice => !Equals(choice.AssetPath, assignedPath)))
                 rowChoices.Add(new MachineAssetChoice($"Missing: {assignedPath.Path} [{assignedPath.Scope}]", assignedPath));
             if (existingIndex < 0)
                 MachineReelAssignmentRows.Insert(index, new MachineReelAssignmentRow(this, reference, rowChoices, assignedPath));
