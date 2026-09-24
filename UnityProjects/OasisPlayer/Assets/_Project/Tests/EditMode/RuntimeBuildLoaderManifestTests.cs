@@ -1,7 +1,6 @@
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
-using OasisPlayer.Loading;
 using OasisPlayer.RuntimeBuild;
 using UnityEngine;
 
@@ -12,12 +11,12 @@ namespace OasisPlayer.Tests
         [Test]
         public void FaceRuntimeContractUsesSchema10WithoutObsoleteCabinetReelTargetId()
         {
-            Assert.AreEqual(10, RuntimeFaceLoader.FaceSchemaVersion);
-            Assert.True(RuntimeFaceLoader.IsSupportedFaceSchemaVersion(10));
-            Assert.False(RuntimeFaceLoader.IsSupportedFaceSchemaVersion(9));
+            Assert.AreEqual(10, FaceRuntimeContract.SchemaVersion);
+            Assert.True(FaceRuntimeContract.IsSupportedSchemaVersion(10));
+            Assert.False(FaceRuntimeContract.IsSupportedSchemaVersion(9));
             var json = JsonUtility.ToJson(new FaceRuntimeManifest
             {
-                schemaVersion = RuntimeFaceLoader.FaceSchemaVersion,
+                schemaVersion = FaceRuntimeContract.SchemaVersion,
                 reels = new[]
                 {
                     new FaceRuntimeReelManifestEntry

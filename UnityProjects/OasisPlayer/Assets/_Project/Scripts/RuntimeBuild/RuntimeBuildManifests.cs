@@ -5,6 +5,16 @@ using UnityEngine;
 
 namespace OasisPlayer.RuntimeBuild
 {
+    public static class FaceRuntimeContract
+    {
+        public const int SchemaVersion = 10;
+
+        public static bool IsSupportedSchemaVersion(int schemaVersion)
+        {
+            return schemaVersion == SchemaVersion;
+        }
+    }
+
     [Serializable]
     public sealed class MachineRuntimeManifest
     {
