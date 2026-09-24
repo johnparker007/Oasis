@@ -205,23 +205,27 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     private IReadOnlyDictionary<MachineObjectReference, ReelDocument> ResolveFaceReels(EditorProject project, MachineDocument machine, FaceDocumentModel face)
     {
         var result = new Dictionary<MachineObjectReference, ReelDocument>();
-        var required = face.Elements.OfType<FaceReelDisplayElement>()
-            .Select(element => element.LinkedMachineObjectReference)
-            .Where(reference => reference is { Kind: MachineObjectKind.Reel })
-            .Select(reference => reference!.Value).Distinct();
-        foreach (var reference in required)
+        var requiredMounts = face.Elements.OfType<FaceReelMount>()
+            .Where(mount => mount.LinkedMachineObjectReference is { Kind: MachineObjectKind.Reel })
+            .GroupBy(mount => mount.LinkedMachineObjectReference!.Value);
+        foreach (var mounts in requiredMounts)
         {
+            var reference = mounts.Key;
+            var mount = mounts.First();
+            var faceName = string.IsNullOrWhiteSpace(face.Title) ? face.Id : face.Title;
+            var mountName = string.IsNullOrWhiteSpace(mount.Name) ? mount.ObjectId : mount.Name;
+            var context = $"Machine '{machine.DisplayName}', Face '{faceName}' reel mount '{mountName}' -> logical '{reference}'";
             var matches = machine.ReelAssignments.Where(assignment => assignment.MachineReelReference == reference).ToArray();
             if (matches.Length != 1) throw new InvalidOperationException(matches.Length == 0
-                ? $"Machine '{machine.DisplayName}' has no Reel asset assignment for logical reel '{reference}'."
-                : $"Machine '{machine.DisplayName}' has duplicate Reel asset assignments for logical reel '{reference}'.");
+                ? $"{context} -> no Reel asset assignment."
+                : $"{context} -> duplicate Reel asset assignments.");
             var assetPath = matches[0].ReelAssetPath;
             var manifestPath = _pathService.ResolveProjectRelativePath(project, assetPath);
-            if (!File.Exists(manifestPath)) throw new InvalidOperationException($"Machine '{machine.DisplayName}' {reference} -> Reel asset '{assetPath}' was not found.");
+            if (!File.Exists(manifestPath)) throw new InvalidOperationException($"{context} -> Reel asset '{assetPath}' was not found.");
             if (ProjectAssetPathService.GetPackageAssetNameFromManifestPath(manifestPath, EditorAssetType.Reel) is null)
-                throw new InvalidOperationException($"Machine '{machine.DisplayName}' {reference} -> Reel asset '{assetPath}' is not stored as Assets/Reels/<Name>/asset.reel.");
+                throw new InvalidOperationException($"{context} -> Reel asset '{assetPath}' is not stored as Assets/Reels/<Name>/asset.reel.");
             if (!ReelDocumentStorage.TryRead(File.ReadAllText(manifestPath), out var reel, out var error))
-                throw new InvalidOperationException($"Machine '{machine.DisplayName}' {reference} -> Reel asset '{assetPath}' is invalid: {error}");
+                throw new InvalidOperationException($"{context} -> Reel asset '{assetPath}' is invalid: {error}");
             result.Add(reference, reel);
         }
         return result;

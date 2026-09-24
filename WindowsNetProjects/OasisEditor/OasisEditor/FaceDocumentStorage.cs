@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 public static class FaceDocumentStorage
 {
-    public const int CurrentSchemaVersion = 23;
+    public const int CurrentSchemaVersion = 24;
     public const int DefaultNativeLogicalWidth = 1024;
     public const int DefaultNativeLogicalHeight = 1024;
 
@@ -111,10 +111,15 @@ public static class FaceDocumentStorage
                 return false;
             }
 
+            ValidateMaterializable(parsed);
             file = parsed;
             return true;
         }
         catch (JsonException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
         {
             return false;
         }
@@ -145,6 +150,7 @@ public static class FaceDocumentStorage
                 return false;
             }
 
+            ValidateMaterializable(parsed);
             file = parsed;
             return true;
         }
@@ -153,6 +159,16 @@ public static class FaceDocumentStorage
             errorMessage = $"Malformed JSON: {ex.Message}";
             return false;
         }
+        catch (InvalidOperationException ex)
+        {
+            errorMessage = ex.Message;
+            return false;
+        }
+    }
+
+    private static void ValidateMaterializable(FaceDocumentFile file)
+    {
+        _ = ToModel(file);
     }
 
     public static FaceDocumentModel ToModel(FaceDocumentFile file)
@@ -693,10 +709,9 @@ public static class FaceDocumentStorage
             };
         }
 
-        if (string.Equals(file.Kind, "reelDisplay", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(file.Kind, "reel", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(file.Kind, "reelMount", StringComparison.Ordinal))
         {
-            return new FaceReelDisplayElement
+            return new FaceReelMount
             {
                 ObjectId = file.ObjectId ?? string.Empty,
                 Name = file.Name ?? string.Empty,
@@ -718,6 +733,12 @@ public static class FaceDocumentStorage
                 IsOpaqueReel = file.IsOpaqueReel,
                 ReelLampTransmissionMaskAssetPath = NormalizeOptional(file.ReelLampTransmissionMaskAssetPath)
             };
+        }
+
+        if (string.Equals(file.Kind, "reelDisplay", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(file.Kind, "reel", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Face element kind '{file.Kind}' is obsolete. Schema {CurrentSchemaVersion} requires 'reelMount'.");
         }
 
         if (string.Equals(file.Kind, "sevenSegmentDisplay", StringComparison.OrdinalIgnoreCase)
@@ -786,24 +807,29 @@ public static class FaceDocumentStorage
             };
         }
 
-        return new FaceLampWindowElement
+        if (string.Equals(file.Kind, "lampWindow", StringComparison.Ordinal))
         {
-            ObjectId = file.ObjectId ?? string.Empty,
-            Name = file.Name ?? string.Empty,
-            X = file.X,
-            Y = file.Y,
-            Width = file.Width,
-            Height = file.Height,
-            IsVisible = file.IsVisible,
-            IsTransformLocked = file.LockTransform,
-            LinkedMachineObjectReference = reference,
-            LinkedPanel2DElementId = file.LinkedPanel2DElementId,
-            BulbMaskAssetPath = file.BulbMaskAssetPath,
-            SourceComponentIndex = file.SourceComponentIndex,
-            SharedSourceSetId = string.IsNullOrWhiteSpace(file.SharedSourceSetId) ? null : file.SharedSourceSetId.Trim(),
-            SharedSourceSetCount = file.SharedSourceSetCount,
-            SourceBlend = file.SourceBlend
-        };
+            return new FaceLampWindowElement
+            {
+                ObjectId = file.ObjectId ?? string.Empty,
+                Name = file.Name ?? string.Empty,
+                X = file.X,
+                Y = file.Y,
+                Width = file.Width,
+                Height = file.Height,
+                IsVisible = file.IsVisible,
+                IsTransformLocked = file.LockTransform,
+                LinkedMachineObjectReference = reference,
+                LinkedPanel2DElementId = file.LinkedPanel2DElementId,
+                BulbMaskAssetPath = file.BulbMaskAssetPath,
+                SourceComponentIndex = file.SourceComponentIndex,
+                SharedSourceSetId = string.IsNullOrWhiteSpace(file.SharedSourceSetId) ? null : file.SharedSourceSetId.Trim(),
+                SharedSourceSetCount = file.SharedSourceSetCount,
+                SourceBlend = file.SourceBlend
+            };
+        }
+
+        throw new InvalidOperationException($"Face element kind '{file.Kind ?? "(missing)"}' is not supported by schema {CurrentSchemaVersion}.");
     }
 
     private static MachineInputReference? ResolveInputReference(string? linkedInputReference, MachineObjectReference? linkedMachineObjectReference)
@@ -852,7 +878,7 @@ public static class FaceDocumentStorage
             {
                 FaceArtworkElement => "artwork",
                 FaceButtonElement => "button",
-                FaceReelDisplayElement => "reelDisplay",
+                FaceReelMount => "reelMount",
                 FaceAlphaDisplayElement => "alphaDisplay",
                 FaceSevenSegmentDisplayElement => "sevenSegmentDisplay",
                 FaceLampWindowElement => "lampWindow",
@@ -872,16 +898,16 @@ public static class FaceDocumentStorage
             DigitCount = model switch { FaceSevenSegmentDisplayElement sevenSegmentDigitCount => sevenSegmentDigitCount.DigitCount, FaceAlphaDisplayElement alphaDigitCount => alphaDigitCount.DigitCount, _ => null },
             ShowDecimalPoint = model switch { FaceSevenSegmentDisplayElement sevenSegment => sevenSegment.ShowDecimalPoint, FaceAlphaDisplayElement alpha => alpha.ShowDecimalPoint, _ => false },
             ShowCommaTail = model is FaceAlphaDisplayElement alphaComma && alphaComma.ShowCommaTail,
-            IsReversed = model switch { FaceAlphaDisplayElement alphaReversed => alphaReversed.IsReversed, FaceReelDisplayElement reelReversed => reelReversed.IsReversed, _ => false },
+            IsReversed = model switch { FaceAlphaDisplayElement alphaReversed => alphaReversed.IsReversed, FaceReelMount reelReversed => reelReversed.IsReversed, _ => false },
             SegmentDisplayType = model is FaceAlphaDisplayElement alphaDisplay ? alphaDisplay.SegmentDisplayType : null,
-            Stops = model is FaceReelDisplayElement reelDisplay ? reelDisplay.Stops : null,
-            VisibleScale = model is FaceReelDisplayElement reelVisibleScale ? reelVisibleScale.VisibleScale : null,
-            BandOffset = model is FaceReelDisplayElement reelBandOffset ? reelBandOffset.BandOffset : null,
-            AssetPath = model switch { FaceArtworkElement artwork => artwork.AssetPath, FaceReelDisplayElement reel => reel.AssetPath, _ => null },
-            ReelLampsEnabled = model is FaceReelDisplayElement reelLampsEnabled ? reelLampsEnabled.ReelLampsEnabled : null,
-            ReelLamps = model is FaceReelDisplayElement reelLamps ? reelLamps.ReelLamps.Select(ToFile).ToArray() : null,
-            IsOpaqueReel = model is FaceReelDisplayElement opaqueReel && opaqueReel.IsOpaqueReel,
-            ReelLampTransmissionMaskAssetPath = model is FaceReelDisplayElement maskReel ? NormalizeOptional(maskReel.ReelLampTransmissionMaskAssetPath) : null,
+            Stops = model is FaceReelMount reelMount ? reelMount.Stops : null,
+            VisibleScale = model is FaceReelMount reelVisibleScale ? reelVisibleScale.VisibleScale : null,
+            BandOffset = model is FaceReelMount reelBandOffset ? reelBandOffset.BandOffset : null,
+            AssetPath = model switch { FaceArtworkElement artwork => artwork.AssetPath, FaceReelMount reel => reel.AssetPath, _ => null },
+            ReelLampsEnabled = model is FaceReelMount reelLampsEnabled ? reelLampsEnabled.ReelLampsEnabled : null,
+            ReelLamps = model is FaceReelMount reelLamps ? reelLamps.ReelLamps.Select(ToFile).ToArray() : null,
+            IsOpaqueReel = model is FaceReelMount opaqueReel && opaqueReel.IsOpaqueReel,
+            ReelLampTransmissionMaskAssetPath = model is FaceReelMount maskReel ? NormalizeOptional(maskReel.ReelLampTransmissionMaskAssetPath) : null,
             SourcePanel2DDocumentId = model is FaceArtworkElement artworkSource ? artworkSource.SourcePanel2DDocumentId : null,
             SourceRegion = model is FaceArtworkElement artworkRegion ? ToFile(artworkRegion.SourceRegion) : null,
             ArtworkProvenance = model is FaceArtworkElement artworkProvenance ? ToFile(artworkProvenance.Provenance) : null,

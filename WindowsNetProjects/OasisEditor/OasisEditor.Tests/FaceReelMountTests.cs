@@ -4,7 +4,7 @@ using Xunit;
 
 namespace OasisEditor.Tests;
 
-public sealed class FaceReelDisplayTests
+public sealed class FaceReelMountTests
 {
 
 
@@ -14,7 +14,7 @@ public sealed class FaceReelDisplayTests
         var runtimeState = new MachineRuntimeState();
         runtimeState.SetReelPositionIfChanged(MachineObjectReference.Reel(2), 83d);
         runtimeState.SetReelPositionIfChanged("panel-reel-2", 12d);
-        var reel = new FaceReelDisplayElement
+        var reel = new FaceReelMount
         {
             ObjectId = "face-reel-2",
             LinkedMachineObjectReference = MachineObjectReference.Reel(2),
@@ -31,7 +31,7 @@ public sealed class FaceReelDisplayTests
     {
         var runtimeState = new MachineRuntimeState();
         runtimeState.SetReelPositionIfChanged("panel-reel-2", 12d);
-        var reel = new FaceReelDisplayElement
+        var reel = new FaceReelMount
         {
             ObjectId = "face-reel-2",
             LinkedPanel2DElementId = "panel-reel-2"
@@ -49,7 +49,7 @@ public sealed class FaceReelDisplayTests
             FruitMachinePlatform = FruitMachinePlatformType.Impact
         };
         runtimeState.SetReelPositionIfChanged(MachineObjectReference.Reel(2), 0d);
-        var reel = new FaceReelDisplayElement
+        var reel = new FaceReelMount
         {
             ObjectId = "face-reel-2",
             LinkedMachineObjectReference = MachineObjectReference.Reel(2),
@@ -69,7 +69,7 @@ public sealed class FaceReelDisplayTests
             FruitMachinePlatform = FruitMachinePlatformType.MPU4
         };
         runtimeState.SetReelPositionIfChanged(MachineObjectReference.Reel(2), 12d);
-        var reel = new FaceReelDisplayElement
+        var reel = new FaceReelMount
         {
             ObjectId = "face-reel-2",
             LinkedMachineObjectReference = MachineObjectReference.Reel(2),
@@ -91,7 +91,7 @@ public sealed class FaceReelDisplayTests
             FruitMachinePlatform = FruitMachinePlatformType.Epoch
         };
         runtimeState.SetReelPositionIfChanged(MachineObjectReference.Reel(2), 86d);
-        var reel = new FaceReelDisplayElement
+        var reel = new FaceReelMount
         {
             ObjectId = "face-reel-2",
             LinkedMachineObjectReference = MachineObjectReference.Reel(2),

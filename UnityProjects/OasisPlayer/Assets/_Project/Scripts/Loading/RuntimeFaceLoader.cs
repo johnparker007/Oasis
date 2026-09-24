@@ -65,7 +65,6 @@ namespace OasisPlayer.Loading
 
     public sealed class RuntimeFaceLoader
     {
-        private const int FaceSchemaVersion = 9;
         private const string TargetPrefix = "OasisFace_";
 
         private readonly IRuntimeTextureAssetLoader _assetLoader;
@@ -123,7 +122,7 @@ namespace OasisPlayer.Loading
                     continue;
                 }
 
-                if (manifest.schemaVersion != FaceSchemaVersion)
+                if (!FaceRuntimeContract.IsSupportedSchemaVersion(manifest.schemaVersion))
                 {
                     machine.AddWarning($"Unsupported Face manifest schema version for Face '{referenceFaceId}' in {reference.ResolvedManifestPath}.");
                     continue;

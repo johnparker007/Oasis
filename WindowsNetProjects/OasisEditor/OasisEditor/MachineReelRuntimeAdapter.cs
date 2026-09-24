@@ -73,7 +73,7 @@ public sealed class MachineReelRuntimeAdapter : IMachineReelRuntimeAdapter
         {
             document.RuntimeState.FruitMachinePlatform = platform;
             var objectIdsByReel = GetOrBuildReelMapping(document);
-            var faceObjectIdsByReel = FaceRuntimeDisplayReferenceIndex.GetObjectIdsByReference<FaceReelDisplayElement>(document, MachineObjectKind.Reel);
+            var faceObjectIdsByReel = FaceRuntimeDisplayReferenceIndex.GetObjectIdsByReference<FaceReelMount>(document, MachineObjectKind.Reel);
             var changedObjectIds = new HashSet<string>(StringComparer.Ordinal);
             var changedFaceObjectIds = new HashSet<string>(StringComparer.Ordinal);
 

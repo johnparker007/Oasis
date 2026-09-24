@@ -8,7 +8,7 @@ public static class FaceElementClassification
     public static FaceElementCategory GetCategory(FaceElementModel element) => element switch
     {
         FaceArtworkElement => FaceElementCategory.Artwork,
-        FaceReelDisplayElement or FaceSevenSegmentDisplayElement or FaceAlphaDisplayElement or FaceButtonElement => FaceElementCategory.Component,
+        FaceReelMount or FaceSevenSegmentDisplayElement or FaceAlphaDisplayElement or FaceButtonElement => FaceElementCategory.Component,
         FaceLampWindowElement or FaceLampEmitterElement => FaceElementCategory.Illumination,
         _ => throw new ArgumentOutOfRangeException(nameof(element), element.GetType().FullName, "Unclassified Face element type.")
     };
@@ -35,7 +35,7 @@ internal static class FaceComponentFactory
             X: x, Y: y, Width: width.GetValueOrDefault(defaultWidth), Height: height.GetValueOrDefault(defaultHeight));
         return kind switch
         {
-            FaceComponentKind.Reel => new FaceReelDisplayElement { ObjectId=common.Id, Name=common.Name, X=common.X, Y=common.Y, Width=common.Width, Height=common.Height, Stops=1 },
+            FaceComponentKind.Reel => new FaceReelMount { ObjectId=common.Id, Name=common.Name, X=common.X, Y=common.Y, Width=common.Width, Height=common.Height, Stops=1 },
             FaceComponentKind.Button => new FaceButtonElement { ObjectId=common.Id, Name=common.Name, X=common.X, Y=common.Y, Width=common.Width, Height=common.Height },
             FaceComponentKind.SevenSegmentDisplay => new FaceSevenSegmentDisplayElement { ObjectId=common.Id, Name=common.Name, X=common.X, Y=common.Y, Width=common.Width, Height=common.Height },
             FaceComponentKind.AlphaDisplay => new FaceAlphaDisplayElement { ObjectId=common.Id, Name=common.Name, X=common.X, Y=common.Y, Width=common.Width, Height=common.Height },

@@ -8,6 +8,33 @@ namespace OasisPlayer.Tests
 {
     public sealed class RuntimeBuildLoaderManifestTests
     {
+        [Test]
+        public void FaceRuntimeContractUsesSchema10WithoutObsoleteCabinetReelTargetId()
+        {
+            Assert.AreEqual(10, FaceRuntimeContract.SchemaVersion);
+            Assert.True(FaceRuntimeContract.IsSupportedSchemaVersion(10));
+            Assert.False(FaceRuntimeContract.IsSupportedSchemaVersion(9));
+            var json = JsonUtility.ToJson(new FaceRuntimeManifest
+            {
+                schemaVersion = FaceRuntimeContract.SchemaVersion,
+                reels = new[]
+                {
+                    new FaceRuntimeReelManifestEntry
+                    {
+                        objectId = "mount-3",
+                        machineReference = "reel:3",
+                        reelBand = "reels/mount-3.png",
+                        stops = 20
+                    }
+                }
+            });
+
+            StringAssert.Contains("\"schemaVersion\":10", json);
+            StringAssert.Contains("\"objectId\":\"mount-3\"", json);
+            StringAssert.Contains("\"machineReference\":\"reel:3\"", json);
+            StringAssert.DoesNotContain("cabinetReelTargetId", json);
+        }
+
         [TestCase(RuntimeFaceFrontSideExtensions.NormalValue, RuntimeFaceFrontSide.Normal, false)]
         [TestCase(RuntimeFaceFrontSideExtensions.InvertedValue, RuntimeFaceFrontSide.Inverted, true)]
         public void MachineRuntimeJsonLoadsFrontSide(string frontSide, RuntimeFaceFrontSide expected, bool expectedInverted)

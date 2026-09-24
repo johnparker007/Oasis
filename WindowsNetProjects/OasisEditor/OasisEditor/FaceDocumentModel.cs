@@ -435,7 +435,7 @@ public sealed class FaceLampEmitterElement : FaceElementModel
     public IReadOnlyList<string> Diagnostics { get; init; } = [];
 }
 
-public sealed class FaceReelDisplayElement : FaceElementModel
+public sealed class FaceReelMount : FaceElementModel
 {
     public string? AssetPath { get; init; }
     public int? Stops { get; init; }

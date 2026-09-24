@@ -1458,7 +1458,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             selectedElement.IsVisible,
             commit: value => TryApplyFaceUpdate(selectedElement.ObjectId, "Update visibility", new FaceElementModelUpdate { IsVisible = value })));
         _propertyRows.Add(new InspectorTextPropertyViewModel(
-            "Machine Reference",
+            selectedElement is FaceReelMount ? "Logical Reel" : "Machine Reference",
             "References",
             selectedElement.LinkedMachineObjectReference?.ToString() ?? string.Empty,
             commit: value => TryApplyFaceMachineReferenceUpdate(selectedElement.ObjectId, value)));
@@ -1468,9 +1468,10 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             selectedElement.LinkedPanel2DElementId ?? string.Empty,
             commit: value => TryApplyFaceUpdate(selectedElement.ObjectId, "Update linked Panel2D element", new FaceElementModelUpdate { HasLinkedPanel2DElementId = true, LinkedPanel2DElementId = NormalizeOptionalText(value) })));
 
-        if (selectedElement is FaceReelDisplayElement reelDisplay)
+        if (selectedElement is FaceReelMount reelMount)
         {
-            AddFaceReelLampRows(reelDisplay);
+            _propertyRows.Add(new InspectorInfoPropertyViewModel("Element Type", "Reel Mount", "Face-owned mount / placement"));
+            AddFaceReelLampRows(reelMount);
         }
 
         if (selectedElement is FaceArtworkElement artwork)
@@ -1596,7 +1597,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         _propertyRows.Add(new InspectorIntPropertyViewModel(displayName, "Reel Lamps", GetReelLampNumber(reel.ReelLamps, position), commit: value => value < 0 ? "Lamp Number must be zero or greater." : TryApplyUpdate(reel.ObjectId, $"Update {displayName.ToLowerInvariant()}", new PanelElementModelUpdate { ReelLamps = new PanelElementOptionalValue<IReadOnlyList<ReelLampSlotModel>>(SetReelLampNumber(reel.ReelLamps, position, value)) })));
     }
 
-    private void AddFaceReelLampRows(FaceReelDisplayElement reel)
+    private void AddFaceReelLampRows(FaceReelMount reel)
     {
         const string group = "Reel Lamps";
         _propertyRows.Add(new InspectorBoolPropertyViewModel("Lamps Enabled", group, reel.ReelLampsEnabled, commit: value => TryApplyFaceUpdate(reel.ObjectId, "Update reel lamps enabled", new FaceElementModelUpdate { ReelLampsEnabled = value })));
@@ -1607,7 +1608,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         _propertyRows.Add(new InspectorInfoPropertyViewModel("Transmission Mask", group, string.IsNullOrWhiteSpace(reel.ReelLampTransmissionMaskAssetPath) ? "Not generated" : reel.ReelLampTransmissionMaskAssetPath));
     }
 
-    private void AddFaceReelLampNumberRow(FaceReelDisplayElement reel, string displayName, ReelLampSlotPosition position)
+    private void AddFaceReelLampNumberRow(FaceReelMount reel, string displayName, ReelLampSlotPosition position)
     {
         _propertyRows.Add(new InspectorIntPropertyViewModel(displayName, "Reel Lamps", GetReelLampNumber(reel.ReelLamps, position), commit: value => value < 0 ? "Lamp Number must be zero or greater." : TryApplyFaceUpdate(reel.ObjectId, $"Update {displayName.ToLowerInvariant()}", new FaceElementModelUpdate { ReelLamps = SetReelLampNumber(reel.ReelLamps, position, value) })));
     }
@@ -1780,19 +1781,19 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
                 case "Linked Panel2D Element" when row is InspectorTextPropertyViewModel panelRow:
                     panelRow.SetCommittedValue(selectedElement.LinkedPanel2DElementId ?? string.Empty);
                     break;
-                case "Lamps Enabled" when row is InspectorBoolPropertyViewModel faceReelLampsEnabledRow && selectedElement is FaceReelDisplayElement faceReel:
+                case "Lamps Enabled" when row is InspectorBoolPropertyViewModel faceReelLampsEnabledRow && selectedElement is FaceReelMount faceReel:
                     faceReelLampsEnabledRow.SetCommittedValue(faceReel.ReelLampsEnabled);
                     break;
-                case "Top Lamp Number" when row is InspectorIntPropertyViewModel faceTopLampRow && selectedElement is FaceReelDisplayElement faceTopReel:
+                case "Top Lamp Number" when row is InspectorIntPropertyViewModel faceTopLampRow && selectedElement is FaceReelMount faceTopReel:
                     faceTopLampRow.SetCommittedValue(GetReelLampNumber(faceTopReel.ReelLamps, ReelLampSlotPosition.Top));
                     break;
-                case "Middle Lamp Number" when row is InspectorIntPropertyViewModel faceMiddleLampRow && selectedElement is FaceReelDisplayElement faceMiddleReel:
+                case "Middle Lamp Number" when row is InspectorIntPropertyViewModel faceMiddleLampRow && selectedElement is FaceReelMount faceMiddleReel:
                     faceMiddleLampRow.SetCommittedValue(GetReelLampNumber(faceMiddleReel.ReelLamps, ReelLampSlotPosition.Middle));
                     break;
-                case "Bottom Lamp Number" when row is InspectorIntPropertyViewModel faceBottomLampRow && selectedElement is FaceReelDisplayElement faceBottomReel:
+                case "Bottom Lamp Number" when row is InspectorIntPropertyViewModel faceBottomLampRow && selectedElement is FaceReelMount faceBottomReel:
                     faceBottomLampRow.SetCommittedValue(GetReelLampNumber(faceBottomReel.ReelLamps, ReelLampSlotPosition.Bottom));
                     break;
-                case "Opaque Reel" when row is InspectorBoolPropertyViewModel faceOpaqueReelRow && selectedElement is FaceReelDisplayElement faceOpaqueReel:
+                case "Opaque Reel" when row is InspectorBoolPropertyViewModel faceOpaqueReelRow && selectedElement is FaceReelMount faceOpaqueReel:
                     faceOpaqueReelRow.SetCommittedValue(faceOpaqueReel.IsOpaqueReel);
                     break;
             }
@@ -2000,7 +2001,7 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private static bool IsRuntimeLinkedFaceElement(FaceElementModel element)
     {
         return element is FaceLampWindowElement
-            or FaceReelDisplayElement
+            or FaceReelMount
             or FaceSevenSegmentDisplayElement
             or FaceAlphaDisplayElement
             or FaceButtonElement;

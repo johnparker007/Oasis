@@ -53,7 +53,7 @@ public sealed class FaceSourceRegionModel
 
 internal sealed class FaceGenerationResult
 {
-    public FaceGenerationResult(FaceDocumentModel document, int convertedLampCount, int artworkElementCount, int convertedButtonCount, int convertedSevenSegmentDisplayCount, int convertedAlphaDisplayCount, int convertedReelDisplayCount)
+    public FaceGenerationResult(FaceDocumentModel document, int convertedLampCount, int artworkElementCount, int convertedButtonCount, int convertedSevenSegmentDisplayCount, int convertedAlphaDisplayCount, int convertedReelMountCount)
     {
         Document = document;
         ConvertedLampCount = convertedLampCount;
@@ -61,7 +61,7 @@ internal sealed class FaceGenerationResult
         ConvertedButtonCount = convertedButtonCount;
         ConvertedSevenSegmentDisplayCount = convertedSevenSegmentDisplayCount;
         ConvertedAlphaDisplayCount = convertedAlphaDisplayCount;
-        ConvertedReelDisplayCount = convertedReelDisplayCount;
+        ConvertedReelMountCount = convertedReelMountCount;
     }
 
     public FaceDocumentModel Document { get; }
@@ -70,7 +70,7 @@ internal sealed class FaceGenerationResult
     public int ConvertedButtonCount { get; }
     public int ConvertedSevenSegmentDisplayCount { get; }
     public int ConvertedAlphaDisplayCount { get; }
-    public int ConvertedReelDisplayCount { get; }
+    public int ConvertedReelMountCount { get; }
 }
 
 internal sealed class FaceGenerationService
@@ -237,7 +237,7 @@ internal sealed class FaceGenerationService
             ],
             Elements = elements
         };
-        var reelCount = semanticElements.OfType<FaceReelDisplayElement>().Count();
+        var reelCount = semanticElements.OfType<FaceReelMount>().Count();
         var sevenSegmentCount = semanticElements.OfType<FaceSevenSegmentDisplayElement>().Count();
         var alphaCount = semanticElements.OfType<FaceAlphaDisplayElement>().Count();
         var buttonCount = semanticElements.OfType<FaceButtonElement>().Count();

@@ -5,6 +5,16 @@ using UnityEngine;
 
 namespace OasisPlayer.RuntimeBuild
 {
+    public static class FaceRuntimeContract
+    {
+        public const int SchemaVersion = 10;
+
+        public static bool IsSupportedSchemaVersion(int schemaVersion)
+        {
+            return schemaVersion == SchemaVersion;
+        }
+    }
+
     [Serializable]
     public sealed class MachineRuntimeManifest
     {
@@ -143,7 +153,6 @@ namespace OasisPlayer.RuntimeBuild
     [Serializable]
     public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEntry
     {
-        public string cabinetReelTargetId = string.Empty;
         public string reelBand = string.Empty;
         public int stops;
         public bool isReversed;

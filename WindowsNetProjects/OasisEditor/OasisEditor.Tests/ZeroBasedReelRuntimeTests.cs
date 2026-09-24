@@ -135,7 +135,7 @@ public sealed class ZeroBasedReelRuntimeTests
             FruitMachinePlatform = FruitMachinePlatformType.Epoch
         };
         faceRuntimeState.SetReelPositionIfChanged(MachineObjectReference.Reel(0), 10d);
-        var faceReel = new FaceReelDisplayElement
+        var faceReel = new FaceReelMount
         {
             LinkedMachineObjectReference = MachineObjectReference.Reel(0),
             Stops = 12,
@@ -172,7 +172,7 @@ public sealed class ZeroBasedReelRuntimeTests
             FruitMachinePlatform = FruitMachinePlatformType.MaygayM1
         };
         faceRuntimeState.SetReelPositionIfChanged(MachineObjectReference.Reel(0), 10d);
-        var faceReel = new FaceReelDisplayElement
+        var faceReel = new FaceReelMount
         {
             LinkedMachineObjectReference = MachineObjectReference.Reel(0),
             Stops = stops,
@@ -212,7 +212,7 @@ public sealed class ZeroBasedReelRuntimeTests
             FruitMachinePlatform = FruitMachinePlatformType.Scorpion4
         };
         faceRuntimeState.SetReelPositionIfChanged(MachineObjectReference.Reel(0), 10d);
-        var faceReel = new FaceReelDisplayElement
+        var faceReel = new FaceReelMount
         {
             LinkedMachineObjectReference = MachineObjectReference.Reel(0),
             Stops = stops,

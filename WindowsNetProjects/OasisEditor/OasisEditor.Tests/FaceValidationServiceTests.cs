@@ -27,7 +27,7 @@ public sealed class FaceValidationServiceTests
                     ObjectId = "lamp-1",
                     Name = "Lamp"
                 },
-                new FaceReelDisplayElement
+                new FaceReelMount
                 {
                     ObjectId = "reel-1",
                     Name = "Reel",
@@ -57,7 +57,7 @@ public sealed class FaceValidationServiceTests
     {
         var face = new FaceDocumentModel
         {
-            Elements = [new FaceReelDisplayElement { ObjectId = "reel-3", LinkedMachineObjectReference = MachineObjectReference.Reel(3) }]
+            Elements = [new FaceReelMount { ObjectId = "reel-3", LinkedMachineObjectReference = MachineObjectReference.Reel(3) }]
         };
         var service = new FaceValidationService();
         Assert.DoesNotContain(service.Validate(face, null, []), diagnostic => diagnostic.Code == "Machine.ReelAssignment.Missing");

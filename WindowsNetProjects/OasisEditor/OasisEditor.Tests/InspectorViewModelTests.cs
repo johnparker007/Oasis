@@ -237,7 +237,7 @@ public sealed class InspectorViewModelTests
     [Fact]
     public void InspectorPropertyRows_SelectedFaceReel_ExposesLogicalReferenceWithoutPhysicalSpecification()
     {
-        var reel = new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel", X = 1, Y = 2, Width = 3, Height = 4, IsVisible = true, LinkedMachineObjectReference = MachineObjectReference.Reel(3) };
+        var reel = new FaceReelMount { ObjectId = "reel-1", Name = "Reel", X = 1, Y = 2, Width = 3, Height = 4, IsVisible = true, LinkedMachineObjectReference = MachineObjectReference.Reel(3) };
         var selectedDocument = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"), faceDocumentJson: FaceDocumentStorage.Serialize(new FaceDocumentModel { Title = "Face", Elements = [reel] }));
         var context = new ActiveDocumentContextService();
         context.SetActiveDocument(selectedDocument);
@@ -246,7 +246,8 @@ public sealed class InspectorViewModelTests
 
         viewModel.NotifyContextChanged();
 
-        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Machine Reference" && row is InspectorTextPropertyViewModel text && text.Value == "reel:3");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.DisplayName == "Logical Reel" && row is InspectorTextPropertyViewModel text && text.Value == "reel:3");
+        Assert.Contains(viewModel.InspectorPropertyRows, row => row.GroupName == "Reel Mount" && row.DisplayName == "Element Type");
         Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.DisplayName == "Reel Specification");
         Assert.DoesNotContain(viewModel.InspectorPropertyRows, row => row.GroupName == "Cabinet Assignment");
     }

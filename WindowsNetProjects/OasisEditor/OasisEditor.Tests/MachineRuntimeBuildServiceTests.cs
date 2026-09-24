@@ -230,7 +230,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         {
             Id = Guid.NewGuid().ToString("D"), Title = "Glass", SourceRegion = new FaceSourceRegionModel { Width = 100, Height = 100 },
             MaskLayer = new FaceMaskLayerModel { AssetPath = paths.ToProjectRelativePath(project, maskPath), Width = 2, Height = 2 },
-            Elements = logicalReels.Select((logical, index) => (FaceElementModel)new FaceReelDisplayElement { ObjectId = $"reel-{logical}", Name = $"Reel {logical}", X = index * 10, Y = 0, Width = 10, Height = 20, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(logical) }).ToArray()
+            Elements = logicalReels.Select((logical, index) => (FaceElementModel)new FaceReelMount { ObjectId = $"reel-{logical}", Name = $"Reel {logical}", X = index * 10, Y = 0, Width = 10, Height = 20, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(logical) }).ToArray()
         };
         File.WriteAllText(faceManifest, FaceDocumentStorage.Serialize(face));
         foreach (var asset in assignments.GroupBy(value => value.Asset).Select(group => group.First()))

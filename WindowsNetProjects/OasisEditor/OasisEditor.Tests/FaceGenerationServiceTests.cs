@@ -254,11 +254,11 @@ public sealed class FaceGenerationServiceTests
             "panel-doc-1",
             inputDefinitions: [new InputDefinitionModel { Id = "start", Name = "Start", Kind = InputDefinitionKind.Button, LinkedVisualElementId = buttonVisualId }]);
 
-        Assert.Equal(1, result.ConvertedReelDisplayCount);
+        Assert.Equal(1, result.ConvertedReelMountCount);
         Assert.Equal(1, result.ConvertedSevenSegmentDisplayCount);
         Assert.Equal(1, result.ConvertedAlphaDisplayCount);
         Assert.Equal(1, result.ConvertedButtonCount);
-        var reel = Assert.IsType<FaceReelDisplayElement>(Assert.Single(result.Document.Elements.OfType<FaceReelDisplayElement>()));
+        var reel = Assert.IsType<FaceReelMount>(Assert.Single(result.Document.Elements.OfType<FaceReelMount>()));
         Assert.Equal("Assets/Reels/reel.png", reel.AssetPath);
         Assert.Equal(24, reel.Stops);
         Assert.Equal(1.5, reel.VisibleScale);
@@ -300,7 +300,7 @@ public sealed class FaceGenerationServiceTests
 
         Assert.True(FaceSemanticElementConversionService.IsCenterInsideSourceShape(inside, shape));
         Assert.False(FaceSemanticElementConversionService.IsCenterInsideSourceShape(outside, shape));
-        var bounds = Assert.IsType<FaceReelDisplayElement>(Assert.Single(service.ConvertSupportedElements(new Panel2DDocumentModel { Elements = [inside, outside] }, shape, 200, 120, null).OfType<FaceReelDisplayElement>()));
+        var bounds = Assert.IsType<FaceReelMount>(Assert.Single(service.ConvertSupportedElements(new Panel2DDocumentModel { Elements = [inside, outside] }, shape, 200, 120, null).OfType<FaceReelMount>()));
         var transformedCorners = new[]
         {
             (X: inside.X, Y: inside.Y),
@@ -326,7 +326,7 @@ public sealed class FaceGenerationServiceTests
             SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
             Elements =
             [
-                new FaceReelDisplayElement { ObjectId = "existing-reel", Name = "Old", LinkedPanel2DElementId = "reel-1", X = 0, Y = 0, Width = 1, Height = 1, LinkedMachineObjectReference = MachineObjectReference.Reel(99),},
+                new FaceReelMount { ObjectId = "existing-reel", Name = "Old", LinkedPanel2DElementId = "reel-1", X = 0, Y = 0, Width = 1, Height = 1, LinkedMachineObjectReference = MachineObjectReference.Reel(99),},
                 new FaceArtworkElement { ObjectId = "manual-art", Name = "Manual", X = 1, Y = 1, Width = 2, Height = 2 }
             ]
         };
@@ -338,7 +338,7 @@ public sealed class FaceGenerationServiceTests
 
         var result = new FaceRegenerationService().Regenerate(existingFace, panel, documentPath: "Assets/Faces/Face/asset.face");
 
-        var reel = Assert.Single(result.Document.Elements.OfType<FaceReelDisplayElement>());
+        var reel = Assert.Single(result.Document.Elements.OfType<FaceReelMount>());
         Assert.Equal("existing-reel", reel.ObjectId);
         Assert.Equal("New Reel", reel.Name);
         Assert.Equal("reel:99", reel.LinkedMachineObjectReference?.ToString());

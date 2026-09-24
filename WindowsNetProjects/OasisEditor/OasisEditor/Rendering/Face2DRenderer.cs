@@ -62,9 +62,9 @@ public sealed class Face2DRenderer : IFace2DRenderer
             DrawLampIllumination(canvas, faceDocument.MaskLayer, elements.OfType<FaceLampWindowElement>(), runtimeState);
         }
 
-        foreach (var reelDisplay in elements.OfType<FaceReelDisplayElement>())
+        foreach (var reelMount in elements.OfType<FaceReelMount>())
         {
-            DrawReelDisplay(canvas, reelDisplay, runtimeState, viewportTransform);
+            DrawReelDisplay(canvas, reelMount, runtimeState, viewportTransform);
         }
 
         foreach (var sevenSegmentDisplay in elements.OfType<FaceSevenSegmentDisplayElement>())
@@ -100,9 +100,9 @@ public sealed class Face2DRenderer : IFace2DRenderer
             DrawArtwork(canvas, artwork, viewportTransform);
         }
 
-        foreach (var reelDisplay in elements.OfType<FaceReelDisplayElement>())
+        foreach (var reelMount in elements.OfType<FaceReelMount>())
         {
-            DrawReelDisplay(canvas, reelDisplay, runtimeState, viewportTransform);
+            DrawReelDisplay(canvas, reelMount, runtimeState, viewportTransform);
         }
 
         foreach (var sevenSegmentDisplay in elements.OfType<FaceSevenSegmentDisplayElement>())
@@ -379,7 +379,7 @@ public sealed class Face2DRenderer : IFace2DRenderer
             Math.Max(left.Bottom, right.Bottom));
     }
 
-    private void DrawReelDisplay(SKCanvas canvas, FaceReelDisplayElement element, MachineRuntimeState runtimeState, PanelViewportTransform viewport)
+    private void DrawReelDisplay(SKCanvas canvas, FaceReelMount element, MachineRuntimeState runtimeState, PanelViewportTransform viewport)
     {
         var rect = ToRect(element);
         if (rect.Width <= 0f || rect.Height <= 0f)

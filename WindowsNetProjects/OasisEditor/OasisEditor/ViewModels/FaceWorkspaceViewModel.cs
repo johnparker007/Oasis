@@ -522,7 +522,7 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
             if(elements.Length==0)return "No components";
             var counts=new[]
             {
-                (elements.OfType<FaceReelDisplayElement>().Count(),"Reel"),
+                (elements.OfType<FaceReelMount>().Count(),"Reel"),
                 (elements.OfType<FaceButtonElement>().Count(),"Button"),
                 (elements.OfType<FaceSevenSegmentDisplayElement>().Count(),"Seven-Segment Display"),
                 (elements.OfType<FaceAlphaDisplayElement>().Count(),"Alpha Display")
