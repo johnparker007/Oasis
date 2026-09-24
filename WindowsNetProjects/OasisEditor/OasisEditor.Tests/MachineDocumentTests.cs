@@ -257,7 +257,7 @@ public sealed class MachineDocumentTests
 
             tab.SetMachineSurfaceAssignment("OasisFace_Glass", facePath);
 
-            Assert.Equal([0, 1, 2, 3], tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
+            Assert.Equal(new[] { "0", "1", "2", "3" }, tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
@@ -277,15 +277,15 @@ public sealed class MachineDocumentTests
             var reelZero = tab.MachineReelAssignmentRows.Single(row => row.Reference == MachineObjectReference.Reel(0));
 
             tab.SetMachineSurfaceAssignment("OasisFace_Glass", faceB);
-            Assert.Equal([0, 1, 2, 3], tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
+            Assert.Equal(new[] { "0", "1", "2", "3" }, tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
             Assert.Same(reelZero, tab.MachineReelAssignmentRows[0]);
             Assert.Equal(surfaceRows, tab.MachineSurfaceAssignmentRows);
 
             Assert.True(tab.CommandService.TryUndo());
-            Assert.Equal([0, 1], tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
+            Assert.Equal(new[] { "0", "1" }, tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
             Assert.Same(reelZero, tab.MachineReelAssignmentRows[0]);
             Assert.True(tab.CommandService.TryRedo());
-            Assert.Equal([0, 1, 2, 3], tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
+            Assert.Equal(new[] { "0", "1", "2", "3" }, tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
@@ -337,7 +337,7 @@ public sealed class MachineDocumentTests
             WriteFace(project, "Assigned", 0, 1);
             File.SetLastWriteTimeUtc(new ProjectAssetPathService().ResolveProjectRelativePath(project, assigned), DateTime.UtcNow.AddSeconds(3));
             tab.RefreshMachineCompositionChoices();
-            Assert.Equal([0, 1], tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
+            Assert.Equal(new[] { "0", "1" }, tab.MachineReelAssignmentRows.Select(row => row.Reference.Id).ToArray());
             Assert.Same(reelZero, tab.MachineReelAssignmentRows[0]);
             Assert.False(tab.IsDirty);
         }
