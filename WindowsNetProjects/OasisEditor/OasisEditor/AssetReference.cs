@@ -13,6 +13,8 @@ public sealed record AssetReference
 
     public AssetReference(AssetReferenceScope scope, string path)
     {
+        if (scope is not AssetReferenceScope.Project and not AssetReferenceScope.Library)
+            throw new ArgumentOutOfRangeException(nameof(scope), scope, "Asset reference scope must be Project or Library.");
         Scope = scope;
         Path = Normalize(path);
     }
@@ -39,7 +41,12 @@ public sealed class AssetReferenceResolver
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(reference);
-        var root = reference.Scope == AssetReferenceScope.Project ? project.ProjectDirectory : libraryRoot;
+        var root = reference.Scope switch
+        {
+            AssetReferenceScope.Project => project.ProjectDirectory,
+            AssetReferenceScope.Library => libraryRoot,
+            _ => throw new InvalidOperationException($"Unsupported asset reference scope '{reference.Scope}'.")
+        };
         if (string.IsNullOrWhiteSpace(root)) throw new InvalidOperationException(reference.Scope == AssetReferenceScope.Library
             ? "The Oasis Library root is not configured."
             : "The project root is not configured.");
@@ -52,7 +59,12 @@ public sealed class AssetReferenceResolver
 
     public AssetReference FromAbsolutePath(EditorProject project, string libraryRoot, AssetReferenceScope scope, string path)
     {
-        var root = scope == AssetReferenceScope.Project ? project.ProjectDirectory : libraryRoot;
+        var root = scope switch
+        {
+            AssetReferenceScope.Project => project.ProjectDirectory,
+            AssetReferenceScope.Library => libraryRoot,
+            _ => throw new ArgumentOutOfRangeException(nameof(scope), scope, "Asset reference scope must be Project or Library.")
+        };
         var relative = System.IO.Path.GetRelativePath(root, System.IO.Path.GetFullPath(path));
         var reference = new AssetReference(scope, relative);
         _ = Resolve(project, libraryRoot, reference);

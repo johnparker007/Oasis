@@ -72,7 +72,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         string sourceGlb;
         try { sourceGlb = ResolveCabinetModelPath(cabinetManifestPath, cabinetDocument.Model.Path); }
         catch (InvalidOperationException exception) { return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references an invalid Cabinet {machineDocument.CabinetAsset}: {exception.Message}"); }
-        if (!File.Exists(sourceGlb)) return MachineRuntimeBuildResult.Fail($"Cabinet3D GLB model was not found: {sourceGlb}");
+        if (!File.Exists(sourceGlb)) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references Cabinet {machineDocument.CabinetAsset}, whose package GLB was not found: {sourceGlb}");
         var buildRoot = GetBuildRoot(project, machineAssetName);
         var stagingRoot = buildRoot + ".staging";
         try
@@ -85,9 +85,9 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             progress.Report(0.15, "Copying cabinet model...");
             File.Copy(sourceGlb, Path.Combine(cabinetRoot, CabinetGlbFileName), overwrite: true);
             cancellationToken.ThrowIfCancellationRequested();
-            var cabinetAssetPath = ToProjectRelativePath(project, cabinetManifestPath);
-            ValidateFaceAssignmentTargets(machineDocument.DisplayName, machineDocument.SurfaceAssignments, sourceGlb, cabinetAssetPath, cancellationToken);
-            var faceReferences = ExportReferencedFaces(project, stagingRoot, machineDocument, cabinetDocument, cabinetAssetPath, progress.CreateChild(0.2, 0.7), cancellationToken);
+            var cabinetAssetIdentity = machineDocument.CabinetAsset.ToString();
+            ValidateFaceAssignmentTargets(machineDocument.DisplayName, machineDocument.SurfaceAssignments, sourceGlb, cabinetAssetIdentity, cancellationToken);
+            var faceReferences = ExportReferencedFaces(project, stagingRoot, machineDocument, cabinetDocument, cabinetAssetIdentity, progress.CreateChild(0.2, 0.7), cancellationToken);
             progress.Report(0.72, "Validating cabinet reflections...");
             cancellationToken.ThrowIfCancellationRequested();
             ValidateReflections(cabinetDocument.Reflections ?? [], GlbCabinetReflectionReceiverDiscovery.Discover(sourceGlb), faceReferences);
@@ -268,12 +268,6 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     }
 
     private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private static string ToProjectRelativePath(EditorProject project, string path)
-    {
-        if (string.IsNullOrWhiteSpace(project.ProjectDirectory)) return ProjectAssetPathService.NormalizeProjectRelativePath(path);
-        return ProjectAssetPathService.NormalizeProjectRelativePath(Path.GetRelativePath(project.ProjectDirectory, path));
-    }
 
     public string GetBuildRoot(EditorProject project, string machineAssetName) => Path.Combine(project.GeneratedDirectory, "Builds", _pathService.SanitizePathSegment(machineAssetName));
     private static string ResolveCabinetModelPath(string manifestPath, string modelPath)

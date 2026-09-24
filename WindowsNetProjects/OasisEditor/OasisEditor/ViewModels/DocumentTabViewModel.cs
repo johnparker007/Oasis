@@ -162,7 +162,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private CabinetModelDocumentViewModel GetOrCreateCabinetViewer()
     {
         if (_cabinetViewer is not null) return _cabinetViewer;
-        var viewer = new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), this, _openDocumentsAccessor, _projectAccessor);
+        var viewer = new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), this, _openDocumentsAccessor, _projectAccessor, () => LibraryRoot());
         _cabinetViewer = viewer;
         viewer.SetMachineCompositionContext(_machineCompositionContext);
         viewer.Initialize();
@@ -182,7 +182,12 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _cabinetViewer?.ReflectionEditor.RefreshProjectContext();
         RefreshMachineCompositionChoices();
     }
-    public void SetLibraryRootAccessor(Func<string> libraryRootAccessor) => _libraryRootAccessor = libraryRootAccessor;
+    public void SetLibraryRootAccessor(Func<string> libraryRootAccessor)
+    {
+        _libraryRootAccessor = libraryRootAccessor;
+        RefreshMachineCompositionChoices();
+        _cabinetViewer?.RefreshFacePreviews();
+    }
 
     internal void SetMachineCompositionContext(DocumentTabViewModel? machineDocument)
     {
@@ -355,7 +360,12 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             MachineReelAssignmentRows.Clear();
             return;
         }
-        var cabinetPath = Resolve(project, _machineDocumentModel.CabinetAsset);
+        if (!TryResolve(project, _machineDocumentModel.CabinetAsset, out var cabinetPath))
+        {
+            MachineSurfaceAssignmentRows.Clear();
+            MachineReelAssignmentRows.Clear();
+            return;
+        }
         if (!File.Exists(cabinetPath) || !CabinetDocumentStorage.TryRead(File.ReadAllText(cabinetPath), out var cabinet))
         {
             MachineSurfaceAssignmentRows.Clear();
@@ -424,7 +434,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         parts.Add($"selected:{_machineDocumentModel.CabinetAsset}");
         if (_machineDocumentModel.CabinetAsset is not null)
         {
-            var cabinetPath = Resolve(project, _machineDocumentModel.CabinetAsset);
+            if (!TryResolve(project, _machineDocumentModel.CabinetAsset, out var cabinetPath))
+            { parts.Add($"unresolved:{_machineDocumentModel.CabinetAsset}"); return string.Join("\n", parts); }
             AddFileStamp(parts, cabinetPath);
             if (File.Exists(cabinetPath) && CabinetDocumentStorage.TryRead(File.ReadAllText(cabinetPath), out var cabinet))
             {
@@ -506,6 +517,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     }
     private string LibraryRoot() => _libraryRootAccessor?.Invoke() ?? new EditorPreferencesStore().Load().AssetLibrary.RootPath;
     private string Resolve(EditorProject project, AssetReference reference) => new AssetReferenceResolver().Resolve(project, LibraryRoot(), reference);
+    private bool TryResolve(EditorProject project, AssetReference reference, out string path)
+    {
+        try { path = Resolve(project, reference); return true; }
+        catch (InvalidOperationException) { path = string.Empty; return false; }
+    }
     private static bool SameAssetPath(AssetReference? left, AssetReference? right) => left == right;
     internal void SetMachineSurfaceAssignment(string targetId, string? facePath) => ExecuteMachineMutation(machine =>
     {

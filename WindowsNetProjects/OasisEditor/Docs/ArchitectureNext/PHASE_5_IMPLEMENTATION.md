@@ -42,13 +42,13 @@ Machine schema advances directly from 2 to 3. `cabinetAssetPath` is replaced by 
 
 ## 9. Assets and Machine UI
 
-Machine Cabinet and Reel selectors combine validated project and Library catalogs. Labels carry `[Project]` or `[Library]`, while identity remains the typed reference rather than display name. A missing selected reference is retained and shown as `Missing: <path> [<scope>]`. Catalog refresh reconstructs choices without a Machine command and therefore does not dirty it. Cabinet/Reel manifests can also be opened directly and edit/save their canonical package.
+Machine Cabinet and Reel selectors combine validated project and Library catalogs. Library labels carry `[Library]` (project entries retain their established names), while identity remains the typed reference rather than display name. A missing selected reference is retained and shown as `Missing: <path> [<scope>]`. Catalog refresh reconstructs choices without a Machine command and therefore does not dirty it. Cabinet/Reel manifests can also be opened directly and edit/save their canonical package.
 
-The existing Assets pane remains the project mutation surface. Phase 5 does not expose Library rename/delete there: those operations would imply unsafe cross-project rewriting. Library browsing for composition is provided by the selectors, and direct opening uses the existing document workflow.
+The Assets pane now has separate **Assets** and **Library** roots. The Library root exposes Cabinets and Reels for Open and Show in Explorer. Library rename/delete remain disabled because those operations would imply unsafe cross-project rewriting. A debounced Library `FileSystemWatcher` refreshes both roots, open Machine selectors, and Cabinet contextual previews after create, save, change, external delete, or restore without dirtying Machines.
 
 ## 10. Authoring workflow
 
-The intentionally single workflow is package authoring/editing in place: create the standard Cabinet/Reel package folders under the configured root (or explicitly copy a self-contained existing package there), then open their manifests with the existing editor and save normally. Opening never imports or silently copies them into a project. A Cabinet package must include its relative GLB and any relative reflection masks.
+The intentionally single creation workflow is **Copy to Oasis Library** on a project Cabinet or Reel package in the Assets pane. It copies the entire package to `Cabinets/<name>` or `Reels/<name>`, including Cabinet GLB, reflection masks, and supporting files. Existing destinations are never silently overwritten; the user is prompted for a different package name. Copying does not move the source, rewrite Machine references, or dirty documents. The new Library root in the same pane permits browsing, opening, Show in Explorer, and in-place Save back to the existing Library manifest. Opening never imports or silently copies the asset into a project.
 
 ## 11. Build flattening and dependency closure
 
@@ -75,10 +75,10 @@ Per repository instructions the Windows/WPF test suite was not executed in the c
 ## 16. Manual verification checklist
 
 1. Configure a local Oasis Library root in Preferences.
-2. Create/place `Cabinets/JPM Vogue/asset.cabinet3d`.
-3. Verify its relative GLB and reflection resources are inside that package.
-4. Create/place `Reels/JPM Standard Reel/asset.reel`.
-5. Create/place `Reels/JPM Small Reel/asset.reel`.
+2. Select the project `JPM Vogue` Cabinet package and choose **Copy to Oasis Library**.
+3. Browse/open the copied Library Cabinet and verify its relative GLB and reflection resources were copied with it.
+4. Copy the project `JPM Standard Reel` package to Library.
+5. Copy the project `JPM Small Reel` package to Library.
 6. Start a fresh Oasis project.
 7. Create/open its Machine.
 8. Select `JPM Vogue [Library]`.
@@ -102,4 +102,4 @@ Per repository instructions the Windows/WPF test suite was not executed in the c
 
 ## 17. Repository-driven deviations
 
-The Assets pane's mutation model is tightly project-rooted (watcher, selection, rename and delete all share one root). Rather than scatter Library exceptions through those destructive operations, Phase 5 keeps it as the project browser; Library assets appear in composition selectors and can be opened directly for in-place editing. Creation is an explicit package-folder/copy workflow rather than a second New-Asset dialog. This keeps canonical editing safe and makes reuse/build real without introducing the larger multi-root workspace/index required for global rename/delete.
+The Assets pane remains conservative about reference-affecting mutation: Library packages are browsable/openable and can be edited in place, but Library rename/delete are deliberately disabled. Creation uses project authoring followed by **Copy to Oasis Library**, avoiding a second New dialog. Cabinet contextual preview resolves the active Machine Cabinet through the same project/Library roots, so a selected Library Cabinet renders mounted project Faces exactly like a project Cabinet. No global cross-project index or rewrite was introduced.

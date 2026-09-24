@@ -24,6 +24,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
     private readonly DocumentTabViewModel _document;
     private readonly Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
     private readonly Func<EditorProject?>? _projectAccessor;
+    private readonly Func<string>? _libraryRootAccessor;
     private readonly FaceDocumentArtworkPreviewRenderer _previewRenderer = new();
     private readonly CabinetFacePreviewSourceResolver _facePreviewSourceResolver = new();
     private readonly DispatcherTimer _livePreviewRefreshTimer;
@@ -41,13 +42,17 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
     private DocumentTabViewModel? _machineCompositionContext;
     private string _selectedLampPreviewMode = CabinetLampPreviewMode.Live;
 
-    public CabinetModelDocumentViewModel(ICabinetModelLoader modelLoader, DocumentTabViewModel document, Func<IReadOnlyList<DocumentTabViewModel>>? openDocumentsAccessor = null, Func<EditorProject?>? projectAccessor = null)
+    public CabinetModelDocumentViewModel(ICabinetModelLoader modelLoader, DocumentTabViewModel document, Func<IReadOnlyList<DocumentTabViewModel>>? openDocumentsAccessor = null, Func<EditorProject?>? projectAccessor = null, Func<string>? libraryRootAccessor = null)
     {
         _modelLoader = modelLoader;
         _document = document;
         _openDocumentsAccessor = openDocumentsAccessor;
         _projectAccessor = projectAccessor;
-        ModelPath = document.GetCabinetDocument().Model.Path;
+        _libraryRootAccessor = libraryRootAccessor;
+        var authoredModelPath = document.GetCabinetDocument().Model.Path;
+        ModelPath = Path.IsPathFullyQualified(authoredModelPath)
+            ? authoredModelPath
+            : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(document.FilePath) ?? string.Empty, authoredModelPath));
         Viewport = new CabinetViewportViewModel();
         _livePreviewRefreshTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -258,8 +263,9 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         if (validTargets.Count == 0 || _openDocumentsAccessor is null || project is null || _machineCompositionContext is null)
         { Viewport.FacePreviewModel = null; return; }
         var machine = _machineCompositionContext.GetMachineDocument();
-        if (machine.CabinetAsset is not { Scope: AssetReferenceScope.Project } cabinetAsset
-            || !string.Equals(Path.GetFullPath(_document.FilePath), new AssetReferenceResolver().Resolve(project, string.Empty, cabinetAsset), StringComparison.OrdinalIgnoreCase))
+        if (machine.CabinetAsset is not { } cabinetAsset)
+        { Viewport.FacePreviewModel = null; return; }
+        if (!IsSelectedCabinet(project, _libraryRootAccessor?.Invoke() ?? string.Empty, cabinetAsset, _document.FilePath))
         { Viewport.FacePreviewModel = null; return; }
         var previewGroup = new Model3DGroup();
         foreach (var assignment in machine.SurfaceAssignments)
@@ -282,6 +288,15 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         OnPropertyChanged(nameof(FacePreviewDiagnostics));
         OnPropertyChanged(nameof(HasFacePreviewDiagnostics));
         Viewport.FacePreviewModel = previewGroup.Children.Count == 0 ? null : previewGroup;
+    }
+
+    internal static bool IsSelectedCabinet(EditorProject project, string libraryRoot, AssetReference reference, string openManifestPath)
+    {
+        try
+        {
+            return string.Equals(Path.GetFullPath(openManifestPath), new AssetReferenceResolver().Resolve(project, libraryRoot, reference), StringComparison.OrdinalIgnoreCase);
+        }
+        catch (InvalidOperationException) { return false; }
     }
 
     public void QueueFaceRuntimePreviewRefresh(Guid faceDocumentId)

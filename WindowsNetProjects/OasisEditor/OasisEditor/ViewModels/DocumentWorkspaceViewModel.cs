@@ -635,13 +635,6 @@ public sealed class DocumentWorkspaceViewModel
         {
             if (CabinetDocumentStorage.TryRead(content, out var cabinetDocument))
             {
-                var modelPath = cabinetDocument.Model.Path;
-                if (!Path.IsPathFullyQualified(modelPath))
-                {
-                    modelPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path) ?? string.Empty, modelPath));
-                    cabinetDocument = cabinetDocument with { Model = cabinetDocument.Model with { Path = modelPath } };
-                }
-
                 var summary = "Cabinet 3D document opened.";
                 var assetName = Path.GetFileName(Path.GetDirectoryName(path));
 

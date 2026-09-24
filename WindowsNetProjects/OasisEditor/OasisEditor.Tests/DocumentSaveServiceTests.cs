@@ -7,6 +7,42 @@ namespace OasisEditor.Tests;
 public sealed class DocumentSaveServiceTests
 {
     [Fact]
+    public void SaveOpenedLibraryReelWritesBackToExistingLibraryManifest()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"oasis-library-save-{Guid.NewGuid():N}");
+        var path = Path.Combine(root, "Reels", "Standard", ProjectAssetPathService.ReelManifestFileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        try
+        {
+            var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile(path, "Reel", "Standard"), reelDocumentJson: ReelDocumentStorage.Serialize(ReelDocument.Create("Standard")));
+            tab.ReelWidthMm = 77;
+            new DocumentSaveService().SaveDocument(tab, path).ApplyTo(tab);
+            Assert.Equal(path, tab.FilePath);
+            Assert.True(ReelDocumentStorage.TryRead(File.ReadAllText(path), out var saved, out var error), error);
+            Assert.Equal(77, saved.WidthMm);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void OpenAndSaveLibraryCabinetPreservesPackageRelativeModelPath()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"oasis-library-cabinet-save-{Guid.NewGuid():N}");
+        var path = Path.Combine(root, "Cabinets", "Vogue", ProjectAssetPathService.Cabinet3DManifestFileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb")));
+        try
+        {
+            var opened = DocumentWorkspaceViewModel.BuildOpenDocumentData(path, File.ReadAllText(path));
+            var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile(path, opened.Summary, opened.PanelTitle), cabinetDocumentJson: opened.CabinetDocumentJson);
+            new DocumentSaveService().SaveDocument(tab, path).ApplyTo(tab);
+            Assert.Equal(path, tab.FilePath);
+            Assert.True(CabinetDocumentStorage.TryRead(File.ReadAllText(path), out var saved));
+            Assert.Equal("cabinet.glb", saved.Model.Path);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+    [Fact]
     public void SaveDocument_MachinePreservesTabIdentityLiveStateAndUndoAcrossRepeatedSaves()
     {
         var root = Path.Combine(Path.GetTempPath(), $"oasis-machine-save-{Guid.NewGuid():N}");

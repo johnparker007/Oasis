@@ -249,6 +249,51 @@ public sealed class AssetBrowserViewModelTests
         Assert.False(viewModel.RenameAssetCommand.CanExecute(null));
     }
 
+    [Fact]
+    public void CopyCabinetPackageToLibraryCopiesDependenciesAndLibraryCanBrowseAndOpenIt()
+    {
+        using var temp = new TempProjectDirectory();
+        var library = Path.Combine(temp.RootDirectory, "Library");
+        var package = Path.Combine(temp.AssetsDirectory, "Cabinet3D", "Vogue");
+        Directory.CreateDirectory(package);
+        File.WriteAllText(Path.Combine(package, "asset.cabinet3d"), "{}");
+        File.WriteAllText(Path.Combine(package, "cabinet.glb"), "glb");
+        var reelPackage = Path.Combine(temp.AssetsDirectory, "Reels", "Standard");
+        Directory.CreateDirectory(reelPackage);
+        File.WriteAllText(Path.Combine(reelPackage, "asset.reel"), "{}");
+        string? opened = null;
+        var viewModel = new AssetBrowserViewModel(() => temp.Project, () => { }, () => { }, (_, _) => { }, item => opened = item?.FullPath, _ => null, _ => true, () => library);
+        viewModel.RefreshAssetBrowser();
+        viewModel.SelectedDirectory = Find(viewModel.AssetDirectoryTree[0], package)!;
+        var manifest = viewModel.AssetBrowserItems.Single(item => item.DisplayPath == "asset.cabinet3d");
+
+        Assert.True(viewModel.CopyToLibraryCommand.CanExecute(manifest));
+        viewModel.CopyToLibraryCommand.Execute(manifest);
+        Assert.True(File.Exists(Path.Combine(library, "Cabinets", "Vogue", "cabinet.glb")));
+        viewModel.SelectedDirectory = Find(viewModel.AssetDirectoryTree[0], reelPackage)!;
+        viewModel.CopyToLibraryCommand.Execute(viewModel.AssetBrowserItems.Single(item => item.DisplayPath == "asset.reel"));
+        Assert.True(File.Exists(Path.Combine(library, "Reels", "Standard", "asset.reel")));
+        var libraryRoot = viewModel.AssetDirectoryTree.Single(node => node.DisplayPath == "Library");
+        var libraryPackage = Find(libraryRoot, Path.Combine(library, "Cabinets", "Vogue"))!;
+        viewModel.SelectedDirectory = libraryPackage;
+        var libraryManifest = viewModel.AssetBrowserItems.Single(item => item.DisplayPath == "asset.cabinet3d");
+        Assert.False(viewModel.RenameAssetCommand.CanExecute(libraryManifest));
+        Assert.False(viewModel.DeleteAssetCommand.CanExecute(libraryManifest));
+        viewModel.OpenAssetCommand.Execute(libraryManifest);
+        Assert.Equal(libraryManifest.FullPath, opened);
+        viewModel.Dispose();
+    }
+
+    private static AssetDirectoryNodeViewModel? Find(IEnumerable<AssetDirectoryNodeViewModel> nodes, string path)
+    {
+        foreach (var node in nodes)
+        {
+            if (string.Equals(node.FullPath, path, StringComparison.OrdinalIgnoreCase)) return node;
+            var child = Find(node.Children, path); if (child is not null) return child;
+        }
+        return null;
+    }
+
     private static AssetBrowserViewModel CreateViewModel(EditorProject project, Action<AssetBrowserItemViewModel?> openAsset)
     {
         return new AssetBrowserViewModel(

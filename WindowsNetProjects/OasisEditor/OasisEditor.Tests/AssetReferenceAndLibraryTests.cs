@@ -11,6 +11,7 @@ public sealed class AssetReferenceAndLibraryTests
         Assert.Equal("Reels/Standard/asset.reel", AssetReference.Library(@"Reels\Standard\asset.reel").Path);
         Assert.Throws<ArgumentException>(() => AssetReference.Library("../asset.reel"));
         Assert.Throws<ArgumentException>(() => AssetReference.Library(Path.GetFullPath("asset.reel")));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new AssetReference((AssetReferenceScope)42, "asset.reel"));
     }
 
     [Fact]
@@ -26,6 +27,16 @@ public sealed class AssetReferenceAndLibraryTests
         Assert.Equal(machine.CabinetAsset, result.CabinetAsset);
         Assert.Equal(machine.ReelAssignments[0].ReelAsset, result.ReelAssignments[0].ReelAsset);
         Assert.DoesNotContain(Path.GetTempPath(), json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("\"scope\": \"library\"", json);
+        Assert.Contains("\"scope\": \"project\"", json);
+    }
+
+    [Fact]
+    public void MachineRejectsUnknownOrNumericAssetScope()
+    {
+        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Game") with { CabinetAsset = AssetReference.Library("Cabinets/Vogue/asset.cabinet3d") });
+        Assert.False(MachineDocumentStorage.TryRead(json.Replace("\"library\"", "\"remote\""), out _, out _));
+        Assert.False(MachineDocumentStorage.TryRead(json.Replace("\"library\"", "1"), out _, out _));
     }
 
     [Fact]

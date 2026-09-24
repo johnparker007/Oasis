@@ -70,6 +70,8 @@ public static class MachineDocumentStorage
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
+    static MachineDocumentStorage() => Options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false));
+
     public static string Serialize(MachineDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);

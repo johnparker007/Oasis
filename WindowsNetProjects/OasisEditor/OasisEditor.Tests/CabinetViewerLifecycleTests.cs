@@ -10,6 +10,18 @@ namespace OasisEditor.Tests;
 public sealed class CabinetViewerLifecycleTests
 {
     [Fact]
+    public void ContextCabinetMatchResolvesProjectAndLibraryScopes()
+    {
+        var projectRoot = Path.Combine(Path.GetTempPath(), "Project");
+        var libraryRoot = Path.Combine(Path.GetTempPath(), "Library");
+        var project = new EditorProject { Name = "Project", ProjectDirectory = projectRoot, ProjectFilePath = Path.Combine(projectRoot, "Project.oasisproj"), AssetsDirectory = Path.Combine(projectRoot, "Assets"), GeneratedDirectory = Path.Combine(projectRoot, "Generated") };
+        var projectManifest = Path.Combine(projectRoot, "Assets", "Cabinet3D", "Vogue", "asset.cabinet3d");
+        var libraryManifest = Path.Combine(libraryRoot, "Cabinets", "Vogue", "asset.cabinet3d");
+        Assert.True(CabinetModelDocumentViewModel.IsSelectedCabinet(project, libraryRoot, AssetReference.Project("Assets/Cabinet3D/Vogue/asset.cabinet3d"), projectManifest));
+        Assert.True(CabinetModelDocumentViewModel.IsSelectedCabinet(project, libraryRoot, AssetReference.Library("Cabinets/Vogue/asset.cabinet3d"), libraryManifest));
+        Assert.False(CabinetModelDocumentViewModel.IsSelectedCabinet(project, libraryRoot, AssetReference.Library("Cabinets/Rio/asset.cabinet3d"), libraryManifest));
+    }
+    [Fact]
     public async Task CabinetViewer_IsCreatedOnce_LoadsOnce_AndFramesLoadedModel()
     {
         var document = CreateDocument();

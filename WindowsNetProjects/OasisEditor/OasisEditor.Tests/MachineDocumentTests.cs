@@ -570,6 +570,43 @@ public sealed class MachineDocumentTests
     }
 
     [Fact]
+    public void LibraryCatalogRefreshAddsRestoresChoicesWithoutDirtyingMachine()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OasisMachineLibraryRefresh_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var project = CreateProject(root);
+            var library = Path.Combine(root, "Library");
+            var face = WriteFace(project, "Glass", 0);
+            var cabinetReference = AssetReference.Library("Cabinets/Vogue/asset.cabinet3d");
+            var reelReference = AssetReference.Library("Reels/Standard/asset.reel");
+            var machine = MachineDocument.Create("Game") with { CabinetAsset = cabinetReference, SurfaceAssignments = [new("OasisFace_Glass", face)], ReelAssignments = [new(MachineObjectReference.Reel(0), reelReference)] };
+            var tab = CreateMachineTab(project, machine);
+            tab.SetLibraryRootAccessor(() => library);
+            Assert.Contains(tab.MachineCabinetChoices, choice => Equals(choice.AssetPath, cabinetReference) && choice.DisplayName.StartsWith("Missing:"));
+            Assert.Contains(tab.MachineReelAssignmentRows.Single().Choices, choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName.StartsWith("Missing:"));
+
+            var cabinetPath = Path.Combine(library, "Cabinets", "Vogue", "asset.cabinet3d");
+            Directory.CreateDirectory(Path.GetDirectoryName(cabinetPath)!);
+            File.WriteAllText(cabinetPath, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb")));
+            var reelPath = Path.Combine(library, "Reels", "Standard", "asset.reel");
+            Directory.CreateDirectory(Path.GetDirectoryName(reelPath)!);
+            File.WriteAllText(reelPath, ReelDocumentStorage.Serialize(ReelDocument.Create("Standard")));
+            tab.RefreshMachineCompositionChoices();
+            Assert.Contains(tab.MachineCabinetChoices, choice => Equals(choice.AssetPath, cabinetReference) && choice.DisplayName == "Vogue [Library]");
+            Assert.Contains(tab.MachineReelAssignmentRows.Single().Choices, choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName == "Standard [Library]");
+            Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
+
+            File.Delete(reelPath); tab.RefreshMachineCompositionChoices();
+            Assert.Contains(tab.MachineReelAssignmentRows.Single().Choices, choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName.StartsWith("Missing:"));
+            File.WriteAllText(reelPath, ReelDocumentStorage.Serialize(ReelDocument.Create("Standard"))); tab.RefreshMachineCompositionChoices();
+            Assert.Contains(tab.MachineReelAssignmentRows.Single().Choices, choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName == "Standard [Library]");
+            Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
     public void CabinetContentRefreshWithoutStructuralChange_PreservesReelRowAndSelection()
     {
         var root = Path.Combine(Path.GetTempPath(), "OasisCabinetContentRefresh_" + Guid.NewGuid().ToString("N"));

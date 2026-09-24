@@ -212,7 +212,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AddOutputEntry,
             OpenAssetDocument,
             PromptForAssetRename,
-            ConfirmAssetDelete);
+            ConfirmAssetDelete,
+            () => OasisAssetLibraryRoot);
         _assetBrowser.StateChanged += OnAssetBrowserStateChanged;
         _assetBrowser.AssetCatalogChanged += OnProjectAssetCatalogChanged;
         _inspector = new InspectorViewModel(
@@ -322,6 +323,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ShowAssetInExplorerCommand = _assetBrowser.ShowInExplorerCommand;
         RenameAssetCommand = _assetBrowser.RenameAssetCommand;
         DeleteAssetCommand = _assetBrowser.DeleteAssetCommand;
+        CopyAssetToLibraryCommand = _assetBrowser.CopyToLibraryCommand;
         DeleteSelectedHierarchyItemCommand = new PaneItemCommand<HierarchyItemViewModel>(
             GetSelectedHierarchyEntity,
             item => DeleteHierarchyItem(item),
@@ -395,6 +397,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ShowAssetInExplorerCommand { get; }
     public ICommand RenameAssetCommand { get; }
     public ICommand DeleteAssetCommand { get; }
+    public ICommand CopyAssetToLibraryCommand { get; }
     public ICommand DeleteSelectedHierarchyItemCommand { get; }
     public ICommand RenameSelectedHierarchyItemCommand { get; }
     public ICommand CutSelectedHierarchyItemCommand { get; }
@@ -452,7 +455,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
     public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "Asset Library", "Player", "Processing", "Fabric Emulation"];
-    public string OasisAssetLibraryRoot { get => _oasisAssetLibraryRoot; set { if (SetProperty(ref _oasisAssetLibraryRoot, value)) { SavePreferences(); foreach (var document in OpenDocuments) { document.SetLibraryRootAccessor(() => OasisAssetLibraryRoot); document.RefreshMachineCompositionChoices(); } } } }
+    public string OasisAssetLibraryRoot { get => _oasisAssetLibraryRoot; set { if (SetProperty(ref _oasisAssetLibraryRoot, value)) { SavePreferences(); foreach (var document in OpenDocuments) document.SetLibraryRootAccessor(() => OasisAssetLibraryRoot); _assetBrowser.RefreshAssetBrowserPreservingState(); } } }
     public IReadOnlyList<string> CpuImageProcessingModes { get; } = ["Auto (Recommended)", "Maximum", "Custom"];
     public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "Platform Settings"];
     public IReadOnlyList<string> NativeProjectSettingsTabs { get; } = ["ROMS", "Stake/Prize", "Reels", "Coins"];
@@ -1602,6 +1605,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         foreach (var machine in OpenDocuments.Where(document => document.Document.DocumentType == EditorDocumentType.Machine))
             machine.RefreshMachineCompositionChoices();
+        RefreshCabinetFacePreviews();
     }
 
 
@@ -1620,6 +1624,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             foreach (DocumentTabViewModel document in e.NewItems)
             {
+                document.SetLibraryRootAccessor(() => OasisAssetLibraryRoot);
+                if (document.Document.DocumentType == EditorDocumentType.Cabinet3D) document.SetMachineCompositionContext(_activeMachineDocument);
                 document.FaceVisualStateChanged += OnOpenDocumentFaceVisualStateChanged;
                 document.FacePreviewChanged += OnOpenDocumentFacePreviewChanged;
             }
