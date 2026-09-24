@@ -31,7 +31,7 @@ public sealed class EditorPreferencesSerializationTests
         Assert.Equal(73, restored.NativeEmulation.AudioBufferLengthMilliseconds);
         Assert.DoesNotContain("UseFabric", json, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(8, typeof(NativeEmulationPreferences).GetProperties().Length);
-        Assert.Equal(8, typeof(EditorPreferences).GetProperties().Length);
+        Assert.Equal(9, typeof(EditorPreferences).GetProperties().Length);
     }
 
     [Fact]

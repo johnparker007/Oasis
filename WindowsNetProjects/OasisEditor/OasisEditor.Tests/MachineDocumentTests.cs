@@ -153,7 +153,7 @@ public sealed class MachineDocumentTests
 
             tab.MachineCabinetAssetPath = AssetReference.Project(voguePath);
             Assert.Equal(voguePath, tab.GetMachineDocument().CabinetAsset!.Path);
-            Assert.Equal("Vogue", Assert.Single(tab.MachineCabinetChoices.Where(choice => choice.AssetPath == tab.MachineCabinetAssetPath)).DisplayName);
+            Assert.Equal("Vogue", Assert.Single(tab.MachineCabinetChoices.Where(choice => Equals(choice.AssetPath, tab.MachineCabinetAssetPath))).DisplayName);
             Assert.True(tab.CommandService.CanUndo);
             tab.RefreshMachineCompositionChoices(); tab.RefreshMachineCompositionChoices();
             Assert.Equal(new[] { "(None)", "Vogue" }, tab.MachineCabinetChoices.Select(choice => choice.DisplayName).ToArray());
@@ -179,7 +179,7 @@ public sealed class MachineDocumentTests
             var tab = CreateMachineTab(project, machine);
             var reelRow = tab.MachineReelAssignmentRows.Single(row => row.Reference == MachineObjectReference.Reel(0));
             Assert.Equal(AssetReference.Project(missingReel), reelRow.SelectedReelAssetPath);
-            Assert.Contains(reelRow.Choices, choice => choice.AssetPath.Equals(AssetReference.Project(missingReel)) && choice.DisplayName.StartsWith("Missing:", StringComparison.Ordinal));
+            Assert.Contains(reelRow.Choices, choice => Equals(choice.AssetPath, AssetReference.Project(missingReel)) && choice.DisplayName.StartsWith("Missing:", StringComparison.Ordinal));
             Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
             tab.RefreshMachineCompositionChoices();
             Assert.Same(reelRow, tab.MachineReelAssignmentRows.Single(row => row.Reference == MachineObjectReference.Reel(0)));
@@ -189,7 +189,7 @@ public sealed class MachineDocumentTests
             File.Delete(new ProjectAssetPathService().ResolveProjectRelativePath(project, voguePath));
             tab.RefreshMachineCompositionChoices();
             Assert.Equal(voguePath, tab.GetMachineDocument().CabinetAsset!.Path);
-            Assert.Contains(tab.MachineCabinetChoices, choice => choice.AssetPath.Equals(AssetReference.Project(voguePath)) && choice.DisplayName.StartsWith("Missing:", StringComparison.Ordinal));
+            Assert.Contains(tab.MachineCabinetChoices, choice => Equals(choice.AssetPath, AssetReference.Project(voguePath)) && choice.DisplayName.StartsWith("Missing:", StringComparison.Ordinal));
             Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
@@ -229,7 +229,7 @@ public sealed class MachineDocumentTests
             using var browser = new AssetBrowserViewModel(() => project, () => { }, () => { }, (_, _) => { }, _ => { }, _ => null, _ => true);
             browser.AssetCatalogChanged += tab.RefreshMachineCompositionChoices;
             var rows = tab.MachineReelAssignmentRows.ToArray();
-            Assert.All(rows, row => Assert.Contains(row.Choices, choice => choice.AssetPath.Equals(AssetReference.Project(reelPath)) && choice.DisplayName.StartsWith("Missing:", StringComparison.Ordinal)));
+            Assert.All(rows, row => Assert.Contains(row.Choices, choice => Equals(choice.AssetPath, AssetReference.Project(reelPath)) && choice.DisplayName.StartsWith("Missing:", StringComparison.Ordinal)));
             var absolute = new ProjectAssetPathService().GetReelManifestPath(project, "Standard");
             Directory.CreateDirectory(Path.GetDirectoryName(absolute)!);
             File.WriteAllText(absolute, ReelDocumentStorage.Serialize(ReelDocument.Create("Standard Reel")));
@@ -240,7 +240,7 @@ public sealed class MachineDocumentTests
             {
                 Assert.Same(row, tab.MachineReelAssignmentRows.Single(candidate => candidate.Reference == row.Reference));
                 Assert.Equal(AssetReference.Project(reelPath), row.SelectedReelAssetPath);
-                Assert.Contains(row.Choices, choice => choice.AssetPath.Equals(AssetReference.Project(reelPath)) && choice.DisplayName == "Standard Reel");
+                Assert.Contains(row.Choices, choice => Equals(choice.AssetPath, AssetReference.Project(reelPath)) && choice.DisplayName == "Standard Reel");
             });
             Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
         }
@@ -525,7 +525,7 @@ public sealed class MachineDocumentTests
             var surfaceRow = Assert.Single(tab.MachineSurfaceAssignmentRows);
             surfaceRow.RefreshChoices([new("Face A", faceA), new("Face B", faceB)]);
             var reelRow = tab.MachineReelAssignmentRows.Single(row => row.Reference == MachineObjectReference.Reel(0));
-            var cabinetChoice = tab.MachineCabinetChoices.Single(choice => choice.AssetPath.Equals(AssetReference.Project(cabinetPath)));
+            var cabinetChoice = tab.MachineCabinetChoices.Single(choice => Equals(choice.AssetPath, AssetReference.Project(cabinetPath)));
             var noneFaceChoice = tab.MachineFaceChoices.Single(choice => choice.AssetPath is null);
             surfaceRow.SelectedAssetPath = faceB;
             var savePath = new ProjectAssetPathService().GetMachineManifestPath(project, "Game");
@@ -535,7 +535,7 @@ public sealed class MachineDocumentTests
             tab.RefreshMachineCompositionChoices(); // the effective callback raised by the scheduled Assets refresh
 
             Assert.Equal(AssetReference.Project(cabinetPath), tab.MachineCabinetAssetPath);
-            Assert.Same(cabinetChoice, tab.MachineCabinetChoices.Single(choice => choice.AssetPath.Equals(AssetReference.Project(cabinetPath))));
+            Assert.Same(cabinetChoice, tab.MachineCabinetChoices.Single(choice => Equals(choice.AssetPath, AssetReference.Project(cabinetPath))));
             Assert.Same(noneFaceChoice, tab.MachineFaceChoices.Single(choice => choice.AssetPath is null));
             Assert.Same(surfaceRow, Assert.Single(tab.MachineSurfaceAssignmentRows));
             Assert.Equal(faceB, surfaceRow.SelectedAssetPath);
