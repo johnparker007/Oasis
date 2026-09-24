@@ -618,7 +618,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     public void CreateManifest_MissingResolvedReelFailsWithAssetPath()
     {
         var path = "Assets/Reels/Missing/asset.reel";
-        var context = new FaceRuntimeCompositionContext([new(MachineObjectReference.Reel(1), path)], new Dictionary<MachineObjectReference, ReelDocument>());
+        var context = new FaceRuntimeCompositionContext([new(MachineObjectReference.Reel(1), AssetReference.Project(path))], new Dictionary<MachineObjectReference, ReelDocument>());
         var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(CreateReelDocument("ignored", 1, 1, 10, 10), 100, 100, context));
         Assert.Contains("reel:1", exception.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(path, exception.Message);

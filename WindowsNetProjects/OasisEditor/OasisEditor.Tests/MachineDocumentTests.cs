@@ -109,7 +109,7 @@ public sealed class MachineDocumentTests
             tab.SetProjectAccessor(() => project);
             Assert.Contains(tab.MachineCabinetChoices, choice => choice.DisplayName == "Vogue");
             var reelZero = Assert.Single(tab.MachineReelAssignmentRows.Where(row => row.Reference == MachineObjectReference.Reel(0)));
-            Assert.Contains(reelZero.Choices, choice => choice.AssetPath == "Assets/Reels/Standard/asset.reel" && choice.DisplayName == "Standard");
+            Assert.Contains(reelZero.Choices, choice => Equals(choice.AssetPath, AssetReference.Project("Assets/Reels/Standard/asset.reel")) && choice.DisplayName == "Standard");
             reelZero.SelectedReelAssetPath = "Assets/Reels/Standard/asset.reel";
             Assert.Equal("Assets/Reels/Standard/asset.reel", Assert.Single(tab.GetMachineDocument().ReelAssignments).ReelAsset.Path);
             Assert.True(tab.CommandService.CanUndo);
@@ -555,12 +555,12 @@ public sealed class MachineDocumentTests
         var none = new MachineAssetChoice("(None)", null);
         var selected = new MachineAssetChoice("Face A", "Assets/Faces/A/asset.face");
         var choices = new System.Collections.ObjectModel.ObservableCollection<MachineAssetChoice> { none, selected };
-        var row = new MachineSurfaceAssignmentRow(tab, "OasisFace_TopGlass", "Top Glass", choices, selected.AssetPath);
+        var row = new MachineSurfaceAssignmentRow(tab, "OasisFace_TopGlass", "Top Glass", choices, selected.AssetPath as string);
         var notifications = 0;
         row.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(row.SelectedAssetPath)) notifications++; };
 
         row.RefreshChoices([new("(None)", null), new("Face A", selected.AssetPath), new("Face B", "Assets/Faces/B/asset.face")]);
-        row.SynchronizeSelectedAssetPath(selected.AssetPath, forceNotification: true);
+        row.SynchronizeSelectedAssetPath(selected.AssetPath as string, forceNotification: true);
 
         Assert.Same(none, row.Choices[0]);
         Assert.Same(selected, row.Choices[1]);
@@ -585,14 +585,14 @@ public sealed class MachineDocumentTests
                 ReelAssignments = [new(MachineObjectReference.Reel(0), AssetReference.Project("Assets/Reels/Standard/asset.reel"))]
             });
             var row = tab.MachineReelAssignmentRows.Single(item => item.Reference == MachineObjectReference.Reel(0));
-            var selectedChoice = row.Choices.Single(choice => choice.AssetPath == "Assets/Reels/Standard/asset.reel");
+            var selectedChoice = row.Choices.Single(choice => Equals(choice.AssetPath, AssetReference.Project("Assets/Reels/Standard/asset.reel")));
             WriteCabinet(project, "Vogue", [new("Assets/Reels/Standard/asset.reel", "Standard", 210, 50)]);
             File.SetLastWriteTimeUtc(new ProjectAssetPathService().ResolveProjectRelativePath(project, cabinetPath), DateTime.UtcNow.AddSeconds(2));
 
             tab.RefreshMachineCompositionChoices();
 
             Assert.Same(row, tab.MachineReelAssignmentRows.Single(item => item.Reference == MachineObjectReference.Reel(0)));
-            Assert.Same(selectedChoice, row.Choices.Single(choice => choice.AssetPath == "Assets/Reels/Standard/asset.reel"));
+            Assert.Same(selectedChoice, row.Choices.Single(choice => Equals(choice.AssetPath, AssetReference.Project("Assets/Reels/Standard/asset.reel"))));
             Assert.Equal(AssetReference.Project("Assets/Reels/Standard/asset.reel"), row.SelectedReelAssetPath);
             Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
         }
