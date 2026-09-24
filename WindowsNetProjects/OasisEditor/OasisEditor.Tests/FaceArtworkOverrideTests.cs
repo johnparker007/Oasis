@@ -25,7 +25,7 @@ public sealed class FaceArtworkOverrideTests : IDisposable
         Assert.Equal((.8,.9),(actual.PerspectiveRegistration.BottomRight.X,actual.PerspectiveRegistration.BottomRight.Y));
         Assert.Equal((.2,.8),(actual.PerspectiveRegistration.BottomLeft.X,actual.PerspectiveRegistration.BottomLeft.Y));
         Assert.Equal(FaceArtworkOverrideAlphaSource.OverrideImage,actual.AlphaSource);
-        Assert.Equal(23,FaceDocumentStorage.CurrentSchemaVersion);
+        Assert.Equal(24,FaceDocumentStorage.CurrentSchemaVersion);
     }
 
     [Fact]
@@ -42,8 +42,9 @@ public sealed class FaceArtworkOverrideTests : IDisposable
     [Fact]
     public void Storage_RejectsPreviousSchema()
     {
-        var json=FaceDocumentStorage.Serialize(new FaceDocumentModel()).Replace("\"SchemaVersion\": 23","\"SchemaVersion\": 22");
-        Assert.False(FaceDocumentStorage.TryRead(json,out _));
+        var root=JsonNode.Parse(FaceDocumentStorage.Serialize(new FaceDocumentModel()))!.AsObject();
+        root["SchemaVersion"]=FaceDocumentStorage.CurrentSchemaVersion-1;
+        Assert.False(FaceDocumentStorage.TryRead(root.ToJsonString(),out _));
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using OasisEditor;
 using OasisEditor.Automation;
+using System.Text.Json.Nodes;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -27,7 +28,8 @@ public sealed class FaceDocumentRoundTripTests
 
         var json = FaceDocumentStorage.Serialize(source);
 
-        Assert.Contains("\"kind\": \"reelMount\"", json, StringComparison.Ordinal);
+        var root = JsonNode.Parse(json)!.AsObject();
+        Assert.Equal("reelMount", root["Elements"]![0]!["Kind"]!.GetValue<string>());
         Assert.DoesNotContain("reelDisplay", json, StringComparison.Ordinal);
         Assert.DoesNotContain("diameterMm", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("widthMm", json, StringComparison.OrdinalIgnoreCase);
@@ -45,15 +47,16 @@ public sealed class FaceDocumentRoundTripTests
     [Fact]
     public void Reader_RejectsPreviousFaceSchemaAndObsoleteReelDisplayKind()
     {
-        var current = FaceDocumentStorage.Serialize(new FaceDocumentModel { Id = "face", Title = "Face" });
-        var oldSchema = current.Replace($"\"schemaVersion\": {FaceDocumentStorage.CurrentSchemaVersion}", $"\"schemaVersion\": {FaceDocumentStorage.CurrentSchemaVersion - 1}", StringComparison.Ordinal);
-        Assert.False(FaceDocumentStorage.TryReadValidated(oldSchema, out _, out _));
+        var oldSchema = JsonNode.Parse(FaceDocumentStorage.Serialize(new FaceDocumentModel { Id = "face", Title = "Face" }))!.AsObject();
+        oldSchema["SchemaVersion"] = FaceDocumentStorage.CurrentSchemaVersion - 1;
+        Assert.False(FaceDocumentStorage.TryReadValidated(oldSchema.ToJsonString(), out _, out _));
 
-        var obsolete = FaceDocumentStorage.Serialize(new FaceDocumentModel
+        var obsolete = JsonNode.Parse(FaceDocumentStorage.Serialize(new FaceDocumentModel
         {
             Id = "face", Title = "Face", Elements = [new FaceReelMount { ObjectId = "mount" }]
-        }).Replace("\"kind\": \"reelMount\"", "\"kind\": \"reelDisplay\"", StringComparison.Ordinal);
-        Assert.True(FaceDocumentStorage.TryReadValidated(obsolete, out var file, out var error), error);
+        }))!.AsObject();
+        obsolete["Elements"]![0]!["Kind"] = "reelDisplay";
+        Assert.True(FaceDocumentStorage.TryReadValidated(obsolete.ToJsonString(), out var file, out var error), error);
         Assert.Throws<InvalidOperationException>(() => FaceDocumentStorage.ToModel(file));
     }
 
