@@ -67,11 +67,11 @@ public sealed class AssetBrowserViewModel : IDisposable
         RenameAssetCommand = new PaneItemCommand<object>(
             GetSelectedAssetContext,
             RenameAsset,
-            CanMutateProjectAssetContext);
+            CanRenameProjectAssetContext);
         DeleteAssetCommand = new PaneItemCommand<object>(
             GetSelectedAssetContext,
             DeleteAsset,
-            CanMutateProjectAssetContext);
+            CanDeleteProjectAssetContext);
         CopyToLibraryCommand = new PaneItemCommand<object>(GetSelectedAssetContext, CopyToLibrary, CanCopyToLibrary);
     }
 
@@ -689,11 +689,19 @@ public sealed class AssetBrowserViewModel : IDisposable
         }
     }
 
-    private bool CanMutateProjectAssetContext(object context)
+    private bool CanRenameProjectAssetContext(object context)
     {
         var assets = ToAssetContextItems(context);
         var project = _loadedProjectAccessor();
         return project is not null && assets.Count == 1 && CanOpenAssetContext(assets[0]) && IsPathInsideRoot(project.AssetsDirectory, assets[0].FullPath);
+    }
+
+    private bool CanDeleteProjectAssetContext(object context)
+    {
+        var assets = ToAssetContextItems(context);
+        var project = _loadedProjectAccessor();
+        return project is not null && assets.Count > 0 && CanOpenAssetContext(context)
+            && assets.All(asset => IsPathInsideRoot(project.AssetsDirectory, asset.FullPath));
     }
 
     private void DeleteAsset(object context)

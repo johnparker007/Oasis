@@ -363,13 +363,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         if (!TryResolve(project, _machineDocumentModel.CabinetAsset, out var cabinetPath))
         {
             MachineSurfaceAssignmentRows.Clear();
-            MachineReelAssignmentRows.Clear();
+            RefreshMachineReelRowsFromAssignedFaces(project);
             return;
         }
         if (!File.Exists(cabinetPath) || !CabinetDocumentStorage.TryRead(File.ReadAllText(cabinetPath), out var cabinet))
         {
             MachineSurfaceAssignmentRows.Clear();
-            MachineReelAssignmentRows.Clear();
+            RefreshMachineReelRowsFromAssignedFaces(project);
             return;
         }
         var modelPath = Path.IsPathFullyQualified(cabinet.Model.Path) ? cabinet.Model.Path : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(cabinetPath)!, cabinet.Model.Path));
