@@ -11,6 +11,8 @@ public sealed class AssetReferenceAndLibraryTests
         Assert.Equal("Reels/Standard/asset.reel", AssetReference.Library(@"Reels\Standard\asset.reel").Path);
         Assert.Throws<ArgumentException>(() => AssetReference.Library("../asset.reel"));
         Assert.Throws<ArgumentException>(() => AssetReference.Library(Path.GetFullPath("asset.reel")));
+        foreach (var rooted in new[] { @"\Reels\Foo\asset.reel", "/Reels/Foo/asset.reel", @"C:Reels\Foo\asset.reel", @"C:\Reels\Foo\asset.reel", @"\\server\share\asset.reel" })
+            Assert.Throws<ArgumentException>(() => AssetReference.Library(rooted));
         Assert.Throws<ArgumentOutOfRangeException>(() => new AssetReference((AssetReferenceScope)42, "asset.reel"));
     }
 

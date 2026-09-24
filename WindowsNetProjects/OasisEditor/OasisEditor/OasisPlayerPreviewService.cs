@@ -4,12 +4,18 @@ namespace OasisEditor;
 
 public sealed class OasisPlayerPreviewService
 {
-    private readonly IMachineRuntimeBuildService _buildService;
+    private readonly Func<IMachineRuntimeBuildService> _buildServiceFactory;
     private readonly OasisPlayerLaunchService _launchService;
 
     public OasisPlayerPreviewService(IMachineRuntimeBuildService? buildService = null, OasisPlayerLaunchService? launchService = null)
     {
-        _buildService = buildService ?? new MachineRuntimeBuildService();
+        _buildServiceFactory = () => buildService ?? new MachineRuntimeBuildService();
+        _launchService = launchService ?? new OasisPlayerLaunchService();
+    }
+
+    public OasisPlayerPreviewService(Func<IMachineRuntimeBuildService> buildServiceFactory, OasisPlayerLaunchService? launchService = null)
+    {
+        _buildServiceFactory = buildServiceFactory ?? throw new ArgumentNullException(nameof(buildServiceFactory));
         _launchService = launchService ?? new OasisPlayerLaunchService();
     }
 
@@ -28,7 +34,7 @@ public sealed class OasisPlayerPreviewService
             return OasisPlayerPreviewResult.Fail(validationError);
         }
 
-        var buildResult = _buildService.BuildFromMachineDocument(project, machineManifestPath, machineDocument, progress, cancellationToken);
+        var buildResult = _buildServiceFactory().BuildFromMachineDocument(project, machineManifestPath, machineDocument, progress, cancellationToken);
         if (!buildResult.Success || string.IsNullOrWhiteSpace(buildResult.BuildRoot))
         {
             return OasisPlayerPreviewResult.Fail(buildResult.ErrorMessage ?? "Failed to build Oasis Player runtime output.");

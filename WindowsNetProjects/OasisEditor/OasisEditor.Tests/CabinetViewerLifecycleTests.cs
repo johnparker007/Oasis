@@ -21,6 +21,18 @@ public sealed class CabinetViewerLifecycleTests
         Assert.True(CabinetModelDocumentViewModel.IsSelectedCabinet(project, libraryRoot, AssetReference.Library("Cabinets/Vogue/asset.cabinet3d"), libraryManifest));
         Assert.False(CabinetModelDocumentViewModel.IsSelectedCabinet(project, libraryRoot, AssetReference.Library("Cabinets/Rio/asset.cabinet3d"), libraryManifest));
     }
+
+    [Theory]
+    [InlineData("Assets/Cabinet3D/Vogue/asset.cabinet3d")]
+    [InlineData("Library/Cabinets/Vogue/asset.cabinet3d")]
+    public void ViewerResolvesPackageRelativeModelBesideOpenManifest(string relativeManifest)
+    {
+        var manifest = Path.Combine(Path.GetTempPath(), relativeManifest.Replace('/', Path.DirectorySeparatorChar));
+        var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile(manifest, "Cabinet", "Vogue"), cabinetDocumentJson: CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("vogue.glb")));
+        using var viewer = new CabinetModelDocumentViewModel(new CountingLoader(CreateModel()), tab);
+        Assert.Equal(Path.Combine(Path.GetDirectoryName(manifest)!, "vogue.glb"), viewer.ModelPath);
+        Assert.Equal("vogue.glb", tab.GetCabinetDocument().Model.Path);
+    }
     [Fact]
     public async Task CabinetViewer_IsCreatedOnce_LoadsOnce_AndFramesLoadedModel()
     {

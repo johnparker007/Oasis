@@ -576,7 +576,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         ArgumentNullException.ThrowIfNull(document);
 
         _cabinetDocumentModel = document;
-        _cabinetDocumentJson = GetCabinetDocumentJson();
+        _cabinetDocumentJson = CabinetDocumentStorage.IsSafePackageRelativePath(document.Model.Path)
+            ? GetCabinetDocumentJson()
+            : null;
         _cabinetViewer?.RefreshFromDocument(document);
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CabinetDocumentJson)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasCabinetViewer)));

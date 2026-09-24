@@ -30,15 +30,43 @@ public sealed class DocumentSaveServiceTests
         var root = Path.Combine(Path.GetTempPath(), $"oasis-library-cabinet-save-{Guid.NewGuid():N}");
         var path = Path.Combine(root, "Cabinets", "Vogue", ProjectAssetPathService.Cabinet3DManifestFileName);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "cabinet.glb"), "glb");
         File.WriteAllText(path, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb")));
         try
         {
             var opened = DocumentWorkspaceViewModel.BuildOpenDocumentData(path, File.ReadAllText(path));
             var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile(path, opened.Summary, opened.PanelTitle), cabinetDocumentJson: opened.CabinetDocumentJson);
+            tab.SetCabinetDocument(tab.GetCabinetDocument() with { Model = tab.GetCabinetDocument().Model with { Scale = 1.25 } });
             new DocumentSaveService().SaveDocument(tab, path).ApplyTo(tab);
             Assert.Equal(path, tab.FilePath);
             Assert.True(CabinetDocumentStorage.TryRead(File.ReadAllText(path), out var saved));
             Assert.Equal("cabinet.glb", saved.Model.Path);
+            Assert.Equal(1.25, saved.Model.Scale);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void SaveNewCabinetImportsExternalGlbAndCanonicalizesLiveDocumentRepeatably()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"oasis-cabinet-import-{Guid.NewGuid():N}");
+        var external = Path.Combine(root, "Imports", "vogue.glb");
+        var savePath = Path.Combine(root, "Project", "Assets", "Cabinet3D", "Vogue", ProjectAssetPathService.Cabinet3DManifestFileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(external)!); File.WriteAllText(external, "glb-data");
+        try
+        {
+            var tab = new DocumentTabViewModel(EditorDocument.CreateCabinet3DStub("Vogue").MarkDirty());
+            tab.SetCabinetDocument(CabinetDocument.FromModelPath(external));
+            var service = new DocumentSaveService();
+            service.SaveDocument(tab, savePath).ApplyTo(tab);
+            Assert.Equal("vogue.glb", tab.GetCabinetDocument().Model.Path);
+            Assert.True(File.Exists(Path.Combine(Path.GetDirectoryName(savePath)!, "vogue.glb")));
+            Assert.True(CabinetDocumentStorage.TryRead(File.ReadAllText(savePath), out var saved));
+            Assert.Equal("vogue.glb", saved.Model.Path);
+
+            service.SaveDocument(tab, savePath).ApplyTo(tab);
+            Assert.Single(Directory.EnumerateFiles(Path.GetDirectoryName(savePath)!, "*.glb"));
+            Assert.Equal("vogue.glb", tab.GetCabinetDocument().Model.Path);
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }

@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using SkiaSharp;
 using Xunit;
+using OasisEditor.Automation;
 
 namespace OasisEditor.Tests;
 
@@ -247,13 +248,14 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
     }
 
     [Theory]
-    [InlineData("C:/outside.glb", "package-relative")]
-    [InlineData("../outside.glb", "escapes")]
+    [InlineData("C:/outside.glb", "invalid Cabinet")]
+    [InlineData("../outside.glb", "invalid Cabinet")]
     public void Build_LibraryCabinetRejectsUnsafeModelPath(string modelPath, string expected)
     {
         var setup = CreateLibraryBuild();
         var manifest = Path.Combine(setup.LibraryRoot, "Cabinets", "Cabinet", "asset.cabinet3d");
-        File.WriteAllText(manifest, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath(modelPath)));
+        var json = CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb"));
+        File.WriteAllText(manifest, json.Replace("cabinet.glb", modelPath.Replace("\\", "\\\\")));
         var result = Build(setup.Project, setup.Machine, setup.LibraryRoot);
         Assert.False(result.Success); Assert.Contains(expected, result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
@@ -282,6 +284,29 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.Equal(jsonBefore, MachineDocumentStorage.Serialize(setup.Machine));
         Assert.DoesNotContain(setup.LibraryRoot, jsonBefore, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(secondRoot, jsonBefore, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void AuthorExternalGlbSaveCopyToLibraryAndBuildSucceeds()
+    {
+        var project = Project();
+        var external = Path.Combine(_root, "Import", "vogue.glb"); Directory.CreateDirectory(Path.GetDirectoryName(external)!); WriteTwoTargetGlb(external);
+        var manifest = new ProjectAssetPathService().GetCabinet3DManifestPath(project, "Vogue");
+        var cabinetTab = new DocumentTabViewModel(EditorDocument.CreateCabinet3DStub("Vogue").MarkDirty());
+        cabinetTab.SetCabinetDocument(CabinetDocument.FromModelPath(external));
+        new DocumentSaveService().SaveDocument(cabinetTab, manifest, project).ApplyTo(cabinetTab);
+        Assert.Equal("vogue.glb", cabinetTab.GetCabinetDocument().Model.Path);
+        Assert.True(AssetBrowserViewModel.TryValidateCabinetPackage(Path.GetDirectoryName(manifest)!, out var validationError), validationError);
+
+        var library = Path.Combine(_root, "LibraryPublished");
+        using (var browser = new AssetBrowserViewModel(() => project, () => { }, () => { }, (_, _) => { }, _ => { }, _ => null, _ => true, () => library))
+        {
+            browser.CopyToLibraryCommand.Execute(new AssetBrowserItemViewModel("asset.cabinet3d", manifest, false));
+        }
+        var machine = MachineDocument.Create("Published Cabinet") with { CabinetAsset = AssetReference.Library("Cabinets/Vogue/asset.cabinet3d") };
+        var result = Build(project, machine, library);
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.True(File.Exists(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.glb")));
     }
 
     private (EditorProject Project, MachineDocument Machine, string LibraryRoot) CreateLibraryBuild()

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using OasisEditor.Features.CabinetEditor.Models;
 
 namespace OasisEditor;
 
@@ -508,6 +509,11 @@ public sealed class AssetBrowserViewModel : IDisposable
     {
         var item = ToAssetContextItems(context).Single();
         if (!TryGetReusablePackage(item.FullPath, out var package, out var typeFolder)) return;
+        if (typeFolder == "Cabinets" && !TryValidateCabinetPackage(package, out var validationError))
+        {
+            _addOutputEntry($"Cabinet was not copied to the Oasis Library: {validationError} Save/re-author the Cabinet as a self-contained package first.", OutputLogStatus.Warning);
+            return;
+        }
         var libraryRoot = _libraryRootAccessor();
         if (string.IsNullOrWhiteSpace(libraryRoot)) { _addOutputEntry("Configure the Oasis Library root in Preferences before copying an asset.", OutputLogStatus.Warning); return; }
         var packageName = Path.GetFileName(package);
@@ -538,6 +544,27 @@ public sealed class AssetBrowserViewModel : IDisposable
         Directory.CreateDirectory(destination);
         foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories)) Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
         foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories)) File.Copy(file, Path.Combine(destination, Path.GetRelativePath(source, file)), false);
+    }
+
+    internal static bool TryValidateCabinetPackage(string package, out string error)
+    {
+        error = string.Empty;
+        var manifest = Path.Combine(package, ProjectAssetPathService.Cabinet3DManifestFileName);
+        if (!File.Exists(manifest) || !CabinetDocumentStorage.TryRead(File.ReadAllText(manifest), out var cabinet)) { error = "asset.cabinet3d is missing or invalid."; return false; }
+        var root = Path.GetFullPath(package).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        bool TryResolveContained(string relative, out string resolved)
+        {
+            resolved = Path.GetFullPath(Path.Combine(root, relative));
+            return resolved.StartsWith(root, StringComparison.OrdinalIgnoreCase);
+        }
+        if (!string.Equals(Path.GetExtension(cabinet.Model.Path), ".glb", StringComparison.OrdinalIgnoreCase)
+            || !TryResolveContained(cabinet.Model.Path, out var glb) || !File.Exists(glb)) { error = "The Cabinet GLB is missing, invalid, or outside the package."; return false; }
+        foreach (var reflection in cabinet.Reflections ?? [])
+        {
+            if (string.IsNullOrWhiteSpace(reflection.VisibilityMask)) continue;
+            if (!TryResolveContained(reflection.VisibilityMask, out var mask) || !File.Exists(mask)) { error = $"Reflection '{reflection.Id}' mask is missing or outside the package."; return false; }
+        }
+        return true;
     }
 
     private void ShowInExplorer(object context)

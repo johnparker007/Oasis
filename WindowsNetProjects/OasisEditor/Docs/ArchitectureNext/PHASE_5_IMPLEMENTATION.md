@@ -30,7 +30,7 @@ The explicit layout is `Cabinets/<package>/asset.cabinet3d` and `Reels/<package>
 
 ## 6. Cabinet packages and dependencies
 
-Library Cabinet discovery reads the same `asset.cabinet3d`. Machine build resolves its manifest through the resolver. Its GLB remains relative to the Cabinet package; reflection masks remain package-relative and containment checked. Build copies the model and masks into runtime staging, so the result has no Library dependency. A package whose internal path points back to its original project is invalid/missing rather than silently reaching into that project.
+Library Cabinet discovery reads the same `asset.cabinet3d`. Cabinet model paths are strictly safe package-relative paths. On save, an imported external GLB is copied deterministically into the destination Cabinet package, and both persisted and live Cabinet state are updated to that relative filename. Machine build resolves its manifest through the resolver. Its GLB remains relative to the Cabinet package; reflection masks remain package-relative and containment checked. Build copies the model and masks into runtime staging, so the result has no Library dependency. A package whose internal path points back to its original project is invalid/missing rather than silently reaching into that project.
 
 ## 7. Reel behavior
 
@@ -48,11 +48,11 @@ The Assets pane now has separate **Assets** and **Library** roots. The Library r
 
 ## 10. Authoring workflow
 
-The intentionally single creation workflow is **Copy to Oasis Library** on a project Cabinet or Reel package in the Assets pane. It copies the entire package to `Cabinets/<name>` or `Reels/<name>`, including Cabinet GLB, reflection masks, and supporting files. Existing destinations are never silently overwritten; the user is prompted for a different package name. Copying does not move the source, rewrite Machine references, or dirty documents. The new Library root in the same pane permits browsing, opening, Show in Explorer, and in-place Save back to the existing Library manifest. Opening never imports or silently copies the asset into a project.
+The intentionally single creation workflow is **Copy to Oasis Library** on a project Cabinet or Reel package in the Assets pane. It validates that a Cabinet manifest, GLB, and reflection resources are present and contained, then copies the entire already-self-contained package to `Cabinets/<name>` or `Reels/<name>`, including Cabinet GLB, reflection masks, and supporting files. Existing destinations are never silently overwritten; the user is prompted for a different package name. Copying does not move the source, rewrite Machine references, or dirty documents. The new Library root in the same pane permits browsing, opening, Show in Explorer, and in-place Save back to the existing Library manifest. Opening never imports or silently copies the asset into a project.
 
 ## 11. Build flattening and dependency closure
 
-Build resolves only the Machine-selected Cabinet, its assigned project Faces, and the Reel assignments required by those Faces. Library Cabinet geometry/resources and resolved Reel physical data are copied/flattened through the existing staging pipeline. Runtime manifests contain only generated-relative paths and physical values, never authoring scope or the Library root. Consequently malformed unused Library content cannot fail a build.
+Build resolves only the Machine-selected Cabinet, its assigned project Faces, and the Reel assignments required by those Faces. Library Cabinet geometry/resources and resolved Reel physical data are copied/flattened through the existing staging pipeline. Runtime manifests contain only generated-relative paths and physical values, never authoring scope or the Library root. Normal Build and Preview both resolve against the current session Library root at invocation time; Preview does not retain the root present at Editor startup. Consequently malformed unused Library content cannot fail a build.
 
 ## 12. Missing and moved assets
 

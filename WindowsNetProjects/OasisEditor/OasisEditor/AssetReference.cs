@@ -25,7 +25,10 @@ public sealed record AssetReference
     public static string Normalize(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        if (System.IO.Path.IsPathFullyQualified(path)) throw new ArgumentException("Asset references must be relative paths.", nameof(path));
+        if (System.IO.Path.IsPathRooted(path) || System.IO.Path.IsPathFullyQualified(path)
+            || path.StartsWith('/') || path.StartsWith('\\')
+            || (path.Length >= 2 && char.IsLetter(path[0]) && path[1] == ':'))
+            throw new ArgumentException("Asset references must be portable relative paths.", nameof(path));
         var normalized = path.Replace('\\', '/').Trim('/');
         if (normalized.Split('/').Any(part => part.Length == 0 || part is "." or ".."))
             throw new ArgumentException("Asset references cannot contain empty, current-directory, or parent-directory segments.", nameof(path));

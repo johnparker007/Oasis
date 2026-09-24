@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Xunit;
+using OasisEditor.Features.CabinetEditor.Models;
 
 namespace OasisEditor.Tests;
 
@@ -256,7 +257,7 @@ public sealed class AssetBrowserViewModelTests
         var library = Path.Combine(temp.RootDirectory, "Library");
         var package = Path.Combine(temp.AssetsDirectory, "Cabinet3D", "Vogue");
         Directory.CreateDirectory(package);
-        File.WriteAllText(Path.Combine(package, "asset.cabinet3d"), "{}");
+        File.WriteAllText(Path.Combine(package, "asset.cabinet3d"), CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb")));
         File.WriteAllText(Path.Combine(package, "cabinet.glb"), "glb");
         var reelPackage = Path.Combine(temp.AssetsDirectory, "Reels", "Standard");
         Directory.CreateDirectory(reelPackage);
@@ -281,6 +282,22 @@ public sealed class AssetBrowserViewModelTests
         Assert.False(viewModel.DeleteAssetCommand.CanExecute(libraryManifest));
         viewModel.OpenAssetCommand.Execute(libraryManifest);
         Assert.Equal(libraryManifest.FullPath, opened);
+        viewModel.Dispose();
+    }
+
+    [Fact]
+    public void CopyCabinetPackageRejectsPackageWithoutContainedGlb()
+    {
+        using var temp = new TempProjectDirectory();
+        var library = Path.Combine(temp.RootDirectory, "Library");
+        var package = Path.Combine(temp.AssetsDirectory, "Cabinet3D", "Broken"); Directory.CreateDirectory(package);
+        File.WriteAllText(Path.Combine(package, "asset.cabinet3d"), CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("missing.glb")));
+        var output = new List<string>();
+        var viewModel = new AssetBrowserViewModel(() => temp.Project, () => { }, () => { }, (message, _) => output.Add(message), _ => { }, _ => null, _ => true, () => library);
+        viewModel.RefreshAssetBrowser(); viewModel.SelectedDirectory = Find(viewModel.AssetDirectoryTree[0], package)!;
+        viewModel.CopyToLibraryCommand.Execute(viewModel.AssetBrowserItems.Single(item => item.DisplayPath == "asset.cabinet3d"));
+        Assert.False(Directory.Exists(Path.Combine(library, "Cabinets", "Broken")));
+        Assert.Contains(output, message => message.Contains("self-contained", StringComparison.OrdinalIgnoreCase));
         viewModel.Dispose();
     }
 

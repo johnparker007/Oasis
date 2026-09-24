@@ -107,7 +107,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private IEmulationBackend? _activeEmulationBackend;
     private EmulationBackendState _emulationState = EmulationBackendState.Stopped;
     private readonly IInputMapDiagnosticsService _inputMapDiagnosticsService = new InputMapDiagnosticsService();
-    private readonly OasisPlayerPreviewService _oasisPlayerPreviewService = new();
+    private readonly OasisPlayerPreviewService _oasisPlayerPreviewService;
     private IReadOnlyList<InputMapDiagnostic> _inputMapDiagnostics = [];
     private PlayViewInputRouter? _playViewInputRouter;
     private PlayViewInputDispatcher? _playViewInputDispatcher;
@@ -142,6 +142,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _preferencesStore = preferencesStore;
         _ownerWindow = ownerWindow;
         _progressDialogService = new WpfProgressDialogService(() => _ownerWindow, _ownerWindow.Dispatcher);
+        _oasisPlayerPreviewService = new OasisPlayerPreviewService(() => new MachineRuntimeBuildService(libraryRoot: OasisAssetLibraryRoot));
 
         if (string.IsNullOrWhiteSpace(startupProjectFilePath))
         {

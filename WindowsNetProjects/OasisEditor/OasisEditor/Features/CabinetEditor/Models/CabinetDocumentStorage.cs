@@ -16,6 +16,7 @@ public static class CabinetDocumentStorage
     public static string Serialize(CabinetDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        if (!IsSafePackageRelativePath(document.Model.Path)) throw new InvalidOperationException("Cabinet model path must be a safe package-relative path.");
         return JsonSerializer.Serialize(document with { Version = 9 }, Options);
     }
 
@@ -30,7 +31,7 @@ public static class CabinetDocumentStorage
         try
         {
             var parsed = JsonSerializer.Deserialize<CabinetDocument>(json, Options);
-            if (parsed?.Model is null || string.IsNullOrWhiteSpace(parsed.Model.Path) || parsed.Version != 9)
+            if (parsed?.Model is null || !IsSafePackageRelativePath(parsed.Model.Path) || parsed.Version != 9)
             {
                 return false;
             }
@@ -49,5 +50,13 @@ public static class CabinetDocumentStorage
         {
             return false;
         }
+    }
+
+    public static bool IsSafePackageRelativePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || Path.IsPathRooted(path) || Path.IsPathFullyQualified(path)) return false;
+        var normalized = path.Replace('\\', '/');
+        if (normalized.StartsWith('/') || (normalized.Length >= 2 && char.IsLetter(normalized[0]) && normalized[1] == ':')) return false;
+        return normalized.Split('/').All(segment => segment.Length > 0 && segment is not "." and not "..");
     }
 }

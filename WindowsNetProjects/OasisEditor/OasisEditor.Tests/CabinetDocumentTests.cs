@@ -5,6 +5,17 @@ namespace OasisEditor.Tests;
 
 public sealed class CabinetDocumentTests
 {
+    [Theory]
+    [InlineData("C:\\Models\\cabinet.glb")]
+    [InlineData("/models/cabinet.glb")]
+    [InlineData("../outside.glb")]
+    [InlineData("models/../outside.glb")]
+    public void CurrentStorageRejectsNonPackageRelativeModelPaths(string modelPath)
+    {
+        var json = CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb")).Replace("cabinet.glb", modelPath.Replace("\\", "\\\\"));
+        Assert.False(CabinetDocumentStorage.TryRead(json, out _));
+        Assert.Throws<InvalidOperationException>(() => CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath(modelPath)));
+    }
     [Fact]
     public void Schema9_RoundTripsOnlyIntrinsicCabinetState()
     {
