@@ -7,7 +7,8 @@ public enum EditorDocumentType
     Panel2D,
     Cabinet3D,
     Machine,
-    Face
+    Face,
+    Reel
 }
 
 public sealed class EditorDocument
@@ -80,6 +81,9 @@ public sealed class EditorDocument
             "Face document placeholder:\n- Physical presentation model\n- Lamp windows and future glass artwork\n- Links to machine/runtime objects");
     }
 
+    public static EditorDocument CreateReelStub(string title) => CreateUntitledWithType(
+        title, EditorDocumentType.Reel, "Not saved yet (.reel)", "Reusable physical reel definition");
+
     private static EditorDocument CreateUntitledWithType(
         string title,
         EditorDocumentType documentType,
@@ -127,6 +131,10 @@ public sealed class EditorDocument
         else if (normalizedExtension == ".face")
         {
             documentType = EditorDocumentType.Face;
+        }
+        else if (normalizedExtension == ".reel")
+        {
+            documentType = EditorDocumentType.Reel;
         }
         else
         {

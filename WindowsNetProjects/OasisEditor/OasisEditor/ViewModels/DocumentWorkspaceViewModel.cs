@@ -476,6 +476,15 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry($"Opened machine document stub: {document.Title}", OutputLogStatus.Info);
     }
 
+    public void OpenReelStubDocument()
+    {
+        if (_getLoadedProject() is null) return;
+        var document = CreateDocumentTab(EditorDocument.CreateReelStub("Reel"));
+        ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
+        _setStatusMessage($"Opened Reel document: {document.Title}");
+        _addOutputEntry($"Opened Reel document: {document.Title}", OutputLogStatus.Info);
+    }
+
     public void CloseSelectedDocument()
     {
         var selectedDocument = _getSelectedDocument();
@@ -489,7 +498,7 @@ public sealed class DocumentWorkspaceViewModel
         _addOutputEntry($"Closed document tab: {selectedDocument.Title}", OutputLogStatus.Info);
     }
 
-    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson, string? panelTitle = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null, string? machineDocumentJson = null)
+    public bool OpenOrSelectDocument(string path, string summary, string? panelLayoutJson, string? panelTitle = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null, string? machineDocumentJson = null, string? reelDocumentJson = null)
     {
         var existing = _openDocuments.FirstOrDefault(tab => string.Equals(tab.FilePath, path, StringComparison.OrdinalIgnoreCase));
         if (existing is not null)
@@ -498,7 +507,7 @@ public sealed class DocumentWorkspaceViewModel
             return false;
         }
 
-        var document = CreateDocumentTab(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson, faceDocumentJson, cabinetDocumentJson, machineDocumentJson);
+        var document = CreateDocumentTab(EditorDocument.CreateFromFile(path, summary, panelTitle), panelLayoutJson, faceDocumentJson, cabinetDocumentJson, machineDocumentJson, reelDocumentJson);
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
         return true;
     }
@@ -586,7 +595,7 @@ public sealed class DocumentWorkspaceViewModel
         return selectedDocument;
     }
 
-    private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null, string? machineDocumentJson = null)
+    private DocumentTabViewModel CreateDocumentTab(EditorDocument document, string? panelLayoutJson = null, string? faceDocumentJson = null, string? cabinetDocumentJson = null, string? machineDocumentJson = null, string? reelDocumentJson = null)
     {
         var documentId = Guid.NewGuid();
         var runtimeState = _runtimeStateStore.GetOrCreate(documentId);
@@ -597,7 +606,8 @@ public sealed class DocumentWorkspaceViewModel
             runtimeState: runtimeState,
             faceDocumentJson: faceDocumentJson,
             cabinetDocumentJson: cabinetDocumentJson,
-            machineDocumentJson: machineDocumentJson);
+            machineDocumentJson: machineDocumentJson,
+            reelDocumentJson: reelDocumentJson);
         tab.SetOpenDocumentsAccessor(() => _openDocuments);
         tab.SetProjectAccessor(_getLoadedProject);
         tab.SetProgressDialogService(_progressDialogService);
@@ -606,6 +616,13 @@ public sealed class DocumentWorkspaceViewModel
 
     internal static OpenDocumentData BuildOpenDocumentData(string path, string content)
     {
+        if (string.Equals(Path.GetExtension(path), ".reel", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!ReelDocumentStorage.TryRead(content, out var reel, out var error)) return new OpenDocumentData($"Failed to open Reel document: {error}", null, Path.GetFileName(path));
+            var assetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(path, EditorAssetType.Reel);
+            if (string.IsNullOrWhiteSpace(assetName)) return new OpenDocumentData("Failed to open Reel document: manifests must be stored as Assets/Reels/<Name>/asset.reel.", null, Path.GetFileName(path));
+            return new OpenDocumentData("Reusable Reel document opened.", null, assetName, ReelDocumentJson: ReelDocumentStorage.Serialize(reel));
+        }
         if (string.Equals(Path.GetExtension(path), ".machine", StringComparison.OrdinalIgnoreCase))
         {
             if (!MachineDocumentStorage.TryRead(content, out var machine, out var error))
@@ -756,6 +773,9 @@ public sealed class DocumentWorkspaceViewModel
 
         if (document.Document.DocumentType == EditorDocumentType.Machine)
             return MachineDocumentStorage.Serialize(document.GetMachineDocument());
+
+        if (document.Document.DocumentType == EditorDocumentType.Reel)
+            return ReelDocumentStorage.Serialize(document.GetReelDocument());
 
         var persisted = new
         {

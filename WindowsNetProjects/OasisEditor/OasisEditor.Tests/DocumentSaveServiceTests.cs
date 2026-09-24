@@ -18,7 +18,7 @@ public sealed class DocumentSaveServiceTests
             {
                 CabinetAssetPath = "Assets/Cabinet3D/Vogue/asset.cabinet3d",
                 SurfaceAssignments = [new("OasisFace_TopGlass", "Assets/Faces/FaceA/asset.face")],
-                ReelAssignments = [new(MachineObjectReference.Reel(0), "standard")],
+                ReelAssignments = [new(MachineObjectReference.Reel(0), "Assets/Reels/Standard/asset.reel")],
                 Runtime = new(FruitMachinePlatformType.MPU5, new Mpu5NativeRomSettings { ProgramRom1Path = "Assets/ROMs/game.bin" }),
                 InputDefinitions = [new InputDefinitionModel { Id = "start", Name = "Start", ButtonNumber = "1" }]
             };
@@ -27,7 +27,7 @@ public sealed class DocumentSaveServiceTests
                 machineDocumentJson: MachineDocumentStorage.Serialize(machine));
             var surfaceRow = new MachineSurfaceAssignmentRow(current, "OasisFace_TopGlass", "Top Glass",
                 [new("Face A", "Assets/Faces/FaceA/asset.face"), new("Face B", "Assets/Faces/FaceB/asset.face")], "Assets/Faces/FaceA/asset.face");
-            var reelRow = new MachineReelAssignmentRow(current, MachineObjectReference.Reel(0), [new("Standard", "standard")], "standard");
+            var reelRow = new MachineReelAssignmentRow(current, MachineObjectReference.Reel(0), [new("Standard", "Assets/Reels/Standard/asset.reel")], "Assets/Reels/Standard/asset.reel");
             current.MachineSurfaceAssignmentRows.Add(surfaceRow);
             current.MachineReelAssignmentRows.Add(reelRow);
             var openDocuments = new System.Collections.ObjectModel.ObservableCollection<DocumentTabViewModel> { current };
@@ -54,7 +54,7 @@ public sealed class DocumentSaveServiceTests
             Assert.True(current.CommandService.TryRedo());
             Assert.Equal("Assets/Faces/FaceB/asset.face", surfaceRow.SelectedAssetPath);
 
-            reelRow.SelectedSpecificationId = null;
+            reelRow.SelectedReelAssetPath = null;
             service.SaveDocument(current, savePath).ApplyTo(current);
             Assert.Same(surfaceRow, Assert.Single(current.MachineSurfaceAssignmentRows));
             Assert.Same(reelRow, Assert.Single(current.MachineReelAssignmentRows));
@@ -71,7 +71,7 @@ public sealed class DocumentSaveServiceTests
         {
             CabinetAssetPath = "Assets/Cabinet3D/Vogue/asset.cabinet3d",
             SurfaceAssignments = [new("OasisFace_TopGlass", "Assets/Faces/TopGlass/asset.face")],
-            ReelAssignments = [new(MachineObjectReference.Reel(0), "standard")]
+            ReelAssignments = [new(MachineObjectReference.Reel(0), "Assets/Reels/Standard/asset.reel")]
         };
         var original = new DocumentTabViewModel(
             EditorDocument.CreateFromFile("C:/Project/Assets/Machines/Game/asset.machine", "Machine"),
@@ -117,31 +117,6 @@ public sealed class DocumentSaveServiceTests
         {
             if (File.Exists(tempPath)) File.Delete(tempPath);
         }
-    }
-
-    [Fact]
-    public void SaveDocument_CabinetUpdatesExistingTabInPlace()
-    {
-        var tempPath = Path.Combine(Path.GetTempPath(), $"oasis-save-{Guid.NewGuid():N}.cabinet3d");
-        try
-        {
-            var cabinet = CabinetDocument.FromModelPath("cabinet.glb") with
-            {
-                ReelSpecifications = [new("standard", "Standard", 210, 50)]
-            };
-            var current = new DocumentTabViewModel(
-                EditorDocument.CreateCabinet3DStub("Cabinet").MarkDirty(),
-                cabinetDocumentJson: CabinetDocumentStorage.Serialize(cabinet));
-            var originalId = current.DocumentId;
-
-            new DocumentSaveService().SaveDocument(current, tempPath).ApplyTo(current);
-
-            Assert.Equal(originalId, current.DocumentId);
-            Assert.False(current.IsDirty);
-            Assert.Equal(tempPath, current.FilePath);
-            Assert.Equal("standard", Assert.Single(current.GetCabinetDocument().ReelSpecifications).Id);
-        }
-        finally { if (File.Exists(tempPath)) File.Delete(tempPath); }
     }
 
     [Fact]

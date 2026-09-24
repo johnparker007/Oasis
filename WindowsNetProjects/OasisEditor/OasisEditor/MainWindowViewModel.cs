@@ -156,6 +156,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenSourcePanel2DCommand = new RelayCommand(OpenSourcePanel2D, CanOpenSourcePanel2D);
         OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
         OpenMachineStubCommand = new RelayCommand(OpenMachineStubDocument, CanOpenUntitledDocument);
+        OpenReelStubCommand = new RelayCommand(OpenReelStubDocument, CanOpenUntitledDocument);
         ImportMfmeFmlCommand = new RelayCommand(ImportMfmeFml, CanImportMfmeFml);
         ImportGlbModelCommand = new RelayCommand(ImportGlbModel, CanImportGlbModel);
         BuildOasisPlayerMachineCommand = new RelayCommand(BuildOasisPlayerMachine, CanBuildOasisPlayerMachine);
@@ -380,6 +381,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenSourcePanel2DCommand { get; }
     public ICommand OpenCabinet3DStubCommand { get; }
     public ICommand OpenMachineStubCommand { get; }
+    public ICommand OpenReelStubCommand { get; }
     public ICommand ImportMfmeFmlCommand { get; }
     public ICommand ImportGlbModelCommand { get; }
     public ICommand BuildOasisPlayerMachineCommand { get; }
@@ -1158,6 +1160,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _documentWorkspace.OpenMachineStubDocument();
     }
 
+    private void OpenReelStubDocument() => _documentWorkspace.OpenReelStubDocument();
+
     private bool CanCloseSelectedDocument()
     {
         return _documentWorkspace.CanCloseSelectedDocument();
@@ -1550,7 +1554,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         return string.Equals(extension, ".panel2d", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".face", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".cabinet3d", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(extension, ".machine", StringComparison.OrdinalIgnoreCase);
+            || string.Equals(extension, ".machine", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".reel", StringComparison.OrdinalIgnoreCase);
     }
 
     private void OpenDocumentFromPath(string path)
@@ -1564,7 +1569,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             openData.PanelTitle,
             openData.FaceDocumentJson,
             openData.CabinetDocumentJson,
-            openData.MachineDocumentJson);
+            openData.MachineDocumentJson,
+            openData.ReelDocumentJson);
         if (SelectedDocument?.Document.DocumentType == EditorDocumentType.Cabinet3D) SelectedDocument.SetMachineCompositionContext(_activeMachineDocument);
         if (!openedNewTab)
         {
@@ -1700,7 +1706,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var selectedDocument = SelectedDocument;
         var defaultName = selectedDocument?.Document.Title ?? "Document";
 
-        if (selectedDocument?.Document.DocumentType is EditorDocumentType.Panel2D or EditorDocumentType.Cabinet3D or EditorDocumentType.Face or EditorDocumentType.Machine)
+        if (selectedDocument?.Document.DocumentType is EditorDocumentType.Panel2D or EditorDocumentType.Cabinet3D or EditorDocumentType.Face or EditorDocumentType.Machine or EditorDocumentType.Reel)
         {
             var nameDialog = new HierarchyRenameDialog(defaultName, "Save Asset", "Asset name")
             {
@@ -1718,6 +1724,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 EditorDocumentType.Face => EditorAssetType.Face,
                 EditorDocumentType.Cabinet3D => EditorAssetType.Cabinet3D,
                 EditorDocumentType.Machine => EditorAssetType.Machine,
+                EditorDocumentType.Reel => EditorAssetType.Reel,
                 _ => EditorAssetType.Panel2D
             };
             var assetName = pathService.EnsureUniqueAssetName(LoadedProject, assetType, nameDialog.NameText);
@@ -3338,6 +3345,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             openMachineRelayCommand.RaiseCanExecuteChanged();
         }
 
+        if (OpenReelStubCommand is RelayCommand openReelRelayCommand)
+        {
+            openReelRelayCommand.RaiseCanExecuteChanged();
+        }
+
         if (ImportMfmeFmlCommand is RelayCommand importMfmeFmlRelayCommand)
         {
             importMfmeFmlRelayCommand.RaiseCanExecuteChanged();
@@ -3557,7 +3569,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 }
 
-internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null, string? CabinetDocumentJson = null, string? MachineDocumentJson = null);
+internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null, string? CabinetDocumentJson = null, string? MachineDocumentJson = null, string? ReelDocumentJson = null);
 
 
 public sealed class System6CoinSettingsViewModel : INotifyPropertyChanged

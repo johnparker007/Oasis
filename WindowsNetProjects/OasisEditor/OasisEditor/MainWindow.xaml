@@ -58,6 +58,8 @@
                               Command="{Binding OpenCabinet3DStubCommand}" />
                     <MenuItem Header="_Machine"
                               Command="{Binding OpenMachineStubCommand}" />
+                    <MenuItem Header="_Reel"
+                              Command="{Binding OpenReelStubCommand}" />
                 </MenuItem>
                 <Separator />
                 <MenuItem Header="_Import">

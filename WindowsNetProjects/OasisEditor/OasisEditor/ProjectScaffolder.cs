@@ -12,6 +12,7 @@ public sealed class ProjectScaffolder
         "Assets/Cabinet3D",
         "Assets/Faces",
         "Assets/Machines",
+        "Assets/Reels",
         "Generated",
         "Generated/Build",
         "Generated/Preview"

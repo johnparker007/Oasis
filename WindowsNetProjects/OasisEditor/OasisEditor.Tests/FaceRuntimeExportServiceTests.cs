@@ -1,7 +1,6 @@
 using System.Text.Json;
 using OasisEditor;
 using OasisEditor.Automation;
-using OasisEditor.Features.CabinetEditor.Models;
 using SkiaSharp;
 using Xunit;
 
@@ -76,7 +75,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var maskBefore = File.ReadAllBytes(authoredMaskPath);
 
         var document = CreateDocument("Assets/Faces/Stable Face/artwork.png", "Assets/Faces/Stable Face/mask.png", "Renamed In Inspector");
-        WriteDefaultCabinetAsset();
 
         var result = new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath("Stable Face"));
 
@@ -97,7 +95,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(artworkPath, 4, 4, new SKColor(255, 0, 0, 128));
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
         var document = CreateDocument("Assets/artwork.png", "Generated/source-mask.png");
-        WriteDefaultCabinetAsset();
         var project = CreateProject();
 
         var result = new FaceRuntimeExportService().Export(document, project, GetFaceManifestPath());
@@ -155,7 +152,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteQuadrantPng(finalArtworkPath, 16, 16);
         WriteSolidPng(obsoleteElementArtworkPath, 4, 4, SKColors.Magenta);
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
-        WriteDefaultCabinetAsset();
         var document = new FaceDocumentModel
         {
             Id = "face-runtime",
@@ -216,7 +212,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(artworkPath, 4, 4, new SKColor(0, 255, 0, 192));
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
         var document = CreateDocument("Assets/artwork.png", "Generated/source-mask.png");
-        WriteDefaultCabinetAsset();
         var current = new DocumentTabViewModel(
             EditorDocument.CreateFaceStub("Front Face").MarkDirty(),
             faceDocumentJson: FaceDocumentStorage.Serialize(document));
@@ -558,84 +553,79 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     [Fact]
     public void CreateManifest_IncludesTexturePathsEmitterMetadataAndTrayMetadata()
     {
-        var document = CreateDocument("Assets/artwork.png", "Generated/source-mask.png");
-
-        var manifest = new FaceRuntimeExportService().CreateManifest(document, 4, 4, CreateCabinetContext(CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50))));
-
+        var manifest = new FaceRuntimeExportService().CreateManifest(CreateDocument("Assets/artwork.png", "Generated/source-mask.png"), 4, 4);
         Assert.Equal("trayId.png", manifest.TrayId);
         Assert.Equal("lampIds0.png", manifest.LampIds0);
         Assert.Equal("lampWeights0.png", manifest.LampWeights0);
         Assert.Equal("trayId_debug.png", manifest.TrayIdDebug);
         Assert.Equal("lampWeights_debug.png", manifest.LampWeightsDebug);
-        var emitter = Assert.Single(manifest.Lamps);
-        Assert.Equal("runtime-emitter-lamp-24", emitter.ObjectId);
-        Assert.Equal(1, emitter.TrayId);
-        var tray = Assert.Single(manifest.Trays);
-        Assert.Equal("runtime-tray-lamp-24", tray.ObjectId);
-        Assert.Equal("runtime-emitter-lamp-24", tray.LampEmitterObjectId);
-        Assert.Equal(24, tray.LampId);
-    }
-
-
-    [Fact]
-    public void CreateManifest_ResolvesReelDimensionsFromCabinetSpecification()
-    {
-        var document = CreateReelDocument("standard", 10, 20, 300, 400);
-        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50));
-
-        var manifest = new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet));
-
-        var reel = Assert.Single(manifest.Reels);
-        Assert.Equal(50, reel.PhysicalWidth);
-        Assert.Equal(105, reel.PhysicalRadius);
+        Assert.Equal(24, Assert.Single(manifest.Lamps).LampId);
+        Assert.Equal("runtime-emitter-lamp-24", Assert.Single(manifest.Trays).LampEmitterObjectId);
     }
 
     [Fact]
-    public void CreateManifest_UsesDifferentCabinetSpecificationsPerReel()
+    public void CreateManifest_ReelDimensionsComeFromResolvedReelAsset()
     {
-        var document = CreateReelDocument("standard", 1, 1, 10, 10, "wide", 20, 20, 200, 40);
-        var cabinet = CreateCabinet(
-            new CabinetReelSpecification("standard", "Standard", 210, 50),
-            new CabinetReelSpecification("wide", "Wide", 300, 75));
-
-        var manifest = new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet));
-
-        Assert.Equal(2, manifest.Reels.Count);
-        Assert.Equal(50, manifest.Reels[0].PhysicalWidth);
-        Assert.Equal(105, manifest.Reels[0].PhysicalRadius);
-        Assert.Equal(75, manifest.Reels[1].PhysicalWidth);
-        Assert.Equal(150, manifest.Reels[1].PhysicalRadius);
+        var document = CreateReelDocument("ignored", 10, 20, 300, 400);
+        var context = Composition((MachineObjectReference.Reel(1), "Assets/Reels/Standard/asset.reel", ReelDocument.Create("Standard") with { DiameterMm = 290, WidthMm = 70 }));
+        var reel = Assert.Single(new FaceRuntimeExportService().CreateManifest(document, 100, 100, context).Reels);
+        Assert.Equal(70, reel.PhysicalWidth);
+        Assert.Equal(145, reel.PhysicalRadius);
     }
 
     [Fact]
-    public void CreateManifest_ReelDimensionsAreIndependentOfFaceRectangle()
+    public void CreateManifest_FaceRectangleDoesNotAffectSharedPhysicalDimensions()
     {
-        var document = CreateReelDocument("standard", 1, 1, 10, 10, "standard", 50, 60, 700, 800);
-        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50));
-
-        var manifest = new FaceRuntimeExportService().CreateManifest(document, 1000, 1000, CreateCabinetContext(cabinet));
-
-        Assert.All(manifest.Reels, reel =>
-        {
-            Assert.Equal(50, reel.PhysicalWidth);
-            Assert.Equal(105, reel.PhysicalRadius);
-        });
+        var document = CreateReelDocument("ignored", 1, 1, 10, 10, "ignored", 50, 60, 700, 800);
+        var asset = ReelDocument.Create("Standard") with { DiameterMm = 290, WidthMm = 70 };
+        var context = Composition(
+            (MachineObjectReference.Reel(1), "Assets/Reels/Standard/asset.reel", asset),
+            (MachineObjectReference.Reel(2), "Assets/Reels/Standard/asset.reel", asset));
+        var reels = new FaceRuntimeExportService().CreateManifest(document, 1000, 1000, context).Reels;
+        Assert.All(reels, reel => { Assert.Equal(70, reel.PhysicalWidth); Assert.Equal(145, reel.PhysicalRadius); });
     }
 
-    [Theory]
-    [InlineData("unknown", "does not exist")]
-    public void CreateManifest_WithUnresolvedReelSpecification_Throws(string specificationId, string expected)
+    [Fact]
+    public void CreateManifest_DifferentLogicalReelsUseDifferentAssets()
     {
-        var document = CreateReelDocument(specificationId, 1, 1, 1000, 1000);
-        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50));
-        var context = new FaceCabinetContext(cabinet, "Assets/Cabinets/cabinet.asset", [new MachineReelAssignment(MachineObjectReference.Reel(1), specificationId)]);
+        var document = CreateReelDocument("ignored", 1, 1, 10, 10, "ignored", 20, 20, 200, 40);
+        var context = Composition(
+            (MachineObjectReference.Reel(1), "Assets/Reels/Standard/asset.reel", ReelDocument.Create("Standard") with { DiameterMm = 290, WidthMm = 70 }),
+            (MachineObjectReference.Reel(2), "Assets/Reels/Small/asset.reel", ReelDocument.Create("Small") with { DiameterMm = 230, WidthMm = 60 }));
+        var reels = new FaceRuntimeExportService().CreateManifest(document, 100, 100, context).Reels;
+        Assert.Equal((70d, 145d), (reels[0].PhysicalWidth!.Value, reels[0].PhysicalRadius!.Value));
+        Assert.Equal((60d, 115d), (reels[1].PhysicalWidth!.Value, reels[1].PhysicalRadius!.Value));
+    }
 
-        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, context));
+    [Fact]
+    public void CreateManifest_MissingLogicalAssignmentFailsWithFaceAndLogicalReel()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(
+            CreateReelDocument("ignored", 1, 1, 10, 10), 100, 100, new FaceRuntimeCompositionContext([], new Dictionary<MachineObjectReference, ReelDocument>())));
+        Assert.Contains("Runtime Face", exception.Message);
+        Assert.Contains("reel:1", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("no assignment", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Cabinet", exception.Message);
+    }
 
-        Assert.Contains(expected, exception.Message);
-        Assert.Contains("Face asset", exception.Message);
-        Assert.Contains("Cabinet asset", exception.Message);
-        Assert.Contains(specificationId, exception.Message);
+    [Fact]
+    public void CreateManifest_MissingResolvedReelFailsWithAssetPath()
+    {
+        var path = "Assets/Reels/Missing/asset.reel";
+        var context = new FaceRuntimeCompositionContext([new(MachineObjectReference.Reel(1), path)], new Dictionary<MachineObjectReference, ReelDocument>());
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(CreateReelDocument("ignored", 1, 1, 10, 10), 100, 100, context));
+        Assert.Contains("reel:1", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(path, exception.Message);
+        Assert.Contains("not resolved", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void CreateManifest_InvalidResolvedReelFailsValidation()
+    {
+        var invalid = ReelDocument.Create("Invalid") with { DiameterMm = 0 };
+        var context = Composition((MachineObjectReference.Reel(1), "Assets/Reels/Invalid/asset.reel", invalid));
+        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(CreateReelDocument("ignored", 1, 1, 10, 10), 100, 100, context));
+        Assert.Contains("diameter", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -649,45 +639,25 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
     }
 
     [Fact]
-    public void CreateManifest_WithMissingLogicalReelAssignment_Throws()
+    public void CreateManifest_UnassignedReelLamp_UsesNegativeSentinel()
     {
-        var document = CreateReelDocument("standard", 1, 1, 1000, 1000);
-        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50));
-        var context = new FaceCabinetContext(cabinet, "Assets/Cabinets/cabinet.asset", []);
-
-        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, context));
-
-        Assert.Contains("reel:1", exception.Message);
-        Assert.Contains("no assignment", exception.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Cabinet asset", exception.Message);
+        var document = CreateReelDocumentWithLamps([new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = null, LocalVerticalCenter = 1d / 6d, Radius = 0d, Intensity = 1d }]);
+        var manifest = new FaceRuntimeExportService().CreateManifest(document, 100, 100);
+        Assert.Equal(-1, Assert.Single(Assert.Single(manifest.Reels).ReelLamps).LampId);
     }
 
     [Fact]
-    public void CreateManifest_WithDuplicateSpecificationIds_Throws()
+    public void CreateManifest_ReelLamps_ExportsEnabledFlagAndCommonLampIds()
     {
-        var document = CreateReelDocument("standard", 1, 1, 1000, 1000);
-        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "A", 210, 50), new CabinetReelSpecification("standard", "B", 220, 55));
-
-        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet)));
-
-        Assert.Contains("duplicate", exception.Message, StringComparison.OrdinalIgnoreCase);
+        var document = CreateReelDocumentWithLamps([
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = 5, LocalVerticalCenter = 1d / 6d, Radius = 0d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = 4, LocalVerticalCenter = .5d, Radius = 0d, Intensity = 1d },
+            new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LampNumber = 3, LocalVerticalCenter = 5d / 6d, Radius = 0d, Intensity = 1d }
+        ], reelLampsEnabled: false);
+        var reel = Assert.Single(new FaceRuntimeExportService().CreateManifest(document, 100, 100).Reels);
+        Assert.False(reel.ReelLampsEnabled);
+        Assert.Equal([5, 4, 3], reel.ReelLamps.Select(lamp => lamp.LampId).ToArray());
     }
-
-    [Theory]
-    [InlineData(0, 50, "diameter")]
-    [InlineData(double.NaN, 50, "diameter")]
-    [InlineData(210, 0, "width")]
-    [InlineData(210, double.PositiveInfinity, "width")]
-    public void CreateManifest_WithInvalidSpecificationDimensions_Throws(double diameterMm, double widthMm, string expected)
-    {
-        var document = CreateReelDocument("standard", 1, 1, 1000, 1000);
-        var cabinet = CreateCabinet(new CabinetReelSpecification("standard", "Standard", diameterMm, widthMm));
-
-        var exception = Assert.Throws<InvalidOperationException>(() => new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(cabinet)));
-
-        Assert.Contains(expected, exception.Message, StringComparison.OrdinalIgnoreCase);
-    }
-
 
     [Fact]
     public void CreatePlan_WithAuthoredTraysAndEmitters_UsesAuthoredExportSource()
@@ -947,7 +917,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(bandPath, 2, 2, SKColors.Green);
         WriteSolidPng(transmissionPath, 2, 2, new SKColor(10, 20, 30, 255));
         var document = CreateDocumentWithRuntimeReel("Assets/artwork.png", "Generated/source-mask.png", "Assets/reel-band.png", true, "Generated/reel-transmission.png");
-        WriteDefaultCabinetAsset();
 
         var result = new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath());
 
@@ -972,7 +941,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(bandPath, 2, 2, SKColors.Green);
         WriteSolidPng(transmissionPath, 2, 2, SKColors.Black);
         var document = CreateDocumentWithRuntimeReel("Assets/artwork.png", "Generated/source-mask.png", "Assets/reel-band.png", false, "Generated/reel-transmission.png");
-        WriteDefaultCabinetAsset();
 
         var result = new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath());
 
@@ -990,37 +958,9 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(faceMaskPath, 4, 4, SKColors.White);
         WriteSolidPng(bandPath, 2, 2, SKColors.Green);
         var document = CreateDocumentWithRuntimeReel("Assets/artwork.png", "Generated/source-mask.png", "Assets/reel-band.png", true, "Generated/missing-transmission.png");
-        WriteDefaultCabinetAsset();
 
         var exception = Assert.Throws<FileNotFoundException>(() => new FaceRuntimeExportService().Export(document, CreateProject(), GetFaceManifestPath()));
         Assert.Contains("transmission mask", exception.Message, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void CreateManifest_UnassignedReelLamp_UsesNegativeSentinel()
-    {
-        var document = CreateReelDocumentWithLamps([new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = null, LocalVerticalCenter = 1d / 6d, Radius = 0d, Intensity = 1d }]);
-        var manifest = new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50))));
-        Assert.Equal(-1, Assert.Single(Assert.Single(manifest.Reels).ReelLamps).LampId);
-    }
-
-
-    [Fact]
-    public void CreateManifest_ReelLamps_ExportsEnabledFlagAndCommonLampIds()
-    {
-        var document = CreateReelDocumentWithLamps(
-        [
-            new ReelLampSlotModel { Position = ReelLampSlotPosition.Top, LampNumber = 5, LocalVerticalCenter = 1d / 6d, Radius = 0d, Intensity = 1d },
-            new ReelLampSlotModel { Position = ReelLampSlotPosition.Middle, LampNumber = 4, LocalVerticalCenter = 0.5d, Radius = 0d, Intensity = 1d },
-            new ReelLampSlotModel { Position = ReelLampSlotPosition.Bottom, LampNumber = 3, LocalVerticalCenter = 5d / 6d, Radius = 0d, Intensity = 1d }
-        ], reelLampsEnabled: false);
-
-        var manifest = new FaceRuntimeExportService().CreateManifest(document, 100, 100, CreateCabinetContext(CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50))));
-
-        var reel = Assert.Single(manifest.Reels);
-        Assert.False(reel.ReelLampsEnabled);
-        Assert.Equal([5, 4, 3], reel.ReelLamps.Select(lamp => lamp.LampId).ToArray());
-        Assert.All(reel.ReelLamps, lamp => Assert.Equal(0d, lamp.Radius));
     }
 
     private EditorProject CreateProject()
@@ -1033,13 +973,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             AssetsDirectory = _assetsDirectory,
             GeneratedDirectory = _generatedDirectory
         };
-    }
-
-    private void WriteDefaultCabinetAsset()
-    {
-        var path = Path.Combine(_assetsDirectory, "Cabinets", "cabinet.asset");
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, CabinetDocumentStorage.Serialize(CreateCabinet(new CabinetReelSpecification("standard", "Standard", 210, 50))));
     }
 
     private string GetFaceManifestPath(string assetName = "Runtime Face") => Path.Combine(_assetsDirectory, "Faces", assetName, "asset.face");
@@ -1130,18 +1063,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         };
     }
 
-    private static CabinetDocument CreateCabinet(params CabinetReelSpecification[] specifications)
-    {
-        return new CabinetDocument(8, new CabinetModelReference("Assets/Cabinets/cabinet.glb", 1.0, "Y"), [], specifications, specifications.FirstOrDefault()?.Id);
-    }
-
-    private static FaceCabinetContext CreateCabinetContext(CabinetDocument cabinet)
-    {
-        var specifications = cabinet.ReelSpecifications ?? [];
-        var assignments = Enumerable.Range(0, 4).Select(index => new MachineReelAssignment(MachineObjectReference.Reel(index + 1), specifications[Math.Min(index, specifications.Length - 1)].Id)).ToArray();
-        return new FaceCabinetContext(cabinet, "Assets/Cabinets/cabinet.asset", assignments);
-    }
-
     private static FaceDocumentModel CreateReelDocument(params object[] reelData)
     {
         var elements = new List<FaceElementModel>();
@@ -1168,6 +1089,11 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             Elements = elements
         };
     }
+
+    private static FaceRuntimeCompositionContext Composition(params (MachineObjectReference Reference, string Path, ReelDocument Reel)[] values)
+        => new(
+            values.Select(value => new MachineReelAssignment(value.Reference, value.Path)).ToArray(),
+            values.ToDictionary(value => value.Reference, value => value.Reel));
 
 
     private static FaceDocumentModel CreateDocumentWithLampWindows(params FaceLampWindowElement[] lampWindows)
@@ -1296,7 +1222,6 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         WriteSolidPng(artworkPath, 4, 4, new SKColor(0, 0, 255, 128));
         WriteSolidPng(maskPath, 4, 4, SKColors.White);
         var document = CreateDocument("Assets/progress-artwork.png", "Generated/progress-mask.png");
-        WriteDefaultCabinetAsset();
         var project = CreateProject();
         var service = new FaceRuntimeExportService();
         var baseline = service.Export(document, project, GetFaceManifestPath());

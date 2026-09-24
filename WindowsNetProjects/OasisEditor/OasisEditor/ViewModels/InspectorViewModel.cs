@@ -390,6 +390,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             RebuildCabinetDocumentPropertyRows(selectedDocument);
             return;
         }
+        if (selectedDocument?.Document.DocumentType == EditorDocumentType.Reel)
+        {
+            RebuildReelDocumentPropertyRows(selectedDocument);
+            return;
+        }
 
         if (selectedDocument is null || selection is not PanelSelectionInfo panelSelection)
         {
@@ -483,6 +488,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
         {
             RebuildCabinetDocumentPropertyRows(selectedDocument);
+            return;
+        }
+        if (selectedDocument?.Document.DocumentType == EditorDocumentType.Reel)
+        {
+            RebuildReelDocumentPropertyRows(selectedDocument);
             return;
         }
 
@@ -1311,26 +1321,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     private void RebuildCabinetDocumentPropertyRows(DocumentTabViewModel selectedDocument)
     {
-        var cabinetDocument = selectedDocument.GetCabinetDocument();
-        var specifications = cabinetDocument.ReelSpecifications ?? [];
-        var defaultId = cabinetDocument.DefaultReelSpecificationId ?? string.Empty;
-        _propertyRows.Add(new InspectorActionPropertyViewModel("Add Temporary Reel Specification", "Temporary Physical Reel Specifications", new RelayCommand(() => { ExecuteCabinetCommand(selectedDocument, CabinetMutationCommands.CreateAddReelSpecificationCommand(selectedDocument.DocumentId, selectedDocument)); })));
-        var defaultChoices = new[] { "(None)" }.Concat(specifications.Select(FormatReelSpecificationChoice)).ToArray();
-        var currentDefaultChoice = specifications.FirstOrDefault(specification => string.Equals(specification.Id, defaultId, StringComparison.Ordinal)) is { } currentDefault
-            ? FormatReelSpecificationChoice(currentDefault)
-            : "(None)";
-        _propertyRows.Add(new InspectorChoicePropertyViewModel("Default Reel Specification", "Temporary Physical Reel Specifications", defaultChoices, currentDefaultChoice, commit: choice => TrySetDefaultReelSpecification(selectedDocument, choice)));
-
-        foreach (var specification in specifications)
-        {
-            var group = $"Reel: {specification.Name}";
-            _propertyRows.Add(new InspectorInfoPropertyViewModel("ID", group, specification.Id));
-            _propertyRows.Add(new InspectorTextPropertyViewModel("Name", group, specification.Name, commit: value => TryUpdateCabinetReelSpecification(selectedDocument, specification with { Name = string.IsNullOrWhiteSpace(value) ? specification.Id : value.Trim() })));
-            _propertyRows.Add(new InspectorDoublePropertyViewModel("Diameter mm", group, specification.DiameterMm, commit: value => value > 0 && PanelElementValidation.IsFinite(value) ? TryUpdateCabinetReelSpecification(selectedDocument, specification with { DiameterMm = value }) : "Diameter must be positive and finite."));
-            _propertyRows.Add(new InspectorDoublePropertyViewModel("Width mm", group, specification.WidthMm, commit: value => value > 0 && PanelElementValidation.IsFinite(value) ? TryUpdateCabinetReelSpecification(selectedDocument, specification with { WidthMm = value }) : "Width must be positive and finite."));
-            _propertyRows.Add(new InspectorActionPropertyViewModel("Delete", group, new RelayCommand(() => { ExecuteCabinetCommand(selectedDocument, CabinetMutationCommands.CreateDeleteReelSpecificationCommand(selectedDocument.DocumentId, selectedDocument, specification.Id)); })));
-        }
-
         _hadInspectorSelection = false;
         _lastInspectorSelectionObjectId = null;
         _lastInspectorSelectionKind = null;
@@ -1338,15 +1328,18 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(InspectorPropertyRows));
     }
 
-    private string? TryUpdateCabinetReelSpecification(DocumentTabViewModel selectedDocument, CabinetReelSpecification specification)
+    private void RebuildReelDocumentPropertyRows(DocumentTabViewModel selectedDocument)
     {
-        return ExecuteCabinetCommand(selectedDocument, CabinetMutationCommands.CreateUpdateReelSpecificationCommand(selectedDocument.DocumentId, selectedDocument, specification.Normalized())) ? null : "Unable to update cabinet reel specification.";
+        var reel = selectedDocument.GetReelDocument();
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("ID", "Reel", reel.Id));
+        _propertyRows.Add(new InspectorTextPropertyViewModel("Display Name", "Reel", reel.DisplayName, commit: value => { selectedDocument.ReelDisplayName = value; return null; }));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel("Diameter mm", "Reel", reel.DiameterMm, commit: value => value > 0 && PanelElementValidation.IsFinite(value) ? SetReelDiameter(selectedDocument, value) : "Diameter must be positive and finite."));
+        _propertyRows.Add(new InspectorDoublePropertyViewModel("Width mm", "Reel", reel.WidthMm, commit: value => value > 0 && PanelElementValidation.IsFinite(value) ? SetReelWidth(selectedDocument, value) : "Width must be positive and finite."));
+        OnPropertyChanged(nameof(InspectorPropertyRows));
     }
 
-    private string? TrySetDefaultReelSpecification(DocumentTabViewModel selectedDocument, string choice)
-    {
-        return ExecuteCabinetCommand(selectedDocument, CabinetMutationCommands.CreateSetDefaultReelSpecificationCommand(selectedDocument.DocumentId, selectedDocument, ParseReelSpecificationChoice(choice))) ? null : "Unable to set default reel specification.";
-    }
+    private static string? SetReelDiameter(DocumentTabViewModel document, double value) { document.ReelDiameterMm = value; return null; }
+    private static string? SetReelWidth(DocumentTabViewModel document, double value) { document.ReelWidthMm = value; return null; }
 
     private bool ExecuteCabinetCommand(DocumentTabViewModel selectedDocument, EditorCommands.ICommand command) => _executeCanvasCommand(selectedDocument.DocumentId, command);
 
@@ -1380,17 +1373,6 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         return Directory.EnumerateFiles(root, ProjectAssetPathService.FaceManifestFileName, SearchOption.AllDirectories)
             .Select(path => ProjectAssetPathService.NormalizeProjectRelativePath(Path.GetRelativePath(project.ProjectDirectory, path)))
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray();
-    }
-
-    private static string FormatReelSpecificationChoice(CabinetReelSpecification specification) => $"{specification.Name} ({specification.Id}) — {specification.DiameterMm:0.###} mm × {specification.WidthMm:0.###} mm";
-
-    private static string? ParseReelSpecificationChoice(string? choice)
-    {
-        if (string.IsNullOrWhiteSpace(choice) || choice == "(None)" || choice == "(Unresolved)") return null;
-        var unresolvedSuffix = " (unresolved)";
-        if (choice.EndsWith(unresolvedSuffix, StringComparison.Ordinal)) return choice[..^unresolvedSuffix.Length].Trim();
-        var match = Regex.Match(choice, @"\((?<id>[^()]*)\)(?:\s+—.*)?$");
-        return match.Success ? match.Groups["id"].Value.Trim() : choice.Trim();
     }
 
     private static string? ToProjectRelativePath(EditorProject? project, string? filePath)

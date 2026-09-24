@@ -4,18 +4,14 @@ public sealed record CabinetDocument(
     int Version,
     CabinetModelReference Model,
     CabinetSurfaceTargetSettings[] SurfaceTargetSettings,
-    CabinetReelSpecification[] ReelSpecifications = null!,
-    string? DefaultReelSpecificationId = null,
     CabinetReflectionDefinition[]? Reflections = null)
 {
-    public static CabinetDocument Empty => new(8, new CabinetModelReference(string.Empty, 1.0, "Y"), [], [], null);
+    public static CabinetDocument Empty => new(9, new CabinetModelReference(string.Empty, 1.0, "Y"), []);
 
     public static CabinetDocument FromModelPath(string modelPath) => new(
-        8,
+        9,
         new CabinetModelReference(modelPath, 1.0, "Y"),
-        [],
-        [],
-        null);
+        []);
 }
 
 public sealed record CabinetReflectionVector(double X, double Y, double Z);
@@ -62,20 +58,6 @@ public static class CabinetReflectionPlaneValidation
         var dot = (plane.Right.X * plane.Up.X + plane.Right.Y * plane.Up.Y + plane.Right.Z * plane.Up.Z) / (rightLength * upLength);
         if (Math.Abs(dot) > 1e-4) { error = "Plane right and up axes must be orthogonal."; return false; } return true;
     }
-}
-
-public sealed record CabinetReelSpecification(string Id, string Name, double DiameterMm, double WidthMm)
-{
-    public CabinetReelSpecification Normalized() => new(
-        Id.Trim(),
-        string.IsNullOrWhiteSpace(Name) ? Id.Trim() : Name.Trim(),
-        DiameterMm,
-        WidthMm);
-
-    public bool HasValidDimensions => OasisEditor.PanelElementValidation.IsFinite(DiameterMm)
-        && OasisEditor.PanelElementValidation.IsFinite(WidthMm)
-        && DiameterMm > 0
-        && WidthMm > 0;
 }
 
 public sealed record CabinetSurfaceTargetSettings(string TargetId, string FrontSide, int FaceRotation = 0, bool FaceFlipHorizontal = false)
