@@ -546,7 +546,7 @@ public sealed class AssetBrowserViewModel : IDisposable
         foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories)) File.Copy(file, Path.Combine(destination, Path.GetRelativePath(source, file)), false);
     }
 
-    internal static bool TryValidateCabinetPackage(string package, out string error)
+    public static bool TryValidateCabinetPackage(string package, out string error)
     {
         error = string.Empty;
         var manifest = Path.Combine(package, ProjectAssetPathService.Cabinet3DManifestFileName);

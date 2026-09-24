@@ -50,7 +50,7 @@ public sealed class OasisPlayerPreviewServiceTests
         var exe = Path.Combine(root, "OasisPlayer.exe"); File.WriteAllText(exe, string.Empty);
         var currentLibrary = "LibraryA";
         var requested = new List<string>();
-        var service = new OasisPlayerPreviewService(() => { requested.Add(currentLibrary); return new StubBuildService(MachineRuntimeBuildResult.Fail("expected")); });
+        var service = new OasisPlayerPreviewService((Func<IMachineRuntimeBuildService>)(() => { requested.Add(currentLibrary); return new StubBuildService(MachineRuntimeBuildResult.Fail("expected")); }));
         service.Preview(project, "asset.machine", MachineDocument.Create("Test"), new OasisPlayerPreferences { ExecutablePath = exe }, NoOpEditorProgressReporter.Instance, CancellationToken.None);
         currentLibrary = "LibraryB";
         service.Preview(project, "asset.machine", MachineDocument.Create("Test"), new OasisPlayerPreferences { ExecutablePath = exe }, NoOpEditorProgressReporter.Instance, CancellationToken.None);
