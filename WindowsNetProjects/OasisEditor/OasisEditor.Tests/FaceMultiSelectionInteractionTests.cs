@@ -40,7 +40,7 @@ public sealed class FaceMultiSelectionInteractionTests
             new FaceArtworkElement { ObjectId = "art", X = 0, Y = 0, Width = 10, Height = 10, IsVisible = true, IsTransformLocked = true },
             new FaceLampWindowElement { ObjectId = "partial", X = 18, Y = 18, Width = 10, Height = 10, IsVisible = true },
             new FaceLampWindowElement { ObjectId = "hidden", X = 0, Y = 0, Width = 10, Height = 10, IsVisible = false },
-            new FaceReelDisplayElement { ObjectId = "reel", X = 20, Y = 20, Width = 5, Height = 5, IsVisible = true }
+            new FaceReelMount { ObjectId = "reel", X = 20, Y = 20, Width = 5, Height = 5, IsVisible = true }
         };
 
         var selected = FaceSelectionInteractionService.SelectItemsFromRect(elements, new Rect(0, 0, 25, 25));
@@ -69,7 +69,7 @@ public sealed class FaceMultiSelectionInteractionTests
     {
         var document = CreateDocument(
             new FaceLampWindowElement { ObjectId = "a", X = 10, Y = 20, Width = 5, Height = 5, IsVisible = true },
-            new FaceReelDisplayElement { ObjectId = "b", X = 30, Y = 40, Width = 5, Height = 5, IsVisible = true });
+            new FaceReelMount { ObjectId = "b", X = 30, Y = 40, Width = 5, Height = 5, IsVisible = true });
         document.SelectionState.Replace(A);
         document.SelectionState.Add(B);
 
@@ -89,7 +89,7 @@ public sealed class FaceMultiSelectionInteractionTests
     {
         var document = CreateDocument(
             new FaceLampWindowElement { ObjectId = "a", X = 0, Y = 0, Width = 5, Height = 5, IsVisible = true },
-            new FaceReelDisplayElement { ObjectId = "b", X = 10, Y = 10, Width = 5, Height = 5, IsVisible = true });
+            new FaceReelMount { ObjectId = "b", X = 10, Y = 10, Width = 5, Height = 5, IsVisible = true });
         var originals = document.GetFaceElements().ToDictionary(element => element.ObjectId, element => FaceElementModelCloner.Clone(element));
         var moved = originals.ToDictionary(pair => pair.Key, pair => FaceElementModelCloner.Clone(pair.Value, x: pair.Value.X + 3, y: pair.Value.Y + 4));
 
@@ -123,7 +123,7 @@ public sealed class FaceMultiSelectionInteractionTests
     {
         var document = CreateDocument(
             new FaceLampWindowElement { ObjectId = "a", X = 0, Y = 0, Width = 5, Height = 5, IsVisible = true },
-            new FaceReelDisplayElement { ObjectId = "b", X = 10, Y = 10, Width = 5, Height = 5, IsVisible = true });
+            new FaceReelMount { ObjectId = "b", X = 10, Y = 10, Width = 5, Height = 5, IsVisible = true });
         var originals = document.GetFaceElements()
             .Take(selectedCount)
             .ToDictionary(element => element.ObjectId, element => FaceElementModelCloner.Clone(element));
@@ -174,7 +174,7 @@ public sealed class FaceMultiSelectionInteractionTests
     {
         var document = CreateDocument(
             new FaceLampWindowElement { ObjectId = "a", X = 0, Y = 0, Width = 5, Height = 5, IsVisible = true },
-            new FaceReelDisplayElement { ObjectId = "b", X = 10, Y = 10, Width = 5, Height = 5, IsVisible = true });
+            new FaceReelMount { ObjectId = "b", X = 10, Y = 10, Width = 5, Height = 5, IsVisible = true });
         var originals = document.GetFaceElements().ToDictionary(element => element.ObjectId, element => FaceElementModelCloner.Clone(element));
         var preview = originals.ToDictionary(pair => pair.Key, pair => FaceElementModelCloner.Clone(pair.Value, x: pair.Value.X + 5, y: pair.Value.Y + 6));
 

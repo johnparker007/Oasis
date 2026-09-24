@@ -543,7 +543,7 @@ public sealed class MachineDocumentTests
             Id = Guid.NewGuid().ToString("D"),
             Title = name,
             SourceRegion = new FaceSourceRegionModel { Width = 100, Height = 100 },
-            Elements = logicalReels.Select((reel, index) => (FaceElementModel)new FaceReelDisplayElement
+            Elements = logicalReels.Select((reel, index) => (FaceElementModel)new FaceReelMount
             {
                 ObjectId = $"reel-{reel}", Name = $"Reel {reel}", X = index * 10, Y = 0, Width = 10, Height = 20,
                 LinkedMachineObjectReference = MachineObjectReference.Reel(reel)

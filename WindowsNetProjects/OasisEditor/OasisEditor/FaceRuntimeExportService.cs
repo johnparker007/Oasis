@@ -182,7 +182,7 @@ public sealed class FaceRuntimeExportService
             LampWeightsDebug = FaceRuntimeTextureGenerator.LampWeightsDebugFileName,
             Lamps = texturePlan.Emitters.Select(CreateLampManifestEntry).ToArray(),
             Trays = texturePlan.Trays.Select(CreateTrayManifestEntry).ToArray(),
-            Reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Select(reel => CreateReelManifestEntry(faceDocument, reel, compositionContext)).ToArray(),
+            Reels = faceDocument.Elements.OfType<FaceReelMount>().Select(reel => CreateReelManifestEntry(faceDocument, reel, compositionContext)).ToArray(),
             SevenSegmentDisplays = faceDocument.Elements.OfType<FaceSevenSegmentDisplayElement>().Select(CreateSevenSegmentDisplayManifestEntry).ToArray(),
             AlphaSegmentDisplays = faceDocument.Elements.OfType<FaceAlphaDisplayElement>().Select(CreateAlphaSegmentDisplayManifestEntry).ToArray(),
             Buttons = faceDocument.Elements.OfType<FaceButtonElement>().Select(CreateButtonManifestEntry).ToArray()
@@ -229,7 +229,7 @@ public sealed class FaceRuntimeExportService
 
     private static void CopyReelBands(FaceDocumentModel faceDocument, EditorProject project, string outputDirectory)
     {
-        var reels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Where(reel => !string.IsNullOrWhiteSpace(reel.AssetPath)).ToArray();
+        var reels = faceDocument.Elements.OfType<FaceReelMount>().Where(reel => !string.IsNullOrWhiteSpace(reel.AssetPath)).ToArray();
         if (reels.Length == 0) return;
         var reelDirectory = Path.Combine(outputDirectory, ReelBandDirectoryName);
         Directory.CreateDirectory(reelDirectory);
@@ -240,17 +240,17 @@ public sealed class FaceRuntimeExportService
         }
     }
 
-    private static string CreateReelBandFileName(FaceReelDisplayElement reel) => $"{CreateSafeReelObjectId(reel)}.png";
+    private static string CreateReelBandFileName(FaceReelMount reel) => $"{CreateSafeReelObjectId(reel)}.png";
 
-    private static string CreateReelTransmissionMaskFileName(FaceReelDisplayElement reel) => $"{CreateSafeReelObjectId(reel)}{ReelTransmissionMaskSuffix}";
+    private static string CreateReelTransmissionMaskFileName(FaceReelMount reel) => $"{CreateSafeReelObjectId(reel)}{ReelTransmissionMaskSuffix}";
 
-    private static string CreateSafeReelObjectId(FaceReelDisplayElement reel)
+    private static string CreateSafeReelObjectId(FaceReelMount reel)
     {
         var objectId = string.IsNullOrWhiteSpace(reel.ObjectId) ? "reel" : reel.ObjectId.Trim();
         return string.Concat(objectId.Select(ch => char.IsLetterOrDigit(ch) || ch == '-' || ch == '_' ? ch : '_'));
     }
 
-    private static void ExportReelBandPng(string sourcePath, string outputPath, FaceReelDisplayElement reel)
+    private static void ExportReelBandPng(string sourcePath, string outputPath, FaceReelMount reel)
     {
         using var image = LoadImage(sourcePath, $"Reel '{DisplayName(reel)}' band");
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
@@ -265,7 +265,7 @@ public sealed class FaceRuntimeExportService
 
     private static void CopyReelTransmissionMasks(FaceDocumentModel faceDocument, EditorProject project, string outputDirectory)
     {
-        var opaqueReels = faceDocument.Elements.OfType<FaceReelDisplayElement>().Where(reel => reel.IsOpaqueReel).ToArray();
+        var opaqueReels = faceDocument.Elements.OfType<FaceReelMount>().Where(reel => reel.IsOpaqueReel).ToArray();
         if (opaqueReels.Length == 0) return;
         var reelDirectory = Path.Combine(outputDirectory, ReelBandDirectoryName);
         Directory.CreateDirectory(reelDirectory);
@@ -410,7 +410,7 @@ public sealed class FaceRuntimeExportService
     }
 
 
-    private static FaceRuntimeReelManifestEntry CreateReelManifestEntry(FaceDocumentModel faceDocument, FaceReelDisplayElement element, FaceRuntimeCompositionContext? compositionContext)
+    private static FaceRuntimeReelManifestEntry CreateReelManifestEntry(FaceDocumentModel faceDocument, FaceReelMount element, FaceRuntimeCompositionContext? compositionContext)
     {
         var dimensions = compositionContext is null
             ? (ResolvedReelPhysicalDimensions?)null
@@ -446,7 +446,7 @@ public sealed class FaceRuntimeExportService
         Intensity = lamp.Intensity
     };
 
-    private static ResolvedReelPhysicalDimensions ResolveReelPhysicalDimensions(FaceDocumentModel faceDocument, FaceReelDisplayElement reel, FaceRuntimeCompositionContext compositionContext)
+    private static ResolvedReelPhysicalDimensions ResolveReelPhysicalDimensions(FaceDocumentModel faceDocument, FaceReelMount reel, FaceRuntimeCompositionContext compositionContext)
     {
         var faceAsset = string.IsNullOrWhiteSpace(faceDocument.Title) ? faceDocument.Id : faceDocument.Title;
         var reelName = DisplayName(reel);
@@ -476,7 +476,7 @@ public sealed class FaceRuntimeExportService
 
     private readonly record struct ResolvedReelPhysicalDimensions(double WidthMm, double RadiusMm);
 
-    private static string ResolveCabinetReelTargetId(FaceReelDisplayElement element)
+    private static string ResolveCabinetReelTargetId(FaceReelMount element)
     {
         var reference = element.LinkedMachineObjectReference?.ToString();
         if (!string.IsNullOrWhiteSpace(reference)) return reference.Trim().Replace(":", string.Empty);

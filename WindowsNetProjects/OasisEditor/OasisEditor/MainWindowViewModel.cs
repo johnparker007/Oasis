@@ -519,7 +519,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (SelectedDocument is { } activeDocument)
             {
                 activeDocument.RuntimeState.FruitMachinePlatform = value;
-                activeDocument.NotifyFaceVisualPreviewChanged(activeDocument.GetFaceElements().OfType<FaceReelDisplayElement>().Select(element => element.ObjectId).Where(objectId => !string.IsNullOrWhiteSpace(objectId)).ToArray());
+                activeDocument.NotifyFaceVisualPreviewChanged(activeDocument.GetFaceElements().OfType<FaceReelMount>().Select(element => element.ObjectId).Where(objectId => !string.IsNullOrWhiteSpace(objectId)).ToArray());
             }
 
             if (LoadedProject is not null)

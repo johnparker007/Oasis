@@ -7,6 +7,57 @@ namespace OasisEditor.Tests;
 public sealed class FaceDocumentRoundTripTests
 {
     [Fact]
+    public void ReelMount_CurrentSchemaRoundTripsPlacementLogicalIdentityAndPresentationOnly()
+    {
+        var source = new FaceDocumentModel
+        {
+            Id = "face-reel-mount",
+            Title = "Reel Mount Face",
+            Elements =
+            [
+                new FaceReelMount
+                {
+                    ObjectId = "mount-3", Name = "Reel 3", X = 10, Y = 20, Width = 30, Height = 40,
+                    IsVisible = false, IsTransformLocked = true,
+                    LinkedMachineObjectReference = MachineObjectReference.Reel(3),
+                    AssetPath = "Assets/ReelBands/reel-3.png", Stops = 24, VisibleScale = 1.25, BandOffset = 0.5
+                }
+            ]
+        };
+
+        var json = FaceDocumentStorage.Serialize(source);
+
+        Assert.Contains("\"kind\": \"reelMount\"", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("reelDisplay", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("diameterMm", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("widthMm", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("reelAssetPath", json, StringComparison.OrdinalIgnoreCase);
+        Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
+        var mount = Assert.IsType<FaceReelMount>(Assert.Single(FaceDocumentStorage.ToModel(file).Elements));
+        Assert.Equal("mount-3", mount.ObjectId);
+        Assert.Equal((10d, 20d, 30d, 40d), (mount.X, mount.Y, mount.Width, mount.Height));
+        Assert.Equal("reel:3", mount.LinkedMachineObjectReference?.ToString());
+        Assert.Equal("Assets/ReelBands/reel-3.png", mount.AssetPath);
+        Assert.False(mount.IsVisible);
+        Assert.True(mount.IsTransformLocked);
+    }
+
+    [Fact]
+    public void Reader_RejectsPreviousFaceSchemaAndObsoleteReelDisplayKind()
+    {
+        var current = FaceDocumentStorage.Serialize(new FaceDocumentModel { Id = "face", Title = "Face" });
+        var oldSchema = current.Replace($"\"schemaVersion\": {FaceDocumentStorage.CurrentSchemaVersion}", $"\"schemaVersion\": {FaceDocumentStorage.CurrentSchemaVersion - 1}", StringComparison.Ordinal);
+        Assert.False(FaceDocumentStorage.TryReadValidated(oldSchema, out _, out _));
+
+        var obsolete = FaceDocumentStorage.Serialize(new FaceDocumentModel
+        {
+            Id = "face", Title = "Face", Elements = [new FaceReelMount { ObjectId = "mount" }]
+        }).Replace("\"kind\": \"reelMount\"", "\"kind\": \"reelDisplay\"", StringComparison.Ordinal);
+        Assert.True(FaceDocumentStorage.TryReadValidated(obsolete, out var file, out var error), error);
+        Assert.Throws<InvalidOperationException>(() => FaceDocumentStorage.ToModel(file));
+    }
+
+    [Fact]
     public void Serialize_AndOpen_RoundTripsFaceDocument()
     {
         const string path = "C:/Repo/Assets/Faces/Front Face/asset.face";
@@ -401,7 +452,7 @@ public sealed class FaceDocumentRoundTripTests
             Title = "Reel Lamps",
             Elements =
             [
-                new FaceReelDisplayElement
+                new FaceReelMount
                 {
                     ObjectId = "reel-1", Name = "Reel", Width = 70, Height = 280, Stops = 16,
                     ReelLamps =
@@ -415,7 +466,7 @@ public sealed class FaceDocumentRoundTripTests
 
         var json = FaceDocumentStorage.Serialize(source);
         Assert.True(FaceDocumentStorage.TryReadValidated(json, out var file, out var error), error);
-        var reel = Assert.IsType<FaceReelDisplayElement>(Assert.Single(FaceDocumentStorage.ToModel(file).Elements));
+        var reel = Assert.IsType<FaceReelMount>(Assert.Single(FaceDocumentStorage.ToModel(file).Elements));
         Assert.Equal([0d, 0.2d], reel.ReelLamps.Select(lamp => lamp.Radius).ToArray());
     }
 

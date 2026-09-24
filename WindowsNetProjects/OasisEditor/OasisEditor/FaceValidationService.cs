@@ -36,7 +36,7 @@ public sealed class FaceValidationService
 
     private static void ValidateMachineComposition(FaceDocumentModel face, FaceRuntimeCompositionContext compositionContext, List<FaceValidationDiagnostic> diagnostics)
     {
-        foreach (var reel in face.Elements.OfType<FaceReelDisplayElement>())
+        foreach (var reel in face.Elements.OfType<FaceReelMount>())
         {
             var machineReference = reel.LinkedMachineObjectReference;
             if (machineReference is null || machineReference.Value.Kind != MachineObjectKind.Reel) continue;
@@ -115,7 +115,7 @@ public sealed class FaceValidationService
             }
         }
 
-        foreach (var reel in faceDocument.Elements.OfType<FaceReelDisplayElement>())
+        foreach (var reel in faceDocument.Elements.OfType<FaceReelMount>())
         {
             if (string.IsNullOrWhiteSpace(reel.AssetPath))
             {
@@ -128,7 +128,7 @@ public sealed class FaceValidationService
                 diagnostics.Add(new FaceValidationDiagnostic(
                     FaceValidationSeverity.Warning,
                     "Face.ReelAsset.Missing",
-                    $"Reel display '{DisplayName(reel)}' references missing asset '{reel.AssetPath}'."));
+                    $"Face reel mount '{DisplayName(reel)}' references missing asset '{reel.AssetPath}'."));
             }
         }
     }
@@ -261,7 +261,7 @@ public sealed class FaceValidationService
             var expectedKind = element switch
             {
                 FaceLampWindowElement => MachineObjectKind.Lamp,
-                FaceReelDisplayElement => MachineObjectKind.Reel,
+                FaceReelMount => MachineObjectKind.Reel,
                 FaceSevenSegmentDisplayElement => MachineObjectKind.SevenSegmentDisplay,
                 FaceAlphaDisplayElement => MachineObjectKind.AlphaDisplay,
                 FaceButtonElement => MachineObjectKind.Input,
@@ -322,7 +322,7 @@ public sealed class FaceValidationService
     {
         return element switch
         {
-            FaceReelDisplayElement => "Reel display",
+            FaceReelMount => "Face reel mount",
             FaceSevenSegmentDisplayElement => "Seven-segment display",
             FaceAlphaDisplayElement => "Alpha display",
             FaceButtonElement => "Button",

@@ -11,7 +11,7 @@ public sealed class FaceEditViewModelTests
     {
         var artwork = new FaceArtworkElement { ObjectId = "art", Name = "Artwork", Width = 100, Height = 100, IsVisible = true };
         var lamp = new FaceLampWindowElement { ObjectId = "lamp", Name = "Lamp", Width = 20, Height = 20, IsVisible = true };
-        var reel = new FaceReelDisplayElement { ObjectId = "reel", Name = "Reel", Width = 20, Height = 30, IsVisible = true };
+        var reel = new FaceReelMount { ObjectId = "reel", Name = "Reel", Width = 20, Height = 30, IsVisible = true };
         var document = new DocumentTabViewModel(EditorDocument.CreateFaceStub("Face"));
         document.SetFaceElements([artwork, lamp, reel]);
         var faceBefore = document.GetFaceDocument();

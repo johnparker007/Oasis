@@ -48,7 +48,7 @@ internal static class FaceElementModelUpdater
                 SourceRegion = artwork.SourceRegion,
                 Provenance = artwork.Provenance
             },
-            FaceReelDisplayElement reelDisplay => new FaceReelDisplayElement
+            FaceReelMount reelMount => new FaceReelMount
             {
                 ObjectId = existing.ObjectId,
                 Name = update.Name ?? existing.Name,
@@ -60,15 +60,15 @@ internal static class FaceElementModelUpdater
                 IsTransformLocked = update.IsTransformLocked ?? existing.IsTransformLocked,
                 LinkedMachineObjectReference = linkedMachineObjectReference,
                 LinkedPanel2DElementId = update.HasLinkedPanel2DElementId ? update.LinkedPanel2DElementId : existing.LinkedPanel2DElementId,
-                AssetPath = reelDisplay.AssetPath,
-                Stops = reelDisplay.Stops,
-                VisibleScale = reelDisplay.VisibleScale,
-                BandOffset = reelDisplay.BandOffset,
-                IsReversed = update.IsReversed ?? reelDisplay.IsReversed,
-                ReelLampsEnabled = update.ReelLampsEnabled ?? reelDisplay.ReelLampsEnabled,
-                ReelLamps = update.ReelLamps ?? reelDisplay.ReelLamps,
-                IsOpaqueReel = update.IsOpaqueReel ?? reelDisplay.IsOpaqueReel,
-                ReelLampTransmissionMaskAssetPath = update.HasReelLampTransmissionMaskAssetPath ? update.ReelLampTransmissionMaskAssetPath : reelDisplay.ReelLampTransmissionMaskAssetPath,
+                AssetPath = reelMount.AssetPath,
+                Stops = reelMount.Stops,
+                VisibleScale = reelMount.VisibleScale,
+                BandOffset = reelMount.BandOffset,
+                IsReversed = update.IsReversed ?? reelMount.IsReversed,
+                ReelLampsEnabled = update.ReelLampsEnabled ?? reelMount.ReelLampsEnabled,
+                ReelLamps = update.ReelLamps ?? reelMount.ReelLamps,
+                IsOpaqueReel = update.IsOpaqueReel ?? reelMount.IsOpaqueReel,
+                ReelLampTransmissionMaskAssetPath = update.HasReelLampTransmissionMaskAssetPath ? update.ReelLampTransmissionMaskAssetPath : reelMount.ReelLampTransmissionMaskAssetPath,
             },
             FaceLampWindowElement => new FaceLampWindowElement
             {
@@ -245,7 +245,7 @@ internal static class FaceSelectionService
     {
         return string.Equals(kind, "artwork", StringComparison.Ordinal)
             || string.Equals(kind, "button", StringComparison.Ordinal)
-            || string.Equals(kind, "reelDisplay", StringComparison.Ordinal)
+            || string.Equals(kind, "reelMount", StringComparison.Ordinal)
             || string.Equals(kind, "sevenSegmentDisplay", StringComparison.Ordinal)
             || string.Equals(kind, "alphaDisplay", StringComparison.Ordinal)
             || string.Equals(kind, "lampWindow", StringComparison.Ordinal);
@@ -257,7 +257,7 @@ internal static class FaceSelectionService
         {
             FaceArtworkElement => "artwork",
             FaceButtonElement => "button",
-            FaceReelDisplayElement => "reelDisplay",
+            FaceReelMount => "reelMount",
             FaceSevenSegmentDisplayElement => "sevenSegmentDisplay",
             FaceAlphaDisplayElement => "alphaDisplay",
             FaceLampWindowElement => "lampWindow",

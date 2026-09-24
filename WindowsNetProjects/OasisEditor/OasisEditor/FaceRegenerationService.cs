@@ -280,7 +280,7 @@ internal sealed class FaceRegenerationService
                 SourceRegion = artwork.SourceRegion,
                 Provenance = artwork.Provenance
             },
-            FaceReelDisplayElement reel => new FaceReelDisplayElement
+            FaceReelMount reel => new FaceReelMount
             {
                 ObjectId = existingElement.ObjectId,
                 Name = reel.Name,
@@ -397,7 +397,7 @@ internal sealed class FaceRegenerationService
         var prefix = element switch
         {
             FaceButtonElement => "button",
-            FaceReelDisplayElement => "reel",
+            FaceReelMount => "reel",
             FaceSevenSegmentDisplayElement => "sevenSegment",
             FaceAlphaDisplayElement => "alpha",
             FaceLampWindowElement => "lamp",

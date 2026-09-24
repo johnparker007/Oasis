@@ -1020,7 +1020,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
                     Height = 2,
                     LinkedMachineObjectReference = MachineObjectReference.Lamp(24)
                 },
-                new FaceReelDisplayElement
+                new FaceReelMount
                 {
                     ObjectId = "reel-1",
                     Name = "Reel 1",
@@ -1045,8 +1045,8 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
             Title = document.Title,
             SourceRegion = document.SourceRegion,
             MaskLayer = document.MaskLayer,
-            Elements = document.Elements.Select(element => element is FaceReelDisplayElement reel
-                ? new FaceReelDisplayElement
+            Elements = document.Elements.Select(element => element is FaceReelMount reel
+                ? new FaceReelMount
                 {
                     ObjectId = reel.ObjectId, Name = reel.Name, X = reel.X, Y = reel.Y, Width = reel.Width, Height = reel.Height, LinkedMachineObjectReference = reel.LinkedMachineObjectReference, Stops = reel.Stops, AssetPath = reelBandPath, IsOpaqueReel = isOpaque, ReelLampTransmissionMaskAssetPath = transmissionMaskPath
                 }
@@ -1059,7 +1059,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         return new FaceDocumentModel
         {
             Id = "face-runtime", Title = "Runtime Face", SourceRegion = new FaceSourceRegionModel { X = 0, Y = 0, Width = 1000, Height = 1000 },
-            Elements = [new FaceReelDisplayElement { ObjectId = "reel-1", Name = "Reel 1", X = 10, Y = 20, Width = 300, Height = 400, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(1), ReelLampsEnabled = reelLampsEnabled, ReelLamps = lamps }]
+            Elements = [new FaceReelMount { ObjectId = "reel-1", Name = "Reel 1", X = 10, Y = 20, Width = 300, Height = 400, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(1), ReelLampsEnabled = reelLampsEnabled, ReelLamps = lamps }]
         };
     }
 
@@ -1068,7 +1068,7 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var elements = new List<FaceElementModel>();
         for (var i = 0; i < reelData.Length; i += 5)
         {
-            elements.Add(new FaceReelDisplayElement
+            elements.Add(new FaceReelMount
             {
                 ObjectId = $"reel-{i / 5 + 1}",
                 Name = $"Reel {i / 5 + 1}",

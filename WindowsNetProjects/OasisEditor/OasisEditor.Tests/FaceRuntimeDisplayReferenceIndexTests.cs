@@ -9,13 +9,13 @@ public sealed class FaceRuntimeDisplayReferenceIndexTests
     public void GetObjectIdsByReference_GroupsRuntimeDisplayElementsByMachineReference()
     {
         var document = CreateFaceDocument([
-            new FaceReelDisplayElement { ObjectId = "face-reel-a", LinkedMachineObjectReference = MachineObjectReference.Reel(2) },
-            new FaceReelDisplayElement { ObjectId = "face-reel-b", LinkedMachineObjectReference = MachineObjectReference.Reel(2) },
-            new FaceReelDisplayElement { ObjectId = "face-reel-other", LinkedMachineObjectReference = MachineObjectReference.Reel(3) },
+            new FaceReelMount { ObjectId = "face-reel-a", LinkedMachineObjectReference = MachineObjectReference.Reel(2) },
+            new FaceReelMount { ObjectId = "face-reel-b", LinkedMachineObjectReference = MachineObjectReference.Reel(2) },
+            new FaceReelMount { ObjectId = "face-reel-other", LinkedMachineObjectReference = MachineObjectReference.Reel(3) },
             new FaceSevenSegmentDisplayElement { ObjectId = "face-seven-2", LinkedMachineObjectReference = MachineObjectReference.SevenSegmentDisplay(2) }
         ]);
 
-        var index = FaceRuntimeDisplayReferenceIndex.GetObjectIdsByReference<FaceReelDisplayElement>(document, MachineObjectKind.Reel);
+        var index = FaceRuntimeDisplayReferenceIndex.GetObjectIdsByReference<FaceReelMount>(document, MachineObjectKind.Reel);
 
         var objectIds = Assert.Contains(MachineObjectReference.Reel(2), index);
         Assert.Equal(["face-reel-a", "face-reel-b"], objectIds);

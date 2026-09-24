@@ -4,8 +4,8 @@ public interface IFaceRuntimeStateResolver
 {
     bool TryGetLampReference(FaceLampWindowElement lampWindow, out MachineObjectReference reference);
     double GetLampIntensity(FaceLampWindowElement lampWindow, MachineRuntimeState runtimeState);
-    bool TryGetReelDisplayReference(FaceReelDisplayElement reelDisplay, out MachineObjectReference reference);
-    double GetReelPosition(FaceReelDisplayElement reelDisplay, MachineRuntimeState runtimeState);
+    bool TryGetReelMountReference(FaceReelMount reelMount, out MachineObjectReference reference);
+    double GetReelPosition(FaceReelMount reelMount, MachineRuntimeState runtimeState);
     bool TryGetSevenSegmentDisplayReference(FaceSevenSegmentDisplayElement display, out MachineObjectReference reference);
     bool TryGetAlphaDisplayReference(FaceAlphaDisplayElement display, out MachineObjectReference reference);
     int[] GetSevenSegmentCellMasks(FaceSevenSegmentDisplayElement display, MachineRuntimeState runtimeState);
@@ -37,25 +37,25 @@ public sealed class FaceRuntimeStateResolver : IFaceRuntimeStateResolver
             : 0d;
     }
 
-    public bool TryGetReelDisplayReference(FaceReelDisplayElement reelDisplay, out MachineObjectReference reference)
+    public bool TryGetReelMountReference(FaceReelMount reelMount, out MachineObjectReference reference)
     {
-        return TryGetReference(reelDisplay, MachineObjectKind.Reel, out reference);
+        return TryGetReference(reelMount, MachineObjectKind.Reel, out reference);
     }
 
-    public double GetReelPosition(FaceReelDisplayElement reelDisplay, MachineRuntimeState runtimeState)
+    public double GetReelPosition(FaceReelMount reelMount, MachineRuntimeState runtimeState)
     {
-        ArgumentNullException.ThrowIfNull(reelDisplay);
+        ArgumentNullException.ThrowIfNull(reelMount);
         ArgumentNullException.ThrowIfNull(runtimeState);
 
-        var rawPosition = TryGetReelDisplayReference(reelDisplay, out var reference)
+        var rawPosition = TryGetReelMountReference(reelMount, out var reference)
             ? runtimeState.GetReelPosition(reference)
             : 0d;
 
         return ResolveEffectiveReelPosition(
             rawPosition,
-            reelDisplay.Stops.GetValueOrDefault(1),
-            reelDisplay.IsReversed,
-            reelDisplay.BandOffset.GetValueOrDefault(0d),
+            reelMount.Stops.GetValueOrDefault(1),
+            reelMount.IsReversed,
+            reelMount.BandOffset.GetValueOrDefault(0d),
             runtimeState.FruitMachinePlatform);
     }
 

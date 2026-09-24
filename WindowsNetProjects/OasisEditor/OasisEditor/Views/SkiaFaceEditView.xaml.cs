@@ -287,9 +287,9 @@ public partial class SkiaFaceEditView : UserControl
         foreach (var element in FaceArtworkEditingPresentation.GetViewportElements(document).Where(element => element is not FaceArtworkElement))
         {
             var rect = SKRect.Create((float)element.X, (float)element.Y, (float)Math.Max(0d, element.Width), (float)Math.Max(0d, element.Height));
-            if (element is FaceReelDisplayElement reelDisplay)
+            if (element is FaceReelMount reelMount)
             {
-                DrawReelElement(canvas, document, reelDisplay, rect, hiddenPaint);
+                DrawReelElement(canvas, document, reelMount, rect, hiddenPaint);
                 continue;
             }
 
@@ -336,7 +336,7 @@ public partial class SkiaFaceEditView : UserControl
         }
     }
 
-    private static void DrawReelElement(SKCanvas canvas, DocumentTabViewModel document, FaceReelDisplayElement element, SKRect rect, SKPaint hiddenPaint)
+    private static void DrawReelElement(SKCanvas canvas, DocumentTabViewModel document, FaceReelMount element, SKRect rect, SKPaint hiddenPaint)
     {
         if (rect.Width <= 0f || rect.Height <= 0f)
         {

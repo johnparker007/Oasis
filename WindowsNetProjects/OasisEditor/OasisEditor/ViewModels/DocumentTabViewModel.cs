@@ -477,7 +477,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         var path = new ProjectAssetPathService().ResolveProjectRelativePath(project, faceAssetPath);
         if (!File.Exists(path) || !FaceDocumentStorage.TryReadValidated(File.ReadAllText(path), out var file, out _)) return [];
-        return FaceDocumentStorage.ToModel(file).Elements.OfType<FaceReelDisplayElement>()
+        return FaceDocumentStorage.ToModel(file).Elements.OfType<FaceReelMount>()
             .Select(element => element.LinkedMachineObjectReference)
             .Where(reference => reference is { Kind: MachineObjectKind.Reel })
             .Select(reference => reference!.Value).ToArray();
