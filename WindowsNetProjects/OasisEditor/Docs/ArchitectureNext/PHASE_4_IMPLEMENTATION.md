@@ -35,7 +35,7 @@ The mount's `AssetPath` remains the reel **band/artwork** input used by Face ren
 
 Face schema advances directly from 23 to 24. The current serialized kind is `reelMount`; the writer emits only this kind. `reelDisplay` and `reel` are obsolete and are not compatibility aliases: the current reader rejects either kind, as well as unknown element kinds, before reporting the document as openable. A successful `TryRead` or `TryReadValidated` therefore guarantees that the returned DTO can be materialized with `ToModel`. Schema 23 is rejected by the latest-only reader.
 
-There is no runtime schema change. The authored rename is flattened by the Editor into the existing Player reel manifest entry, so the Player neither sees a mount type name nor receives an authored Reel asset path.
+Face runtime schema advances from 9 to 10 to remove the unused, misleading `cabinetReelTargetId` field from both Editor and Player DTOs. Runtime Reel identity is now exactly `objectId` for the authored Face mount identity and `machineReference` for logical `Reel:n`; no Cabinet Reel identity exists. The authored mount remains flattened by the Editor, so Player neither sees a mount type name nor receives an authored Reel asset path.
 
 ## Generation and regeneration
 

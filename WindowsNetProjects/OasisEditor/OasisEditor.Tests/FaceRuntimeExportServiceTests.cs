@@ -120,7 +120,8 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
 
         using var manifestJson = JsonDocument.Parse(File.ReadAllText(result.ManifestPath));
         var root = manifestJson.RootElement;
-        Assert.Equal(FaceRuntimeExportService.RuntimeManifestSchemaVersion, root.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(10, FaceRuntimeExportService.RuntimeManifestSchemaVersion);
+        Assert.Equal(10, root.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("face-runtime", root.GetProperty("faceId").GetString());
         Assert.Equal("artwork.png", root.GetProperty("artwork").GetString());
         Assert.Equal("mask.png", root.GetProperty("mask").GetString());
@@ -137,6 +138,11 @@ public sealed class FaceRuntimeExportServiceTests : IDisposable
         var tray = root.GetProperty("trays")[0];
         Assert.Equal(1, tray.GetProperty("trayId").GetInt32());
         Assert.Equal("runtime-tray-lamp-24", tray.GetProperty("objectId").GetString());
+        var reel = root.GetProperty("reels")[0];
+        Assert.Equal("reel-1", reel.GetProperty("objectId").GetString());
+        Assert.Equal("reel:1", reel.GetProperty("machineReference").GetString());
+        Assert.Equal(20, reel.GetProperty("stops").GetInt32());
+        Assert.False(reel.TryGetProperty("cabinetReelTargetId", out _));
 
         using var exportedArtwork = SKBitmap.Decode(result.ArtworkPath);
         Assert.NotNull(exportedArtwork);

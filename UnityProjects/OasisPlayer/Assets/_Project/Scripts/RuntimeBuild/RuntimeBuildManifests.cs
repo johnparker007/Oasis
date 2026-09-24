@@ -143,7 +143,6 @@ namespace OasisPlayer.RuntimeBuild
     [Serializable]
     public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEntry
     {
-        public string cabinetReelTargetId = string.Empty;
         public string reelBand = string.Empty;
         public int stops;
         public bool isReversed;

@@ -8,7 +8,7 @@ namespace OasisEditor;
 
 public sealed class FaceRuntimeExportService
 {
-    public const int RuntimeManifestSchemaVersion = 9;
+    public const int RuntimeManifestSchemaVersion = 10;
     public const string RuntimeDirectoryName = "runtime";
     public const string ManifestFileName = "face.runtime.json";
     public const string ArtworkFileName = "artwork.png";
@@ -419,7 +419,6 @@ public sealed class FaceRuntimeExportService
         {
             ObjectId = element.ObjectId,
             MachineReference = element.LinkedMachineObjectReference?.ToString(),
-            CabinetReelTargetId = ResolveCabinetReelTargetId(element),
             Name = element.Name,
             ReelBand = ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(ReelBandDirectoryName, CreateReelBandFileName(element))),
             Stops = element.Stops.GetValueOrDefault(0),
@@ -475,13 +474,6 @@ public sealed class FaceRuntimeExportService
     }
 
     private readonly record struct ResolvedReelPhysicalDimensions(double WidthMm, double RadiusMm);
-
-    private static string ResolveCabinetReelTargetId(FaceReelMount element)
-    {
-        var reference = element.LinkedMachineObjectReference?.ToString();
-        if (!string.IsNullOrWhiteSpace(reference)) return reference.Trim().Replace(":", string.Empty);
-        return element.ObjectId;
-    }
 
     private static FaceRuntimeSevenSegmentDisplayManifestEntry CreateSevenSegmentDisplayManifestEntry(FaceSevenSegmentDisplayElement element)
     {
@@ -714,7 +706,6 @@ public static class SegmentDisplayTopologyNames
 
 public sealed class FaceRuntimeReelManifestEntry : FaceRuntimeElementManifestEntry
 {
-    public string CabinetReelTargetId { get; init; } = string.Empty;
     public string ReelBand { get; init; } = string.Empty;
     public int Stops { get; init; }
     public bool IsReversed { get; init; }
