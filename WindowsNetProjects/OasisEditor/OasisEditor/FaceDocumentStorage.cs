@@ -111,10 +111,15 @@ public static class FaceDocumentStorage
                 return false;
             }
 
+            ValidateMaterializable(parsed);
             file = parsed;
             return true;
         }
         catch (JsonException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
         {
             return false;
         }
@@ -145,6 +150,7 @@ public static class FaceDocumentStorage
                 return false;
             }
 
+            ValidateMaterializable(parsed);
             file = parsed;
             return true;
         }
@@ -153,6 +159,16 @@ public static class FaceDocumentStorage
             errorMessage = $"Malformed JSON: {ex.Message}";
             return false;
         }
+        catch (InvalidOperationException ex)
+        {
+            errorMessage = ex.Message;
+            return false;
+        }
+    }
+
+    private static void ValidateMaterializable(FaceDocumentFile file)
+    {
+        _ = ToModel(file);
     }
 
     public static FaceDocumentModel ToModel(FaceDocumentFile file)
@@ -791,24 +807,29 @@ public static class FaceDocumentStorage
             };
         }
 
-        return new FaceLampWindowElement
+        if (string.Equals(file.Kind, "lampWindow", StringComparison.Ordinal))
         {
-            ObjectId = file.ObjectId ?? string.Empty,
-            Name = file.Name ?? string.Empty,
-            X = file.X,
-            Y = file.Y,
-            Width = file.Width,
-            Height = file.Height,
-            IsVisible = file.IsVisible,
-            IsTransformLocked = file.LockTransform,
-            LinkedMachineObjectReference = reference,
-            LinkedPanel2DElementId = file.LinkedPanel2DElementId,
-            BulbMaskAssetPath = file.BulbMaskAssetPath,
-            SourceComponentIndex = file.SourceComponentIndex,
-            SharedSourceSetId = string.IsNullOrWhiteSpace(file.SharedSourceSetId) ? null : file.SharedSourceSetId.Trim(),
-            SharedSourceSetCount = file.SharedSourceSetCount,
-            SourceBlend = file.SourceBlend
-        };
+            return new FaceLampWindowElement
+            {
+                ObjectId = file.ObjectId ?? string.Empty,
+                Name = file.Name ?? string.Empty,
+                X = file.X,
+                Y = file.Y,
+                Width = file.Width,
+                Height = file.Height,
+                IsVisible = file.IsVisible,
+                IsTransformLocked = file.LockTransform,
+                LinkedMachineObjectReference = reference,
+                LinkedPanel2DElementId = file.LinkedPanel2DElementId,
+                BulbMaskAssetPath = file.BulbMaskAssetPath,
+                SourceComponentIndex = file.SourceComponentIndex,
+                SharedSourceSetId = string.IsNullOrWhiteSpace(file.SharedSourceSetId) ? null : file.SharedSourceSetId.Trim(),
+                SharedSourceSetCount = file.SharedSourceSetCount,
+                SourceBlend = file.SourceBlend
+            };
+        }
+
+        throw new InvalidOperationException($"Face element kind '{file.Kind ?? "(missing)"}' is not supported by schema {CurrentSchemaVersion}.");
     }
 
     private static MachineInputReference? ResolveInputReference(string? linkedInputReference, MachineObjectReference? linkedMachineObjectReference)

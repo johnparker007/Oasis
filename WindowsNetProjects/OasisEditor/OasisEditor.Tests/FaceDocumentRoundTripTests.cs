@@ -45,19 +45,52 @@ public sealed class FaceDocumentRoundTripTests
     }
 
     [Fact]
-    public void Reader_RejectsPreviousFaceSchemaAndObsoleteReelDisplayKind()
+    public void Reader_RejectsPreviousFaceSchema()
     {
         var oldSchema = JsonNode.Parse(FaceDocumentStorage.Serialize(new FaceDocumentModel { Id = "face", Title = "Face" }))!.AsObject();
         oldSchema["SchemaVersion"] = FaceDocumentStorage.CurrentSchemaVersion - 1;
         Assert.False(FaceDocumentStorage.TryReadValidated(oldSchema.ToJsonString(), out _, out _));
+        Assert.False(FaceDocumentStorage.TryRead(oldSchema.ToJsonString(), out _));
+    }
 
-        var obsolete = JsonNode.Parse(FaceDocumentStorage.Serialize(new FaceDocumentModel
+    [Theory]
+    [InlineData("reelDisplay", "reelMount")]
+    [InlineData("reel", "reelMount")]
+    [InlineData("madeUpThing", "not supported")]
+    public void Reader_RejectsObsoleteAndUnknownCurrentSchemaElementKinds(string kind, string expectedDiagnostic)
+    {
+        var invalid = CreateFaceJsonWithElementKind(kind);
+
+        Assert.False(FaceDocumentStorage.TryRead(invalid, out _));
+        Assert.False(FaceDocumentStorage.TryReadValidated(invalid, out _, out var error));
+        Assert.Contains(expectedDiagnostic, error, StringComparison.Ordinal);
+        Assert.Contains(kind, error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("reelDisplay", "reelMount")]
+    [InlineData("madeUpThing", "not supported")]
+    public void BuildOpenDocumentData_InvalidCurrentSchemaFace_ReturnsFailedOpenWithoutFaceJson(string kind, string expectedDiagnostic)
+    {
+        var openData = DocumentWorkspaceViewModel.BuildOpenDocumentData(
+            "C:/Repo/Assets/Faces/Invalid Face/asset.face",
+            CreateFaceJsonWithElementKind(kind));
+
+        Assert.Null(openData.FaceDocumentJson);
+        Assert.Equal("asset.face", openData.PanelTitle);
+        Assert.StartsWith("Failed to open face document:", openData.Summary, StringComparison.Ordinal);
+        Assert.Contains(kind, openData.Summary, StringComparison.Ordinal);
+        Assert.Contains(expectedDiagnostic, openData.Summary, StringComparison.Ordinal);
+    }
+
+    private static string CreateFaceJsonWithElementKind(string kind)
+    {
+        var document = JsonNode.Parse(FaceDocumentStorage.Serialize(new FaceDocumentModel
         {
             Id = "face", Title = "Face", Elements = [new FaceReelMount { ObjectId = "mount" }]
         }))!.AsObject();
-        obsolete["Elements"]![0]!["Kind"] = "reelDisplay";
-        Assert.True(FaceDocumentStorage.TryReadValidated(obsolete.ToJsonString(), out var file, out var error), error);
-        Assert.Throws<InvalidOperationException>(() => FaceDocumentStorage.ToModel(file));
+        document["Elements"]![0]!["Kind"] = kind;
+        return document.ToJsonString();
     }
 
     [Fact]

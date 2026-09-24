@@ -33,7 +33,7 @@ The mount's `AssetPath` remains the reel **band/artwork** input used by Face ren
 
 ## Schema 24
 
-Face schema advances directly from 23 to 24. The current serialized kind is `reelMount`; the writer emits only this kind. `reelDisplay` and `reel` are obsolete and are not compatibility aliases: attempting to materialize either in a schema-24 document is rejected. Schema 23 is rejected by the latest-only reader.
+Face schema advances directly from 23 to 24. The current serialized kind is `reelMount`; the writer emits only this kind. `reelDisplay` and `reel` are obsolete and are not compatibility aliases: the current reader rejects either kind, as well as unknown element kinds, before reporting the document as openable. A successful `TryRead` or `TryReadValidated` therefore guarantees that the returned DTO can be materialized with `ToModel`. Schema 23 is rejected by the latest-only reader.
 
 There is no runtime schema change. The authored rename is flattened by the Editor into the existing Player reel manifest entry, so the Player neither sees a mount type name nor receives an authored Reel asset path.
 
