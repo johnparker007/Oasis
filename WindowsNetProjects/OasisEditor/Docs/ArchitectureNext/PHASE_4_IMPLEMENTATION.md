@@ -51,7 +51,9 @@ Hierarchy entries and groups are labelled **Reel Mount** / **Reel Mounts**, and 
 
 ## Machine composition and runtime
 
-Machine requirement discovery now scans assigned Face `FaceReelMount` instances explicitly. It retains Phase 3 behavior: only assigned, saved Faces participate; assignment/catalog refresh updates requirements; unused Reel packages and assignments are not traversed; and missing assignments remain diagnosable.
+Machine requirement discovery now scans assigned Face `FaceReelMount` instances explicitly. Face mounts determine which logical Reel roles physically exist, and Machine assignments select Devices only for those current roles. An explicit Face-composition change prunes `MachineReelAssignment` entries whose logical references are no longer required as part of the same undoable Machine-document mutation; still-required assignments, including selections whose Reel asset is missing, remain untouched. Undo and redo therefore restore or remove the Face assignment and its Reel mappings atomically.
+
+Saved Face content and asset-catalog refresh remain non-authoring dependency updates. They immediately refresh the visible Reel rows from current saved Face requirements without dirtying or silently rewriting the Machine. A stale serialized assignment may consequently remain temporarily in the underlying model after an external Face edit, but it is neither displayed as an active requirement nor traversed by build; the next explicit Face-composition mutation normalizes it. Reel row topology is derived only from current assigned-Face requirements and deduplicates the same logical role when one Face is mounted on multiple Cabinet targets.
 
 Build resolution consumes each typed mount's logical reference, resolves it through `MachineReelAssignment`, validates the selected `ReelDocument`, and gives Face export the resolved asset. Diagnostics now name the Machine, Face, reel mount, logical reference, and failing Reel assignment/path. Face export combines mount placement/presentation with resolved Reel width/radius into the existing flattened runtime entry.
 
