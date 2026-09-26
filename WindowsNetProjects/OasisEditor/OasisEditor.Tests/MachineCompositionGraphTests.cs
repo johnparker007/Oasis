@@ -213,7 +213,9 @@ public sealed class MachineCompositionGraphTests
         var graph = fixture.Build(machine, [openFace]);
         var face = Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Face));
         Assert.False(face.IsMissing);
-        Assert.Equal("Unsaved Live Face", face.Title);
+        // Saved package identity remains the document title; the provenance and Reel assertions
+        // below prove that graph-relevant unsaved content came from the open model.
+        Assert.Equal("LiveFace", face.Title);
         Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Panel2D));
         Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Reel));
     }
