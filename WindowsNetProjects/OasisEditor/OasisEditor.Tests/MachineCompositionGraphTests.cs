@@ -195,6 +195,68 @@ public sealed class MachineCompositionGraphTests
         Assert.InRange(route.LabelMaxWidth, 90, 120);
     }
 
+    [Fact]
+    public void Build_ExistingOpenFaceUsesCurrentInMemoryGraphState()
+    {
+        using var fixture = new GraphFixture();
+        var cabinet = fixture.WriteCabinet("Cabinet", AssetReferenceScope.Project);
+        var panel = fixture.WritePanel("LiveSource");
+        var facePath = fixture.WriteFace("LiveFace", null);
+        var openFace = fixture.OpenFace(facePath, "Unsaved Live Face", panel, 0);
+        var reel = fixture.WriteReel("Live Reel", AssetReferenceScope.Project, 200, 50);
+        var machine = MachineDocument.Create("Machine") with
+        {
+            CabinetAsset=cabinet, SurfaceAssignments=[new("topGlass",facePath)],
+            ReelAssignments=[new(MachineObjectReference.Reel(0),reel)]
+        };
+
+        var graph = fixture.Build(machine, [openFace]);
+        var face = Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Face));
+        Assert.False(face.IsMissing);
+        Assert.Equal("Unsaved Live Face", face.Title);
+        Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Panel2D));
+        Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Reel));
+    }
+
+    [Fact]
+    public void Build_MissingOpenFaceDoesNotResolveFromStaleTabAndRecoversWithoutMachineMutation()
+    {
+        using var fixture = new GraphFixture();
+        var cabinet = fixture.WriteCabinet("Cabinet", AssetReferenceScope.Project);
+        var panel = fixture.WritePanel("Source");
+        var facePath = fixture.WriteFace("Face", panel, 0);
+        var openFace = fixture.OpenFace(facePath, "Stale Face", panel, 0);
+        var reel = fixture.WriteReel("Reel", AssetReferenceScope.Project, 200, 50);
+        var machine = MachineDocument.Create("Machine") with
+        {
+            CabinetAsset=cabinet, SurfaceAssignments=[new("topGlass",facePath)],
+            ReelAssignments=[new(MachineObjectReference.Reel(0),reel)]
+        };
+        var machineJson = MachineDocumentStorage.Serialize(machine);
+        var machineTab = new DocumentTabViewModel(EditorDocument.CreateFromFile(fixture.Resolve("Assets/Machines/Game/asset.machine"), "Machine"), machineDocumentJson:machineJson);
+        var manifestPath = fixture.Resolve(facePath);
+        var savedFaceJson = File.ReadAllText(manifestPath);
+        File.Delete(manifestPath);
+
+        var missing = fixture.Build(machine, [openFace]);
+        var missingFace = Assert.Single(missing.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Face));
+        Assert.True(missingFace.IsMissing);
+        Assert.Contains(missing.Edges, edge => edge.RelationshipId == "topGlass" && edge.ToNodeId == missingFace.Id);
+        Assert.Contains(missing.Diagnostics, diagnostic => diagnostic.NodeId == missingFace.Id && diagnostic.Message.Contains("missing", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(missing.Edges, edge => edge.Kind == MachineCompositionEdgeKind.Provenance);
+        Assert.DoesNotContain(missing.Edges, edge => edge.LogicalReelRoleIds is { Length: > 0 });
+
+        File.WriteAllText(manifestPath, savedFaceJson);
+        var recovered = fixture.Build(machine, [openFace]);
+        Assert.False(Assert.Single(recovered.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Face)).IsMissing);
+        Assert.Contains(recovered.Edges, edge => edge.Kind == MachineCompositionEdgeKind.Provenance);
+        Assert.Contains(recovered.Edges, edge => edge.LogicalReelRoleIds is { Length: > 0 });
+        Assert.DoesNotContain(recovered.Diagnostics, diagnostic => diagnostic.Message.Contains("Face", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(machineJson, MachineDocumentStorage.Serialize(machine));
+        Assert.False(machineTab.IsDirty);
+        Assert.False(machineTab.CommandService.CanUndo);
+    }
+
     private static void AssertNoNodeOverlap(CompositionGraph graph)
     {
         for (var i = 0; i < graph.Nodes.Count; i++)
@@ -272,7 +334,8 @@ public sealed class MachineCompositionGraphTests
             var assets=Path.Combine(_root,"Assets"); Directory.CreateDirectory(assets); LibraryRoot=Path.Combine(_root,"Library"); Directory.CreateDirectory(LibraryRoot);
             Project=new EditorProject { Name="Graph", ProjectDirectory=_root, ProjectFilePath=Path.Combine(_root,"Graph.oasisproj"), AssetsDirectory=assets, GeneratedDirectory=Path.Combine(_root,"Generated") };
         }
-        public CompositionGraph Build(MachineDocument machine) => new MachineCompositionGraphBuilder(_targetDetector).Build(machine,Project,LibraryRoot);
+        public CompositionGraph Build(MachineDocument machine, IReadOnlyList<DocumentTabViewModel>? openDocuments = null) =>
+            new MachineCompositionGraphBuilder(_targetDetector).Build(machine,Project,LibraryRoot,openDocuments);
         public AssetReference WriteCabinet(string name, AssetReferenceScope scope, CabinetSurfaceTargetSettings[]? settings = null)
         {
             var relative=$"Cabinets/{name}/asset.cabinet3d"; var path=Path.Combine(scope==AssetReferenceScope.Project?_root:LibraryRoot,relative.Replace('/',Path.DirectorySeparatorChar));
@@ -295,10 +358,17 @@ public sealed class MachineCompositionGraphTests
         public string WriteFace(string name, string? panel, params int[] reels)
         {
             var relative=$"Assets/Faces/{name}/asset.face"; var path=Path.Combine(_root,relative.Replace('/',Path.DirectorySeparatorChar)); Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var face=new FaceDocumentModel { Id=Guid.NewGuid().ToString("D"),Title=name,SourcePanel2DDocumentPath=panel,SourceRegion=new FaceSourceRegionModel { Width=100,Height=100 },
-                Elements=reels.Select((r,i)=>(FaceElementModel)new FaceReelMount { ObjectId=$"r{r}",Name=$"Reel {r}",X=i*10,Y=0,Width=10,Height=20,LinkedMachineObjectReference=MachineObjectReference.Reel(r) }).ToArray() };
+            var face=CreateFace(name,panel,reels);
             File.WriteAllText(path,FaceDocumentStorage.Serialize(face)); return relative;
         }
+        public DocumentTabViewModel OpenFace(string relative, string title, string? panel, params int[] reels)
+        {
+            var path=Resolve(relative);
+            return new DocumentTabViewModel(EditorDocument.CreateFromFile(path,title),faceDocumentJson:FaceDocumentStorage.Serialize(CreateFace(title,panel,reels)));
+        }
+        public string Resolve(string relative) => Path.Combine(_root,relative.Replace('/',Path.DirectorySeparatorChar));
+        private static FaceDocumentModel CreateFace(string name, string? panel, params int[] reels) => new() { Id=Guid.NewGuid().ToString("D"),Title=name,SourcePanel2DDocumentPath=panel,SourceRegion=new FaceSourceRegionModel { Width=100,Height=100 },
+            Elements=reels.Select((r,i)=>(FaceElementModel)new FaceReelMount { ObjectId=$"r{r}",Name=$"Reel {r}",X=i*10,Y=0,Width=10,Height=20,LinkedMachineObjectReference=MachineObjectReference.Reel(r) }).ToArray() };
         public void Dispose() { if (Directory.Exists(_root)) Directory.Delete(_root,true); }
     }
 

@@ -86,9 +86,11 @@ public sealed class MachineCompositionGraphBuilder
             var faceId = "face:" + normalized;
             var facePath = TryProjectPath(project, normalized);
             var openFace = openDocuments?.FirstOrDefault(x => x.Document.DocumentType == EditorDocumentType.Face && SamePath(x.FilePath, facePath));
-            FaceDocumentModel? face = openFace?.GetFaceDocument();
             var exists = File.Exists(facePath);
-            var valid = face is not null;
+            // An open tab can supply current unsaved content, but it cannot make a dependency
+            // exist after its authored manifest has disappeared from disk.
+            FaceDocumentModel? face = exists ? openFace?.GetFaceDocument() : null;
+            var valid = exists && face is not null;
             string? error = null;
             if (!valid && exists)
             {
