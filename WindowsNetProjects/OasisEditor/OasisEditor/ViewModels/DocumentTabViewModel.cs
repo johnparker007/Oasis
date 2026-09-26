@@ -3,7 +3,6 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using System.Windows.Input;
 using OasisEditor.Commands;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
@@ -283,7 +282,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public string GetMachineDocumentJson() => MachineDocumentStorage.Serialize(_machineDocumentModel);
     public string MachineDisplayName { get => _machineDocumentModel.DisplayName; set { if (string.IsNullOrWhiteSpace(value) || value == _machineDocumentModel.DisplayName) return; ExecuteMachineMutation(_machineDocumentModel with { DisplayName = value.Trim() }, "Rename Machine"); } }
     public object? MachineCabinetAssetPath { get => _machineDocumentModel.CabinetAsset; set { var reference = value switch { null => null, AssetReference typed => typed, string path when !string.IsNullOrWhiteSpace(path) => AssetReference.Project(path), _ => null }; if (_isRefreshingMachineCompositionChoices || reference == _machineDocumentModel.CabinetAsset) return; ExecuteMachineMutation(_machineDocumentModel with { CabinetAsset = reference, SurfaceAssignments = [], ReelAssignments = [] }, "Select Machine Cabinet"); } }
-    public ICommand OpenSelectedCabinetAssetCommand { get; }
+    public System.Windows.Input.ICommand OpenSelectedCabinetAssetCommand { get; }
     public bool CanOpenSelectedCabinetAsset => CanOpenMachineAsset(_machineDocumentModel.CabinetAsset);
 
     private bool CanOpenMachineAsset(AssetReference? reference)
@@ -2060,7 +2059,7 @@ public sealed class MachineReelAssignmentRow : INotifyPropertyChanged
     public MachineReelAssignmentRow(DocumentTabViewModel owner, MachineObjectReference reference, IReadOnlyList<MachineAssetChoice> choices, object? selectedId) { _owner = owner; Reference = reference; Choices = new(choices); _selectedReelAssetPath = selectedId switch { AssetReference typed => typed, string path when !string.IsNullOrWhiteSpace(path) => AssetReference.Project(path), _ => null }; _selectedChoice = Choices.FirstOrDefault(choice => Equals(choice.AssetPath, _selectedReelAssetPath)); OpenSelectedAssetCommand = new RelayCommand(() => _owner.OpenMachineAsset(_selectedReelAssetPath), () => CanOpenSelectedAsset); }
     public event PropertyChangedEventHandler? PropertyChanged;
     public MachineObjectReference Reference { get; } public string DisplayName => $"Reel {Reference.Id}"; public ObservableCollection<MachineAssetChoice> Choices { get; }
-    public ICommand OpenSelectedAssetCommand { get; }
+    public System.Windows.Input.ICommand OpenSelectedAssetCommand { get; }
     public bool CanOpenSelectedAsset => _owner.CanOpenMachineAssetReference(_selectedReelAssetPath);
     public MachineAssetChoice? SelectedChoice { get => _selectedChoice; set { if (ReferenceEquals(_selectedChoice, value)) return; _selectedChoice = value; PropertyChanged?.Invoke(this, new(nameof(SelectedChoice))); SelectedReelAssetPath = value?.AssetPath; } }
     public object? SelectedReelAssetPath { get => _selectedReelAssetPath; set { var reference = value switch { AssetReference typed => typed, string path when !string.IsNullOrWhiteSpace(path) => AssetReference.Project(path), _ => null }; if (_owner.IsRefreshingMachineCompositionChoices || _selectedReelAssetPath == reference) return; _selectedReelAssetPath = reference; var selected = Choices.FirstOrDefault(choice => Equals(choice.AssetPath, reference)); if (!ReferenceEquals(_selectedChoice, selected)) { _selectedChoice = selected; PropertyChanged?.Invoke(this, new(nameof(SelectedChoice))); } PropertyChanged?.Invoke(this, new(nameof(SelectedReelAssetPath))); _owner.SetMachineReelAssignment(Reference, reference); NotifyAssetNavigationChanged(); } }
