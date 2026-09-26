@@ -465,7 +465,7 @@ public sealed class FaceRuntimeExportService
         {
             throw Fail(assignmentMatches.Length == 0 ? $"Machine has no assignment for logical reel '{machineReference}'." : $"Machine has duplicate assignments for logical reel '{machineReference}'.");
         }
-        requestedPath = assignmentMatches[0].ReelAssetPath;
+        requestedPath = assignmentMatches[0].ReelAsset.ToString();
         if (compositionContext.ResolvedReels is null || !compositionContext.ResolvedReels.TryGetValue(machineReference.Value, out var reelAsset))
             throw Fail("Referenced Reel asset was not resolved by the Machine build.");
         try { ReelDocumentStorage.Validate(reelAsset); }

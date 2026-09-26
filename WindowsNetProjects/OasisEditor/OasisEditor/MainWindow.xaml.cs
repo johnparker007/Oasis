@@ -173,28 +173,22 @@ public partial class MainWindow : Window
 
     private void SaveWindowPlacement()
     {
-        var preferences = _preferencesStore.Load();
-        var states = new Dictionary<string, ProjectWindowState>(preferences.ProjectWindowStates, StringComparer.OrdinalIgnoreCase);
         var bounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
-
-        states[_startupProjectFilePath] = new ProjectWindowState
+        _preferencesStore.Update(preferences =>
         {
-            Left = bounds.Left,
-            Top = bounds.Top,
-            Width = bounds.Width,
-            Height = bounds.Height,
-            IsMaximized = WindowState == WindowState.Maximized
-        };
+            var states = new Dictionary<string, ProjectWindowState>(preferences.ProjectWindowStates, StringComparer.OrdinalIgnoreCase)
+            {
+                [_startupProjectFilePath] = new ProjectWindowState
+                {
+                    Left = bounds.Left,
+                    Top = bounds.Top,
+                    Width = bounds.Width,
+                    Height = bounds.Height,
+                    IsMaximized = WindowState == WindowState.Maximized
+                }
+            };
 
-        _preferencesStore.Save(new EditorPreferences
-        {
-            ThemePreference = preferences.ThemePreference,
-            NativeEmulation = preferences.NativeEmulation,
-            OutputLog = preferences.OutputLog,
-            FaceGeneration = preferences.FaceGeneration,
-            Player = preferences.Player,
-            LastMfmeFmlImportDirectory = preferences.LastMfmeFmlImportDirectory,
-            ProjectWindowStates = states
+            return preferences with { ProjectWindowStates = states };
         });
     }
 

@@ -42,6 +42,21 @@ public sealed class OasisPlayerPreviewServiceTests
         Assert.Equal(Path.GetFullPath(exactBuildRoot), starter.StartInfo!.ArgumentList[3]);
     }
 
+    [Fact]
+    public void Preview_ResolvesBuildServiceFromCurrentSessionStateOnEveryInvocation()
+    {
+        var project = CreateProject();
+        var root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "Oasis Player Tests", Guid.NewGuid().ToString("N"))).FullName;
+        var exe = Path.Combine(root, "OasisPlayer.exe"); File.WriteAllText(exe, string.Empty);
+        var currentLibrary = "LibraryA";
+        var requested = new List<string>();
+        var service = new OasisPlayerPreviewService((Func<IMachineRuntimeBuildService>)(() => { requested.Add(currentLibrary); return new StubBuildService(MachineRuntimeBuildResult.Fail("expected")); }));
+        service.Preview(project, "asset.machine", MachineDocument.Create("Test"), new OasisPlayerPreferences { ExecutablePath = exe }, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        currentLibrary = "LibraryB";
+        service.Preview(project, "asset.machine", MachineDocument.Create("Test"), new OasisPlayerPreferences { ExecutablePath = exe }, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.Equal(["LibraryA", "LibraryB"], requested);
+    }
+
     private static EditorProject CreateProject()
     {
         var root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "Oasis Player Tests", Guid.NewGuid().ToString("N"))).FullName;

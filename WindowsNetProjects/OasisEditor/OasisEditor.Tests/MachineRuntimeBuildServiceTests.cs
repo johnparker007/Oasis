@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using SkiaSharp;
 using Xunit;
+using OasisEditor.Automation;
 
 namespace OasisEditor.Tests;
 
@@ -15,7 +16,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
     public void BuildFromMachineDocument_MissingCabinetReportsMachineContext()
     {
         var project = Project();
-        var machine = MachineDocument.Create("Bonanza") with { CabinetAssetPath = "Assets/Cabinet3D/Missing/asset.cabinet3d" };
+        var machine = MachineDocument.Create("Bonanza") with { CabinetAsset = AssetReference.Project("Assets/Cabinet3D/Missing/asset.cabinet3d") };
         var path = WriteMachine(project, machine);
         var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None);
         Assert.False(result.Success);
@@ -182,7 +183,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
     {
         var setup = CreateReelBuild([3], []);
         const string missing = "Assets/Reels/Small/asset.reel";
-        var machine = setup.Machine with { ReelAssignments = [new(MachineObjectReference.Reel(3), missing)] };
+        var machine = setup.Machine with { ReelAssignments = [new(MachineObjectReference.Reel(3), AssetReference.Project(missing))] };
         var result = Build(setup.Project, machine);
         Assert.False(result.Success);
         Assert.Contains("Reel Machine", result.ErrorMessage);
@@ -205,6 +206,127 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.False(invalid.Success);
         Assert.Contains("invalid", invalid.ErrorMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Assets/Reels/Standard/asset.reel", invalid.ErrorMessage);
+    }
+
+    [Fact]
+    public void Build_LibraryCabinetProjectFaceAndLibraryReelIsSelfContained()
+    {
+        var setup = CreateLibraryBuild();
+        var machineJson = MachineDocumentStorage.Serialize(setup.Machine);
+        var result = Build(setup.Project, setup.Machine, setup.LibraryRoot);
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.True(File.Exists(Path.Combine(result.BuildRoot!, MachineRuntimeBuildService.CabinetDirectoryName, MachineRuntimeBuildService.CabinetGlbFileName)));
+        Assert.Equal(new[] { (70d, 145d) }, ReadRuntimeReelDimensions(result.BuildRoot!));
+        var output = string.Join("\n", Directory.EnumerateFiles(result.BuildRoot!, "*.json", SearchOption.AllDirectories).Select(File.ReadAllText));
+        Assert.DoesNotContain(setup.LibraryRoot, output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\"scope\"", output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(setup.LibraryRoot, machineJson, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Build_LibraryFailuresAreContextualAndUnusedMalformedPackagesAreIgnored()
+    {
+        var setup = CreateLibraryBuild();
+        Directory.CreateDirectory(Path.Combine(setup.LibraryRoot, "Reels", "Broken"));
+        File.WriteAllText(Path.Combine(setup.LibraryRoot, "Reels", "Broken", "asset.reel"), "broken");
+        Directory.CreateDirectory(Path.Combine(setup.LibraryRoot, "Cabinets", "Broken"));
+        File.WriteAllText(Path.Combine(setup.LibraryRoot, "Cabinets", "Broken", "asset.cabinet3d"), "broken");
+        Assert.True(Build(setup.Project, setup.Machine, setup.LibraryRoot).Success);
+
+        File.Delete(Path.Combine(setup.LibraryRoot, "Reels", "Standard", "asset.reel"));
+        var missingReel = Build(setup.Project, setup.Machine, setup.LibraryRoot);
+        Assert.False(missingReel.Success); Assert.Contains("Reel Machine", missingReel.ErrorMessage); Assert.Contains("reel:0", missingReel.ErrorMessage, StringComparison.OrdinalIgnoreCase); Assert.Contains("Library: Reels/Standard/asset.reel", missingReel.ErrorMessage);
+        File.WriteAllText(Path.Combine(setup.LibraryRoot, "Reels", "Standard", "asset.reel"), "broken");
+        Assert.Contains("invalid", Build(setup.Project, setup.Machine, setup.LibraryRoot).ErrorMessage!, StringComparison.OrdinalIgnoreCase);
+
+        var cabinet = Path.Combine(setup.LibraryRoot, "Cabinets", "Cabinet", "asset.cabinet3d");
+        File.Delete(cabinet);
+        var missingCabinet = Build(setup.Project, setup.Machine, setup.LibraryRoot);
+        Assert.False(missingCabinet.Success); Assert.Contains("Reel Machine", missingCabinet.ErrorMessage); Assert.Contains("Library: Cabinets/Cabinet/asset.cabinet3d", missingCabinet.ErrorMessage);
+        File.WriteAllText(cabinet, "broken");
+        Assert.Contains("invalid Cabinet", Build(setup.Project, setup.Machine, setup.LibraryRoot).ErrorMessage!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("C:/outside.glb", "invalid Cabinet")]
+    [InlineData("../outside.glb", "invalid Cabinet")]
+    public void Build_LibraryCabinetRejectsUnsafeModelPath(string modelPath, string expected)
+    {
+        var setup = CreateLibraryBuild();
+        var manifest = Path.Combine(setup.LibraryRoot, "Cabinets", "Cabinet", "asset.cabinet3d");
+        var json = CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb"));
+        File.WriteAllText(manifest, json.Replace("cabinet.glb", modelPath.Replace("\\", "\\\\")));
+        var result = Build(setup.Project, setup.Machine, setup.LibraryRoot);
+        Assert.False(result.Success); Assert.Contains(expected, result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Build_LibraryCabinetRejectsReflectionMaskEscapingPackage()
+    {
+        var setup = CreateLibraryBuild();
+        var manifest = Path.Combine(setup.LibraryRoot, "Cabinets", "Cabinet", "asset.cabinet3d");
+        var disabled = CabinetReflectionSettings.RoughPlastic with { Enabled = false };
+        var cabinet = CabinetDocument.FromModelPath("cabinet.glb") with { Reflections = [new("mask", "unused", 0, [], disabled, "../mask.png")] };
+        File.WriteAllText(manifest, CabinetDocumentStorage.Serialize(cabinet));
+        var result = Build(setup.Project, setup.Machine, setup.LibraryRoot);
+        Assert.False(result.Success); Assert.Contains("escapes the Cabinet asset directory", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void Build_SameMachineIsPortableAcrossEquivalentLibraryRoots()
+    {
+        var setup = CreateLibraryBuild();
+        var secondRoot = Path.Combine(_root, "LibraryB");
+        CopyDirectory(setup.LibraryRoot, secondRoot);
+        var jsonBefore = MachineDocumentStorage.Serialize(setup.Machine);
+        Assert.True(Build(setup.Project, setup.Machine, setup.LibraryRoot).Success);
+        Assert.True(Build(setup.Project, setup.Machine, secondRoot).Success);
+        Assert.Equal(jsonBefore, MachineDocumentStorage.Serialize(setup.Machine));
+        Assert.DoesNotContain(setup.LibraryRoot, jsonBefore, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(secondRoot, jsonBefore, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void AuthorExternalGlbSaveCopyToLibraryAndBuildSucceeds()
+    {
+        var project = Project();
+        var external = Path.Combine(_root, "Import", "vogue.glb"); Directory.CreateDirectory(Path.GetDirectoryName(external)!); WriteTwoTargetGlb(external);
+        var manifest = new ProjectAssetPathService().GetCabinet3DManifestPath(project, "Vogue");
+        var cabinetTab = new DocumentTabViewModel(EditorDocument.CreateCabinet3DStub("Vogue").MarkDirty());
+        cabinetTab.SetCabinetDocument(CabinetDocument.FromModelPath(external));
+        new DocumentSaveService().SaveDocument(cabinetTab, manifest, project).ApplyTo(cabinetTab);
+        Assert.Equal("vogue.glb", cabinetTab.GetCabinetDocument().Model.Path);
+        Assert.True(AssetBrowserViewModel.TryValidateCabinetPackage(Path.GetDirectoryName(manifest)!, out var validationError), validationError);
+
+        var library = Path.Combine(_root, "LibraryPublished");
+        using (var browser = new AssetBrowserViewModel(() => project, () => { }, () => { }, (_, _) => { }, _ => { }, _ => null, _ => true, () => library))
+        {
+            browser.CopyToLibraryCommand.Execute(new AssetBrowserItemViewModel("asset.cabinet3d", manifest, false));
+        }
+        var machine = MachineDocument.Create("Published Cabinet") with { CabinetAsset = AssetReference.Library("Cabinets/Vogue/asset.cabinet3d") };
+        var result = Build(project, machine, library);
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.True(File.Exists(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.glb")));
+    }
+
+    private (EditorProject Project, MachineDocument Machine, string LibraryRoot) CreateLibraryBuild()
+    {
+        var local = CreateReelBuild([0], [(0, "Standard", 290d, 70d)]);
+        var library = Path.Combine(_root, "LibraryA");
+        CopyDirectory(Path.GetDirectoryName(new ProjectAssetPathService().GetCabinet3DManifestPath(local.Project, "Cabinet"))!, Path.Combine(library, "Cabinets", "Cabinet"));
+        CopyDirectory(Path.GetDirectoryName(new ProjectAssetPathService().GetReelManifestPath(local.Project, "Standard"))!, Path.Combine(library, "Reels", "Standard"));
+        return (local.Project, local.Machine with
+        {
+            CabinetAsset = AssetReference.Library("Cabinets/Cabinet/asset.cabinet3d"),
+            ReelAssignments = [new(MachineObjectReference.Reel(0), AssetReference.Library("Reels/Standard/asset.reel"))]
+        }, library);
+    }
+
+    private static void CopyDirectory(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        { var target = Path.Combine(destination, Path.GetRelativePath(source, file)); Directory.CreateDirectory(Path.GetDirectoryName(target)!); File.Copy(file, target); }
     }
 
     private (EditorProject Project, MachineDocument Machine) CreateReelBuild(int[] logicalReels, (int Logical, string Asset, double Diameter, double Width)[] assignments)
@@ -241,15 +363,17 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         }
         var machine = MachineDocument.Create("Reel Machine") with
         {
-            CabinetAssetPath = paths.ToProjectRelativePath(project, cabinetManifest),
+            CabinetAsset = AssetReference.Project(paths.ToProjectRelativePath(project, cabinetManifest)),
             SurfaceAssignments = [new("glass", paths.ToProjectRelativePath(project, faceManifest))],
-            ReelAssignments = assignments.Select(value => new MachineReelAssignment(MachineObjectReference.Reel(value.Logical), paths.ToProjectRelativePath(project, paths.GetReelManifestPath(project, value.Asset)))).ToArray()
+            ReelAssignments = assignments.Select(value => new MachineReelAssignment(MachineObjectReference.Reel(value.Logical), AssetReference.Project(paths.ToProjectRelativePath(project, paths.GetReelManifestPath(project, value.Asset))))).ToArray()
         };
         return (project, machine);
     }
 
     private MachineRuntimeBuildResult Build(EditorProject project, MachineDocument machine)
         => new MachineRuntimeBuildService().BuildFromMachineDocument(project, WriteMachine(project, machine), NoOpEditorProgressReporter.Instance, CancellationToken.None);
+    private MachineRuntimeBuildResult Build(EditorProject project, MachineDocument machine, string libraryRoot)
+        => new MachineRuntimeBuildService(libraryRoot: libraryRoot).BuildFromMachineDocument(project, WriteMachine(project, machine), NoOpEditorProgressReporter.Instance, CancellationToken.None);
 
     private static (double Width, double Radius)[] ReadRuntimeReelDimensions(string buildRoot)
     {

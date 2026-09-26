@@ -6,12 +6,14 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using OasisEditor.Features.CabinetEditor.Models;
 
 namespace OasisEditor;
 
 public sealed class AssetBrowserViewModel : IDisposable
 {
     private readonly Func<EditorProject?> _loadedProjectAccessor;
+    private readonly Func<string> _libraryRootAccessor;
     private readonly Action _selectionChanged;
     private readonly Action _notifyInspectorChanged;
     private readonly Action<string, OutputLogStatus> _addOutputEntry;
@@ -22,6 +24,7 @@ public sealed class AssetBrowserViewModel : IDisposable
     private AssetBrowserItemViewModel? _selectedAsset;
     private AssetDirectoryNodeViewModel? _selectedDirectory;
     private FileSystemWatcher? _assetsWatcher;
+    private FileSystemWatcher? _libraryWatcher;
     private string? _watchedAssetsDirectory;
     private readonly DispatcherTimer _refreshDebounceTimer;
     public event Action? StateChanged;
@@ -34,7 +37,8 @@ public sealed class AssetBrowserViewModel : IDisposable
         Action<string, OutputLogStatus> addOutputEntry,
         Action<AssetBrowserItemViewModel?> openAsset,
         Func<string, string?> requestAssetRename,
-        Func<IReadOnlyList<AssetBrowserItemViewModel>, bool> confirmAssetDelete)
+        Func<IReadOnlyList<AssetBrowserItemViewModel>, bool> confirmAssetDelete,
+        Func<string>? libraryRootAccessor = null)
     {
         _loadedProjectAccessor = loadedProjectAccessor;
         _selectionChanged = selectionChanged;
@@ -43,6 +47,7 @@ public sealed class AssetBrowserViewModel : IDisposable
         _openAsset = openAsset;
         _requestAssetRename = requestAssetRename;
         _confirmAssetDelete = confirmAssetDelete;
+        _libraryRootAccessor = libraryRootAccessor ?? (() => string.Empty);
         _refreshDebounceTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = TimeSpan.FromMilliseconds(200)
@@ -63,11 +68,12 @@ public sealed class AssetBrowserViewModel : IDisposable
         RenameAssetCommand = new PaneItemCommand<object>(
             GetSelectedAssetContext,
             RenameAsset,
-            CanRenameAssetContext);
+            CanRenameProjectAssetContext);
         DeleteAssetCommand = new PaneItemCommand<object>(
             GetSelectedAssetContext,
             DeleteAsset,
-            CanOpenAssetContext);
+            CanDeleteProjectAssetContext);
+        CopyToLibraryCommand = new PaneItemCommand<object>(GetSelectedAssetContext, CopyToLibrary, CanCopyToLibrary);
     }
 
     public ObservableCollection<AssetBrowserItemViewModel> AssetBrowserItems { get; }
@@ -77,6 +83,7 @@ public sealed class AssetBrowserViewModel : IDisposable
     public ICommand ShowInExplorerCommand { get; }
     public ICommand RenameAssetCommand { get; }
     public ICommand DeleteAssetCommand { get; }
+    public ICommand CopyToLibraryCommand { get; }
     public IReadOnlyList<AssetBrowserItemViewModel> SelectedAssets => _selectedAssets;
 
     public AssetDirectoryNodeViewModel? SelectedDirectory
@@ -160,6 +167,7 @@ public sealed class AssetBrowserViewModel : IDisposable
             SelectedAsset = null;
             _notifyInspectorChanged();
             StopWatchingAssetsDirectory();
+            StopWatchingLibraryDirectory();
             _addOutputEntry("Asset browser cleared (no project loaded).", OutputLogStatus.Info);
             AssetCatalogChanged?.Invoke();
             return;
@@ -172,13 +180,27 @@ public sealed class AssetBrowserViewModel : IDisposable
         }
 
         StartWatchingAssetsDirectory(assetDirectory);
+        var libraryRoot = _libraryRootAccessor();
+        if (!string.IsNullOrWhiteSpace(libraryRoot))
+        {
+            Directory.CreateDirectory(libraryRoot);
+            StartWatchingLibraryDirectory(libraryRoot);
+        }
+        else StopWatchingLibraryDirectory();
 
         var rootNode = BuildDirectoryTree(assetDirectory, assetDirectory);
         RestoreExpandedDirectoryPaths(rootNode, expandedDirectoryPaths);
         AssetDirectoryTree.Clear();
         AssetDirectoryTree.Add(rootNode);
-        SelectedDirectory = FindDirectoryByPath(rootNode, selectedDirectoryPath)
-            ?? FindNearestExistingDirectory(rootNode, selectedDirectoryPath)
+        AssetDirectoryNodeViewModel? libraryNode = null;
+        if (!string.IsNullOrWhiteSpace(libraryRoot))
+        {
+            libraryNode = BuildDirectoryTree(libraryRoot, libraryRoot, "Library");
+            RestoreExpandedDirectoryPaths(libraryNode, expandedDirectoryPaths);
+            AssetDirectoryTree.Add(libraryNode);
+        }
+        SelectedDirectory = AssetDirectoryTree.Select(root => FindDirectoryByPath(root, selectedDirectoryPath)).FirstOrDefault(node => node is not null)
+            ?? AssetDirectoryTree.Select(root => FindNearestExistingDirectory(root, selectedDirectoryPath)).FirstOrDefault(node => node is not null)
             ?? rootNode;
         RestoreSelectedAssets(selectedAssetPaths);
         _notifyInspectorChanged();
@@ -203,6 +225,7 @@ public sealed class AssetBrowserViewModel : IDisposable
     public void Dispose()
     {
         StopWatchingAssetsDirectory();
+        StopWatchingLibraryDirectory();
         _refreshDebounceTimer.Stop();
         _refreshDebounceTimer.Tick -= OnRefreshDebounceTimerTick;
     }
@@ -252,6 +275,35 @@ public sealed class AssetBrowserViewModel : IDisposable
         _watchedAssetsDirectory = null;
     }
 
+    private void StartWatchingLibraryDirectory(string libraryRoot)
+    {
+        var fullRoot = Path.GetFullPath(libraryRoot);
+        if (_libraryWatcher is not null && string.Equals(_libraryWatcher.Path, fullRoot, StringComparison.OrdinalIgnoreCase)) return;
+        StopWatchingLibraryDirectory();
+        _libraryWatcher = new FileSystemWatcher(fullRoot)
+        {
+            IncludeSubdirectories = true,
+            NotifyFilter = NotifyFilters.DirectoryName | NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime,
+            EnableRaisingEvents = true
+        };
+        _libraryWatcher.Created += OnAssetsWatcherChanged;
+        _libraryWatcher.Deleted += OnAssetsWatcherChanged;
+        _libraryWatcher.Changed += OnAssetsWatcherChanged;
+        _libraryWatcher.Renamed += OnAssetsWatcherRenamed;
+    }
+
+    private void StopWatchingLibraryDirectory()
+    {
+        if (_libraryWatcher is null) return;
+        _libraryWatcher.EnableRaisingEvents = false;
+        _libraryWatcher.Created -= OnAssetsWatcherChanged;
+        _libraryWatcher.Deleted -= OnAssetsWatcherChanged;
+        _libraryWatcher.Changed -= OnAssetsWatcherChanged;
+        _libraryWatcher.Renamed -= OnAssetsWatcherRenamed;
+        _libraryWatcher.Dispose();
+        _libraryWatcher = null;
+    }
+
     private void OnAssetsWatcherChanged(object sender, FileSystemEventArgs e) => ScheduleRefreshFromDisk();
 
     private void OnAssetsWatcherRenamed(object sender, RenamedEventArgs e) => ScheduleRefreshFromDisk();
@@ -276,9 +328,9 @@ public sealed class AssetBrowserViewModel : IDisposable
         }
     }
 
-    private AssetDirectoryNodeViewModel BuildDirectoryTree(string assetsRoot, string directoryPath)
+    private AssetDirectoryNodeViewModel BuildDirectoryTree(string assetsRoot, string directoryPath, string? rootLabel = null)
     {
-        var displayPath = GetDirectoryDisplayPath(assetsRoot, directoryPath);
+        var displayPath = string.Equals(assetsRoot, directoryPath, StringComparison.OrdinalIgnoreCase) && rootLabel is not null ? rootLabel : GetDirectoryDisplayPath(assetsRoot, directoryPath);
         var node = new AssetDirectoryNodeViewModel(displayPath, directoryPath);
 
         var childDirectories = Directory.GetDirectories(directoryPath, "*", SearchOption.TopDirectoryOnly)
@@ -305,8 +357,8 @@ public sealed class AssetBrowserViewModel : IDisposable
             return;
         }
 
-        var assetsRoot = loadedProject.AssetsDirectory;
-        if (!IsPathInsideRoot(assetsRoot, SelectedDirectory.FullPath))
+        var assetsRoot = RootForPath(loadedProject, SelectedDirectory.FullPath);
+        if (assetsRoot is null)
         {
             SelectedAsset = null;
             _addOutputEntry("Selected directory is outside the Assets root and was ignored.", OutputLogStatus.Warning);
@@ -435,6 +487,99 @@ public sealed class AssetBrowserViewModel : IDisposable
         {
             deleteAssetCommand.RaiseCanExecuteChanged();
         }
+        if (CopyToLibraryCommand is PaneItemCommand<object> copyCommand) copyCommand.RaiseCanExecuteChanged();
+    }
+
+    private string? RootForPath(EditorProject project, string path)
+    {
+        if (IsPathInsideRoot(project.AssetsDirectory, path)) return project.AssetsDirectory;
+        var library = _libraryRootAccessor();
+        return !string.IsNullOrWhiteSpace(library) && IsPathInsideRoot(library, path) ? library : null;
+    }
+
+    private bool CanCopyToLibrary(object context)
+    {
+        var project = _loadedProjectAccessor();
+        var items = ToAssetContextItems(context);
+        var item = items.Count == 1 ? items[0] : null;
+        return project is not null && item is not null && IsPathInsideRoot(project.AssetsDirectory, item.FullPath) && TryGetReusablePackage(item.FullPath, out _, out _);
+    }
+
+    private void CopyToLibrary(object context)
+    {
+        var item = ToAssetContextItems(context).Single();
+        if (!TryGetReusablePackage(item.FullPath, out var package, out var typeFolder)) return;
+        if (typeFolder == "Cabinets" && !TryValidateCabinetPackage(package, out var validationError))
+        {
+            _addOutputEntry($"Cabinet was not copied to the Oasis Library: {validationError} Save/re-author the Cabinet as a self-contained package first.", OutputLogStatus.Warning);
+            return;
+        }
+        if (typeFolder == "Reels" && !TryValidateReelPackage(package, out validationError))
+        {
+            _addOutputEntry($"Reel was not copied to the Oasis Library: {validationError}", OutputLogStatus.Warning);
+            return;
+        }
+        var libraryRoot = _libraryRootAccessor();
+        if (string.IsNullOrWhiteSpace(libraryRoot)) { _addOutputEntry("Configure the Oasis Library root in Preferences before copying an asset.", OutputLogStatus.Warning); return; }
+        var packageName = Path.GetFileName(package);
+        var destination = Path.Combine(libraryRoot, typeFolder, packageName);
+        if (Directory.Exists(destination))
+        {
+            var requested = _requestAssetRename(packageName);
+            if (string.IsNullOrWhiteSpace(requested)) return;
+            packageName = new ProjectAssetPathService().SanitizePathSegment(requested);
+            destination = Path.Combine(libraryRoot, typeFolder, packageName);
+            if (Directory.Exists(destination)) { _addOutputEntry($"Library package already exists: {destination}", OutputLogStatus.Warning); return; }
+        }
+        CopyDirectory(package, destination);
+        _addOutputEntry($"Copied '{Path.GetFileName(package)}' to Oasis Library {typeFolder} as '{packageName}'.", OutputLogStatus.Info);
+        RefreshAssetBrowserPreservingState();
+    }
+
+    private static bool TryGetReusablePackage(string path, out string package, out string typeFolder)
+    {
+        package = Directory.Exists(path) ? path : Path.GetDirectoryName(path) ?? string.Empty;
+        if (File.Exists(Path.Combine(package, ProjectAssetPathService.Cabinet3DManifestFileName))) { typeFolder = "Cabinets"; return true; }
+        if (File.Exists(Path.Combine(package, ProjectAssetPathService.ReelManifestFileName))) { typeFolder = "Reels"; return true; }
+        typeFolder = string.Empty; return false;
+    }
+
+    private static void CopyDirectory(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories)) Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories)) File.Copy(file, Path.Combine(destination, Path.GetRelativePath(source, file)), false);
+    }
+
+    public static bool TryValidateCabinetPackage(string package, out string error)
+    {
+        error = string.Empty;
+        var manifest = Path.Combine(package, ProjectAssetPathService.Cabinet3DManifestFileName);
+        if (!File.Exists(manifest) || !CabinetDocumentStorage.TryRead(File.ReadAllText(manifest), out var cabinet)) { error = "asset.cabinet3d is missing or invalid."; return false; }
+        var root = Path.GetFullPath(package).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        bool TryResolveContained(string relative, out string resolved)
+        {
+            resolved = Path.GetFullPath(Path.Combine(root, relative));
+            return resolved.StartsWith(root, StringComparison.OrdinalIgnoreCase);
+        }
+        if (!string.Equals(Path.GetExtension(cabinet.Model.Path), ".glb", StringComparison.OrdinalIgnoreCase)
+            || !TryResolveContained(cabinet.Model.Path, out var glb) || !File.Exists(glb)) { error = "The Cabinet GLB is missing, invalid, or outside the package."; return false; }
+        foreach (var reflection in cabinet.Reflections ?? [])
+        {
+            if (string.IsNullOrWhiteSpace(reflection.VisibilityMask)) continue;
+            if (!TryResolveContained(reflection.VisibilityMask, out var mask) || !File.Exists(mask)) { error = $"Reflection '{reflection.Id}' mask is missing or outside the package."; return false; }
+        }
+        return true;
+    }
+
+    public static bool TryValidateReelPackage(string package, out string error)
+    {
+        var manifest = Path.Combine(package, ProjectAssetPathService.ReelManifestFileName);
+        if (!File.Exists(manifest)) { error = "asset.reel is missing."; return false; }
+        if (!ReelDocumentStorage.TryRead(File.ReadAllText(manifest), out _, out var readerError))
+        { error = $"asset.reel is missing or invalid: {readerError}"; return false; }
+        error = string.Empty;
+        return true;
     }
 
     private void ShowInExplorer(object context)
@@ -586,10 +731,19 @@ public sealed class AssetBrowserViewModel : IDisposable
         }
     }
 
-    private static bool CanRenameAssetContext(object context)
+    private bool CanRenameProjectAssetContext(object context)
     {
         var assets = ToAssetContextItems(context);
-        return assets.Count == 1 && CanOpenAssetContext(assets[0]);
+        var project = _loadedProjectAccessor();
+        return project is not null && assets.Count == 1 && CanOpenAssetContext(assets[0]) && IsPathInsideRoot(project.AssetsDirectory, assets[0].FullPath);
+    }
+
+    private bool CanDeleteProjectAssetContext(object context)
+    {
+        var assets = ToAssetContextItems(context);
+        var project = _loadedProjectAccessor();
+        return project is not null && assets.Count > 0 && CanOpenAssetContext(context)
+            && assets.All(asset => IsPathInsideRoot(project.AssetsDirectory, asset.FullPath));
     }
 
     private void DeleteAsset(object context)

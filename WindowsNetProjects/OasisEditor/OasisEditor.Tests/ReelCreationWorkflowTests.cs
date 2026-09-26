@@ -62,7 +62,7 @@ public sealed class ReelCreationWorkflowTests : IDisposable
 
         var choice = Assert.Single(DocumentTabViewModel.DiscoverProjectAssetChoices(project, EditorAssetType.Reel));
         Assert.Equal("JPM Standard Reel", choice.DisplayName);
-        Assert.Equal("Assets/Reels/JPM Standard Reel/asset.reel", choice.AssetPath);
+        Assert.Equal(AssetReference.Project("Assets/Reels/JPM Standard Reel/asset.reel"), choice.AssetPath);
     }
 
     private EditorProject CreateProject()

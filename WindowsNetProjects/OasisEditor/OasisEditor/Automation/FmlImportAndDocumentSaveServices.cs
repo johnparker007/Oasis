@@ -2,6 +2,7 @@ using System.IO;
 using OasisEditor.Features.LayoutImport;
 using OasisEditor.Features.FmlImport;
 using OasisEditor.Progress;
+using OasisEditor.Features.CabinetEditor.Models;
 using SkiaSharp;
 
 namespace OasisEditor.Automation;
@@ -30,13 +31,15 @@ public interface IDocumentSaveService
     DocumentSaveResult SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null, IEditorProgressReporter? progress = null);
 }
 
-public sealed record DocumentSaveResult(string SavePath, FaceDocumentModel? SavedFaceDocument = null)
+public sealed record DocumentSaveResult(string SavePath, FaceDocumentModel? SavedFaceDocument = null, CabinetDocument? SavedCabinetDocument = null)
 {
     public void ApplyTo(DocumentTabViewModel document)
     {
         ArgumentNullException.ThrowIfNull(document);
         if (SavedFaceDocument is not null)
             document.ApplySavedFaceDocument(SavedFaceDocument);
+        if (SavedCabinetDocument is not null)
+            document.SetCabinetDocument(SavedCabinetDocument);
         document.ApplySavedDocumentState(SavePath);
     }
 }
@@ -68,6 +71,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
         }
 
         FaceDocumentModel? savedFaceDocument = null;
+        CabinetDocument? savedCabinetDocument = null;
         progress.Report(0.1, "Collecting document content...");
         if (current.Document.DocumentType == EditorDocumentType.Face && project is not null)
         {
@@ -86,17 +90,46 @@ public sealed class DocumentSaveService : IDocumentSaveService
                 savedFaceDocument = faceWithAuthoredAssets;
             }
         }
+        else if (current.Document.DocumentType == EditorDocumentType.Cabinet3D)
+        {
+            progress.Report(0.15, "Importing Cabinet model into its package...");
+            savedCabinetDocument = EnsureCabinetPackageModel(current, savePath);
+        }
 
         progress.Report(0.8, "Serializing document...");
-        var content = savedFaceDocument is null
-            ? DocumentWorkspaceViewModel.BuildDocumentContent(current)
-            : FaceDocumentStorage.Serialize(savedFaceDocument);
+        var content = savedFaceDocument is not null ? FaceDocumentStorage.Serialize(savedFaceDocument)
+            : savedCabinetDocument is not null ? CabinetDocumentStorage.Serialize(savedCabinetDocument)
+            : DocumentWorkspaceViewModel.BuildDocumentContent(current);
         progress.Report(0.9, "Writing document file...");
         File.WriteAllText(savePath, content);
         progress.Report(0.95, "Finalizing document save...");
 
         progress.Report(1.0, "Document saved.");
-        return new DocumentSaveResult(savePath, savedFaceDocument);
+        return new DocumentSaveResult(savePath, savedFaceDocument, savedCabinetDocument);
+    }
+
+    private static CabinetDocument EnsureCabinetPackageModel(DocumentTabViewModel current, string savePath)
+    {
+        var cabinet = current.GetCabinetDocument();
+        var authoredPath = cabinet.Model.Path;
+        if (string.IsNullOrWhiteSpace(authoredPath)) throw new InvalidOperationException("Cabinet model path is required before saving.");
+        var package = Path.GetFullPath(Path.GetDirectoryName(savePath) ?? throw new InvalidOperationException("Cabinet save path has no package directory."));
+        Directory.CreateDirectory(package);
+        var currentPackage = !current.Document.IsUntitled && !string.IsNullOrWhiteSpace(current.FilePath) ? Path.GetDirectoryName(current.FilePath) : null;
+        var source = Path.IsPathFullyQualified(authoredPath) || Path.IsPathRooted(authoredPath)
+            ? Path.GetFullPath(authoredPath)
+            : Path.GetFullPath(Path.Combine(currentPackage ?? package, authoredPath));
+        if (!File.Exists(source)) throw new InvalidOperationException($"Cabinet GLB model was not found: {source}");
+        var fileName = Path.GetFileName(source);
+        if (!string.Equals(Path.GetExtension(fileName), ".glb", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Cabinet model must be a GLB file.");
+        var destination = Path.Combine(package, fileName);
+        if (!string.Equals(source, destination, StringComparison.OrdinalIgnoreCase))
+        {
+            if (File.Exists(destination) && !File.ReadAllBytes(source).SequenceEqual(File.ReadAllBytes(destination)))
+                throw new InvalidOperationException($"Cabinet package already contains a different model named '{fileName}'.");
+            if (!File.Exists(destination)) File.Copy(source, destination, overwrite: false);
+        }
+        return cabinet with { Model = cabinet.Model with { Path = fileName } };
     }
 
     private static FaceDocumentModel EnsureFaceAuthoredPackageAssets(FaceDocumentModel faceDocument, EditorProject project, string savePath)

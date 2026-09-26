@@ -53,6 +53,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private CpuImageProcessingMode _cpuImageProcessingMode = CpuImageProcessingMode.Auto;
     private int _customMaximumProcessingWorkers = 1;
     private string _selectedPreferencesCategory = "Appearance";
+    private string _oasisAssetLibraryRoot = string.Empty;
     private string _selectedProjectSettingsCategory = "General";
     private string _selectedNativeProjectSettingsTab = "ROMS";
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
@@ -106,7 +107,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private IEmulationBackend? _activeEmulationBackend;
     private EmulationBackendState _emulationState = EmulationBackendState.Stopped;
     private readonly IInputMapDiagnosticsService _inputMapDiagnosticsService = new InputMapDiagnosticsService();
-    private readonly OasisPlayerPreviewService _oasisPlayerPreviewService = new();
+    private readonly OasisPlayerPreviewService _oasisPlayerPreviewService;
     private IReadOnlyList<InputMapDiagnostic> _inputMapDiagnostics = [];
     private PlayViewInputRouter? _playViewInputRouter;
     private PlayViewInputDispatcher? _playViewInputDispatcher;
@@ -141,6 +142,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _preferencesStore = preferencesStore;
         _ownerWindow = ownerWindow;
         _progressDialogService = new WpfProgressDialogService(() => _ownerWindow, _ownerWindow.Dispatcher);
+        _oasisPlayerPreviewService = new OasisPlayerPreviewService(() => new MachineRuntimeBuildService(libraryRoot: OasisAssetLibraryRoot));
 
         if (string.IsNullOrWhiteSpace(startupProjectFilePath))
         {
@@ -211,7 +213,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             AddOutputEntry,
             OpenAssetDocument,
             PromptForAssetRename,
-            ConfirmAssetDelete);
+            ConfirmAssetDelete,
+            () => OasisAssetLibraryRoot);
         _assetBrowser.StateChanged += OnAssetBrowserStateChanged;
         _assetBrowser.AssetCatalogChanged += OnProjectAssetCatalogChanged;
         _inspector = new InspectorViewModel(
@@ -238,6 +241,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var preferences = _preferencesStore.Load();
             _selectedThemePreference = preferences.ThemePreference;
+            _oasisAssetLibraryRoot = preferences.AssetLibrary.RootPath;
             _fabricRuntimeLibraryPath = preferences.NativeEmulation.FabricRuntimeLibraryPath;
             _productionAmberLibraryPath = preferences.NativeEmulation.ProductionAmberLibraryPath;
             _mpu5AmberLibraryPath = preferences.NativeEmulation.Mpu5AmberLibraryPath;
@@ -320,6 +324,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ShowAssetInExplorerCommand = _assetBrowser.ShowInExplorerCommand;
         RenameAssetCommand = _assetBrowser.RenameAssetCommand;
         DeleteAssetCommand = _assetBrowser.DeleteAssetCommand;
+        CopyAssetToLibraryCommand = _assetBrowser.CopyToLibraryCommand;
         DeleteSelectedHierarchyItemCommand = new PaneItemCommand<HierarchyItemViewModel>(
             GetSelectedHierarchyEntity,
             item => DeleteHierarchyItem(item),
@@ -393,6 +398,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ShowAssetInExplorerCommand { get; }
     public ICommand RenameAssetCommand { get; }
     public ICommand DeleteAssetCommand { get; }
+    public ICommand CopyAssetToLibraryCommand { get; }
     public ICommand DeleteSelectedHierarchyItemCommand { get; }
     public ICommand RenameSelectedHierarchyItemCommand { get; }
     public ICommand CutSelectedHierarchyItemCommand { get; }
@@ -449,7 +455,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 
     public IReadOnlyList<ThemePreference> ThemePreferences { get; } = Enum.GetValues<ThemePreference>();
-    public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "Player", "Processing", "Fabric Emulation"];
+    public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "Asset Library", "Player", "Processing", "Fabric Emulation"];
+    public string OasisAssetLibraryRoot { get => _oasisAssetLibraryRoot; set { if (SetProperty(ref _oasisAssetLibraryRoot, value)) { SavePreferences(); foreach (var document in OpenDocuments) document.SetLibraryRootAccessor(() => OasisAssetLibraryRoot); _assetBrowser.RefreshAssetBrowserPreservingState(); } } }
     public IReadOnlyList<string> CpuImageProcessingModes { get; } = ["Auto (Recommended)", "Maximum", "Custom"];
     public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "Platform Settings"];
     public IReadOnlyList<string> NativeProjectSettingsTabs { get; } = ["ROMS", "Stake/Prize", "Reels", "Coins"];
@@ -1197,7 +1204,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var result = await _progressDialogService.RunAsync(
                 new EditorProgressRequest("Building Oasis Player Machine", "Preparing Oasis Player machine build...", EditorProgressMode.Determinate, CanCancel: true),
-                (progress, token) => Task.FromResult(new MachineRuntimeBuildService().BuildFromMachineDocument(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetMachineDocument(), progress, token)));
+                (progress, token) => Task.FromResult(new MachineRuntimeBuildService(libraryRoot: OasisAssetLibraryRoot).BuildFromMachineDocument(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetMachineDocument(), progress, token)));
             if (!result.Success)
             {
                 ReportEditorOperationError(result.ErrorMessage ?? "Failed to build Oasis Player runtime output.", OutputLogStatus.Error);
@@ -1599,6 +1606,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         foreach (var machine in OpenDocuments.Where(document => document.Document.DocumentType == EditorDocumentType.Machine))
             machine.RefreshMachineCompositionChoices();
+        RefreshCabinetFacePreviews();
     }
 
 
@@ -1617,6 +1625,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             foreach (DocumentTabViewModel document in e.NewItems)
             {
+                document.SetLibraryRootAccessor(() => OasisAssetLibraryRoot);
+                if (document.Document.DocumentType == EditorDocumentType.Cabinet3D) document.SetMachineCompositionContext(_activeMachineDocument);
                 document.FaceVisualStateChanged += OnOpenDocumentFaceVisualStateChanged;
                 document.FacePreviewChanged += OnOpenDocumentFacePreviewChanged;
             }
@@ -1931,8 +1941,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void SavePreferences()
     {
-        var existingPreferences = _preferencesStore.Load();
-        _preferencesStore.Save(new EditorPreferences
+        _preferencesStore.Update(existingPreferences => existingPreferences with
         {
             ThemePreference = SelectedThemePreference,
             LastMfmeFmlImportDirectory = _lastMfmeFmlImportDirectory,
@@ -1954,6 +1963,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 PreviewWidth = OasisPlayerPreviewWidth,
                 PreviewHeight = OasisPlayerPreviewHeight
             },
+            AssetLibrary = new AssetLibraryPreferences { RootPath = OasisAssetLibraryRoot },
             FaceGeneration = FaceGenerationPreferences.FromSettings(_defaultFaceGenerationSettings),
             Processing = CurrentProcessingPreferences(),
             OutputLog = new OutputLogPreferences
@@ -1963,8 +1973,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 ShowErrorLogs = _outputLog.ShowErrorLogs,
                 AutoScroll = _outputLog.AutoScroll,
                 SearchText = _outputLog.SearchText
-            },
-            ProjectWindowStates = existingPreferences.ProjectWindowStates
+            }
         });
     }
 
