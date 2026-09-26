@@ -1,5 +1,6 @@
 using OasisEditor.Features.CabinetEditor.Models;
 using Xunit;
+using CompositionGraph = OasisEditor.MachineCompositionGraph;
 
 namespace OasisEditor.Tests;
 
@@ -95,7 +96,7 @@ public sealed class MachineCompositionGraphTests
             var assets=Path.Combine(_root,"Assets"); Directory.CreateDirectory(assets); LibraryRoot=Path.Combine(_root,"Library"); Directory.CreateDirectory(LibraryRoot);
             Project=new EditorProject { Name="Graph", ProjectDirectory=_root, ProjectFilePath=Path.Combine(_root,"Graph.oasisproj"), AssetsDirectory=assets, GeneratedDirectory=Path.Combine(_root,"Generated") };
         }
-        public MachineCompositionGraph Build(MachineDocument machine) => new MachineCompositionGraphBuilder().Build(machine,Project,LibraryRoot);
+        public CompositionGraph Build(MachineDocument machine) => new MachineCompositionGraphBuilder().Build(machine,Project,LibraryRoot);
         public AssetReference WriteCabinet(string name, AssetReferenceScope scope)
         {
             var relative=$"Cabinets/{name}/asset.cabinet3d"; var path=Path.Combine(scope==AssetReferenceScope.Project?_root:LibraryRoot,relative.Replace('/',Path.DirectorySeparatorChar));

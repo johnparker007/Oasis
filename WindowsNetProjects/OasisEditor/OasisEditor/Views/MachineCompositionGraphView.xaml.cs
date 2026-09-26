@@ -48,8 +48,10 @@ public partial class MachineCompositionGraphView : UserControl
             var from = graph.Nodes.FirstOrDefault(x => x.Id == edge.FromNodeId);
             var to = graph.Nodes.FirstOrDefault(x => x.Id == edge.ToNodeId);
             if (from is null || to is null) continue;
-            var x1 = from.X + from.Width, y1 = from.Y + from.Height / 2;
-            var x2 = to.X, y2 = to.Y + to.Height / 2;
+            var x1 = from.X + from.Width;
+            var y1 = from.Y + from.Height / 2;
+            var x2 = to.X;
+            var y2 = to.Y + to.Height / 2;
             if (x2 < x1) { x1 = from.X; x2 = to.X + to.Width; }
             var line = new Line { X1=x1, Y1=y1, X2=x2, Y2=y2, StrokeThickness=2,
                 Stroke = BrushResource(edge.Kind == MachineCompositionEdgeKind.Provenance ? "TextSecondaryBrush" : "BorderStrongBrush") };
