@@ -583,6 +583,7 @@ public sealed class MachineDocumentTests
             var machine = MachineDocument.Create("Game") with { CabinetAsset = cabinetReference, SurfaceAssignments = [new("OasisFace_Glass", face)], ReelAssignments = [new(MachineObjectReference.Reel(0), reelReference)] };
             var tab = CreateMachineTab(project, machine);
             tab.SetLibraryRootAccessor(() => library);
+            tab.SetAssetDocumentOpener(_ => { });
             var missingCabinet = Assert.Single(tab.MachineCabinetChoices.Where(choice => Equals(choice.AssetPath, cabinetReference) && choice.DisplayName.StartsWith("Missing:")));
             var reelRow = Assert.Single(tab.MachineReelAssignmentRows);
             var missingReel = Assert.Single(reelRow.Choices.Where(choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName.StartsWith("Missing:")));
@@ -600,27 +601,32 @@ public sealed class MachineDocumentTests
             var validReel = Assert.Single(reelRow.Choices.Where(choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName == "Standard [Library]"));
             Assert.Same(validCabinet, tab.SelectedMachineCabinetChoice);
             Assert.Same(validReel, reelRow.SelectedChoice);
+            Assert.True(tab.CanOpenSelectedCabinetAsset); Assert.True(reelRow.CanOpenSelectedAsset);
             Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
 
             File.Delete(reelPath); tab.RefreshMachineCompositionChoices();
             missingReel = Assert.Single(reelRow.Choices.Where(choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName.StartsWith("Missing:")));
             Assert.Same(missingReel, reelRow.SelectedChoice);
+            Assert.False(reelRow.CanOpenSelectedAsset);
             Assert.Equal(reelReference, tab.GetMachineDocument().ReelAssignments.Single().ReelAsset);
             Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
 
             File.WriteAllText(reelPath, ReelDocumentStorage.Serialize(ReelDocument.Create("Standard"))); tab.RefreshMachineCompositionChoices();
             validReel = Assert.Single(reelRow.Choices.Where(choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName == "Standard [Library]"));
             Assert.Same(validReel, reelRow.SelectedChoice);
+            Assert.True(reelRow.CanOpenSelectedAsset);
 
             File.Delete(cabinetPath); tab.RefreshMachineCompositionChoices();
             missingCabinet = Assert.Single(tab.MachineCabinetChoices.Where(choice => Equals(choice.AssetPath, cabinetReference) && choice.DisplayName.StartsWith("Missing:")));
             Assert.Same(missingCabinet, tab.SelectedMachineCabinetChoice);
+            Assert.False(tab.CanOpenSelectedCabinetAsset);
             Assert.Equal(cabinetReference, tab.GetMachineDocument().CabinetAsset);
             Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
 
             File.WriteAllText(cabinetPath, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb"))); tab.RefreshMachineCompositionChoices();
             validCabinet = Assert.Single(tab.MachineCabinetChoices.Where(choice => Equals(choice.AssetPath, cabinetReference) && choice.DisplayName == "Vogue [Library]"));
             Assert.Same(validCabinet, tab.SelectedMachineCabinetChoice);
+            Assert.True(tab.CanOpenSelectedCabinetAsset);
             Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
@@ -652,6 +658,87 @@ public sealed class MachineDocumentTests
             Assert.Same(selectedChoice, row.Choices.Single(choice => Equals(choice.AssetPath, AssetReference.Project("Assets/Reels/Standard/asset.reel"))));
             Assert.Equal(AssetReference.Project("Assets/Reels/Standard/asset.reel"), row.SelectedReelAssetPath);
             Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Theory]
+    [InlineData(AssetReferenceScope.Project)]
+    [InlineData(AssetReferenceScope.Library)]
+    public void CabinetAssetNavigation_ResolvesAuthoredReferenceAndUsesOpener(AssetReferenceScope scope)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OasisCabinetNavigation_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var project = CreateProject(root);
+            var library = Path.Combine(root, "Library");
+            var reference = new AssetReference(scope, "Cabinets/Vogue/asset.cabinet3d");
+            var expected = Path.Combine(scope == AssetReferenceScope.Project ? root : library, "Cabinets", "Vogue", "asset.cabinet3d");
+            Directory.CreateDirectory(Path.GetDirectoryName(expected)!);
+            File.WriteAllText(expected, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb")));
+            var tab = CreateMachineTab(project, MachineDocument.Create("Game") with { CabinetAsset = reference });
+            tab.SetLibraryRootAccessor(() => library);
+            string? opened = null; tab.SetAssetDocumentOpener(path => opened = path);
+
+            Assert.True(tab.CanOpenSelectedCabinetAsset);
+            tab.OpenSelectedCabinetAssetCommand.Execute(null);
+            Assert.Equal(expected, opened);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Theory]
+    [InlineData(AssetReferenceScope.Project)]
+    [InlineData(AssetReferenceScope.Library)]
+    public void ReelAssetNavigation_TracksValidNoneAndMissingReferencesWithoutEditing(AssetReferenceScope scope)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OasisReelNavigation_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var project = CreateProject(root);
+            var library = Path.Combine(root, "Library");
+            var reference = new AssetReference(scope, "Reels/Standard/asset.reel");
+            var expected = Path.Combine(scope == AssetReferenceScope.Project ? root : library, "Reels", "Standard", "asset.reel");
+            Directory.CreateDirectory(Path.GetDirectoryName(expected)!);
+            File.WriteAllText(expected, ReelDocumentStorage.Serialize(ReelDocument.Create("Standard")));
+            var tab = CreateMachineTab(project, MachineDocument.Create("Game"));
+            tab.SetLibraryRootAccessor(() => library);
+            string? opened = null; tab.SetAssetDocumentOpener(path => opened = path);
+            var row = new MachineReelAssignmentRow(tab, MachineObjectReference.Reel(0), [new("(None)", null), new("Standard", reference)], reference);
+
+            Assert.True(row.CanOpenSelectedAsset);
+            row.OpenSelectedAssetCommand.Execute(null);
+            Assert.Equal(expected, opened);
+            Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
+
+            row.SynchronizeSelectedReelAssetPath(null, forceNotification: true);
+            Assert.False(row.CanOpenSelectedAsset);
+            row.SynchronizeSelectedReelAssetPath(reference, forceNotification: true);
+            File.Delete(expected); row.NotifyAssetNavigationChanged();
+            Assert.False(row.CanOpenSelectedAsset);
+            Assert.Equal(reference, row.SelectedReelAssetPath);
+            Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void CabinetAssetNavigation_NoneAndMissingAreDisabledAndPreserved()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OasisMissingCabinetNavigation_" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var project = CreateProject(root);
+            var missing = AssetReference.Library("Cabinets/Missing/asset.cabinet3d");
+            var tab = CreateMachineTab(project, MachineDocument.Create("Game") with { CabinetAsset = missing });
+            tab.SetAssetDocumentOpener(_ => throw new InvalidOperationException("Disabled command invoked."));
+            Assert.False(tab.CanOpenSelectedCabinetAsset);
+            Assert.Equal(missing, tab.GetMachineDocument().CabinetAsset);
+            Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
+
+            var none = CreateMachineTab(project, MachineDocument.Create("None"));
+            none.SetAssetDocumentOpener(_ => { });
+            Assert.False(none.CanOpenSelectedCabinetAsset);
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
