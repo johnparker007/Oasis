@@ -34,4 +34,31 @@ public sealed class MachineCompositionGraphXamlTests
             Assert.Contains("DynamicResource", style.ToString(SaveOptions.DisableFormatting));
         }
     }
+
+    [Fact]
+    public void DiagnosticsExpanderHeaderStretchesAndReservesASeparateArrowColumn()
+    {
+        var app = XDocument.Load(Path.Combine(AppContext.BaseDirectory, "App.xaml"));
+        var style = app.Descendants(Presentation + "Style")
+            .Single(x => x.Attribute(Xaml + "Key")?.Value == "OasisDiagnosticsExpanderStyle");
+        var template = style.Descendants(Presentation + "ControlTemplate").Single();
+        var toggle = template.Descendants(Presentation + "ToggleButton").Single();
+        Assert.Equal("Stretch", toggle.Attribute("HorizontalAlignment")?.Value);
+        Assert.Equal("Stretch", toggle.Attribute("HorizontalContentAlignment")?.Value);
+
+        var headerGrid = toggle.Element(Presentation + "Grid");
+        Assert.NotNull(headerGrid);
+        var columns = headerGrid.Element(Presentation + "Grid.ColumnDefinitions")?.Elements(Presentation + "ColumnDefinition").ToArray();
+        Assert.NotNull(columns);
+        Assert.Equal(["*", "Auto"], columns!.Select(column => column.Attribute("Width")?.Value).ToArray());
+        Assert.Equal("0", headerGrid.Element(Presentation + "ContentPresenter")?.Attribute("Grid.Column")?.Value);
+        var arrow = headerGrid.Element(Presentation + "TextBlock");
+        Assert.Equal("Arrow", arrow?.Attribute(Xaml + "Name")?.Value);
+        Assert.Equal("1", arrow?.Attribute("Grid.Column")?.Value);
+
+        var expandedTrigger = template.Descendants(Presentation + "Trigger")
+            .Single(trigger => trigger.Attribute("Property")?.Value == "IsExpanded" && trigger.Attribute("Value")?.Value == "True");
+        Assert.Contains(expandedTrigger.Elements(Presentation + "Setter"), setter =>
+            setter.Attribute("TargetName")?.Value == "Arrow" && setter.Attribute("Value")?.Value == "▾");
+    }
 }

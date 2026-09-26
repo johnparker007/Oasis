@@ -199,13 +199,19 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="Expander">
                             <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="3">
-                                <DockPanel>
-                                    <ToggleButton DockPanel.Dock="Top" IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                                  Background="{DynamicResource ToolBarBackgroundBrush}" Foreground="{TemplateBinding Foreground}" BorderThickness="0" Padding="8,5" HorizontalContentAlignment="Stretch">
-                                        <Grid><ContentPresenter Content="{TemplateBinding Header}"/><TextBlock x:Name="Arrow" Text="▸" HorizontalAlignment="Right"/></Grid>
+                                <Grid>
+                                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                    <ToggleButton Grid.Row="0" IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                                  Background="{DynamicResource ToolBarBackgroundBrush}" Foreground="{TemplateBinding Foreground}" BorderThickness="0" Padding="8,5"
+                                                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                                        <Grid HorizontalAlignment="Stretch">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <ContentPresenter Grid.Column="0" Content="{TemplateBinding Header}" HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="1" x:Name="Arrow" Margin="8,0,0,0" Text="▸" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                        </Grid>
                                     </ToggleButton>
-                                    <ContentPresenter x:Name="Body" ContentSource="Content" Margin="8,4" Visibility="Collapsed"/>
-                                </DockPanel>
+                                    <ContentPresenter Grid.Row="1" x:Name="Body" ContentSource="Content" Margin="8,4" Visibility="Collapsed"/>
+                                </Grid>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsExpanded" Value="True"><Setter TargetName="Body" Property="Visibility" Value="Visible"/><Setter TargetName="Arrow" Property="Text" Value="▾"/></Trigger>
