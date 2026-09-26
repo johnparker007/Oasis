@@ -666,6 +666,7 @@ public sealed class MachineDocumentTests
     {
         var path = new ProjectAssetPathService().GetMachineManifestPath(project, "Game");
         var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile(path, "Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(machine));
+        tab.SetLibraryRootAccessor(() => Path.Combine(project.ProjectDirectory, "TestOasisLibrary"));
         tab.SetProjectAccessor(() => project); return tab;
     }
 
