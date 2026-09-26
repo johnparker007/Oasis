@@ -18,7 +18,7 @@ public sealed record MachineCompositionEdge(string FromNodeId, string ToNodeId, 
     string[]? LogicalReelRoleIds = null, string? RelationshipId = null);
 public sealed record MachineCompositionRoute(MachineCompositionEdge Edge, MachineCompositionPoint SourcePort,
     MachineCompositionPoint DestinationPort, IReadOnlyList<MachineCompositionPoint> Points,
-    MachineCompositionPoint LabelPosition, double LabelMaxWidth);
+    MachineCompositionPoint LabelPosition, double LabelMaxWidth, double LaneOffset);
 public readonly record struct MachineCompositionPoint(double X, double Y);
 public sealed record MachineCompositionDiagnostic(MachineCompositionDiagnosticSeverity Severity, string Message, string? NodeId = null);
 public sealed record MachineCompositionGraph(IReadOnlyList<MachineCompositionNode> Nodes, IReadOnlyList<MachineCompositionEdge> Edges,
@@ -247,7 +247,8 @@ public sealed class MachineCompositionGraphBuilder
     {
         var sourcePorts = AllocatePorts(edges, nodes, incoming: false);
         var destinationPorts = AllocatePorts(edges, nodes, incoming: true);
-        return edges.Select(edge => Route(edge, nodes, sourcePorts[edge], destinationPorts[edge])).ToArray();
+        var laneOffsets = AllocateRoutingLanes(edges, nodes, sourcePorts, destinationPorts);
+        return edges.Select(edge => Route(edge, nodes, sourcePorts[edge], destinationPorts[edge], laneOffsets[edge])).ToArray();
     }
 
     private static Dictionary<MachineCompositionEdge, MachineCompositionPoint> AllocatePorts(
@@ -277,23 +278,53 @@ public sealed class MachineCompositionGraphBuilder
         return (node.LayoutOrder, node.Y, node.X);
     }
 
-    private static MachineCompositionRoute Route(MachineCompositionEdge edge, IReadOnlyDictionary<string, MachineCompositionNode> nodes,
-        MachineCompositionPoint start, MachineCompositionPoint end)
+    private static Dictionary<MachineCompositionEdge, double> AllocateRoutingLanes(IReadOnlyList<MachineCompositionEdge> edges,
+        IReadOnlyDictionary<string, MachineCompositionNode> nodes,
+        IReadOnlyDictionary<MachineCompositionEdge, MachineCompositionPoint> sourcePorts,
+        IReadOnlyDictionary<MachineCompositionEdge, MachineCompositionPoint> destinationPorts)
+    {
+        const double spacing = 16;
+        var result = new Dictionary<MachineCompositionEdge, double>();
+        foreach (var group in edges.GroupBy(edge =>
+        {
+            var source = sourcePorts[edge]; var destination = destinationPorts[edge];
+            return (source.X, destination.X, BaseGutter(edge, nodes, source));
+        }))
+        {
+            var ordered = group.OrderBy(edge => nodes[edge.FromNodeId].LayoutOrder)
+                .ThenBy(edge => nodes[edge.FromNodeId].Y)
+                .ThenBy(edge => nodes[edge.ToNodeId].LayoutOrder)
+                .ThenBy(edge => nodes[edge.ToNodeId].Y)
+                .ThenBy(edge => edge.Kind == MachineCompositionEdgeKind.Composition ? 0 : 1)
+                .ThenBy(edge => edge.RelationshipId ?? edge.Label, StringComparer.Ordinal)
+                .ThenBy(edge => edge.FromNodeId, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(edge => edge.ToNodeId, StringComparer.OrdinalIgnoreCase).ToArray();
+            for (var index = 0; index < ordered.Length; index++)
+                result[ordered[index]] = (index - (ordered.Length - 1) / 2d) * spacing;
+        }
+        return result;
+    }
+
+    private static double BaseGutter(MachineCompositionEdge edge, IReadOnlyDictionary<string, MachineCompositionNode> nodes,
+        MachineCompositionPoint source)
     {
         var from = nodes[edge.FromNodeId]; var to = nodes[edge.ToNodeId];
-        var gutter = from.Kind == MachineCompositionNodeKind.Cabinet && to.Kind == MachineCompositionNodeKind.Face
-            ? start.X + 10
-            : edge.Kind == MachineCompositionEdgeKind.Provenance || from.Kind == MachineCompositionNodeKind.Machine && to.Kind == MachineCompositionNodeKind.Face
-                ? to.X - 25
-                : (start.X + end.X) / 2;
+        if (from.Kind == MachineCompositionNodeKind.Cabinet && to.Kind == MachineCompositionNodeKind.Face) return source.X + 15;
+        if (edge.Kind == MachineCompositionEdgeKind.Provenance) return source.X + 45;
+        return source.X + 30;
+    }
+
+    private static MachineCompositionRoute Route(MachineCompositionEdge edge, IReadOnlyDictionary<string, MachineCompositionNode> nodes,
+        MachineCompositionPoint start, MachineCompositionPoint end, double laneOffset)
+    {
+        var from = nodes[edge.FromNodeId]; var to = nodes[edge.ToNodeId];
+        var gutter = BaseGutter(edge, nodes, start) + laneOffset;
         var points = new[] { start, new MachineCompositionPoint(gutter, start.Y), new MachineCompositionPoint(gutter, end.Y), end };
-        // Labels occupy the reserved horizontal lane immediately after the source port,
-        // never the geometric midpoint where an unrelated card may be present.
-        var labelX = from.Kind == MachineCompositionNodeKind.Cabinet && to.Kind == MachineCompositionNodeKind.Face
-            ? end.X - 104
-            : start.X + 8;
-        var label = new MachineCompositionPoint(labelX, end.Y - 30);
-        return new(edge, start, end, points, label, 104);
+        // Labels use the final routed horizontal segment, where the semantic lanes reserve space before the destination.
+        var labelX = end.X - 108;
+        var labelY = edge.Kind == MachineCompositionEdgeKind.Provenance ? end.Y + 4 : end.Y - 30;
+        var label = new MachineCompositionPoint(labelX, labelY);
+        return new(edge, start, end, points, label, 104, laneOffset);
     }
 
     private string TryProjectPath(EditorProject project, string relative)

@@ -45,6 +45,7 @@ public sealed class MachineCompositionGraphTests
         Assert.Equal(["0", "1", "2", "3"], reelEdges.SelectMany(x => x.LogicalReelRoleIds!).OrderBy(x => x).ToArray());
         AssertNoNodeOverlap(graph);
         AssertRoutesAvoidUnrelatedNodes(graph);
+        AssertNoCoincidentSegments(graph);
         AssertLabelsUseGutters(graph);
         var faceNodes = graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Face).ToDictionary(x => x.Title);
         Assert.True(faceNodes["Top"].Y < faceNodes["Bottom"].Y);
@@ -54,6 +55,9 @@ public sealed class MachineCompositionGraphTests
         var targetRoutes = graph.Routes.Where(x => x.Edge.RelationshipId is "topGlass" or "bottomGlass").ToArray();
         Assert.Equal(2, targetRoutes.Length);
         Assert.Equal(2, targetRoutes.Select(x => x.LabelPosition).Distinct().Count());
+        Assert.Equal(2, targetRoutes.Select(x => x.Points[1].X).Distinct().Count());
+        var provenanceRoutes = graph.Routes.Where(x => x.Edge.Kind == MachineCompositionEdgeKind.Provenance).ToArray();
+        Assert.Equal(2, provenanceRoutes.Select(x => x.Points[1].X).Distinct().Count());
         foreach (var faceNode in faceNodes.Values)
         {
             var incoming = graph.Routes.Where(x => x.Edge.ToNodeId == faceNode.Id).OrderBy(x => x.DestinationPort.Y).ToArray();
@@ -166,6 +170,7 @@ public sealed class MachineCompositionGraphTests
         Assert.Equal(3, incoming.Length);
         Assert.Equal([faceNode.Y + faceNode.Height * .25, faceNode.Y + faceNode.Height * .5, faceNode.Y + faceNode.Height * .75], incoming.Select(x => x.DestinationPort.Y).ToArray());
         Assert.All(incoming, route => Assert.Equal(faceNode.X, route.DestinationPort.X));
+        Assert.Equal(3, incoming.Select(route => route.Points[1].X).Distinct().Count());
         Assert.Equal(MachineCompositionEdgeKind.Composition, incoming[0].Edge.Kind);
         Assert.Equal(MachineCompositionEdgeKind.Composition, incoming[1].Edge.Kind);
         Assert.Equal(MachineCompositionEdgeKind.Provenance, incoming[2].Edge.Kind);
@@ -174,6 +179,7 @@ public sealed class MachineCompositionGraphTests
         Assert.Equal(2, outgoing.Length);
         Assert.Equal([faceNode.Y + faceNode.Height / 3, faceNode.Y + faceNode.Height * 2 / 3], outgoing.Select(x => x.SourcePort.Y).ToArray());
         Assert.All(outgoing, route => Assert.Equal(faceNode.X + faceNode.Width, route.SourcePort.X));
+        Assert.Equal(2, outgoing.Select(route => route.Points[1].X).Distinct().Count());
         Assert.Equal(RouteSignature(graph), RouteSignature(fixture.Build(machine)));
     }
 
@@ -199,7 +205,7 @@ public sealed class MachineCompositionGraphTests
     private static string[] RouteSignature(CompositionGraph graph) => graph.Routes.Select(route =>
         $"{route.Edge.FromNodeId}|{route.Edge.ToNodeId}|{route.Edge.Label}|{route.Edge.RelationshipId}|{string.Join(',', route.Edge.LogicalReelRoleIds ?? [])}|"
         + $"{route.SourcePort.X},{route.SourcePort.Y}|{route.DestinationPort.X},{route.DestinationPort.Y}|"
-        + string.Join(';', route.Points.Select(point => $"{point.X},{point.Y}")) + $"|{route.LabelPosition.X},{route.LabelPosition.Y}|{route.LabelMaxWidth}").ToArray();
+        + string.Join(';', route.Points.Select(point => $"{point.X},{point.Y}")) + $"|{route.LabelPosition.X},{route.LabelPosition.Y}|{route.LabelMaxWidth}|{route.LaneOffset}").ToArray();
 
     private static void AssertRoutesAvoidUnrelatedNodes(CompositionGraph graph)
     {
@@ -208,6 +214,29 @@ public sealed class MachineCompositionGraphTests
         for (var index = 1; index < route.Points.Count; index++)
             Assert.False(SegmentIntersectsInterior(route.Points[index - 1], route.Points[index], node),
                 $"Route {route.Edge.FromNodeId} -> {route.Edge.ToNodeId} crosses {node.Id}");
+    }
+
+    private static void AssertNoCoincidentSegments(CompositionGraph graph)
+    {
+        for (var routeIndex = 0; routeIndex < graph.Routes.Count; routeIndex++)
+        for (var otherIndex = routeIndex + 1; otherIndex < graph.Routes.Count; otherIndex++)
+        for (var segment = 1; segment < graph.Routes[routeIndex].Points.Count; segment++)
+        for (var otherSegment = 1; otherSegment < graph.Routes[otherIndex].Points.Count; otherSegment++)
+            Assert.False(SharesNonTrivialSegment(
+                graph.Routes[routeIndex].Points[segment - 1], graph.Routes[routeIndex].Points[segment],
+                graph.Routes[otherIndex].Points[otherSegment - 1], graph.Routes[otherIndex].Points[otherSegment]),
+                $"Routes {graph.Routes[routeIndex].Edge.Label} and {graph.Routes[otherIndex].Edge.Label} share a segment.");
+    }
+
+    private static bool SharesNonTrivialSegment(MachineCompositionPoint a, MachineCompositionPoint b,
+        MachineCompositionPoint c, MachineCompositionPoint d)
+    {
+        const double epsilon = .001;
+        if (Math.Abs(a.X-b.X) < epsilon && Math.Abs(c.X-d.X) < epsilon && Math.Abs(a.X-c.X) < epsilon)
+            return Math.Min(Math.Max(a.Y,b.Y),Math.Max(c.Y,d.Y))-Math.Max(Math.Min(a.Y,b.Y),Math.Min(c.Y,d.Y)) > epsilon;
+        if (Math.Abs(a.Y-b.Y) < epsilon && Math.Abs(c.Y-d.Y) < epsilon && Math.Abs(a.Y-c.Y) < epsilon)
+            return Math.Min(Math.Max(a.X,b.X),Math.Max(c.X,d.X))-Math.Max(Math.Min(a.X,b.X),Math.Min(c.X,d.X)) > epsilon;
+        return false;
     }
 
     private static void AssertLabelsUseGutters(CompositionGraph graph)

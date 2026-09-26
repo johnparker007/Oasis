@@ -215,6 +215,14 @@
                 </Setter>
             </Style>
 
+            <Style x:Key="OasisGraphEdgeLabelBadgeStyle" TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="3"/>
+                <Setter Property="Padding" Value="4,1"/>
+            </Style>
+
             <Style TargetType="StatusBar">
                 <Setter Property="Background" Value="{DynamicResource ToolBarBackgroundBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />

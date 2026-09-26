@@ -27,7 +27,7 @@ public sealed class MachineCompositionGraphXamlTests
             overview.Descendants(Presentation + "Expander").Single().Attribute("Style")?.Value);
 
         var app = XDocument.Load(Path.Combine(AppContext.BaseDirectory, "App.xaml"));
-        var required = new[] { "OasisWorkspaceTabControlStyle", "OasisWorkspaceTabItemStyle", "OasisDiagnosticsExpanderStyle" };
+        var required = new[] { "OasisWorkspaceTabControlStyle", "OasisWorkspaceTabItemStyle", "OasisDiagnosticsExpanderStyle", "OasisGraphEdgeLabelBadgeStyle" };
         foreach (var key in required)
         {
             var style = app.Descendants(Presentation + "Style").Single(x => x.Attribute(Xaml + "Key")?.Value == key);

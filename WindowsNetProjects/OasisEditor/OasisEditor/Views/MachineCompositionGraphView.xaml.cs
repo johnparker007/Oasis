@@ -9,6 +9,7 @@ namespace OasisEditor.Views;
 
 public partial class MachineCompositionGraphView : UserControl
 {
+    internal const string EdgeLabelBadgeStyleKey = "OasisGraphEdgeLabelBadgeStyle";
     private readonly ScaleTransform _scale = new(1, 1);
     private readonly TranslateTransform _translate = new();
     private MachineCompositionGraphViewModel? _viewModel;
@@ -52,8 +53,7 @@ public partial class MachineCompositionGraphView : UserControl
             if (edge.Kind == MachineCompositionEdgeKind.Provenance) line.StrokeDashArray = new DoubleCollection { 5, 4 };
             GraphCanvas.Children.Add(line);
             if (string.IsNullOrWhiteSpace(edge.Label)) continue;
-            var label = new Border { Background=BrushResource("WorkspaceBackgroundBrush"), Padding=new Thickness(4,1,4,1),
-                ToolTip=edge.Label,
+            var label = new Border { Style=TryFindResource(EdgeLabelBadgeStyleKey) as Style, ToolTip=edge.Label,
                 Child=new TextBlock { Text=edge.Label, FontSize=11, Foreground=BrushResource("TextSecondaryBrush"),
                     MaxWidth=route.LabelMaxWidth, MaxHeight=34, TextWrapping=TextWrapping.Wrap, TextTrimming=TextTrimming.CharacterEllipsis } };
             Canvas.SetLeft(label, route.LabelPosition.X); Canvas.SetTop(label, route.LabelPosition.Y); GraphCanvas.Children.Add(label);
