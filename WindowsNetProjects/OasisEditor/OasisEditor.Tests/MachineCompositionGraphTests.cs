@@ -1,4 +1,5 @@
 using OasisEditor.Features.CabinetEditor.Models;
+using OasisEditor.Features.CabinetEditor.Services;
 using Xunit;
 using CompositionGraph = OasisEditor.MachineCompositionGraph;
 
@@ -35,8 +36,8 @@ public sealed class MachineCompositionGraphTests
         Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Panel2D));
         Assert.Equal(2, graph.Nodes.Count(x => x.Kind == MachineCompositionNodeKind.Reel));
         Assert.Equal(2, graph.Edges.Count(x => x.Kind == MachineCompositionEdgeKind.Provenance));
-        Assert.Contains(graph.Edges, x => x.Label == "topGlass");
-        Assert.Contains(graph.Edges, x => x.Label == "bottomGlass");
+        Assert.Contains(graph.Edges, x => x.RelationshipId == "topGlass" && x.Label == "Top Glass");
+        Assert.Contains(graph.Edges, x => x.RelationshipId == "bottomGlass" && x.Label == "Bottom Glass");
         var reelEdges = graph.Edges.Where(x => x.LogicalReelRoleIds is { Length: > 0 }).ToArray();
         Assert.Equal(2, reelEdges.Length);
         Assert.Contains(reelEdges, x => x.Label == "Reels 0, 1, 2" && x.LogicalReelRoleIds!.SequenceEqual(["0", "1", "2"]));
@@ -45,6 +46,14 @@ public sealed class MachineCompositionGraphTests
         AssertNoNodeOverlap(graph);
         AssertRoutesAvoidUnrelatedNodes(graph);
         AssertLabelsUseGutters(graph);
+        var faceNodes = graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Face).ToDictionary(x => x.Title);
+        Assert.True(faceNodes["Top"].Y < faceNodes["Bottom"].Y);
+        var reelNodes = graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Reel).ToDictionary(x => x.Title);
+        Assert.Equal(faceNodes["Top"].Y, reelNodes["Small"].Y);
+        Assert.Equal(faceNodes["Bottom"].Y, reelNodes["Standard"].Y);
+        var targetRoutes = graph.Routes.Where(x => x.Edge.RelationshipId is "topGlass" or "bottomGlass").ToArray();
+        Assert.Equal(2, targetRoutes.Length);
+        Assert.Equal(2, targetRoutes.Select(x => x.LabelPosition).Distinct().Count());
         Assert.Empty(graph.Diagnostics);
     }
 
@@ -95,6 +104,38 @@ public sealed class MachineCompositionGraphTests
         Assert.Equal(json, MachineDocumentStorage.Serialize(machine));
     }
 
+    [Fact]
+    public void Build_OrdersFacesByCabinetTargetsThenUnknownTargetsDeterministically()
+    {
+        using var fixture = new GraphFixture();
+        var cabinet = fixture.WriteCabinet("Cabinet", AssetReferenceScope.Project);
+        var bottom = fixture.WriteFace("A-Bottom", null);
+        var top = fixture.WriteFace("Z-Top", null);
+        var unknownZ = fixture.WriteFace("A-Unknown", null);
+        var unknownA = fixture.WriteFace("Z-Unknown", null);
+        var graph = fixture.Build(MachineDocument.Create("Machine") with
+        {
+            CabinetAsset=cabinet,
+            SurfaceAssignments=[new("unknownZ",unknownZ),new("bottomGlass",bottom),new("topGlass",top),new("unknownA",unknownA)]
+        });
+
+        Assert.Equal(["Z-Top", "A-Bottom", "Z-Unknown", "A-Unknown"],
+            graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Face).OrderBy(x => x.Y).Select(x => x.Title).ToArray());
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void Build_CabinetMetadataCountsDetectedTargetsNotSparseOverrides(int overrideCount)
+    {
+        using var fixture = new GraphFixture();
+        var settings = new[] { CabinetSurfaceTargetSettings.Default("topGlass"), CabinetSurfaceTargetSettings.Default("bottomGlass") }.Take(overrideCount).ToArray();
+        var cabinet = fixture.WriteCabinet("Cabinet", AssetReferenceScope.Project, settings);
+        var graph = fixture.Build(MachineDocument.Create("Machine") with { CabinetAsset=cabinet });
+        Assert.Equal("Project · 2 face targets", Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Cabinet)).Metadata);
+    }
+
     private static void AssertNoNodeOverlap(CompositionGraph graph)
     {
         for (var i = 0; i < graph.Nodes.Count; i++)
@@ -103,7 +144,7 @@ public sealed class MachineCompositionGraphTests
     }
 
     private static string[] RouteSignature(CompositionGraph graph) => graph.Routes.Select(route =>
-        $"{route.Edge.FromNodeId}|{route.Edge.ToNodeId}|{route.Edge.Label}|{string.Join(',', route.Edge.LogicalReelRoleIds ?? [])}|"
+        $"{route.Edge.FromNodeId}|{route.Edge.ToNodeId}|{route.Edge.Label}|{route.Edge.RelationshipId}|{string.Join(',', route.Edge.LogicalReelRoleIds ?? [])}|"
         + string.Join(';', route.Points.Select(point => $"{point.X},{point.Y}")) + $"|{route.LabelPosition.X},{route.LabelPosition.Y}").ToArray();
 
     private static void AssertRoutesAvoidUnrelatedNodes(CompositionGraph graph)
@@ -141,16 +182,19 @@ public sealed class MachineCompositionGraphTests
         private readonly string _root = Path.Combine(Path.GetTempPath(), "OasisGraph_" + Guid.NewGuid().ToString("N"));
         public EditorProject Project { get; }
         public string LibraryRoot { get; }
+        private readonly StubTargetDetector _targetDetector = new();
         public GraphFixture()
         {
             var assets=Path.Combine(_root,"Assets"); Directory.CreateDirectory(assets); LibraryRoot=Path.Combine(_root,"Library"); Directory.CreateDirectory(LibraryRoot);
             Project=new EditorProject { Name="Graph", ProjectDirectory=_root, ProjectFilePath=Path.Combine(_root,"Graph.oasisproj"), AssetsDirectory=assets, GeneratedDirectory=Path.Combine(_root,"Generated") };
         }
-        public CompositionGraph Build(MachineDocument machine) => new MachineCompositionGraphBuilder().Build(machine,Project,LibraryRoot);
-        public AssetReference WriteCabinet(string name, AssetReferenceScope scope)
+        public CompositionGraph Build(MachineDocument machine) => new MachineCompositionGraphBuilder(_targetDetector).Build(machine,Project,LibraryRoot);
+        public AssetReference WriteCabinet(string name, AssetReferenceScope scope, CabinetSurfaceTargetSettings[]? settings = null)
         {
             var relative=$"Cabinets/{name}/asset.cabinet3d"; var path=Path.Combine(scope==AssetReferenceScope.Project?_root:LibraryRoot,relative.Replace('/',Path.DirectorySeparatorChar));
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!); File.WriteAllText(path,CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb")));
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "cabinet.glb"), "test model");
+            File.WriteAllText(path,CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb") with { SurfaceTargetSettings=settings ?? [] }));
             return new(scope,relative);
         }
         public AssetReference WriteReel(string name, AssetReferenceScope scope, double diameter, double width)
@@ -172,5 +216,12 @@ public sealed class MachineCompositionGraphTests
             File.WriteAllText(path,FaceDocumentStorage.Serialize(face)); return relative;
         }
         public void Dispose() { if (Directory.Exists(_root)) Directory.Delete(_root,true); }
+    }
+
+    private sealed class StubTargetDetector : ICabinetFaceTargetDetector
+    {
+        public IReadOnlyList<CabinetFaceTarget> DetectTargets(string modelPath, CancellationToken cancellationToken = default) =>
+            [Target("topGlass", "Top Glass"), Target("bottomGlass", "Bottom Glass")];
+        private static CabinetFaceTarget Target(string id, string name) => new(id, "OasisFace_" + id, name, [], default, default, true, null);
     }
 }

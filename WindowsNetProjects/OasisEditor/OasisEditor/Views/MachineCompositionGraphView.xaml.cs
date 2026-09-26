@@ -46,8 +46,9 @@ public partial class MachineCompositionGraphView : UserControl
         foreach (var route in graph.Routes)
         {
             var edge = route.Edge;
-            var line = new Polyline { StrokeThickness=2, Points=new PointCollection(route.Points.Select(x => new Point(x.X,x.Y))),
-                Stroke = BrushResource(edge.Kind == MachineCompositionEdgeKind.Provenance ? "TextSecondaryBrush" : "BorderStrongBrush") };
+            var line = new Polyline { StrokeThickness=edge.Kind == MachineCompositionEdgeKind.Provenance ? 1.5 : 2.25,
+                Points=new PointCollection(route.Points.Select(x => new Point(x.X,x.Y))),
+                Stroke = BrushResource(edge.Kind == MachineCompositionEdgeKind.Provenance ? "TextMutedBrush" : "TextSecondaryBrush") };
             if (edge.Kind == MachineCompositionEdgeKind.Provenance) line.StrokeDashArray = new DoubleCollection { 5, 4 };
             GraphCanvas.Children.Add(line);
             if (string.IsNullOrWhiteSpace(edge.Label)) continue;

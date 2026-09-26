@@ -439,11 +439,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             RefreshMachineReelRowsFromAssignedFaces(project);
             return;
         }
-        var modelPath = Path.IsPathFullyQualified(cabinet.Model.Path) ? cabinet.Model.Path : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(cabinetPath)!, cabinet.Model.Path));
         var faceChoices = MachineFaceChoices.ToList();
-        var targets = File.Exists(modelPath)
-            ? new GlbCabinetFaceTargetDetector().DetectTargets(modelPath, CancellationToken.None).Where(target => target.IsValid).Select(target => (target.Id, target.DisplayName)).ToList()
-            : [];
+        var targets = CabinetFaceTargetDiscovery.Discover(cabinetPath, cabinet, new GlbCabinetFaceTargetDetector()).Targets
+            .Select(target => (target.Id, target.DisplayName)).ToList();
         foreach (var assignment in _machineDocumentModel.SurfaceAssignments.Where(assignment => targets.All(target => !string.Equals(target.Id, assignment.TargetId, StringComparison.Ordinal))))
             targets.Add((assignment.TargetId, $"Missing target: {assignment.TargetId}"));
         var existingTargets = MachineSurfaceAssignmentRows.ToDictionary(row => row.TargetId, StringComparer.Ordinal);

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.IO;
 using OasisEditor.Features.CabinetEditor.Models;
+using OasisEditor.Features.CabinetEditor.Services;
 
 namespace OasisEditor;
 
@@ -11,9 +12,10 @@ public enum MachineCompositionDiagnosticSeverity { Warning, Error }
 public sealed record MachineCompositionNode(
     string Id, MachineCompositionNodeKind Kind, string Title, string Metadata,
     AssetReferenceScope? Scope = null, string? ManifestPath = null, bool IsMissing = false,
-    double X = 0, double Y = 0, double Width = 190, double Height = 92);
+    double X = 0, double Y = 0, double Width = 190, double Height = 92, int LayoutOrder = int.MaxValue);
 
-public sealed record MachineCompositionEdge(string FromNodeId, string ToNodeId, string Label, MachineCompositionEdgeKind Kind, string[]? LogicalReelRoleIds = null);
+public sealed record MachineCompositionEdge(string FromNodeId, string ToNodeId, string Label, MachineCompositionEdgeKind Kind,
+    string[]? LogicalReelRoleIds = null, string? RelationshipId = null);
 public sealed record MachineCompositionRoute(MachineCompositionEdge Edge, IReadOnlyList<MachineCompositionPoint> Points, MachineCompositionPoint LabelPosition);
 public readonly record struct MachineCompositionPoint(double X, double Y);
 public sealed record MachineCompositionDiagnostic(MachineCompositionDiagnosticSeverity Severity, string Message, string? NodeId = null);
@@ -28,6 +30,10 @@ public sealed class MachineCompositionGraphBuilder
 {
     private readonly AssetReferenceResolver _resolver = new();
     private readonly ProjectAssetPathService _paths = new();
+    private readonly ICabinetFaceTargetDetector _cabinetTargetDetector;
+
+    public MachineCompositionGraphBuilder(ICabinetFaceTargetDetector? cabinetTargetDetector = null) =>
+        _cabinetTargetDetector = cabinetTargetDetector ?? new GlbCabinetFaceTargetDetector();
 
     public MachineCompositionGraph Build(MachineDocument machine, EditorProject project, string libraryRoot,
         IReadOnlyList<DocumentTabViewModel>? openDocuments = null)
@@ -47,6 +53,7 @@ public sealed class MachineCompositionGraphBuilder
 
         string? cabinetId = null;
         CabinetDocument? cabinet = null;
+        IReadOnlyList<CabinetFaceTarget> cabinetTargets = [];
         if (machine.CabinetAsset is null)
             diagnostics.Add(new(MachineCompositionDiagnosticSeverity.Warning, "No Cabinet is assigned to this Machine.", machineId));
         else
@@ -54,16 +61,25 @@ public sealed class MachineCompositionGraphBuilder
             cabinetId = "cabinet:" + machine.CabinetAsset;
             var result = ReadReference(project, libraryRoot, machine.CabinetAsset, json => CabinetDocumentStorage.TryRead(json, out cabinet));
             var title = result.Exists && cabinet is not null ? PackageName(result.Path) : "Missing Cabinet";
+            var targetDiscovery = cabinet is null ? CabinetFaceTargetDiscoveryResult.Unavailable :
+                CabinetFaceTargetDiscovery.Discover(result.Path, cabinet, _cabinetTargetDetector);
+            cabinetTargets = targetDiscovery.Targets;
+            var metadata = targetDiscovery.Succeeded
+                ? $"{machine.CabinetAsset.Scope} · {cabinetTargets.Count} face targets"
+                : machine.CabinetAsset.Scope.ToString();
             nodes[cabinetId] = new(cabinetId, MachineCompositionNodeKind.Cabinet, title,
-                result.Exists && cabinet is not null ? $"{machine.CabinetAsset.Scope} · {cabinet.SurfaceTargetSettings.Length} configured targets" : $"{machine.CabinetAsset.Path} · {machine.CabinetAsset.Scope}",
+                result.Exists && cabinet is not null ? metadata : $"{machine.CabinetAsset.Path} · {machine.CabinetAsset.Scope}",
                 machine.CabinetAsset.Scope, result.Exists ? result.Path : null, !result.Valid);
             edges.Add(new(machineId, cabinetId, string.Empty, MachineCompositionEdgeKind.Composition));
             if (!result.Valid) diagnostics.Add(new(MachineCompositionDiagnosticSeverity.Error,
                 result.Exists ? $"Cabinet reference is invalid: {machine.CabinetAsset.Path}" : $"Cabinet asset is missing: {machine.CabinetAsset.Path}", cabinetId));
         }
 
-        foreach (var assignment in machine.SurfaceAssignments.OrderBy(x => x.TargetId, StringComparer.Ordinal))
+        var targetNames = cabinetTargets.ToDictionary(x => x.Id, x => x.DisplayName, StringComparer.Ordinal);
+        var orderedAssignments = OrderSurfaceAssignments(machine.SurfaceAssignments, cabinetTargets);
+        for (var assignmentIndex = 0; assignmentIndex < orderedAssignments.Count; assignmentIndex++)
         {
+            var assignment = orderedAssignments[assignmentIndex];
             var normalized = ProjectAssetPathService.NormalizeProjectRelativePath(assignment.FaceAssetPath);
             var faceId = "face:" + normalized;
             var facePath = TryProjectPath(project, normalized);
@@ -84,8 +100,10 @@ public sealed class MachineCompositionGraphBuilder
             }
             if (!nodes.ContainsKey(faceId))
                 nodes[faceId] = new(faceId, MachineCompositionNodeKind.Face, valid ? (string.IsNullOrWhiteSpace(face!.Title) ? PackageName(facePath) : face.Title) : "Missing Face",
-                    valid ? "Project" : $"{normalized} · Project", AssetReferenceScope.Project, valid ? facePath : null, !valid);
-            edges.Add(new(cabinetId ?? machineId, faceId, assignment.TargetId, MachineCompositionEdgeKind.Composition));
+                    valid ? "Project" : $"{normalized} · Project", AssetReferenceScope.Project, valid ? facePath : null, !valid, LayoutOrder: assignmentIndex);
+            else if (assignmentIndex < nodes[faceId].LayoutOrder) nodes[faceId] = nodes[faceId] with { LayoutOrder = assignmentIndex };
+            var targetLabel = targetNames.GetValueOrDefault(assignment.TargetId, assignment.TargetId);
+            edges.Add(new(cabinetId ?? machineId, faceId, targetLabel, MachineCompositionEdgeKind.Composition, RelationshipId: assignment.TargetId));
             if (!valid)
             {
                 diagnostics.Add(new(MachineCompositionDiagnosticSeverity.Error, exists
@@ -167,7 +185,8 @@ public sealed class MachineCompositionGraphBuilder
     private MachineCompositionGraph Layout(IEnumerable<MachineCompositionNode> source, List<MachineCompositionEdge> edges, List<MachineCompositionDiagnostic> diagnostics)
     {
         var nodes = source.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase);
-        var faces = Nodes(MachineCompositionNodeKind.Face);
+        var faces = nodes.Values.Where(x => x.Kind == MachineCompositionNodeKind.Face)
+            .OrderBy(x => x.LayoutOrder).ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase).ToArray();
         var reels = Nodes(MachineCompositionNodeKind.Reel).Concat(Nodes(MachineCompositionNodeKind.MissingReelAssignment))
             .OrderBy(node => FirstSourceRow(node.Id, faces, edges)).ThenBy(node => node.Id, StringComparer.OrdinalIgnoreCase).ToArray();
         Place(Nodes(MachineCompositionNodeKind.Machine), 30, 190, 125);
@@ -188,6 +207,15 @@ public sealed class MachineCompositionGraphBuilder
             var index = 0;
             foreach (var item in items) nodes[item.Id] = item with { X = x, Y = y + index++ * step };
         }
+    }
+
+    internal static IReadOnlyList<MachineSurfaceAssignment> OrderSurfaceAssignments(IReadOnlyList<MachineSurfaceAssignment> assignments,
+        IReadOnlyList<CabinetFaceTarget> targets)
+    {
+        var order = targets.Select((target, index) => (target.Id, index)).ToDictionary(x => x.Id, x => x.index, StringComparer.Ordinal);
+        return assignments.OrderBy(x => order.TryGetValue(x.TargetId, out var index) ? index : int.MaxValue)
+            .ThenBy(x => order.ContainsKey(x.TargetId) ? string.Empty : x.TargetId, StringComparer.Ordinal)
+            .ThenBy(x => x.FaceAssetPath, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
     private static int FirstSourceRow(string reelId, IReadOnlyList<MachineCompositionNode> faces, IReadOnlyList<MachineCompositionEdge> edges)
@@ -214,13 +242,18 @@ public sealed class MachineCompositionGraphBuilder
         var from = nodes[edge.FromNodeId]; var to = nodes[edge.ToNodeId];
         var start = new MachineCompositionPoint(from.X + from.Width, from.Y + from.Height / 2);
         var end = new MachineCompositionPoint(to.X, to.Y + to.Height / 2);
-        var gutter = edge.Kind == MachineCompositionEdgeKind.Provenance || from.Kind == MachineCompositionNodeKind.Machine && to.Kind == MachineCompositionNodeKind.Face
-            ? to.X - 25
-            : (start.X + end.X) / 2;
+        var gutter = from.Kind == MachineCompositionNodeKind.Cabinet && to.Kind == MachineCompositionNodeKind.Face
+            ? start.X + 10
+            : edge.Kind == MachineCompositionEdgeKind.Provenance || from.Kind == MachineCompositionNodeKind.Machine && to.Kind == MachineCompositionNodeKind.Face
+                ? to.X - 25
+                : (start.X + end.X) / 2;
         var points = new[] { start, new MachineCompositionPoint(gutter, start.Y), new MachineCompositionPoint(gutter, end.Y), end };
         // Labels occupy the reserved horizontal lane immediately after the source port,
         // never the geometric midpoint where an unrelated card may be present.
-        var label = new MachineCompositionPoint(start.X + 8, end.Y - 22);
+        var labelX = from.Kind == MachineCompositionNodeKind.Cabinet && to.Kind == MachineCompositionNodeKind.Face
+            ? end.X - 104
+            : start.X + 8;
+        var label = new MachineCompositionPoint(labelX, end.Y - 22);
         return new(edge, points, label);
     }
 
