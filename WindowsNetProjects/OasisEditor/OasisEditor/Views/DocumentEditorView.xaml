@@ -74,11 +74,14 @@
                 <cabinetViews:CabinetModelDocumentView />
             </Grid>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <ScrollViewer.Style>
-                    <Style TargetType="ScrollViewer"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Machine}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style>
-                </ScrollViewer.Style>
-                <StackPanel Margin="16" MaxWidth="900" HorizontalAlignment="Left">
+            <TabControl SelectedIndex="0">
+                <TabControl.Style>
+                    <Style TargetType="TabControl"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Machine}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style>
+                </TabControl.Style>
+                <TabItem Header="Overview"><views:MachineCompositionGraphView/></TabItem>
+                <TabItem Header="Details">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                  <StackPanel Margin="16" MaxWidth="900" HorizontalAlignment="Left">
                     <TextBlock Text="Machine Composition" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,16"/>
                     <TextBlock Text="Display name" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding MachineDisplayName, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,12"/>
                     <TextBlock Text="Cabinet" Foreground="{DynamicResource TextSecondaryBrush}"/><Grid Margin="0,3,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><ComboBox ItemsSource="{Binding MachineCabinetChoices}" ItemTemplate="{StaticResource MachineAssetChoiceTemplate}" SelectedItem="{Binding SelectedMachineCabinetChoice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/><Button Grid.Column="1" Content="Open" Command="{Binding OpenSelectedCabinetAssetCommand}" ToolTip="Open Asset" Margin="6,0,0,0" Padding="8,2"/></Grid>
@@ -86,8 +89,10 @@
                     <TextBlock Text="Face Targets" FontWeight="SemiBold"/><ItemsControl ItemsSource="{Binding MachineSurfaceAssignmentRows}" Margin="0,4,0,16"><ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,2"><Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="240"/><ColumnDefinition Width="300"/></Grid.ColumnDefinitions><TextBlock Text="{Binding DisplayName}"/><TextBlock Grid.Column="1" Text="{Binding TargetId}" Foreground="{DynamicResource TextSecondaryBrush}"/><ComboBox Grid.Column="2" ItemsSource="{Binding Choices}" ItemTemplate="{StaticResource MachineAssetChoiceTemplate}" SelectedValuePath="AssetPath" SelectedValue="{Binding SelectedAssetPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
                     <TextBlock Text="Machine Reels" FontWeight="SemiBold"/><ItemsControl ItemsSource="{Binding MachineReelAssignmentRows}" Margin="0,4,0,16"><ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,2"><Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="300"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding DisplayName}"/><ComboBox Grid.Column="1" ItemsSource="{Binding Choices}" ItemTemplate="{StaticResource MachineAssetChoiceTemplate}" SelectedItem="{Binding SelectedChoice, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/><Button Grid.Column="2" Content="Open" Command="{Binding OpenSelectedAssetCommand}" ToolTip="Open Asset" Margin="6,0,0,0" Padding="8,2"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
                     <TextBlock Text="Inputs" FontWeight="SemiBold"/><TextBlock Text="{Binding MachineInputs.Count, StringFormat={}{0} input definitions}" Margin="0,4,0,0"/>
-                </StackPanel>
-            </ScrollViewer>
+                  </StackPanel>
+                </ScrollViewer>
+                </TabItem>
+            </TabControl>
 
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <ScrollViewer.Style><Style TargetType="ScrollViewer"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Reel}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></ScrollViewer.Style>

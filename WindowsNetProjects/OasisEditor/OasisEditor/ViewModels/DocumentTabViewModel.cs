@@ -49,6 +49,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private Func<string>? _libraryRootAccessor;
     private Action<string>? _openAssetDocument;
     private readonly FaceWorkspaceViewModel? _faceWorkspace;
+    private readonly MachineCompositionGraphViewModel? _machineCompositionGraph;
     private readonly FaceRuntimeAssetsConfigurationService _runtimeAssetsConfiguration = new();
     private SKBitmap? _correctionInputBitmap;
     private string? _correctionInputCacheKey;
@@ -122,6 +123,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         OpenSelectedCabinetAssetCommand = new RelayCommand(OpenSelectedCabinetAsset, () => CanOpenSelectedCabinetAsset);
         RebuildLampCaches();
         _faceWorkspace = document.DocumentType == EditorDocumentType.Face ? new FaceWorkspaceViewModel(this) : null;
+        _machineCompositionGraph = document.DocumentType == EditorDocumentType.Machine ? new MachineCompositionGraphViewModel(this) : null;
     }
 
     public EditorDocument Document => _document;
@@ -130,6 +132,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public MachineRuntimeState RuntimeState => _runtimeState;
     public DocumentSelectionState SelectionState { get; } = new();
     public FaceWorkspaceViewModel? FaceWorkspace => _faceWorkspace;
+    public MachineCompositionGraphViewModel? MachineCompositionGraph => _machineCompositionGraph;
     internal IProgressDialogService ProgressDialogService => _progressDialogService;
     public string Title => Document.IsDirty ? $"{Document.Title}*" : Document.Title;
     public string TypeLabel => Document.DocumentType switch
@@ -175,6 +178,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         _openDocumentsAccessor = openDocumentsAccessor;
         ReconcileRuntimeAssetsConfiguration();
+        RefreshMachineCompositionGraph();
     }
 
     public void SetProjectAccessor(Func<EditorProject?> projectAccessor)
@@ -183,12 +187,14 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         ReconcileRuntimeAssetsConfiguration();
         _cabinetViewer?.ReflectionEditor.RefreshProjectContext();
         RefreshMachineCompositionChoices();
+        RefreshMachineCompositionGraph();
     }
     public void SetLibraryRootAccessor(Func<string> libraryRootAccessor)
     {
         _libraryRootAccessor = libraryRootAccessor;
         RefreshMachineCompositionChoices();
         _cabinetViewer?.RefreshFacePreviews();
+        RefreshMachineCompositionGraph();
     }
 
     public void SetAssetDocumentOpener(Action<string> openAssetDocument)
@@ -304,6 +310,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _openAssetDocument(path);
     }
 
+    internal void OpenMachineGraphAsset(string path)
+    {
+        if (_openAssetDocument is not null && File.Exists(path)) _openAssetDocument(path);
+    }
+
     internal bool CanOpenMachineAssetReference(AssetReference? reference) => CanOpenMachineAsset(reference);
 
     private void NotifyMachineAssetNavigationChanged()
@@ -356,6 +367,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                 RefreshMachineReelRowsFromAssignedFaces(project);
         }
         NotifyMachineAssetNavigationChanged();
+        RefreshMachineCompositionGraph();
     }
 
     internal void RefreshMachineCompositionChoices()
@@ -365,15 +377,18 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var faceChoices = DiscoverProjectAssetChoices(project, EditorAssetType.Face);
         var reelChoices = DiscoverAssetChoices(project, EditorAssetType.Reel);
         var signature = BuildMachineCompositionCatalogSignature(project, cabinetChoices, faceChoices.Concat(reelChoices).ToArray());
-        if (string.Equals(signature, _machineCompositionCatalogSignature, StringComparison.Ordinal)) { NotifyMachineAssetNavigationChanged(); return; }
+        if (string.Equals(signature, _machineCompositionCatalogSignature, StringComparison.Ordinal)) { NotifyMachineAssetNavigationChanged(); RefreshMachineCompositionGraph(); return; }
         _isRefreshingMachineCompositionChoices = true;
         try
         {
             RefreshMachineCompositionChoicesCore(project, cabinetChoices, faceChoices);
             _machineCompositionCatalogSignature = signature;
         }
-        finally { _isRefreshingMachineCompositionChoices = false; NotifyMachineAssetNavigationChanged(); }
+        finally { _isRefreshingMachineCompositionChoices = false; NotifyMachineAssetNavigationChanged(); RefreshMachineCompositionGraph(); }
     }
+
+    internal void RefreshMachineCompositionGraph() => _machineCompositionGraph?.Refresh(
+        _projectAccessor?.Invoke(), LibraryRoot(), _openDocumentsAccessor?.Invoke());
 
     private void RefreshMachineCompositionChoicesCore(EditorProject project, IReadOnlyList<MachineAssetChoice> cabinetAssets, IReadOnlyList<MachineAssetChoice> faceAssets)
     {
