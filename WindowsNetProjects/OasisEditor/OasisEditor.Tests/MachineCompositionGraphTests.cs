@@ -149,6 +149,60 @@ public sealed class MachineCompositionGraphTests
     }
 
     [Fact]
+    public void Build_UnassignedCabinetTargetsProduceGenericPerTargetWarnings()
+    {
+        using var fixture = new GraphFixture([
+            StubTargetDetector.Target("mainDisplay", "Main Display"),
+            StubTargetDetector.Target("controlPanel", "Control Panel")]);
+        var cabinet = fixture.WriteCabinet("Cabinet", AssetReferenceScope.Project);
+
+        var graph = fixture.Build(MachineDocument.Create("Machine") with { CabinetAsset=cabinet });
+
+        Assert.Single(graph.Nodes.Where(node => node.Kind == MachineCompositionNodeKind.Cabinet));
+        Assert.Empty(graph.Nodes.Where(node => node.Kind == MachineCompositionNodeKind.Face));
+        var warnings = UnassignedTargetWarnings(graph);
+        Assert.Equal(2, warnings.Length);
+        Assert.All(warnings, warning => Assert.Equal(MachineCompositionDiagnosticSeverity.Warning, warning.Severity));
+        Assert.Contains(warnings, warning => warning.Message == "Cabinet target 'Main Display' has no Face assigned.");
+        Assert.Contains(warnings, warning => warning.Message == "Cabinet target 'Control Panel' has no Face assigned.");
+        Assert.Equal("Composition diagnostics: 2 issues", MachineCompositionGraphViewModel.FormatDiagnosticsSummary(graph.Diagnostics.Count));
+    }
+
+    [Fact]
+    public void Build_UnassignedTargetWarningsTrackPartialAndCompleteAssignments()
+    {
+        using var fixture = new GraphFixture();
+        var cabinet = fixture.WriteCabinet("Cabinet", AssetReferenceScope.Project);
+        var top = fixture.WriteFace("Top", null);
+        var bottom = fixture.WriteFace("Bottom", null);
+        var baseMachine = MachineDocument.Create("Machine") with { CabinetAsset=cabinet };
+
+        var partial = fixture.Build(baseMachine with { SurfaceAssignments=[new("topGlass",top)] });
+        Assert.Equal("Cabinet target 'Bottom Glass' has no Face assigned.", Assert.Single(UnassignedTargetWarnings(partial)).Message);
+
+        var complete = fixture.Build(baseMachine with { SurfaceAssignments=[new("topGlass",top),new("bottomGlass",bottom)] });
+        Assert.Empty(UnassignedTargetWarnings(complete));
+        Assert.Equal("Composition diagnostics: no issues", MachineCompositionGraphViewModel.FormatDiagnosticsSummary(complete.Diagnostics.Count));
+
+        var clearedAgain = fixture.Build(baseMachine with { SurfaceAssignments=[new("bottomGlass",bottom)] });
+        Assert.Equal("Cabinet target 'Top Glass' has no Face assigned.", Assert.Single(UnassignedTargetWarnings(clearedAgain)).Message);
+    }
+
+    [Fact]
+    public void Build_UnavailableCabinetTargetsDoNotProduceAssignmentWarnings()
+    {
+        using var fixture = new GraphFixture();
+        var missing = fixture.Build(MachineDocument.Create("Missing") with { CabinetAsset=AssetReference.Project("Cabinets/Missing/asset.cabinet3d") });
+        Assert.Contains(missing.Diagnostics, diagnostic => diagnostic.Message.Contains("Cabinet asset is missing", StringComparison.Ordinal));
+        Assert.Empty(UnassignedTargetWarnings(missing));
+
+        var invalidReference = fixture.WriteInvalidCabinet("Invalid");
+        var invalid = fixture.Build(MachineDocument.Create("Invalid") with { CabinetAsset=invalidReference });
+        Assert.Contains(invalid.Diagnostics, diagnostic => diagnostic.Message.Contains("Cabinet reference is invalid", StringComparison.Ordinal));
+        Assert.Empty(UnassignedTargetWarnings(invalid));
+    }
+
+    [Fact]
     public void Build_DistributesThreeIncomingAndMultipleOutgoingPortsDeterministically()
     {
         using var fixture = new GraphFixture();
@@ -266,6 +320,9 @@ public sealed class MachineCompositionGraphTests
             Assert.False(Intersects(graph.Nodes[i], graph.Nodes[j]), $"{graph.Nodes[i].Id} overlaps {graph.Nodes[j].Id}");
     }
 
+    private static MachineCompositionDiagnostic[] UnassignedTargetWarnings(CompositionGraph graph) => graph.Diagnostics
+        .Where(diagnostic => diagnostic.Message.Contains("has no Face assigned", StringComparison.Ordinal)).ToArray();
+
     private static string[] RouteSignature(CompositionGraph graph) => graph.Routes.Select(route =>
         $"{route.Edge.FromNodeId}|{route.Edge.ToNodeId}|{route.Edge.Label}|{route.Edge.RelationshipId}|{string.Join(',', route.Edge.LogicalReelRoleIds ?? [])}|"
         + $"{route.SourcePort.X},{route.SourcePort.Y}|{route.DestinationPort.X},{route.DestinationPort.Y}|"
@@ -345,6 +402,12 @@ public sealed class MachineCompositionGraphTests
             File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "cabinet.glb"), "test model");
             File.WriteAllText(path,CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb") with { SurfaceTargetSettings=settings ?? [] }));
             return new(scope,relative);
+        }
+        public AssetReference WriteInvalidCabinet(string name)
+        {
+            var relative=$"Cabinets/{name}/asset.cabinet3d"; var path=Path.Combine(_root,relative.Replace('/',Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!); File.WriteAllText(path,"not valid cabinet json");
+            return AssetReference.Project(relative);
         }
         public AssetReference WriteReel(string name, AssetReferenceScope scope, double diameter, double width)
         {

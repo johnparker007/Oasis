@@ -56,6 +56,7 @@ public sealed class MachineCompositionGraphBuilder
         string? cabinetId = null;
         CabinetDocument? cabinet = null;
         IReadOnlyList<CabinetFaceTarget> cabinetTargets = [];
+        var cabinetTargetsDiscovered = false;
         if (machine.CabinetAsset is null)
             diagnostics.Add(new(MachineCompositionDiagnosticSeverity.Warning, "No Cabinet is assigned to this Machine.", machineId));
         else
@@ -66,6 +67,7 @@ public sealed class MachineCompositionGraphBuilder
             var targetDiscovery = cabinet is null ? CabinetFaceTargetDiscoveryResult.Unavailable :
                 CabinetFaceTargetDiscovery.Discover(result.Path, cabinet, _cabinetTargetDetector);
             cabinetTargets = targetDiscovery.Targets;
+            cabinetTargetsDiscovered = targetDiscovery.Succeeded;
             var metadata = targetDiscovery.Succeeded
                 ? $"{machine.CabinetAsset.Scope} · {cabinetTargets.Count} face targets"
                 : machine.CabinetAsset.Scope.ToString();
@@ -75,6 +77,17 @@ public sealed class MachineCompositionGraphBuilder
             edges.Add(new(machineId, cabinetId, string.Empty, MachineCompositionEdgeKind.Composition));
             if (!result.Valid) diagnostics.Add(new(MachineCompositionDiagnosticSeverity.Error,
                 result.Exists ? $"Cabinet reference is invalid: {machine.CabinetAsset.Path}" : $"Cabinet asset is missing: {machine.CabinetAsset.Path}", cabinetId));
+        }
+
+        if (cabinetTargetsDiscovered)
+        {
+            var assignedTargetIds = machine.SurfaceAssignments.Select(assignment => assignment.TargetId).ToHashSet(StringComparer.Ordinal);
+            foreach (var target in cabinetTargets.Where(target => !assignedTargetIds.Contains(target.Id)))
+            {
+                var targetName = string.IsNullOrWhiteSpace(target.DisplayName) ? target.Id : target.DisplayName;
+                diagnostics.Add(new(MachineCompositionDiagnosticSeverity.Warning,
+                    $"Cabinet target '{targetName}' has no Face assigned.", cabinetId));
+            }
         }
 
         var targetNames = cabinetTargets.ToDictionary(x => x.Id, x => x.DisplayName, StringComparer.Ordinal);
@@ -344,7 +357,10 @@ public sealed class MachineCompositionGraphViewModel : INotifyPropertyChanged
     public MachineCompositionGraphViewModel(DocumentTabViewModel owner) => _owner = owner;
     public event PropertyChangedEventHandler? PropertyChanged;
     public MachineCompositionGraph Graph { get => _graph; private set { _graph = value; PropertyChanged?.Invoke(this, new(nameof(Graph))); PropertyChanged?.Invoke(this, new(nameof(DiagnosticsSummary))); } }
-    public string DiagnosticsSummary => Graph.Diagnostics.Count == 0 ? "Composition diagnostics: no issues" : $"Composition diagnostics: {Graph.Diagnostics.Count} issue{(Graph.Diagnostics.Count == 1 ? "" : "s")}";
+    public string DiagnosticsSummary => FormatDiagnosticsSummary(Graph.Diagnostics.Count);
+    internal static string FormatDiagnosticsSummary(int count) => count == 0
+        ? "Composition diagnostics: no issues"
+        : $"Composition diagnostics: {count} issue{(count == 1 ? "" : "s")}";
     public string? SelectedNodeId { get => _selectedNodeId; set { if (_selectedNodeId == value) return; _selectedNodeId = value; PropertyChanged?.Invoke(this, new(nameof(SelectedNodeId))); } }
     internal void Refresh(EditorProject? project, string libraryRoot, IReadOnlyList<DocumentTabViewModel>? openDocuments)
     { Graph = project is null ? MachineCompositionGraph.Empty : new MachineCompositionGraphBuilder().Build(_owner.GetMachineDocument(), project, libraryRoot, openDocuments); }

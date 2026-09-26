@@ -65,6 +65,8 @@ A missing or invalid Cabinet, Face, Panel2D provenance, or Reel remains a warnin
 
 Cabinet card target counts also come from that shared GLB discovery result. `SurfaceTargetSettings` is intentionally not counted because it is a sparse override collection, not the Cabinet's target catalog. If the Cabinet model cannot be discovered, the scope remains visible but no false zero count is displayed.
 
+Every successfully discovered Cabinet Face target without a matching `Machine.SurfaceAssignment` produces one warning naming the detector-provided display name (or target ID fallback). This validation is generic over Cabinet targets and makes partial composition actionable without assuming Top/Bottom/Belly semantics. No generic duplicate warning and no fake `Unassigned Face` node are added. Missing or invalid Cabinets do not produce inferred assignment warnings because their target catalog is unavailable. Details mutations already rebuild the graph from the current in-memory Machine, so assigning, clearing, undoing, or redoing a Face updates the warning count immediately; graph refresh itself adds no dirty or undo state.
+
 Cabinet target IDs remain visible on assignment edges. The graph does not parse GLB target geometry independently; the established Machine Details refresh is still the authoritative target discovery/invalid-target editor. An assignment retained by the Machine is still shown, making the authored target intent apparent even if the Cabinet is absent.
 
 ## Navigation
