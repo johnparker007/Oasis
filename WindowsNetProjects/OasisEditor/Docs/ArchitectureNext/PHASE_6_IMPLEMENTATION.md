@@ -18,7 +18,9 @@ These facts led to a focused Canvas control rather than a new dependency or gene
 
 Machine documents now default to the first tab, **Overview**. **Details** contains the unchanged Machine Composition form for display name, Cabinet, platform, Face targets, Reels, and inputs. Switching tabs retains the same `DocumentTabViewModel` and `MachineDocument`; it neither saves nor dirties the document.
 
-Overview supplies Fit to Content and 100% controls. The wheel zooms around the pointer from 25% to 300%. Left-drag on empty background and middle-drag pan. Initial display fits the deterministic graph with a margin. Clicking selects/highlights a node; double-clicking a resolvable asset opens it. Nodes are not draggable.
+Overview supplies Fit to Content and Actual Size controls plus an explicitly labelled current zoom value. The wheel zooms around the pointer from 25% to 300%. Left-drag on empty background and middle-drag pan. Initial display fits the deterministic graph with a margin. Clicking selects/highlights a node; double-clicking a resolvable asset opens it. Nodes are intentionally not draggable: automatic layout must be understandable without manual repair.
+
+The workspace-level TabControl, TabItem, and diagnostics Expander use small shared Oasis control templates backed exclusively by semantic theme resources. This avoids the platform/Fluent fallback chrome that initially produced light selected tabs and a light diagnostics surface. Selected tabs use the Oasis selection brush and a three-pixel lower accent; tab content, toolbar, Details scroll surface, graph viewport, and expanded diagnostics body remain on workspace/panel brushes.
 
 ## Derived graph model
 
@@ -37,9 +39,13 @@ The builder starts at the in-memory Machine and reads only explicitly referenced
 
 Composition edges are solid: Machine -> Cabinet, Machine -> Runtime, Cabinet (or Machine when no Cabinet is authored) -> Face with the target ID, and Face -> Reel with `Reel:n`. Provenance is a separate dashed/lighter Panel2D -> Face edge labelled `source`. The graph does not add Panel2D to build traversal or runtime state.
 
-## Deterministic layout
+## Deterministic semantic layout and routing
 
-The small automatic layout uses fixed semantic columns: Panel2D sources, Faces, Machine, Cabinet/Runtime, then physical Reels/missing assignments. Within each kind, stable identity sorts nodes ordinally and fixed card spacing prevents normal one/two-Face compositions from overlapping. Coordinates are recalculated and never persisted. Tests compare stable identities/layers rather than brittle rendered pixels.
+The initial per-kind column loop was insufficient: Cabinet and Runtime shared a column but each kind restarted at row zero, causing exact overlap, while Face-to-Reel lines crossed the intervening Machine/Cabinet region. The revised layout uses topology-specific lanes rather than enum columns: Machine occupies the root lane; Runtime and Cabinet have distinct rows in the next lane; Faces form a vertically ordered physical-composition lane; Reels are adjacent to and ordered by their first consuming Face; and Panel2D sources occupy a separate lower provenance lane. Missing nodes use the same lanes. Stable identity and first-consuming-Face ordering make repeated builds deterministic, while every lane has explicit card and label gutters. Coordinates are recalculated and never persisted.
+
+Edges now have a derived routing projection containing orthogonal polyline points and an explicit label position. Composition routes leave the source's right port, turn in the reserved inter-lane gutter, and enter the destination's left port. Provenance routes use their own gutter from the lower source lane and retain dashed styling. Machine-to-Cabinet and Machine-to-Runtime labels are omitted because node types make those branches unambiguous; target, source, and Reel labels remain. Labels are anchored just after the source port in reserved horizontal whitespace rather than at a geometric midpoint where another card could cover them.
+
+Logical Reel edges remain derived from every exact `FaceReelMount -> MachineReelAssignment` role, then the graph presentation aggregates edges sharing Face, physical Reel asset, and composition semantics. One role renders as `Reel 3`; several roles render as `Reels 0, 1, 2`. The edge retains the complete ordered logical-role ID array for diagnostics/tests and this aggregation has no effect on runtime/build resolution.
 
 ## Thumbnails and performance
 
@@ -67,7 +73,7 @@ There are no changes to Machine (schema 3), Face, Panel2D, Cabinet, Reel, runtim
 
 ## Automated coverage
 
-`MachineCompositionGraphTests` covers the basic Machine/Runtime/Cabinet/two-Face/two-Reel graph, target labels, shared Panel2D deduplication and provenance-only edges, shared Reel deduplication with four logical-role edges, Project and Library scope, missing Cabinet/Panel2D/Reel assignment diagnostics, unrelated corrupt assets, deterministic layout, and construction without Machine mutation. Existing workspace navigation tests cover canonical already-open tab activation; the graph delegates to that seam rather than duplicating it.
+`MachineCompositionGraphTests` covers the basic Machine/Runtime/Cabinet/two-Face/two-Reel graph, target labels, shared Panel2D deduplication and provenance-only edges, Project and Library scope, missing Cabinet/Panel2D/Reel assignment diagnostics, unrelated corrupt assets, deterministic node and route layout, non-overlapping node rectangles, routes avoiding unrelated node interiors, exact Reel-role preservation through the aggregated `Reels 0, 1, 2` / `Reel 3` presentation, and construction without Machine mutation. Focused XAML tests assert that the Machine tabs and diagnostics use the shared Oasis styles and that those styles consume semantic resources rather than literal colours. Existing workspace navigation tests cover canonical already-open tab activation; the graph delegates to that seam rather than duplicating it.
 
 Per repository instructions, the Windows/.NET/WPF toolchain is unavailable in the container and tests were not executed here.
 

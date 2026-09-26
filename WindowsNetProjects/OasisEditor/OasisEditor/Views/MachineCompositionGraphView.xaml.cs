@@ -43,23 +43,17 @@ public partial class MachineCompositionGraphView : UserControl
         GraphCanvas.Children.Clear();
         var graph = _viewModel?.Graph;
         if (graph is null) return;
-        foreach (var edge in graph.Edges)
+        foreach (var route in graph.Routes)
         {
-            var from = graph.Nodes.FirstOrDefault(x => x.Id == edge.FromNodeId);
-            var to = graph.Nodes.FirstOrDefault(x => x.Id == edge.ToNodeId);
-            if (from is null || to is null) continue;
-            var x1 = from.X + from.Width;
-            var y1 = from.Y + from.Height / 2;
-            var x2 = to.X;
-            var y2 = to.Y + to.Height / 2;
-            if (x2 < x1) { x1 = from.X; x2 = to.X + to.Width; }
-            var line = new Line { X1=x1, Y1=y1, X2=x2, Y2=y2, StrokeThickness=2,
+            var edge = route.Edge;
+            var line = new Polyline { StrokeThickness=2, Points=new PointCollection(route.Points.Select(x => new Point(x.X,x.Y))),
                 Stroke = BrushResource(edge.Kind == MachineCompositionEdgeKind.Provenance ? "TextSecondaryBrush" : "BorderStrongBrush") };
             if (edge.Kind == MachineCompositionEdgeKind.Provenance) line.StrokeDashArray = new DoubleCollection { 5, 4 };
             GraphCanvas.Children.Add(line);
+            if (string.IsNullOrWhiteSpace(edge.Label)) continue;
             var label = new Border { Background=BrushResource("WorkspaceBackgroundBrush"), Padding=new Thickness(4,1,4,1),
                 Child=new TextBlock { Text=edge.Label, FontSize=11, Foreground=BrushResource("TextSecondaryBrush") } };
-            Canvas.SetLeft(label, (x1+x2)/2-20); Canvas.SetTop(label, (y1+y2)/2-13); GraphCanvas.Children.Add(label);
+            Canvas.SetLeft(label, route.LabelPosition.X); Canvas.SetTop(label, route.LabelPosition.Y); GraphCanvas.Children.Add(label);
         }
         foreach (var node in graph.Nodes) GraphCanvas.Children.Add(CreateCard(node));
         GraphCanvas.Width = Math.Max(1, graph.Nodes.Select(x => x.X + x.Width + 30).DefaultIfEmpty(1).Max());

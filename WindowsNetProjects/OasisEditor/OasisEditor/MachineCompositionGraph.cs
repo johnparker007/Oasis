@@ -13,11 +13,14 @@ public sealed record MachineCompositionNode(
     AssetReferenceScope? Scope = null, string? ManifestPath = null, bool IsMissing = false,
     double X = 0, double Y = 0, double Width = 190, double Height = 92);
 
-public sealed record MachineCompositionEdge(string FromNodeId, string ToNodeId, string Label, MachineCompositionEdgeKind Kind);
+public sealed record MachineCompositionEdge(string FromNodeId, string ToNodeId, string Label, MachineCompositionEdgeKind Kind, string[]? LogicalReelRoleIds = null);
+public sealed record MachineCompositionRoute(MachineCompositionEdge Edge, IReadOnlyList<MachineCompositionPoint> Points, MachineCompositionPoint LabelPosition);
+public readonly record struct MachineCompositionPoint(double X, double Y);
 public sealed record MachineCompositionDiagnostic(MachineCompositionDiagnosticSeverity Severity, string Message, string? NodeId = null);
-public sealed record MachineCompositionGraph(IReadOnlyList<MachineCompositionNode> Nodes, IReadOnlyList<MachineCompositionEdge> Edges, IReadOnlyList<MachineCompositionDiagnostic> Diagnostics)
+public sealed record MachineCompositionGraph(IReadOnlyList<MachineCompositionNode> Nodes, IReadOnlyList<MachineCompositionEdge> Edges,
+    IReadOnlyList<MachineCompositionRoute> Routes, IReadOnlyList<MachineCompositionDiagnostic> Diagnostics)
 {
-    public static MachineCompositionGraph Empty { get; } = new([], [], []);
+    public static MachineCompositionGraph Empty { get; } = new([], [], [], []);
 }
 
 /// <summary>Builds a transient explanation of a Machine by following only its explicit references.</summary>
@@ -40,7 +43,7 @@ public sealed class MachineCompositionGraphBuilder
         const string runtimeId = "runtime";
         nodes[runtimeId] = new(runtimeId, MachineCompositionNodeKind.Runtime, machine.Runtime.Platform.ToString(),
             $"Emulation · {machine.InputDefinitions.Count} inputs");
-        edges.Add(new(machineId, runtimeId, "runtime", MachineCompositionEdgeKind.Composition));
+        edges.Add(new(machineId, runtimeId, string.Empty, MachineCompositionEdgeKind.Composition));
 
         string? cabinetId = null;
         CabinetDocument? cabinet = null;
@@ -54,7 +57,7 @@ public sealed class MachineCompositionGraphBuilder
             nodes[cabinetId] = new(cabinetId, MachineCompositionNodeKind.Cabinet, title,
                 result.Exists && cabinet is not null ? $"{machine.CabinetAsset.Scope} · {cabinet.SurfaceTargetSettings.Length} configured targets" : $"{machine.CabinetAsset.Path} · {machine.CabinetAsset.Scope}",
                 machine.CabinetAsset.Scope, result.Exists ? result.Path : null, !result.Valid);
-            edges.Add(new(machineId, cabinetId, "cabinet", MachineCompositionEdgeKind.Composition));
+            edges.Add(new(machineId, cabinetId, string.Empty, MachineCompositionEdgeKind.Composition));
             if (!result.Valid) diagnostics.Add(new(MachineCompositionDiagnosticSeverity.Error,
                 result.Exists ? $"Cabinet reference is invalid: {machine.CabinetAsset.Path}" : $"Cabinet asset is missing: {machine.CabinetAsset.Path}", cabinetId));
         }
@@ -133,7 +136,7 @@ public sealed class MachineCompositionGraphBuilder
                 var missingId = $"missing-reel:{role}";
                 if (!nodes.ContainsKey(missingId)) nodes[missingId] = new(missingId, MachineCompositionNodeKind.MissingReelAssignment,
                     "Unassigned Reel", ReelLabel(role), null, null, true);
-                edges.Add(new(faceId, missingId, ReelLabel(role), MachineCompositionEdgeKind.Composition));
+                edges.Add(new(faceId, missingId, ReelLabel(role), MachineCompositionEdgeKind.Composition, [role.Id]));
                 diagnostics.Add(new(MachineCompositionDiagnosticSeverity.Error, $"{face.Title} requires {role}, but the Machine has no Reel assignment.", missingId));
                 continue;
             }
@@ -143,7 +146,7 @@ public sealed class MachineCompositionGraphBuilder
             if (!nodes.ContainsKey(id)) nodes[id] = new(id, MachineCompositionNodeKind.Reel, result.Valid ? reel!.DisplayName : "Missing Reel",
                 result.Valid ? $"{reel!.DiameterMm:0.#} × {reel.WidthMm:0.#} mm · {assignment.ReelAsset.Scope}" : $"{assignment.ReelAsset.Path} · {assignment.ReelAsset.Scope}",
                 assignment.ReelAsset.Scope, result.Valid ? result.Path : null, !result.Valid);
-            edges.Add(new(faceId, id, ReelLabel(role), MachineCompositionEdgeKind.Composition));
+            edges.Add(new(faceId, id, ReelLabel(role), MachineCompositionEdgeKind.Composition, [role.Id]));
             if (!result.Valid && diagnostics.All(x => x.NodeId != id)) diagnostics.Add(new(MachineCompositionDiagnosticSeverity.Error,
                 result.Exists ? $"Reel asset is invalid: {assignment.ReelAsset.Path}" : $"Reel asset is missing: {assignment.ReelAsset.Path}", id));
         }
@@ -163,19 +166,62 @@ public sealed class MachineCompositionGraphBuilder
 
     private MachineCompositionGraph Layout(IEnumerable<MachineCompositionNode> source, List<MachineCompositionEdge> edges, List<MachineCompositionDiagnostic> diagnostics)
     {
-        var order = new[] { MachineCompositionNodeKind.Panel2D, MachineCompositionNodeKind.Face, MachineCompositionNodeKind.Machine,
-            MachineCompositionNodeKind.Cabinet, MachineCompositionNodeKind.Runtime, MachineCompositionNodeKind.Reel, MachineCompositionNodeKind.MissingReelAssignment };
-        var columns = new Dictionary<MachineCompositionNodeKind, int>
-        { [MachineCompositionNodeKind.Panel2D]=0, [MachineCompositionNodeKind.Face]=1, [MachineCompositionNodeKind.Machine]=2,
-          [MachineCompositionNodeKind.Cabinet]=3, [MachineCompositionNodeKind.Runtime]=3, [MachineCompositionNodeKind.Reel]=4,
-          [MachineCompositionNodeKind.MissingReelAssignment]=4 };
-        var laidOut = new List<MachineCompositionNode>();
-        foreach (var kind in order)
+        var nodes = source.ToDictionary(x => x.Id, StringComparer.OrdinalIgnoreCase);
+        var faces = Nodes(MachineCompositionNodeKind.Face);
+        var reels = Nodes(MachineCompositionNodeKind.Reel).Concat(Nodes(MachineCompositionNodeKind.MissingReelAssignment))
+            .OrderBy(node => FirstSourceRow(node.Id, faces, edges)).ThenBy(node => node.Id, StringComparer.OrdinalIgnoreCase).ToArray();
+        Place(Nodes(MachineCompositionNodeKind.Machine), 30, 190, 125);
+        Place(Nodes(MachineCompositionNodeKind.Runtime), 290, 35, 125);
+        Place(Nodes(MachineCompositionNodeKind.Cabinet), 290, 190, 125);
+        Place(faces, 610, 75, 135);
+        Place(reels, 940, 75, 135);
+        var faceBottom = faces.Length == 0 ? 260 : faces.Max(x => nodes[x.Id].Y + x.Height);
+        Place(Nodes(MachineCompositionNodeKind.Panel2D), 290, faceBottom + 145, 125);
+
+        var aggregated = AggregateReelEdges(edges).OrderBy(x => x.FromNodeId).ThenBy(x => x.ToNodeId).ThenBy(x => x.Label).ToArray();
+        var routes = aggregated.Select(edge => Route(edge, nodes)).ToArray();
+        return new(nodes.Values.OrderBy(x => x.X).ThenBy(x => x.Y).ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase).ToArray(), aggregated, routes, diagnostics.ToArray());
+
+        MachineCompositionNode[] Nodes(MachineCompositionNodeKind kind) => nodes.Values.Where(x => x.Kind == kind).OrderBy(x => x.Id, StringComparer.OrdinalIgnoreCase).ToArray();
+        void Place(IEnumerable<MachineCompositionNode> items, double x, double y, double step)
         {
-            var group = source.Where(x => x.Kind == kind).OrderBy(x => x.Id, StringComparer.OrdinalIgnoreCase).ToArray();
-            for (var i = 0; i < group.Length; i++) laidOut.Add(group[i] with { X = 30 + columns[kind] * 250, Y = 35 + i * 125 });
+            var index = 0;
+            foreach (var item in items) nodes[item.Id] = item with { X = x, Y = y + index++ * step };
         }
-        return new(laidOut, edges.OrderBy(x => x.FromNodeId).ThenBy(x => x.ToNodeId).ThenBy(x => x.Label).ToArray(), diagnostics.ToArray());
+    }
+
+    private static int FirstSourceRow(string reelId, IReadOnlyList<MachineCompositionNode> faces, IReadOnlyList<MachineCompositionEdge> edges)
+    {
+        var source = edges.Where(x => x.ToNodeId == reelId).Select(x => x.FromNodeId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var row = Array.FindIndex(faces.ToArray(), x => source.Contains(x.Id));
+        return row < 0 ? int.MaxValue : row;
+    }
+
+    private static IEnumerable<MachineCompositionEdge> AggregateReelEdges(IEnumerable<MachineCompositionEdge> edges)
+    {
+        foreach (var group in edges.GroupBy(x => (x.FromNodeId, x.ToNodeId, x.Kind)))
+        {
+            var roles = group.SelectMany(x => x.LogicalReelRoleIds ?? []).Distinct(StringComparer.Ordinal)
+                .OrderBy(x => int.TryParse(x, out var value) ? value : int.MaxValue).ThenBy(x => x, StringComparer.Ordinal).ToArray();
+            if (roles.Length == 0) { foreach (var edge in group) yield return edge; continue; }
+            var label = roles.Length == 1 ? $"Reel {roles[0]}" : $"Reels {string.Join(", ", roles)}";
+            yield return new(group.Key.FromNodeId, group.Key.ToNodeId, label, group.Key.Kind, roles);
+        }
+    }
+
+    private static MachineCompositionRoute Route(MachineCompositionEdge edge, IReadOnlyDictionary<string, MachineCompositionNode> nodes)
+    {
+        var from = nodes[edge.FromNodeId]; var to = nodes[edge.ToNodeId];
+        var start = new MachineCompositionPoint(from.X + from.Width, from.Y + from.Height / 2);
+        var end = new MachineCompositionPoint(to.X, to.Y + to.Height / 2);
+        var gutter = edge.Kind == MachineCompositionEdgeKind.Provenance || from.Kind == MachineCompositionNodeKind.Machine && to.Kind == MachineCompositionNodeKind.Face
+            ? to.X - 25
+            : (start.X + end.X) / 2;
+        var points = new[] { start, new MachineCompositionPoint(gutter, start.Y), new MachineCompositionPoint(gutter, end.Y), end };
+        // Labels occupy the reserved horizontal lane immediately after the source port,
+        // never the geometric midpoint where an unrelated card may be present.
+        var label = new MachineCompositionPoint(start.X + 8, end.Y - 22);
+        return new(edge, points, label);
     }
 
     private string TryProjectPath(EditorProject project, string relative)

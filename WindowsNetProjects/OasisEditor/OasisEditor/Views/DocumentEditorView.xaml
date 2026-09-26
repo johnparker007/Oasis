@@ -74,13 +74,13 @@
                 <cabinetViews:CabinetModelDocumentView />
             </Grid>
 
-            <TabControl SelectedIndex="0">
+            <TabControl SelectedIndex="0" Background="{DynamicResource WorkspaceBackgroundBrush}">
                 <TabControl.Style>
-                    <Style TargetType="TabControl"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Machine}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style>
+                    <Style TargetType="TabControl" BasedOn="{StaticResource OasisWorkspaceTabControlStyle}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Machine}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style>
                 </TabControl.Style>
-                <TabItem Header="Overview"><views:MachineCompositionGraphView/></TabItem>
-                <TabItem Header="Details">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <TabItem Header="Overview" Style="{StaticResource OasisWorkspaceTabItemStyle}"><views:MachineCompositionGraphView/></TabItem>
+                <TabItem Header="Details" Style="{StaticResource OasisWorkspaceTabItemStyle}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{DynamicResource WorkspaceBackgroundBrush}">
                   <StackPanel Margin="16" MaxWidth="900" HorizontalAlignment="Left">
                     <TextBlock Text="Machine Composition" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,16"/>
                     <TextBlock Text="Display name" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding MachineDisplayName, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,12"/>

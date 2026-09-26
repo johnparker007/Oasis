@@ -37,7 +37,14 @@ public sealed class MachineCompositionGraphTests
         Assert.Equal(2, graph.Edges.Count(x => x.Kind == MachineCompositionEdgeKind.Provenance));
         Assert.Contains(graph.Edges, x => x.Label == "topGlass");
         Assert.Contains(graph.Edges, x => x.Label == "bottomGlass");
-        Assert.Equal(4, graph.Edges.Count(x => x.Label.StartsWith("Reel:", StringComparison.Ordinal)));
+        var reelEdges = graph.Edges.Where(x => x.LogicalReelRoleIds is { Length: > 0 }).ToArray();
+        Assert.Equal(2, reelEdges.Length);
+        Assert.Contains(reelEdges, x => x.Label == "Reels 0, 1, 2" && x.LogicalReelRoleIds!.SequenceEqual(["0", "1", "2"]));
+        Assert.Contains(reelEdges, x => x.Label == "Reel 3" && x.LogicalReelRoleIds!.SequenceEqual(["3"]));
+        Assert.Equal(["0", "1", "2", "3"], reelEdges.SelectMany(x => x.LogicalReelRoleIds!).OrderBy(x => x).ToArray());
+        AssertNoNodeOverlap(graph);
+        AssertRoutesAvoidUnrelatedNodes(graph);
+        AssertLabelsUseGutters(graph);
         Assert.Empty(graph.Diagnostics);
     }
 
@@ -73,6 +80,7 @@ public sealed class MachineCompositionGraphTests
         Assert.True(Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Panel2D)).IsMissing);
         Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.MissingReelAssignment));
         Assert.Equal(3, graph.Diagnostics.Count);
+        AssertNoNodeOverlap(graph);
     }
 
     [Fact]
@@ -83,7 +91,49 @@ public sealed class MachineCompositionGraphTests
         var json = MachineDocumentStorage.Serialize(machine);
         var first = fixture.Build(machine); var second = fixture.Build(machine);
         Assert.Equal(first.Nodes.Select(x => (x.Id,x.X,x.Y)), second.Nodes.Select(x => (x.Id,x.X,x.Y)));
+        Assert.Equal(RouteSignature(first), RouteSignature(second));
         Assert.Equal(json, MachineDocumentStorage.Serialize(machine));
+    }
+
+    private static void AssertNoNodeOverlap(CompositionGraph graph)
+    {
+        for (var i = 0; i < graph.Nodes.Count; i++)
+        for (var j = i + 1; j < graph.Nodes.Count; j++)
+            Assert.False(Intersects(graph.Nodes[i], graph.Nodes[j]), $"{graph.Nodes[i].Id} overlaps {graph.Nodes[j].Id}");
+    }
+
+    private static string[] RouteSignature(CompositionGraph graph) => graph.Routes.Select(route =>
+        $"{route.Edge.FromNodeId}|{route.Edge.ToNodeId}|{route.Edge.Label}|{string.Join(',', route.Edge.LogicalReelRoleIds ?? [])}|"
+        + string.Join(';', route.Points.Select(point => $"{point.X},{point.Y}")) + $"|{route.LabelPosition.X},{route.LabelPosition.Y}").ToArray();
+
+    private static void AssertRoutesAvoidUnrelatedNodes(CompositionGraph graph)
+    {
+        foreach (var route in graph.Routes)
+        foreach (var node in graph.Nodes.Where(x => x.Id != route.Edge.FromNodeId && x.Id != route.Edge.ToNodeId))
+        for (var index = 1; index < route.Points.Count; index++)
+            Assert.False(SegmentIntersectsInterior(route.Points[index - 1], route.Points[index], node),
+                $"Route {route.Edge.FromNodeId} -> {route.Edge.ToNodeId} crosses {node.Id}");
+    }
+
+    private static void AssertLabelsUseGutters(CompositionGraph graph)
+    {
+        foreach (var route in graph.Routes.Where(x => !string.IsNullOrWhiteSpace(x.Edge.Label)))
+            Assert.DoesNotContain(graph.Nodes, node => PointInside(route.LabelPosition, node));
+    }
+
+    private static bool PointInside(MachineCompositionPoint point, MachineCompositionNode node) =>
+        point.X > node.X && point.X < node.X + node.Width && point.Y > node.Y && point.Y < node.Y + node.Height;
+
+    private static bool Intersects(MachineCompositionNode left, MachineCompositionNode right) =>
+        left.X < right.X + right.Width && left.X + left.Width > right.X
+        && left.Y < right.Y + right.Height && left.Y + left.Height > right.Y;
+
+    private static bool SegmentIntersectsInterior(MachineCompositionPoint a, MachineCompositionPoint b, MachineCompositionNode node)
+    {
+        const double epsilon = .001;
+        var left=node.X+epsilon; var right=node.X+node.Width-epsilon; var top=node.Y+epsilon; var bottom=node.Y+node.Height-epsilon;
+        if (Math.Abs(a.X-b.X) < epsilon) return a.X > left && a.X < right && Math.Max(a.Y,b.Y) > top && Math.Min(a.Y,b.Y) < bottom;
+        return a.Y > top && a.Y < bottom && Math.Max(a.X,b.X) > left && Math.Min(a.X,b.X) < right;
     }
 
     private sealed class GraphFixture : IDisposable
