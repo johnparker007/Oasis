@@ -1659,6 +1659,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void OnOpenDocumentFacePreviewChanged(FacePreviewChangedEvent _)
     {
         RefreshCabinetFacePreviews();
+        foreach (var machine in OpenDocuments.Where(document => document.Document.DocumentType == EditorDocumentType.Machine))
+            machine.RefreshMachineCompositionGraph();
     }
 
     private void OnOpenDocumentFaceVisualStateChanged(FaceVisualStateChangedEvent visualStateChanged)
