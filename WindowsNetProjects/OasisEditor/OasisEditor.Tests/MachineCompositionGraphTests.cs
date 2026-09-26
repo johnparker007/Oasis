@@ -307,7 +307,8 @@ public sealed class MachineCompositionGraphTests
         Assert.False(Assert.Single(recovered.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Face)).IsMissing);
         Assert.Contains(recovered.Edges, edge => edge.Kind == MachineCompositionEdgeKind.Provenance);
         Assert.Contains(recovered.Edges, edge => edge.LogicalReelRoleIds is { Length: > 0 });
-        Assert.DoesNotContain(recovered.Diagnostics, diagnostic => diagnostic.Message.Contains("Face", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(recovered.Diagnostics, diagnostic => diagnostic.NodeId == missingFace.Id);
+        Assert.Contains(recovered.Diagnostics, diagnostic => diagnostic.Message == "Cabinet target 'Bottom Glass' has no Face assigned.");
         Assert.Equal(machineJson, MachineDocumentStorage.Serialize(machine));
         Assert.False(machineTab.IsDirty);
         Assert.False(machineTab.CommandService.CanUndo);
