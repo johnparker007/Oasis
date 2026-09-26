@@ -583,8 +583,11 @@ public sealed class MachineDocumentTests
             var machine = MachineDocument.Create("Game") with { CabinetAsset = cabinetReference, SurfaceAssignments = [new("OasisFace_Glass", face)], ReelAssignments = [new(MachineObjectReference.Reel(0), reelReference)] };
             var tab = CreateMachineTab(project, machine);
             tab.SetLibraryRootAccessor(() => library);
-            Assert.Contains(tab.MachineCabinetChoices, choice => Equals(choice.AssetPath, cabinetReference) && choice.DisplayName.StartsWith("Missing:"));
-            Assert.Contains(tab.MachineReelAssignmentRows.Single().Choices, choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName.StartsWith("Missing:"));
+            var missingCabinet = Assert.Single(tab.MachineCabinetChoices.Where(choice => Equals(choice.AssetPath, cabinetReference) && choice.DisplayName.StartsWith("Missing:")));
+            var reelRow = Assert.Single(tab.MachineReelAssignmentRows);
+            var missingReel = Assert.Single(reelRow.Choices.Where(choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName.StartsWith("Missing:")));
+            Assert.Same(missingCabinet, tab.SelectedMachineCabinetChoice);
+            Assert.Same(missingReel, reelRow.SelectedChoice);
 
             var cabinetPath = Path.Combine(library, "Cabinets", "Vogue", "asset.cabinet3d");
             Directory.CreateDirectory(Path.GetDirectoryName(cabinetPath)!);
@@ -593,14 +596,31 @@ public sealed class MachineDocumentTests
             Directory.CreateDirectory(Path.GetDirectoryName(reelPath)!);
             File.WriteAllText(reelPath, ReelDocumentStorage.Serialize(ReelDocument.Create("Standard")));
             tab.RefreshMachineCompositionChoices();
-            Assert.Contains(tab.MachineCabinetChoices, choice => Equals(choice.AssetPath, cabinetReference) && choice.DisplayName == "Vogue [Library]");
-            Assert.Contains(tab.MachineReelAssignmentRows.Single().Choices, choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName == "Standard [Library]");
+            var validCabinet = Assert.Single(tab.MachineCabinetChoices.Where(choice => Equals(choice.AssetPath, cabinetReference) && choice.DisplayName == "Vogue [Library]"));
+            var validReel = Assert.Single(reelRow.Choices.Where(choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName == "Standard [Library]"));
+            Assert.Same(validCabinet, tab.SelectedMachineCabinetChoice);
+            Assert.Same(validReel, reelRow.SelectedChoice);
             Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
 
             File.Delete(reelPath); tab.RefreshMachineCompositionChoices();
-            Assert.Contains(tab.MachineReelAssignmentRows.Single().Choices, choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName.StartsWith("Missing:"));
+            missingReel = Assert.Single(reelRow.Choices.Where(choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName.StartsWith("Missing:")));
+            Assert.Same(missingReel, reelRow.SelectedChoice);
+            Assert.Equal(reelReference, tab.GetMachineDocument().ReelAssignments.Single().ReelAsset);
+            Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
+
             File.WriteAllText(reelPath, ReelDocumentStorage.Serialize(ReelDocument.Create("Standard"))); tab.RefreshMachineCompositionChoices();
-            Assert.Contains(tab.MachineReelAssignmentRows.Single().Choices, choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName == "Standard [Library]");
+            validReel = Assert.Single(reelRow.Choices.Where(choice => Equals(choice.AssetPath, reelReference) && choice.DisplayName == "Standard [Library]"));
+            Assert.Same(validReel, reelRow.SelectedChoice);
+
+            File.Delete(cabinetPath); tab.RefreshMachineCompositionChoices();
+            missingCabinet = Assert.Single(tab.MachineCabinetChoices.Where(choice => Equals(choice.AssetPath, cabinetReference) && choice.DisplayName.StartsWith("Missing:")));
+            Assert.Same(missingCabinet, tab.SelectedMachineCabinetChoice);
+            Assert.Equal(cabinetReference, tab.GetMachineDocument().CabinetAsset);
+            Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
+
+            File.WriteAllText(cabinetPath, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb"))); tab.RefreshMachineCompositionChoices();
+            validCabinet = Assert.Single(tab.MachineCabinetChoices.Where(choice => Equals(choice.AssetPath, cabinetReference) && choice.DisplayName == "Vogue [Library]"));
+            Assert.Same(validCabinet, tab.SelectedMachineCabinetChoice);
             Assert.False(tab.IsDirty); Assert.False(tab.CommandService.CanUndo);
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
