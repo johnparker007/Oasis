@@ -16,7 +16,9 @@ public sealed record MachineCompositionNode(
 
 public sealed record MachineCompositionEdge(string FromNodeId, string ToNodeId, string Label, MachineCompositionEdgeKind Kind,
     string[]? LogicalReelRoleIds = null, string? RelationshipId = null);
-public sealed record MachineCompositionRoute(MachineCompositionEdge Edge, IReadOnlyList<MachineCompositionPoint> Points, MachineCompositionPoint LabelPosition);
+public sealed record MachineCompositionRoute(MachineCompositionEdge Edge, MachineCompositionPoint SourcePort,
+    MachineCompositionPoint DestinationPort, IReadOnlyList<MachineCompositionPoint> Points,
+    MachineCompositionPoint LabelPosition, double LabelMaxWidth);
 public readonly record struct MachineCompositionPoint(double X, double Y);
 public sealed record MachineCompositionDiagnostic(MachineCompositionDiagnosticSeverity Severity, string Message, string? NodeId = null);
 public sealed record MachineCompositionGraph(IReadOnlyList<MachineCompositionNode> Nodes, IReadOnlyList<MachineCompositionEdge> Edges,
@@ -138,7 +140,10 @@ public sealed class MachineCompositionGraphBuilder
         }
         if (!nodes.ContainsKey(id)) nodes[id] = new(id, MachineCompositionNodeKind.Panel2D, valid ? PackageName(path) : "Missing Panel2D",
             valid ? "Source · Project" : $"{normalized} · Project", AssetReferenceScope.Project, valid ? path : null, !valid);
-        edges.Add(new(id, faceId, "source", MachineCompositionEdgeKind.Provenance));
+        if (!edges.Any(edge => edge.Kind == MachineCompositionEdgeKind.Provenance
+            && string.Equals(edge.FromNodeId, id, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(edge.ToNodeId, faceId, StringComparison.OrdinalIgnoreCase)))
+            edges.Add(new(id, faceId, "source", MachineCompositionEdgeKind.Provenance));
         if (!valid) diagnostics.Add(new(MachineCompositionDiagnosticSeverity.Warning, $"Panel2D provenance is unresolved: {normalized}", id));
     }
 
@@ -198,7 +203,7 @@ public sealed class MachineCompositionGraphBuilder
         Place(Nodes(MachineCompositionNodeKind.Panel2D), 290, faceBottom + 145, 125);
 
         var aggregated = AggregateReelEdges(edges).OrderBy(x => x.FromNodeId).ThenBy(x => x.ToNodeId).ThenBy(x => x.Label).ToArray();
-        var routes = aggregated.Select(edge => Route(edge, nodes)).ToArray();
+        var routes = RouteAll(aggregated, nodes);
         return new(nodes.Values.OrderBy(x => x.X).ThenBy(x => x.Y).ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase).ToArray(), aggregated, routes, diagnostics.ToArray());
 
         MachineCompositionNode[] Nodes(MachineCompositionNodeKind kind) => nodes.Values.Where(x => x.Kind == kind).OrderBy(x => x.Id, StringComparer.OrdinalIgnoreCase).ToArray();
@@ -237,11 +242,45 @@ public sealed class MachineCompositionGraphBuilder
         }
     }
 
-    private static MachineCompositionRoute Route(MachineCompositionEdge edge, IReadOnlyDictionary<string, MachineCompositionNode> nodes)
+    private static MachineCompositionRoute[] RouteAll(IReadOnlyList<MachineCompositionEdge> edges,
+        IReadOnlyDictionary<string, MachineCompositionNode> nodes)
+    {
+        var sourcePorts = AllocatePorts(edges, nodes, incoming: false);
+        var destinationPorts = AllocatePorts(edges, nodes, incoming: true);
+        return edges.Select(edge => Route(edge, nodes, sourcePorts[edge], destinationPorts[edge])).ToArray();
+    }
+
+    private static Dictionary<MachineCompositionEdge, MachineCompositionPoint> AllocatePorts(
+        IReadOnlyList<MachineCompositionEdge> edges, IReadOnlyDictionary<string, MachineCompositionNode> nodes, bool incoming)
+    {
+        var result = new Dictionary<MachineCompositionEdge, MachineCompositionPoint>();
+        foreach (var group in edges.GroupBy(edge => incoming ? edge.ToNodeId : edge.FromNodeId, StringComparer.OrdinalIgnoreCase))
+        {
+            var node = nodes[group.Key];
+            var ordered = group.OrderBy(edge => edge.Kind == MachineCompositionEdgeKind.Composition ? 0 : 1)
+                .ThenBy(edge => RelatedNodeOrder(edge, nodes, incoming))
+                .ThenBy(edge => edge.RelationshipId ?? edge.Label, StringComparer.Ordinal)
+                .ThenBy(edge => incoming ? edge.FromNodeId : edge.ToNodeId, StringComparer.OrdinalIgnoreCase).ToArray();
+            for (var index = 0; index < ordered.Length; index++)
+            {
+                var y = node.Y + node.Height * (index + 1) / (ordered.Length + 1);
+                result[ordered[index]] = new(incoming ? node.X : node.X + node.Width, y);
+            }
+        }
+        return result;
+    }
+
+    private static (int LayoutOrder, double Y, double X) RelatedNodeOrder(MachineCompositionEdge edge,
+        IReadOnlyDictionary<string, MachineCompositionNode> nodes, bool incoming)
+    {
+        var node = nodes[incoming ? edge.FromNodeId : edge.ToNodeId];
+        return (node.LayoutOrder, node.Y, node.X);
+    }
+
+    private static MachineCompositionRoute Route(MachineCompositionEdge edge, IReadOnlyDictionary<string, MachineCompositionNode> nodes,
+        MachineCompositionPoint start, MachineCompositionPoint end)
     {
         var from = nodes[edge.FromNodeId]; var to = nodes[edge.ToNodeId];
-        var start = new MachineCompositionPoint(from.X + from.Width, from.Y + from.Height / 2);
-        var end = new MachineCompositionPoint(to.X, to.Y + to.Height / 2);
         var gutter = from.Kind == MachineCompositionNodeKind.Cabinet && to.Kind == MachineCompositionNodeKind.Face
             ? start.X + 10
             : edge.Kind == MachineCompositionEdgeKind.Provenance || from.Kind == MachineCompositionNodeKind.Machine && to.Kind == MachineCompositionNodeKind.Face
@@ -253,8 +292,8 @@ public sealed class MachineCompositionGraphBuilder
         var labelX = from.Kind == MachineCompositionNodeKind.Cabinet && to.Kind == MachineCompositionNodeKind.Face
             ? end.X - 104
             : start.X + 8;
-        var label = new MachineCompositionPoint(labelX, end.Y - 22);
-        return new(edge, points, label);
+        var label = new MachineCompositionPoint(labelX, end.Y - 30);
+        return new(edge, start, end, points, label, 104);
     }
 
     private string TryProjectPath(EditorProject project, string relative)

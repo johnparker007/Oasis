@@ -53,7 +53,9 @@ public partial class MachineCompositionGraphView : UserControl
             GraphCanvas.Children.Add(line);
             if (string.IsNullOrWhiteSpace(edge.Label)) continue;
             var label = new Border { Background=BrushResource("WorkspaceBackgroundBrush"), Padding=new Thickness(4,1,4,1),
-                Child=new TextBlock { Text=edge.Label, FontSize=11, Foreground=BrushResource("TextSecondaryBrush") } };
+                ToolTip=edge.Label,
+                Child=new TextBlock { Text=edge.Label, FontSize=11, Foreground=BrushResource("TextSecondaryBrush"),
+                    MaxWidth=route.LabelMaxWidth, MaxHeight=34, TextWrapping=TextWrapping.Wrap, TextTrimming=TextTrimming.CharacterEllipsis } };
             Canvas.SetLeft(label, route.LabelPosition.X); Canvas.SetTop(label, route.LabelPosition.Y); GraphCanvas.Children.Add(label);
         }
         foreach (var node in graph.Nodes) GraphCanvas.Children.Add(CreateCard(node));

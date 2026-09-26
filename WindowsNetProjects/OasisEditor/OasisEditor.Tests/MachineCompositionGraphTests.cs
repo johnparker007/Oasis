@@ -54,6 +54,14 @@ public sealed class MachineCompositionGraphTests
         var targetRoutes = graph.Routes.Where(x => x.Edge.RelationshipId is "topGlass" or "bottomGlass").ToArray();
         Assert.Equal(2, targetRoutes.Length);
         Assert.Equal(2, targetRoutes.Select(x => x.LabelPosition).Distinct().Count());
+        foreach (var faceNode in faceNodes.Values)
+        {
+            var incoming = graph.Routes.Where(x => x.Edge.ToNodeId == faceNode.Id).OrderBy(x => x.DestinationPort.Y).ToArray();
+            Assert.Equal(2, incoming.Length);
+            Assert.NotEqual(incoming[0].DestinationPort.Y, incoming[1].DestinationPort.Y);
+            Assert.Equal(MachineCompositionEdgeKind.Composition, incoming[0].Edge.Kind);
+            Assert.Equal(MachineCompositionEdgeKind.Provenance, incoming[1].Edge.Kind);
+        }
         Assert.Empty(graph.Diagnostics);
     }
 
@@ -136,6 +144,51 @@ public sealed class MachineCompositionGraphTests
         Assert.Equal("Project · 2 face targets", Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Cabinet)).Metadata);
     }
 
+    [Fact]
+    public void Build_DistributesThreeIncomingAndMultipleOutgoingPortsDeterministically()
+    {
+        using var fixture = new GraphFixture();
+        var cabinet = fixture.WriteCabinet("Cabinet", AssetReferenceScope.Project);
+        var panel = fixture.WritePanel("Source");
+        var face = fixture.WriteFace("Shared", panel, 0, 1);
+        var standard = fixture.WriteReel("Standard", AssetReferenceScope.Project, 290, 70);
+        var small = fixture.WriteReel("Small", AssetReferenceScope.Project, 230, 70);
+        var machine = MachineDocument.Create("Machine") with
+        {
+            CabinetAsset=cabinet,
+            SurfaceAssignments=[new("topGlass",face),new("bottomGlass",face)],
+            ReelAssignments=[new(MachineObjectReference.Reel(0),standard),new(MachineObjectReference.Reel(1),small)]
+        };
+
+        var graph = fixture.Build(machine);
+        var faceNode = Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Face));
+        var incoming = graph.Routes.Where(x => x.Edge.ToNodeId == faceNode.Id).OrderBy(x => x.DestinationPort.Y).ToArray();
+        Assert.Equal(3, incoming.Length);
+        Assert.Equal([faceNode.Y + faceNode.Height * .25, faceNode.Y + faceNode.Height * .5, faceNode.Y + faceNode.Height * .75], incoming.Select(x => x.DestinationPort.Y).ToArray());
+        Assert.All(incoming, route => Assert.Equal(faceNode.X, route.DestinationPort.X));
+        Assert.Equal(MachineCompositionEdgeKind.Composition, incoming[0].Edge.Kind);
+        Assert.Equal(MachineCompositionEdgeKind.Composition, incoming[1].Edge.Kind);
+        Assert.Equal(MachineCompositionEdgeKind.Provenance, incoming[2].Edge.Kind);
+
+        var outgoing = graph.Routes.Where(x => x.Edge.FromNodeId == faceNode.Id).OrderBy(x => x.SourcePort.Y).ToArray();
+        Assert.Equal(2, outgoing.Length);
+        Assert.Equal([faceNode.Y + faceNode.Height / 3, faceNode.Y + faceNode.Height * 2 / 3], outgoing.Select(x => x.SourcePort.Y).ToArray());
+        Assert.All(outgoing, route => Assert.Equal(faceNode.X + faceNode.Width, route.SourcePort.X));
+        Assert.Equal(RouteSignature(graph), RouteSignature(fixture.Build(machine)));
+    }
+
+    [Fact]
+    public void Build_LongTargetLabelHasBoundedWrappedPresentationContract()
+    {
+        using var fixture = new GraphFixture([StubTargetDetector.Target("mainPanel", "Main Control Panel Relationship")]);
+        var cabinet = fixture.WriteCabinet("Cabinet", AssetReferenceScope.Project);
+        var face = fixture.WriteFace("Face", null);
+        var graph = fixture.Build(MachineDocument.Create("Machine") with { CabinetAsset=cabinet, SurfaceAssignments=[new("mainPanel",face)] });
+        var route = Assert.Single(graph.Routes.Where(x => x.Edge.RelationshipId == "mainPanel"));
+        Assert.Equal("Main Control Panel Relationship", route.Edge.Label);
+        Assert.InRange(route.LabelMaxWidth, 90, 120);
+    }
+
     private static void AssertNoNodeOverlap(CompositionGraph graph)
     {
         for (var i = 0; i < graph.Nodes.Count; i++)
@@ -145,7 +198,8 @@ public sealed class MachineCompositionGraphTests
 
     private static string[] RouteSignature(CompositionGraph graph) => graph.Routes.Select(route =>
         $"{route.Edge.FromNodeId}|{route.Edge.ToNodeId}|{route.Edge.Label}|{route.Edge.RelationshipId}|{string.Join(',', route.Edge.LogicalReelRoleIds ?? [])}|"
-        + string.Join(';', route.Points.Select(point => $"{point.X},{point.Y}")) + $"|{route.LabelPosition.X},{route.LabelPosition.Y}").ToArray();
+        + $"{route.SourcePort.X},{route.SourcePort.Y}|{route.DestinationPort.X},{route.DestinationPort.Y}|"
+        + string.Join(';', route.Points.Select(point => $"{point.X},{point.Y}")) + $"|{route.LabelPosition.X},{route.LabelPosition.Y}|{route.LabelMaxWidth}").ToArray();
 
     private static void AssertRoutesAvoidUnrelatedNodes(CompositionGraph graph)
     {
@@ -182,9 +236,10 @@ public sealed class MachineCompositionGraphTests
         private readonly string _root = Path.Combine(Path.GetTempPath(), "OasisGraph_" + Guid.NewGuid().ToString("N"));
         public EditorProject Project { get; }
         public string LibraryRoot { get; }
-        private readonly StubTargetDetector _targetDetector = new();
-        public GraphFixture()
+        private readonly StubTargetDetector _targetDetector;
+        public GraphFixture(IReadOnlyList<CabinetFaceTarget>? targets = null)
         {
+            _targetDetector = new(targets);
             var assets=Path.Combine(_root,"Assets"); Directory.CreateDirectory(assets); LibraryRoot=Path.Combine(_root,"Library"); Directory.CreateDirectory(LibraryRoot);
             Project=new EditorProject { Name="Graph", ProjectDirectory=_root, ProjectFilePath=Path.Combine(_root,"Graph.oasisproj"), AssetsDirectory=assets, GeneratedDirectory=Path.Combine(_root,"Generated") };
         }
@@ -220,8 +275,9 @@ public sealed class MachineCompositionGraphTests
 
     private sealed class StubTargetDetector : ICabinetFaceTargetDetector
     {
-        public IReadOnlyList<CabinetFaceTarget> DetectTargets(string modelPath, CancellationToken cancellationToken = default) =>
-            [Target("topGlass", "Top Glass"), Target("bottomGlass", "Bottom Glass")];
-        private static CabinetFaceTarget Target(string id, string name) => new(id, "OasisFace_" + id, name, [], default, default, true, null);
+        private readonly IReadOnlyList<CabinetFaceTarget> _targets;
+        public StubTargetDetector(IReadOnlyList<CabinetFaceTarget>? targets = null) => _targets = targets ?? [Target("topGlass", "Top Glass"), Target("bottomGlass", "Bottom Glass")];
+        public IReadOnlyList<CabinetFaceTarget> DetectTargets(string modelPath, CancellationToken cancellationToken = default) => _targets;
+        public static CabinetFaceTarget Target(string id, string name) => new(id, "OasisFace_" + id, name, [], default, default, true, null);
     }
 }
