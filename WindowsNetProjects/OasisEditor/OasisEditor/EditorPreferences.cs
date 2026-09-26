@@ -2,7 +2,7 @@ using System.IO;
 
 namespace OasisEditor;
 
-public sealed class EditorPreferences
+public sealed record EditorPreferences
 {
     public ThemePreference ThemePreference { get; init; } = ThemePreference.Dark;
 

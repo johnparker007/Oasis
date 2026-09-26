@@ -1941,8 +1941,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void SavePreferences()
     {
-        var existingPreferences = _preferencesStore.Load();
-        _preferencesStore.Save(new EditorPreferences
+        _preferencesStore.Update(existingPreferences => existingPreferences with
         {
             ThemePreference = SelectedThemePreference,
             LastMfmeFmlImportDirectory = _lastMfmeFmlImportDirectory,
@@ -1974,8 +1973,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 ShowErrorLogs = _outputLog.ShowErrorLogs,
                 AutoScroll = _outputLog.AutoScroll,
                 SearchText = _outputLog.SearchText
-            },
-            ProjectWindowStates = existingPreferences.ProjectWindowStates
+            }
         });
     }
 

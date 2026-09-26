@@ -8,10 +8,14 @@ public sealed class EditorPreferencesStore
     private readonly string _storageFilePath;
 
     public EditorPreferencesStore()
+        : this(GetDefaultStorageFilePath())
     {
-        var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        var oasisFolder = Path.Combine(appDataPath, "OasisEditor");
-        _storageFilePath = Path.Combine(oasisFolder, "editor-preferences.json");
+    }
+
+    public EditorPreferencesStore(string storageFilePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(storageFilePath);
+        _storageFilePath = storageFilePath;
     }
 
     public EditorPreferences Load()
@@ -48,5 +52,17 @@ public sealed class EditorPreferencesStore
         });
 
         File.WriteAllText(_storageFilePath, json);
+    }
+
+    public void Update(Func<EditorPreferences, EditorPreferences> update)
+    {
+        ArgumentNullException.ThrowIfNull(update);
+        Save(update(Load()));
+    }
+
+    private static string GetDefaultStorageFilePath()
+    {
+        var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        return Path.Combine(appDataPath, "OasisEditor", "editor-preferences.json");
     }
 }
