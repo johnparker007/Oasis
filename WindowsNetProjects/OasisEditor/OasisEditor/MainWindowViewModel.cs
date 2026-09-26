@@ -1626,6 +1626,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             foreach (DocumentTabViewModel document in e.NewItems)
             {
                 document.SetLibraryRootAccessor(() => OasisAssetLibraryRoot);
+                document.SetAssetDocumentOpener(OpenReferencedAssetDocument);
                 if (document.Document.DocumentType == EditorDocumentType.Cabinet3D) document.SetMachineCompositionContext(_activeMachineDocument);
                 document.FaceVisualStateChanged += OnOpenDocumentFaceVisualStateChanged;
                 document.FacePreviewChanged += OnOpenDocumentFacePreviewChanged;
@@ -1633,6 +1634,26 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         RefreshCabinetFacePreviews();
+    }
+
+    private void OpenReferencedAssetDocument(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                AddOutputEntry($"Open referenced asset failed because the manifest no longer exists: {path}", OutputLogStatus.Error);
+                OnProjectAssetCatalogChanged();
+                return;
+            }
+            OpenDocumentFromPath(path);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+            AddOutputEntry($"Open referenced asset failed: {ex.Message}", OutputLogStatus.Error);
+            OnProjectAssetCatalogChanged();
+        }
     }
 
     private void OnOpenDocumentFacePreviewChanged(FacePreviewChangedEvent _)

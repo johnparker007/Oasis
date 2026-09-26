@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Windows.Input;
 using OasisEditor.Commands;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
@@ -47,6 +48,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private Func<IReadOnlyList<DocumentTabViewModel>>? _openDocumentsAccessor;
     private Func<EditorProject?>? _projectAccessor;
     private Func<string>? _libraryRootAccessor;
+    private Action<string>? _openAssetDocument;
     private readonly FaceWorkspaceViewModel? _faceWorkspace;
     private readonly FaceRuntimeAssetsConfigurationService _runtimeAssetsConfiguration = new();
     private SKBitmap? _correctionInputBitmap;
@@ -118,6 +120,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _reelDocumentModel = ReelDocumentStorage.TryRead(reelDocumentJson, out var reelDocument, out _)
             ? reelDocument
             : ReelDocument.Create(document.Title);
+        OpenSelectedCabinetAssetCommand = new RelayCommand(OpenSelectedCabinetAsset, () => CanOpenSelectedCabinetAsset);
         RebuildLampCaches();
         _faceWorkspace = document.DocumentType == EditorDocumentType.Face ? new FaceWorkspaceViewModel(this) : null;
     }
@@ -187,6 +190,12 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _libraryRootAccessor = libraryRootAccessor;
         RefreshMachineCompositionChoices();
         _cabinetViewer?.RefreshFacePreviews();
+    }
+
+    public void SetAssetDocumentOpener(Action<string> openAssetDocument)
+    {
+        _openAssetDocument = openAssetDocument;
+        NotifyMachineAssetNavigationChanged();
     }
 
     internal void SetMachineCompositionContext(DocumentTabViewModel? machineDocument)
@@ -274,6 +283,36 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public string GetMachineDocumentJson() => MachineDocumentStorage.Serialize(_machineDocumentModel);
     public string MachineDisplayName { get => _machineDocumentModel.DisplayName; set { if (string.IsNullOrWhiteSpace(value) || value == _machineDocumentModel.DisplayName) return; ExecuteMachineMutation(_machineDocumentModel with { DisplayName = value.Trim() }, "Rename Machine"); } }
     public object? MachineCabinetAssetPath { get => _machineDocumentModel.CabinetAsset; set { var reference = value switch { null => null, AssetReference typed => typed, string path when !string.IsNullOrWhiteSpace(path) => AssetReference.Project(path), _ => null }; if (_isRefreshingMachineCompositionChoices || reference == _machineDocumentModel.CabinetAsset) return; ExecuteMachineMutation(_machineDocumentModel with { CabinetAsset = reference, SurfaceAssignments = [], ReelAssignments = [] }, "Select Machine Cabinet"); } }
+    public ICommand OpenSelectedCabinetAssetCommand { get; }
+    public bool CanOpenSelectedCabinetAsset => CanOpenMachineAsset(_machineDocumentModel.CabinetAsset);
+
+    private bool CanOpenMachineAsset(AssetReference? reference)
+    {
+        if (reference is null || _openAssetDocument is null || _projectAccessor?.Invoke() is not { } project) return false;
+        return TryResolve(project, reference, out var path) && File.Exists(path);
+    }
+
+    private void OpenSelectedCabinetAsset() => OpenMachineAsset(_machineDocumentModel.CabinetAsset);
+
+    internal void OpenMachineAsset(AssetReference? reference)
+    {
+        if (reference is null || _openAssetDocument is null || _projectAccessor?.Invoke() is not { } project) return;
+        if (!TryResolve(project, reference, out var path) || !File.Exists(path))
+        {
+            NotifyMachineAssetNavigationChanged();
+            return;
+        }
+        _openAssetDocument(path);
+    }
+
+    internal bool CanOpenMachineAssetReference(AssetReference? reference) => CanOpenMachineAsset(reference);
+
+    private void NotifyMachineAssetNavigationChanged()
+    {
+        PropertyChanged?.Invoke(this, new(nameof(CanOpenSelectedCabinetAsset)));
+        if (OpenSelectedCabinetAssetCommand is RelayCommand command) command.RaiseCanExecuteChanged();
+        foreach (var row in MachineReelAssignmentRows) row.NotifyAssetNavigationChanged();
+    }
     private MachineAssetChoice? _selectedMachineCabinetChoice;
     public MachineAssetChoice? SelectedMachineCabinetChoice
     {
@@ -317,6 +356,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             if ((surfaceAssignmentsChanged || reelAssignmentsChanged) && _projectAccessor?.Invoke() is { } project)
                 RefreshMachineReelRowsFromAssignedFaces(project);
         }
+        NotifyMachineAssetNavigationChanged();
     }
 
     internal void RefreshMachineCompositionChoices()
@@ -326,14 +366,14 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var faceChoices = DiscoverProjectAssetChoices(project, EditorAssetType.Face);
         var reelChoices = DiscoverAssetChoices(project, EditorAssetType.Reel);
         var signature = BuildMachineCompositionCatalogSignature(project, cabinetChoices, faceChoices.Concat(reelChoices).ToArray());
-        if (string.Equals(signature, _machineCompositionCatalogSignature, StringComparison.Ordinal)) return;
+        if (string.Equals(signature, _machineCompositionCatalogSignature, StringComparison.Ordinal)) { NotifyMachineAssetNavigationChanged(); return; }
         _isRefreshingMachineCompositionChoices = true;
         try
         {
             RefreshMachineCompositionChoicesCore(project, cabinetChoices, faceChoices);
             _machineCompositionCatalogSignature = signature;
         }
-        finally { _isRefreshingMachineCompositionChoices = false; }
+        finally { _isRefreshingMachineCompositionChoices = false; NotifyMachineAssetNavigationChanged(); }
     }
 
     private void RefreshMachineCompositionChoicesCore(EditorProject project, IReadOnlyList<MachineAssetChoice> cabinetAssets, IReadOnlyList<MachineAssetChoice> faceAssets)
@@ -2017,13 +2057,16 @@ public sealed class MachineSurfaceAssignmentRow : INotifyPropertyChanged
 public sealed class MachineReelAssignmentRow : INotifyPropertyChanged
 {
     private readonly DocumentTabViewModel _owner; private AssetReference? _selectedReelAssetPath; private MachineAssetChoice? _selectedChoice;
-    public MachineReelAssignmentRow(DocumentTabViewModel owner, MachineObjectReference reference, IReadOnlyList<MachineAssetChoice> choices, object? selectedId) { _owner = owner; Reference = reference; Choices = new(choices); _selectedReelAssetPath = selectedId switch { AssetReference typed => typed, string path when !string.IsNullOrWhiteSpace(path) => AssetReference.Project(path), _ => null }; _selectedChoice = Choices.FirstOrDefault(choice => Equals(choice.AssetPath, _selectedReelAssetPath)); }
+    public MachineReelAssignmentRow(DocumentTabViewModel owner, MachineObjectReference reference, IReadOnlyList<MachineAssetChoice> choices, object? selectedId) { _owner = owner; Reference = reference; Choices = new(choices); _selectedReelAssetPath = selectedId switch { AssetReference typed => typed, string path when !string.IsNullOrWhiteSpace(path) => AssetReference.Project(path), _ => null }; _selectedChoice = Choices.FirstOrDefault(choice => Equals(choice.AssetPath, _selectedReelAssetPath)); OpenSelectedAssetCommand = new RelayCommand(() => _owner.OpenMachineAsset(_selectedReelAssetPath), () => CanOpenSelectedAsset); }
     public event PropertyChangedEventHandler? PropertyChanged;
     public MachineObjectReference Reference { get; } public string DisplayName => $"Reel {Reference.Id}"; public ObservableCollection<MachineAssetChoice> Choices { get; }
+    public ICommand OpenSelectedAssetCommand { get; }
+    public bool CanOpenSelectedAsset => _owner.CanOpenMachineAssetReference(_selectedReelAssetPath);
     public MachineAssetChoice? SelectedChoice { get => _selectedChoice; set { if (ReferenceEquals(_selectedChoice, value)) return; _selectedChoice = value; PropertyChanged?.Invoke(this, new(nameof(SelectedChoice))); SelectedReelAssetPath = value?.AssetPath; } }
-    public object? SelectedReelAssetPath { get => _selectedReelAssetPath; set { var reference = value switch { AssetReference typed => typed, string path when !string.IsNullOrWhiteSpace(path) => AssetReference.Project(path), _ => null }; if (_owner.IsRefreshingMachineCompositionChoices || _selectedReelAssetPath == reference) return; _selectedReelAssetPath = reference; var selected = Choices.FirstOrDefault(choice => Equals(choice.AssetPath, reference)); if (!ReferenceEquals(_selectedChoice, selected)) { _selectedChoice = selected; PropertyChanged?.Invoke(this, new(nameof(SelectedChoice))); } PropertyChanged?.Invoke(this, new(nameof(SelectedReelAssetPath))); _owner.SetMachineReelAssignment(Reference, reference); } }
-    internal void SynchronizeSelectedReelAssetPath(AssetReference? value, bool forceNotification = false) { var referenceChanged = _selectedReelAssetPath != value; _selectedReelAssetPath = value; var selected = Choices.FirstOrDefault(choice => Equals(choice.AssetPath, value)); var choiceChanged = !ReferenceEquals(_selectedChoice, selected); _selectedChoice = selected; if (referenceChanged || forceNotification) PropertyChanged?.Invoke(this, new(nameof(SelectedReelAssetPath))); if (choiceChanged || forceNotification) PropertyChanged?.Invoke(this, new(nameof(SelectedChoice))); }
+    public object? SelectedReelAssetPath { get => _selectedReelAssetPath; set { var reference = value switch { AssetReference typed => typed, string path when !string.IsNullOrWhiteSpace(path) => AssetReference.Project(path), _ => null }; if (_owner.IsRefreshingMachineCompositionChoices || _selectedReelAssetPath == reference) return; _selectedReelAssetPath = reference; var selected = Choices.FirstOrDefault(choice => Equals(choice.AssetPath, reference)); if (!ReferenceEquals(_selectedChoice, selected)) { _selectedChoice = selected; PropertyChanged?.Invoke(this, new(nameof(SelectedChoice))); } PropertyChanged?.Invoke(this, new(nameof(SelectedReelAssetPath))); _owner.SetMachineReelAssignment(Reference, reference); NotifyAssetNavigationChanged(); } }
+    internal void SynchronizeSelectedReelAssetPath(AssetReference? value, bool forceNotification = false) { var referenceChanged = _selectedReelAssetPath != value; _selectedReelAssetPath = value; var selected = Choices.FirstOrDefault(choice => Equals(choice.AssetPath, value)); var choiceChanged = !ReferenceEquals(_selectedChoice, selected); _selectedChoice = selected; if (referenceChanged || forceNotification) PropertyChanged?.Invoke(this, new(nameof(SelectedReelAssetPath))); if (choiceChanged || forceNotification) PropertyChanged?.Invoke(this, new(nameof(SelectedChoice))); NotifyAssetNavigationChanged(); }
     internal void RefreshChoices(IReadOnlyList<MachineAssetChoice> choices) => DocumentTabViewModel.ReconcileMachineAssetChoices(Choices, choices);
+    internal void NotifyAssetNavigationChanged() { PropertyChanged?.Invoke(this, new(nameof(CanOpenSelectedAsset))); if (OpenSelectedAssetCommand is RelayCommand command) command.RaiseCanExecuteChanged(); }
 }
 
 internal readonly record struct LampVisualState(bool IsLampTestOn, double Intensity);
