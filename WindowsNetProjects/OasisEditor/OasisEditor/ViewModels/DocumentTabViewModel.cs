@@ -50,6 +50,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private Action<string>? _openAssetDocument;
     private readonly FaceWorkspaceViewModel? _faceWorkspace;
     private readonly MachineCompositionGraphViewModel? _machineCompositionGraph;
+    private readonly MachineRuntimeSettingsViewModel? _machineRuntimeSettings;
     private readonly FaceRuntimeAssetsConfigurationService _runtimeAssetsConfiguration = new();
     private SKBitmap? _correctionInputBitmap;
     private string? _correctionInputCacheKey;
@@ -124,6 +125,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         RebuildLampCaches();
         _faceWorkspace = document.DocumentType == EditorDocumentType.Face ? new FaceWorkspaceViewModel(this) : null;
         _machineCompositionGraph = document.DocumentType == EditorDocumentType.Machine ? new MachineCompositionGraphViewModel(this) : null;
+        _machineRuntimeSettings = document.DocumentType == EditorDocumentType.Machine ? new MachineRuntimeSettingsViewModel(this) : null;
     }
 
     public EditorDocument Document => _document;
@@ -133,7 +135,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public DocumentSelectionState SelectionState { get; } = new();
     public FaceWorkspaceViewModel? FaceWorkspace => _faceWorkspace;
     public MachineCompositionGraphViewModel? MachineCompositionGraph => _machineCompositionGraph;
+    public MachineRuntimeSettingsViewModel? MachineRuntimeSettings => _machineRuntimeSettings;
     internal IProgressDialogService ProgressDialogService => _progressDialogService;
+    internal string? ProjectDirectory => _projectAccessor?.Invoke()?.ProjectDirectory;
     public string Title => Document.IsDirty ? $"{Document.Title}*" : Document.Title;
     public string TypeLabel => Document.DocumentType switch
     {
@@ -353,6 +357,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var surfaceAssignmentsChanged = !_machineDocumentModel.SurfaceAssignments.SequenceEqual(document.SurfaceAssignments);
         var reelAssignmentsChanged = !_machineDocumentModel.ReelAssignments.SequenceEqual(document.ReelAssignments);
         _machineDocumentModel = document;
+        _machineRuntimeSettings?.Refresh();
         MarkDirty();
         foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachineRuntimeKind), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineInputs) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));

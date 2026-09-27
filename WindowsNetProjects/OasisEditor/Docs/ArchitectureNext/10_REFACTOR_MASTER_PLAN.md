@@ -237,6 +237,23 @@ Establish the narrow contract needed to add later:
 
 Do not implement whole new game categories in this phase.
 
+## Phase 7.5 — Machine Runtime Settings UI Migration
+
+### Goal
+
+Make the Editor UI reflect Phase 7 authored ownership: all settings that change one Machine's emulation behavior are edited from that Machine document, never Project Settings.
+
+### Scope
+
+- add a compact, contained Runtime Settings editor to Machine Details;
+- make runtime editing state document-scoped and safe for multiple open Machines;
+- extract Impact/System 6 settings and reuse existing platform views;
+- retain document command, dirty, undo/redo, save, preview, and build behavior;
+- leave Project Settings with workspace-wide information only;
+- make no schema or Player changes.
+
+See `PHASE_7_5_MACHINE_RUNTIME_UI_MIGRATION.md`. Phase 8 follows this ownership cleanup.
+
 ## Phase 8 — Installation assets
 
 ### Goal
