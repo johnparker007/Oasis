@@ -54,8 +54,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private int _customMaximumProcessingWorkers = 1;
     private string _selectedPreferencesCategory = "Appearance";
     private string _oasisAssetLibraryRoot = string.Empty;
-    private string _selectedProjectSettingsCategory = "General";
-    private string _selectedNativeProjectSettingsTab = "ROMS";
     private FruitMachinePlatformType _selectedFruitMachinePlatform = FruitMachinePlatformType.None;
     private bool _automaticallyDownloadMissingRoms = true;
     private string _system6ProgramRom1Path = string.Empty;
@@ -458,8 +456,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public IReadOnlyList<string> PreferencesCategories { get; } = ["Appearance", "Asset Library", "Player", "Processing", "Fabric Emulation"];
     public string OasisAssetLibraryRoot { get => _oasisAssetLibraryRoot; set { if (SetProperty(ref _oasisAssetLibraryRoot, value)) { SavePreferences(); foreach (var document in OpenDocuments) document.SetLibraryRootAccessor(() => OasisAssetLibraryRoot); _assetBrowser.RefreshAssetBrowserPreservingState(); } } }
     public IReadOnlyList<string> CpuImageProcessingModes { get; } = ["Auto (Recommended)", "Maximum", "Custom"];
-    public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "Platform Settings"];
-    public IReadOnlyList<string> NativeProjectSettingsTabs { get; } = ["ROMS", "Stake/Prize", "Reels", "Coins"];
     internal static IReadOnlyList<FruitMachinePlatformType> SupportedFruitMachinePlatformTypes => EmulationRuntimePlatforms.Supported;
     public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes => SupportedFruitMachinePlatformTypes;
     public IReadOnlyList<Mpu5CoinCommunicationStyle> Mpu5CoinCommunicationStyles { get; } = Enum.GetValues<Mpu5CoinCommunicationStyle>();
@@ -681,18 +677,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => _selectedPreferencesCategory;
         set => SetProperty(ref _selectedPreferencesCategory, value);
-    }
-
-    public string SelectedProjectSettingsCategory
-    {
-        get => _selectedProjectSettingsCategory;
-        set => SetProperty(ref _selectedProjectSettingsCategory, value);
-    }
-
-    public string SelectedNativeProjectSettingsTab
-    {
-        get => _selectedNativeProjectSettingsTab;
-        set => SetProperty(ref _selectedNativeProjectSettingsTab, value);
     }
 
     public string StatusMessage

@@ -899,4 +899,82 @@ public sealed class MachineDocumentTests
         File.WriteAllText(path, FaceDocumentStorage.Serialize(face));
         return new ProjectAssetPathService().ToProjectRelativePath(project, path);
     }
+
+    [Fact]
+    public void RuntimeEditors_AreIsolatedPerOpenMachineAndDirtyOnlyTheirOwner()
+    {
+        var a = MachineDocument.Create("A") with { Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.Impact, new System6NativeRomSettings { ProgramRom1Path = "slave.bin" }) };
+        var b = MachineDocument.Create("B") with { Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.Impact, new System6NativeRomSettings { ProgramRom1Path = "topbox.bin" }) };
+        var tabA = new DocumentTabViewModel(EditorDocument.CreateFromFile("C:/Project/Assets/Machines/A/asset.machine", "Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(a));
+        var tabB = new DocumentTabViewModel(EditorDocument.CreateFromFile("C:/Project/Assets/Machines/B/asset.machine", "Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(b));
+
+        Assert.Equal("slave.bin", tabA.MachineRuntimeSettings!.System6ProgramRom1Path);
+        Assert.Equal("topbox.bin", tabB.MachineRuntimeSettings!.System6ProgramRom1Path);
+        tabA.MachineRuntimeSettings.System6ProgramRom1Path = "slave-new.bin";
+
+        Assert.Equal("slave-new.bin", tabA.GetMachineDocument().EmulationRuntime.PlatformSettingsAs<System6NativeRomSettings>().ProgramRom1Path);
+        Assert.Equal("topbox.bin", tabB.GetMachineDocument().EmulationRuntime.PlatformSettingsAs<System6NativeRomSettings>().ProgramRom1Path);
+        Assert.True(tabA.IsDirty);
+        Assert.False(tabB.IsDirty);
+        Assert.True(tabA.CommandService.TryUndo());
+        Assert.Equal("slave.bin", tabA.MachineRuntimeSettings.System6ProgramRom1Path);
+        Assert.True(tabA.CommandService.TryRedo());
+        Assert.Equal("slave-new.bin", tabA.MachineRuntimeSettings.System6ProgramRom1Path);
+    }
+
+    [Theory]
+    [InlineData(FruitMachinePlatformType.MPU5)]
+    [InlineData(FruitMachinePlatformType.Epoch)]
+    [InlineData(FruitMachinePlatformType.MPU3)]
+    [InlineData(FruitMachinePlatformType.MaygayM1)]
+    [InlineData(FruitMachinePlatformType.Scorpion4)]
+    public void RuntimeEditorBuildsPlatformSpecificProjection(FruitMachinePlatformType platform)
+    {
+        var machine = MachineDocument.Create("Machine") with { Runtime = EmulationRuntimeDefinition.Create(platform) };
+        var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile("C:/Project/Assets/Machines/Game/asset.machine", "Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(machine));
+        var editor = tab.MachineRuntimeSettings!;
+        Assert.Equal(platform, editor.Platform);
+        Assert.Equal(platform == FruitMachinePlatformType.MPU5, editor.Mpu5ProjectSettings is not null);
+        Assert.Equal(platform == FruitMachinePlatformType.Epoch, editor.EpochProjectSettings is not null);
+        Assert.Equal(platform == FruitMachinePlatformType.MPU3, editor.Mpu3ProjectSettings is not null);
+        Assert.Equal(platform == FruitMachinePlatformType.MaygayM1, editor.M1ProjectSettings is not null);
+        Assert.Equal(platform == FruitMachinePlatformType.Scorpion4, editor.Scorpion4ProjectSettings is not null);
+    }
+
+    [Fact]
+    public void RuntimeRomMutationSeamTargetsOwningMachine()
+    {
+        var machine = MachineDocument.Create("A") with { Runtime = EmulationRuntimeDefinition.Create(FruitMachinePlatformType.MPU5) };
+        var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile("C:/Project/Assets/Machines/A/asset.machine", "Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(machine));
+        tab.MachineRuntimeSettings!.Mpu5ProgramRom1Path = "roms/a.bin";
+        Assert.Equal("roms/a.bin", tab.GetMachineDocument().EmulationRuntime.PlatformSettingsAs<Mpu5NativeRomSettings>().ProgramRom1Path);
+        Assert.True(tab.IsDirty);
+    }
+
+
+    [Theory]
+    [InlineData(FruitMachinePlatformType.MPU5, "mpu5.bin")]
+    [InlineData(FruitMachinePlatformType.Epoch, "epoch.bin")]
+    [InlineData(FruitMachinePlatformType.MPU3, "mpu3.bin")]
+    [InlineData(FruitMachinePlatformType.MaygayM1, "m1.bin")]
+    [InlineData(FruitMachinePlatformType.Scorpion4, "scorpion.bin")]
+    public void PlatformEditorRepresentativeRomEditCommitsToOwningMachine(FruitMachinePlatformType platform, string path)
+    {
+        var machine = MachineDocument.Create("Machine") with { Runtime = EmulationRuntimeDefinition.Create(platform) };
+        var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile("C:/Project/Assets/Machines/Game/asset.machine", "Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(machine));
+        var editor = tab.MachineRuntimeSettings!;
+        switch (platform)
+        {
+            case FruitMachinePlatformType.MPU5: editor.Mpu5ProjectSettings!.ConfigureReels = true; editor.Mpu5ProgramRom1Path = path; break;
+            case FruitMachinePlatformType.Epoch: editor.EpochProjectSettings!.ProgramRom1Path = path; break;
+            case FruitMachinePlatformType.MPU3: editor.Mpu3ProjectSettings!.ProgramRoms[0].Path = path; break;
+            case FruitMachinePlatformType.MaygayM1: editor.M1ProjectSettings!.ProgramRoms[0].Path = path; break;
+            case FruitMachinePlatformType.Scorpion4: editor.Scorpion4ProjectSettings!.ProgramRoms[0].Path = path; break;
+        }
+
+        var settingsJson = JsonSerializer.Serialize(tab.GetMachineDocument().EmulationRuntime.PlatformSettings);
+        Assert.Contains(path, settingsJson);
+        Assert.True(tab.IsDirty);
+    }
+
 }

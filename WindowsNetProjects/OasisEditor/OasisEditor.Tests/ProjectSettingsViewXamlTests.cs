@@ -5,96 +5,59 @@ namespace OasisEditor.Tests;
 
 public sealed class ProjectSettingsViewXamlTests
 {
-    private static readonly XNamespace Presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
-
     [Fact]
-    public void CategoryRootsCollapseUnlessTheirCategoryIsSelected()
+    public void ProjectSettingsContainsOnlyProjectScopedInformation()
     {
-        var document = LoadView();
-        var contentGrid = document
-            .Descendants(Presentation + "Grid")
-            .Single(grid => grid.Elements(Presentation + "ScrollViewer").Any(IsGeneralCategoryRoot));
-        var categoryRoots = contentGrid.Elements(Presentation + "ScrollViewer").ToArray();
-
-        Assert.Equal(2, categoryRoots.Length);
-        AssertCategoryVisibility(categoryRoots.Single(IsGeneralCategoryRoot), "General");
-        AssertCategoryVisibility(categoryRoots.Single(IsPlatformSettingsCategoryRoot), "Platform Settings");
+        var xaml = Read("ProjectSettingsView.xaml");
+        Assert.Contains("Project name", xaml);
+        Assert.Contains("Project file", xaml);
+        Assert.Contains("Assets folder", xaml);
+        Assert.DoesNotContain("Fruit machine platform", xaml, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Platform Settings", xaml);
+        Assert.DoesNotContain("SelectedFruitMachinePlatform", xaml);
+        Assert.DoesNotContain("FabricSettingsView", xaml);
+        Assert.DoesNotContain("Program ROM", xaml);
+        Assert.DoesNotContain("System6", xaml);
     }
 
     [Fact]
-    public void PlatformSettingsUseDedicatedMpu5ViewAndGenericCategory()
+    public void MachineDetailsHostsDocumentScopedRuntimeEditorAndEverySupportedPlatformView()
     {
-        var platformRoot = LoadView()
-            .Descendants(Presentation + "ScrollViewer")
-            .Single(IsPlatformSettingsCategoryRoot);
-
-        Assert.NotNull(platformRoot.Element(Presentation + "ScrollViewer.Style"));
-        Assert.Contains(platformRoot.Descendants(), element => element.Name.LocalName == "Mpu5FabricSettingsView");
-        Assert.DoesNotContain("Impact / Fabric", File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Views", "ProjectSettingsView.xaml")));
+        var xaml = Read("DocumentEditorView.xaml");
+        Assert.Contains("MachineRuntimeSettings", xaml);
+        Assert.Contains("Runtime Settings", xaml);
+        Assert.Contains("MachineRuntimeKind", xaml);
+        Assert.Contains("MachinePlatforms", xaml);
+        Assert.Contains("ImpactRuntimeSettingsView", xaml);
+        Assert.Contains("Mpu5FabricSettingsView", xaml);
+        Assert.Contains("EpochFabricSettingsView", xaml);
+        Assert.Contains("Mpu3FabricSettingsView", xaml);
+        Assert.Contains("M1FabricSettingsView", xaml);
+        Assert.Contains("Scorpion4FabricSettingsView", xaml);
+        Assert.Contains("No emulation platform is configured", xaml);
+        Assert.Equal(EmulationRuntimePlatforms.Supported, new[] { FruitMachinePlatformType.None, FruitMachinePlatformType.Impact, FruitMachinePlatformType.MPU5, FruitMachinePlatformType.Epoch, FruitMachinePlatformType.MPU3, FruitMachinePlatformType.MaygayM1, FruitMachinePlatformType.Scorpion4 });
     }
 
     [Fact]
-    public void FruitMachinePlatformComboBoxIsEnabledAndBoundToPlatformValues()
+    public void ImpactRuntimeEditorRetainsLogicalSectionsAndMachineTerminology()
     {
-        var comboBox = LoadView()
-            .Descendants(Presentation + "ComboBox")
-            .Single(element => element.Attribute("ItemsSource")?.Value == "{Binding FruitMachinePlatformTypes}");
-
-        Assert.False(string.Equals("False", comboBox.Attribute("IsEnabled")?.Value, StringComparison.OrdinalIgnoreCase));
-        Assert.Equal("{Binding SelectedFruitMachinePlatform}", comboBox.Attribute("SelectedItem")?.Value);
-        Assert.Equal(EmulationRuntimePlatforms.Supported, MainWindowViewModel.SupportedFruitMachinePlatformTypes);
-        Assert.DoesNotContain(FruitMachinePlatformType.MPU4, MainWindowViewModel.SupportedFruitMachinePlatformTypes);
+        var xaml = Read("ImpactRuntimeSettingsView.xaml");
+        Assert.Contains("RuntimeSettingsTabs", xaml);
+        Assert.Contains("ROMS", xaml);
+        Assert.Contains("Stake/Prize", xaml);
+        Assert.Contains("Reels", xaml);
+        Assert.Contains("Coins", xaml);
+        Assert.DoesNotContain("ProjectSettingsTabs", xaml);
     }
 
     [Fact]
     public void Mpu5ViewContainsOnlyMpu5RomBindings()
     {
-        var xaml = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Views", "Mpu5FabricSettingsView.xaml"));
+        var xaml = Read("Mpu5FabricSettingsView.xaml");
         Assert.Contains("Mpu5ProgramRom1Path", xaml);
         Assert.Contains("Mpu5SoundRom4Path", xaml);
         Assert.DoesNotContain("System6", xaml);
-        Assert.Contains("ConfigureReels", xaml);
-        Assert.Contains("ConfigureCoins", xaml);
-        Assert.Contains("ConfigureMachineOptions", xaml);
     }
 
-    private static XDocument LoadView()
-    {
-        return XDocument.Load(Path.Combine(AppContext.BaseDirectory, "Views", "ProjectSettingsView.xaml"));
-    }
-
-    private static void AssertCategoryVisibility(XElement categoryRoot, string category)
-    {
-        var style = categoryRoot.Element(Presentation + "ScrollViewer.Style")?.Element(Presentation + "Style");
-        Assert.NotNull(style);
-        Assert.Contains(
-            style.Elements(Presentation + "Setter"),
-            setter => setter.Attribute("Property")?.Value == "Visibility"
-                && setter.Attribute("Value")?.Value == "Collapsed");
-
-        var triggers = style.Element(Presentation + "Style.Triggers")?.Elements(Presentation + "DataTrigger").ToArray();
-        var trigger = Assert.Single(triggers!);
-        Assert.Equal("{Binding SelectedProjectSettingsCategory}", trigger.Attribute("Binding")?.Value);
-        Assert.Equal(category, trigger.Attribute("Value")?.Value);
-        Assert.Contains(
-            trigger.Elements(Presentation + "Setter"),
-            setter => setter.Attribute("Property")?.Value == "Visibility"
-                && setter.Attribute("Value")?.Value == "Visible");
-    }
-
-    private static bool IsGeneralCategoryRoot(XElement element)
-    {
-        return HasHeading(element, "General");
-    }
-
-    private static bool IsPlatformSettingsCategoryRoot(XElement element)
-    {
-        return HasHeading(element, "Platform Settings");
-    }
-
-    private static bool HasHeading(XElement element, string heading)
-    {
-        return element.Descendants(Presentation + "TextBlock")
-            .Any(textBlock => textBlock.Attribute("Text")?.Value == heading);
-    }
+    private static string Read(string name) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Views", name));
 }
