@@ -47,10 +47,14 @@ public sealed class MachineCompositionGraphBuilder
         var diagnostics = new List<MachineCompositionDiagnostic>();
         var machineId = $"machine:{machine.Id}";
         nodes[machineId] = new(machineId, MachineCompositionNodeKind.Machine, machine.DisplayName,
-            $"{machine.Runtime.Platform} · {machine.InputDefinitions.Count} inputs");
+            $"{machine.Runtime.Kind} · {machine.InputDefinitions.Count} inputs");
         const string runtimeId = "runtime";
-        nodes[runtimeId] = new(runtimeId, MachineCompositionNodeKind.Runtime, machine.Runtime.Platform.ToString(),
-            $"Emulation · {machine.InputDefinitions.Count} inputs");
+        nodes[runtimeId] = machine.Runtime switch
+        {
+            EmulationRuntimeDefinition emulation => new(runtimeId, MachineCompositionNodeKind.Runtime, emulation.Kind,
+                $"Platform · {emulation.Platform}"),
+            _ => new(runtimeId, MachineCompositionNodeKind.Runtime, machine.Runtime.Kind, "Unsupported runtime", IsMissing: true)
+        };
         edges.Add(new(machineId, runtimeId, string.Empty, MachineCompositionEdgeKind.Composition));
 
         string? cabinetId = null;

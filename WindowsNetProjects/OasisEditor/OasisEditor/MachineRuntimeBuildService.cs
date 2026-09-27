@@ -21,7 +21,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string CabinetGlbFileName = "cabinet.glb";
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
-    public const int MachineSchemaVersion = 5;
+    public const int MachineSchemaVersion = 6;
     public const int CabinetSchemaVersion = 5;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -60,6 +60,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         ArgumentNullException.ThrowIfNull(machineDocument);
         ArgumentNullException.ThrowIfNull(progress);
         cancellationToken.ThrowIfCancellationRequested();
+        try { RuntimeDefinitionValidation.Validate(machineDocument.DisplayName, machineDocument.Runtime); }
+        catch (InvalidOperationException exception) { return MachineRuntimeBuildResult.Fail(exception.Message); }
         var machineAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(machineManifestPath, EditorAssetType.Machine);
         if (string.IsNullOrWhiteSpace(machineAssetName)) return MachineRuntimeBuildResult.Fail("Machine manifests must be stored as Assets/Machines/<Name>/asset.machine before building for Oasis Player.");
         if (machineDocument.CabinetAsset is null) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' has no Cabinet asset assigned.");
@@ -95,7 +97,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             progress.Report(0.85, "Writing runtime manifests...");
             cancellationToken.ThrowIfCancellationRequested();
             File.WriteAllText(Path.Combine(cabinetRoot, CabinetManifestFileName), JsonSerializer.Serialize(cabinetManifest, JsonOptions));
-            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, machineDocument.Id, machineDocument.DisplayName, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, MachineRuntimeDefinition.From(machineDocument.Runtime), machineDocument.InputDefinitions);
+            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, machineDocument.Id, machineDocument.DisplayName, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, MachineRuntimeManifestDefinition.From(machineDocument.Runtime), machineDocument.InputDefinitions);
             File.WriteAllText(Path.Combine(stagingRoot, MachineManifestFileName), JsonSerializer.Serialize(machineManifest, JsonOptions));
             progress.Report(0.95, "Finalising Oasis Player machine...");
             cancellationToken.ThrowIfCancellationRequested();
@@ -288,10 +290,16 @@ public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, 
     public static MachineRuntimeBuildResult Fail(string errorMessage) => new(false, null, errorMessage);
 }
 
-public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, MachineRuntimeDefinition Runtime, IReadOnlyList<InputDefinitionModel> Inputs);
-public sealed record MachineRuntimeDefinition(string Kind, string Platform, string PlatformSettingsJson, bool ExecutionSupportedByPlayer)
+public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, MachineRuntimeManifestDefinition Runtime, IReadOnlyList<InputDefinitionModel> Inputs);
+
+/// <summary>Generated Player contract projection; distinct from the authored RuntimeDefinition.</summary>
+public sealed record MachineRuntimeManifestDefinition(string Kind, string Platform, string PlatformSettingsJson)
 {
-    public static MachineRuntimeDefinition From(MachineEmulationRuntime runtime) => new(MachineEmulationRuntime.Kind, runtime.Platform.ToString(), JsonSerializer.Serialize(runtime.Settings, runtime.Settings.GetType(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }), false);
+    public static MachineRuntimeManifestDefinition From(RuntimeDefinition runtime) => runtime switch
+    {
+        EmulationRuntimeDefinition emulation => new(emulation.Kind, emulation.Platform.ToString(), JsonSerializer.Serialize(emulation.PlatformSettings, emulation.PlatformSettings.GetType(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })),
+        _ => throw new InvalidOperationException($"Runtime '{runtime.Kind}' is not supported by the Player build pipeline.")
+    };
 }
 public sealed record MachineRuntimeFaceReference(string FaceId, string AssetName, string CabinetFaceTargetId, string FrontSide, int FaceRotation, bool FaceFlipHorizontal, string Manifest);
 public sealed record CabinetRuntimeManifest(string Schema, int SchemaVersion, string CabinetId, string Glb, double Scale, string UpAxis, IReadOnlyList<CabinetReflectionDefinition> Reflections);

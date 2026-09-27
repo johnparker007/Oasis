@@ -23,7 +23,7 @@ public sealed class MachineCompositionGraphTests
             SurfaceAssignments = [new("topGlass", top), new("bottomGlass", bottom)],
             ReelAssignments = [new(MachineObjectReference.Reel(0), standard), new(MachineObjectReference.Reel(1), standard),
                 new(MachineObjectReference.Reel(2), standard), new(MachineObjectReference.Reel(3), small)],
-            Runtime = MachineEmulationRuntime.Create(FruitMachinePlatformType.MPU5),
+            Runtime = EmulationRuntimeDefinition.Create(FruitMachinePlatformType.MPU5),
             InputDefinitions = [new InputDefinitionModel { Id = "start" }]
         };
 
@@ -31,6 +31,9 @@ public sealed class MachineCompositionGraphTests
 
         Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Machine));
         Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Runtime));
+        var runtimeNode = Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Runtime));
+        Assert.Equal("Emulation", runtimeNode.Title);
+        Assert.Equal("Platform · MPU5", runtimeNode.Metadata);
         Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Cabinet));
         Assert.Equal(2, graph.Nodes.Count(x => x.Kind == MachineCompositionNodeKind.Face));
         Assert.Single(graph.Nodes.Where(x => x.Kind == MachineCompositionNodeKind.Panel2D));

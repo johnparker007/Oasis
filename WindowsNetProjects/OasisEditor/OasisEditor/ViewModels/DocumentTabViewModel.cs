@@ -335,8 +335,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             MachineCabinetAssetPath = value?.AssetPath;
         }
     }
-    public FruitMachinePlatformType MachinePlatform { get => _machineDocumentModel.Runtime.Platform; set { if (value == _machineDocumentModel.Runtime.Platform) return; ExecuteMachineMutation(_machineDocumentModel with { Runtime = MachineEmulationRuntime.Create(value) }, "Change Machine runtime platform"); } }
-    public IReadOnlyList<FruitMachinePlatformType> MachinePlatforms { get; } = Enum.GetValues<FruitMachinePlatformType>();
+    public FruitMachinePlatformType MachinePlatform { get => _machineDocumentModel.EmulationRuntime.Platform; set { if (value == _machineDocumentModel.EmulationRuntime.Platform) return; ExecuteMachineMutation(_machineDocumentModel with { Runtime = EmulationRuntimeDefinition.Create(value) }, "Change Machine runtime platform"); } }
+    public string MachineRuntimeKind => _machineDocumentModel.Runtime.Kind;
+    public IReadOnlyList<FruitMachinePlatformType> MachinePlatforms => EmulationRuntimePlatforms.Supported;
     public IReadOnlyList<MachineSurfaceAssignment> MachineSurfaceAssignments => _machineDocumentModel.SurfaceAssignments;
     public IReadOnlyList<MachineReelAssignment> MachineReelAssignments => _machineDocumentModel.ReelAssignments;
     public IReadOnlyList<InputDefinitionModel> MachineInputs => _machineDocumentModel.InputDefinitions;
@@ -353,7 +354,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var reelAssignmentsChanged = !_machineDocumentModel.ReelAssignments.SequenceEqual(document.ReelAssignments);
         _machineDocumentModel = document;
         MarkDirty();
-        foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineInputs) })
+        foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachineRuntimeKind), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineInputs) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
         if (cabinetChanged)
         {

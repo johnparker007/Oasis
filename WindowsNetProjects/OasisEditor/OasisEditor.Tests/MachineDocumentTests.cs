@@ -7,21 +7,47 @@ namespace OasisEditor.Tests;
 
 public sealed class MachineDocumentTests
 {
+    private static readonly FruitMachinePlatformType[] SupportedPlatforms =
+    [
+        FruitMachinePlatformType.None,
+        FruitMachinePlatformType.Impact,
+        FruitMachinePlatformType.MPU5,
+        FruitMachinePlatformType.Epoch,
+        FruitMachinePlatformType.MPU3,
+        FruitMachinePlatformType.MaygayM1,
+        FruitMachinePlatformType.Scorpion4
+    ];
+
     [Fact]
-    public void Schema3_RoundTripsCompositionRuntimeAndInputs()
+    public void EmulationRuntimePlatforms_ContainsExactlyImplementedBackends()
+    {
+        Assert.Equal(SupportedPlatforms, EmulationRuntimePlatforms.Supported);
+        Assert.All(SupportedPlatforms, platform => Assert.True(EmulationRuntimePlatforms.IsSupported(platform)));
+        Assert.False(EmulationRuntimePlatforms.IsSupported(FruitMachinePlatformType.MPU4));
+        Assert.False(EmulationRuntimePlatforms.IsSupported((FruitMachinePlatformType)9999));
+    }
+
+    [Fact]
+    public void Schema4_RoundTripsCompositionRuntimeAndInputs()
     {
         var machine = MachineDocument.Create("Machine A") with
         {
             CabinetAsset = AssetReference.Project("Assets/Cabinet3D/Vogue/asset.cabinet3d"),
             SurfaceAssignments = [new("OasisFace_TopGlass", "Assets/Faces/Top/asset.face")],
             ReelAssignments = [new(MachineObjectReference.Reel(0), AssetReference.Project("Assets/Reels/Standard/asset.reel"))],
-            Runtime = new MachineEmulationRuntime(FruitMachinePlatformType.MPU5, new Mpu5NativeRomSettings { ProgramRom1Path = "Assets/ROMs/game.bin" })
+            Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.MPU5, new Mpu5NativeRomSettings { ProgramRom1Path = "Assets/ROMs/game.bin" })
         };
         var json = MachineDocumentStorage.Serialize(machine);
+        using (var authored = JsonDocument.Parse(json))
+        {
+            Assert.Equal(4, authored.RootElement.GetProperty("schemaVersion").GetInt32());
+            Assert.Equal("Emulation", authored.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
+            Assert.False(authored.RootElement.GetProperty("runtime").TryGetProperty("$type", out _));
+        }
         Assert.True(MachineDocumentStorage.TryRead(json, out var result, out var error), error);
         Assert.Equal(machine.Id, result.Id);
-        Assert.Equal(FruitMachinePlatformType.MPU5, result.Runtime.Platform);
-        Assert.Equal("Assets/ROMs/game.bin", result.Runtime.SettingsAs<Mpu5NativeRomSettings>().ProgramRom1Path);
+        Assert.Equal(FruitMachinePlatformType.MPU5, result.EmulationRuntime.Platform);
+        Assert.Equal("Assets/ROMs/game.bin", result.EmulationRuntime.PlatformSettingsAs<Mpu5NativeRomSettings>().ProgramRom1Path);
         Assert.Single(result.SurfaceAssignments);
         Assert.Single(result.ReelAssignments);
     }
@@ -29,19 +55,78 @@ public sealed class MachineDocumentTests
     [Fact]
     public void WrongSchema_IsRejectedWithoutCompatibilityFallback()
     {
-        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")).Replace("\"schemaVersion\": 3", "\"schemaVersion\": 0");
+        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")).Replace("\"schemaVersion\": 4", "\"schemaVersion\": 3");
         Assert.False(MachineDocumentStorage.TryRead(json, out _, out var error));
-        Assert.Contains("only version 3", error);
+        Assert.Contains("only version 4", error);
+    }
+
+    [Fact]
+    public void UnknownRuntimeKind_IsRejectedWithoutEmulationFallback()
+    {
+        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine"))
+            .Replace("\"kind\": \"Emulation\"", "\"kind\": \"Scripted\"");
+        Assert.False(MachineDocumentStorage.TryRead(json, out _, out var error));
+        Assert.Contains("supports only Emulation", error);
+    }
+
+    [Fact]
+    public void UnsupportedDefinedPlatform_IsRejectedByFactoryValidationSerializationAndReader()
+    {
+        Assert.Throws<NotSupportedException>(() => EmulationRuntimeDefinition.Create(FruitMachinePlatformType.MPU4));
+        var runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.MPU4, new System6NativeRomSettings());
+        var validation = Assert.Throws<InvalidOperationException>(() => RuntimeDefinitionValidation.Validate("Test", runtime));
+        Assert.Contains("Test", validation.Message);
+        Assert.Contains("Emulation", validation.Message);
+        Assert.Contains("MPU4", validation.Message);
+        Assert.Contains("unsupported", validation.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Throws<InvalidOperationException>(() => MachineDocumentStorage.Serialize(MachineDocument.Create("Test") with { Runtime = runtime }));
+
+        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Test"))
+            .Replace("\"platform\": \"None\"", "\"platform\": \"MPU4\"");
+        Assert.False(MachineDocumentStorage.TryRead(json, out _, out var error));
+        Assert.Contains("MPU4", error);
+        Assert.Contains("unsupported", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void InvalidNumericPlatform_IsRejected()
+    {
+        var platform = (FruitMachinePlatformType)9999;
+        Assert.Throws<NotSupportedException>(() => EmulationRuntimeDefinition.Create(platform));
+        var runtime = new EmulationRuntimeDefinition(platform, new System6NativeRomSettings());
+        Assert.Throws<InvalidOperationException>(() => RuntimeDefinitionValidation.Validate("Test", runtime));
+        Assert.Throws<InvalidOperationException>(() => MachineDocumentStorage.Serialize(MachineDocument.Create("Test") with { Runtime = runtime }));
+        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Test"))
+            .Replace("\"platform\": \"None\"", "\"platform\": \"9999\"");
+        Assert.False(MachineDocumentStorage.TryRead(json, out _, out var error));
+        Assert.Contains("unsupported", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData(FruitMachinePlatformType.None, typeof(System6NativeRomSettings))]
+    [InlineData(FruitMachinePlatformType.Impact, typeof(System6NativeRomSettings))]
+    [InlineData(FruitMachinePlatformType.MPU5, typeof(Mpu5NativeRomSettings))]
+    [InlineData(FruitMachinePlatformType.Epoch, typeof(EpochNativeRomSettings))]
+    [InlineData(FruitMachinePlatformType.MPU3, typeof(Mpu3ProjectSettings))]
+    [InlineData(FruitMachinePlatformType.MaygayM1, typeof(M1ProjectSettings))]
+    [InlineData(FruitMachinePlatformType.Scorpion4, typeof(Scorpion4ProjectSettings))]
+    public void EmulationRuntime_RoundTripsSupportedPlatformSettings(FruitMachinePlatformType platform, Type settingsType)
+    {
+        var machine = MachineDocument.Create("Machine") with { Runtime = EmulationRuntimeDefinition.Create(platform) };
+        Assert.True(MachineDocumentStorage.TryRead(MachineDocumentStorage.Serialize(machine), out var reopened, out var error), error);
+        Assert.IsType<EmulationRuntimeDefinition>(reopened.Runtime);
+        Assert.Equal(platform, reopened.EmulationRuntime.Platform);
+        Assert.Equal(settingsType, reopened.EmulationRuntime.PlatformSettings.GetType());
     }
 
     [Fact]
     public void TwoMachines_KeepRuntimeSettingsIsolated()
     {
-        var a = MachineDocument.Create("A") with { Runtime = new(FruitMachinePlatformType.MPU5, new Mpu5NativeRomSettings { ProgramRom1Path = "a.bin" }) };
-        var b = MachineDocument.Create("B") with { Runtime = new(FruitMachinePlatformType.Epoch, new EpochNativeRomSettings { ProgramRom1Path = "b.bin" }) };
-        Assert.Equal("a.bin", a.Runtime.SettingsAs<Mpu5NativeRomSettings>().ProgramRom1Path);
-        Assert.Equal("b.bin", b.Runtime.SettingsAs<EpochNativeRomSettings>().ProgramRom1Path);
-        Assert.NotEqual(a.Runtime.Platform, b.Runtime.Platform);
+        var a = MachineDocument.Create("A") with { Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.MPU5, new Mpu5NativeRomSettings { ProgramRom1Path = "a.bin" }) };
+        var b = MachineDocument.Create("B") with { Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.Epoch, new EpochNativeRomSettings { ProgramRom1Path = "b.bin" }) };
+        Assert.Equal("a.bin", a.EmulationRuntime.PlatformSettingsAs<Mpu5NativeRomSettings>().ProgramRom1Path);
+        Assert.Equal("b.bin", b.EmulationRuntime.PlatformSettingsAs<EpochNativeRomSettings>().ProgramRom1Path);
+        Assert.NotEqual(a.EmulationRuntime.Platform, b.EmulationRuntime.Platform);
     }
 
     [Fact]
@@ -49,11 +134,11 @@ public sealed class MachineDocumentTests
     {
         var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile("C:/Project/Assets/Machines/Game/asset.machine", "Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(MachineDocument.Create("Game")));
         tab.MachineCabinetAssetPath = AssetReference.Project("Assets/Cabinet3D/Vogue/asset.cabinet3d");
-        tab.ExecuteMachineMutation(machine => machine with { Runtime = new(FruitMachinePlatformType.MPU5, new Mpu5NativeRomSettings { ProgramRom1Path = "game.bin" }) }, "Runtime");
+        tab.ExecuteMachineMutation(machine => machine with { Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.MPU5, new Mpu5NativeRomSettings { ProgramRom1Path = "game.bin" }) }, "Runtime");
         tab.ExecuteMachineMutation(machine => machine with { InputDefinitions = [new InputDefinitionModel { Id = "start" }] }, "Inputs");
         var result = tab.GetMachineDocument();
         Assert.Equal("Assets/Cabinet3D/Vogue/asset.cabinet3d", result.CabinetAsset!.Path);
-        Assert.Equal("game.bin", result.Runtime.SettingsAs<Mpu5NativeRomSettings>().ProgramRom1Path);
+        Assert.Equal("game.bin", result.EmulationRuntime.PlatformSettingsAs<Mpu5NativeRomSettings>().ProgramRom1Path);
         Assert.Single(result.InputDefinitions);
         Assert.True(tab.IsDirty);
     }
@@ -82,12 +167,37 @@ public sealed class MachineDocumentTests
     [Fact]
     public void RuntimeProjection_RetainsConcreteSelectedPlatformSettingsAsJson()
     {
-        var runtime = new MachineEmulationRuntime(FruitMachinePlatformType.MPU5, new Mpu5NativeRomSettings { ProgramRom1Path = "game.bin" });
-        var projected = MachineRuntimeDefinition.From(runtime);
-        Assert.False(projected.ExecutionSupportedByPlayer);
+        var runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.MPU5, new Mpu5NativeRomSettings { ProgramRom1Path = "game.bin" });
+        var projected = MachineRuntimeManifestDefinition.From(runtime);
         Assert.Equal("MPU5", projected.Platform);
         using var settings = JsonDocument.Parse(projected.PlatformSettingsJson);
         Assert.Equal("game.bin", settings.RootElement.GetProperty("programRom1Path").GetString());
+    }
+
+    [Fact]
+    public void PlatformSwitch_IsOneEmulationMutationAndSupportsUndoRedo()
+    {
+        var machine = MachineDocument.Create("Machine") with { Runtime = EmulationRuntimeDefinition.Create(FruitMachinePlatformType.Impact) };
+        var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile("C:/Project/Assets/Machines/Game/asset.machine", "Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(machine));
+
+        tab.MachinePlatform = FruitMachinePlatformType.MPU5;
+        Assert.Equal("Emulation", tab.GetMachineDocument().Runtime.Kind);
+        Assert.Equal(FruitMachinePlatformType.MPU5, tab.GetMachineDocument().EmulationRuntime.Platform);
+        Assert.IsType<Mpu5NativeRomSettings>(tab.GetMachineDocument().EmulationRuntime.PlatformSettings);
+        Assert.True(tab.CommandService.TryUndo());
+        Assert.Equal(FruitMachinePlatformType.Impact, tab.GetMachineDocument().EmulationRuntime.Platform);
+        Assert.IsType<System6NativeRomSettings>(tab.GetMachineDocument().EmulationRuntime.PlatformSettings);
+        Assert.True(tab.CommandService.TryRedo());
+        Assert.Equal(FruitMachinePlatformType.MPU5, tab.GetMachineDocument().EmulationRuntime.Platform);
+    }
+
+    [Fact]
+    public void MachineDetails_OffersOnlySupportedEmulationPlatforms()
+    {
+        var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile("C:/Project/Assets/Machines/Game/asset.machine", "Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")));
+        Assert.Equal(SupportedPlatforms, tab.MachinePlatforms);
+        Assert.DoesNotContain(FruitMachinePlatformType.MPU4, tab.MachinePlatforms);
+        Assert.Equal(SupportedPlatforms, MainWindowViewModel.SupportedFruitMachinePlatformTypes);
     }
 
     [Fact]
@@ -120,17 +230,17 @@ public sealed class MachineDocumentTests
     [Fact]
     public void SettingsBinding_SwitchingMachinesCreatesIsolatedViewModelModels()
     {
-        var machineA = MachineDocument.Create("A") with { Runtime = new(FruitMachinePlatformType.MPU3, new Mpu3ProjectSettings()) };
+        var machineA = MachineDocument.Create("A") with { Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.MPU3, new Mpu3ProjectSettings()) };
         var machineBSettings = new Mpu3ProjectSettings(); machineBSettings.ProgramRoms[0].Path = "b.rom";
-        var machineB = MachineDocument.Create("B") with { Runtime = new(FruitMachinePlatformType.MPU3, machineBSettings) };
+        var machineB = MachineDocument.Create("B") with { Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.MPU3, machineBSettings) };
         var boundA = MachineRuntimeSettingsBinding.CreateEditableSnapshot<Mpu3ProjectSettings>(machineA);
         var boundB = MachineRuntimeSettingsBinding.CreateEditableSnapshot<Mpu3ProjectSettings>(machineB);
         var viewModelA = new Mpu3ProjectSettingsViewModel(boundA, _ => { });
         var viewModelB = new Mpu3ProjectSettingsViewModel(boundB, _ => { });
         viewModelA.ProgramRoms[0].Path = "a-edited.rom";
         Assert.Equal("b.rom", viewModelB.ProgramRoms[0].Path);
-        Assert.Equal(string.Empty, machineA.Runtime.SettingsAs<Mpu3ProjectSettings>().ProgramRoms[0].Path);
-        Assert.Equal("b.rom", machineB.Runtime.SettingsAs<Mpu3ProjectSettings>().ProgramRoms[0].Path);
+        Assert.Equal(string.Empty, machineA.EmulationRuntime.PlatformSettingsAs<Mpu3ProjectSettings>().ProgramRoms[0].Path);
+        Assert.Equal("b.rom", machineB.EmulationRuntime.PlatformSettingsAs<Mpu3ProjectSettings>().ProgramRoms[0].Path);
     }
 
     [Fact]

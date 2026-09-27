@@ -83,7 +83,7 @@ public sealed class DocumentSaveServiceTests
                 CabinetAsset = AssetReference.Project("Assets/Cabinet3D/Vogue/asset.cabinet3d"),
                 SurfaceAssignments = [new("OasisFace_TopGlass", "Assets/Faces/FaceA/asset.face")],
                 ReelAssignments = [new(MachineObjectReference.Reel(0), AssetReference.Project("Assets/Reels/Standard/asset.reel"))],
-                Runtime = new(FruitMachinePlatformType.MPU5, new Mpu5NativeRomSettings { ProgramRom1Path = "Assets/ROMs/game.bin" }),
+                Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.MPU5, new Mpu5NativeRomSettings { ProgramRom1Path = "Assets/ROMs/game.bin" }),
                 InputDefinitions = [new InputDefinitionModel { Id = "start", Name = "Start", ButtonNumber = "1" }]
             };
             var current = new DocumentTabViewModel(
@@ -215,8 +215,8 @@ public sealed class DocumentSaveServiceTests
         Assert.Equal(expected.CabinetAsset!.Path, actual.CabinetAsset!.Path);
         Assert.Equal(expected.SurfaceAssignments, actual.SurfaceAssignments);
         Assert.Equal(expected.ReelAssignments, actual.ReelAssignments);
-        Assert.Equal(expected.Runtime.Platform, actual.Runtime.Platform);
-        Assert.Equal(MachineRuntimeDefinition.From(expected.Runtime).PlatformSettingsJson, MachineRuntimeDefinition.From(actual.Runtime).PlatformSettingsJson);
+        Assert.Equal(expected.EmulationRuntime.Platform, actual.EmulationRuntime.Platform);
+        Assert.Equal(MachineRuntimeManifestDefinition.From(expected.Runtime).PlatformSettingsJson, MachineRuntimeManifestDefinition.From(actual.Runtime).PlatformSettingsJson);
         Assert.Equal(expected.InputDefinitions.Select(input => (input.Id, input.Name, input.ButtonNumber)), actual.InputDefinitions.Select(input => (input.Id, input.Name, input.ButtonNumber)));
     }
 }

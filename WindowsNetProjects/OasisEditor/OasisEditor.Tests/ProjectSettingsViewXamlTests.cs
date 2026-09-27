@@ -42,7 +42,8 @@ public sealed class ProjectSettingsViewXamlTests
 
         Assert.False(string.Equals("False", comboBox.Attribute("IsEnabled")?.Value, StringComparison.OrdinalIgnoreCase));
         Assert.Equal("{Binding SelectedFruitMachinePlatform}", comboBox.Attribute("SelectedItem")?.Value);
-        Assert.NotEmpty(Enum.GetValues<FruitMachinePlatformType>());
+        Assert.Equal(EmulationRuntimePlatforms.Supported, MainWindowViewModel.SupportedFruitMachinePlatformTypes);
+        Assert.DoesNotContain(FruitMachinePlatformType.MPU4, MainWindowViewModel.SupportedFruitMachinePlatformTypes);
     }
 
     [Fact]

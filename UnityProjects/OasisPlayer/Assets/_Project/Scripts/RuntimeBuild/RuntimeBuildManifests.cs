@@ -24,16 +24,15 @@ namespace OasisPlayer.RuntimeBuild
         public string displayName = string.Empty;
         public string cabinetManifest = string.Empty;
         public MachineRuntimeFaceReference[] faces = Array.Empty<MachineRuntimeFaceReference>();
-        public MachineRuntimeDefinition runtime;
+        public MachineRuntimeManifestDefinition runtime;
         public MachineInputDefinition[] inputs = Array.Empty<MachineInputDefinition>();
     }
 
     [Serializable]
-    public sealed class MachineRuntimeDefinition
+    public sealed class MachineRuntimeManifestDefinition
     {
         public string kind = string.Empty;
         public string platform = string.Empty;
-        public bool executionSupportedByPlayer;
         // Complete selected-platform settings encoded as JSON for reliable retention without Fabric hosting.
         public string platformSettingsJson = string.Empty;
     }
@@ -268,7 +267,7 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            if (machine == null || machine.schema != MachineSchema || machine.schemaVersion != 5)
+            if (machine == null || machine.schema != MachineSchema || machine.schemaVersion != 6)
             {
                 error = $"Unsupported machine manifest schema/version in {machinePath}.";
                 return false;
