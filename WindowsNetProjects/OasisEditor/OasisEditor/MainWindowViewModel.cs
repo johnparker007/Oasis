@@ -532,7 +532,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             if (LoadedProject is not null)
             {
                 if (_activeMachineDocument is not null)
-                    _activeMachineDocument.ExecuteMachineMutation(machine => machine with { Runtime = machine.Runtime.Platform == value ? machine.Runtime : MachineEmulationRuntime.Create(value) }, "Change Machine runtime platform");
+                    _activeMachineDocument.ExecuteMachineMutation(machine => machine with { Runtime = machine.EmulationRuntime.Platform == value ? machine.Runtime : EmulationRuntimeDefinition.Create(value) }, "Change Machine runtime platform");
                 RefreshInputMapDiagnostics();
             }
         }
@@ -758,7 +758,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void UpdateActiveRuntime(FruitMachinePlatformType platform, object settings)
     {
-        _activeMachineDocument?.ExecuteMachineMutation(machine => machine with { Runtime = new MachineEmulationRuntime(platform, settings) }, "Update Machine runtime settings");
+        _activeMachineDocument?.ExecuteMachineMutation(machine => machine with { Runtime = new EmulationRuntimeDefinition(platform, settings) }, "Update Machine runtime settings");
     }
 
     private void OnActiveMachineDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -771,7 +771,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void RebindActiveMachineSettings()
     {
-        _selectedFruitMachinePlatform = ActiveMachine?.Runtime.Platform ?? FruitMachinePlatformType.None;
+        _selectedFruitMachinePlatform = ActiveMachine?.EmulationRuntime.Platform ?? FruitMachinePlatformType.None;
         OnPropertyChanged(nameof(SelectedFruitMachinePlatform));
         ApplySystem6NativeRomSettingsToViewModel(ActiveSettings<System6NativeRomSettings>());
         ApplyMpu5NativeRomSettingsToViewModel(ActiveSettings<Mpu5NativeRomSettings>());
