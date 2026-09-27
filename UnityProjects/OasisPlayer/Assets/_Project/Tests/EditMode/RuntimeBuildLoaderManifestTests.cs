@@ -107,5 +107,31 @@ namespace OasisPlayer.Tests
                 if (Directory.Exists(root)) Directory.Delete(root, true);
             }
         }
+
+        [TestCase("None", true)]
+        [TestCase("Impact", true)]
+        [TestCase("MPU5", true)]
+        [TestCase("Epoch", true)]
+        [TestCase("MPU3", true)]
+        [TestCase("MaygayM1", true)]
+        [TestCase("Scorpion4", true)]
+        [TestCase("MPU4", false)]
+        public void MachineRuntimeJsonAcceptsExactlyCurrentEmulationPlatforms(string platform, bool expected)
+        {
+            var root = Path.Combine(Application.temporaryCachePath, "OasisRuntimeBuildLoaderTests", System.Guid.NewGuid().ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(root, "cabinet"));
+                File.WriteAllBytes(Path.Combine(root, "cabinet", "cabinet.glb"), new byte[] { 1 });
+                File.WriteAllText(Path.Combine(root, "cabinet", "cabinet.runtime.json"), "{\"schema\":\"oasis.cabinet.runtime\",\"schemaVersion\":5,\"cabinetId\":\"cabinet\",\"glb\":\"cabinet.glb\",\"scale\":1,\"upAxis\":\"Y\",\"reflections\":[]}");
+                File.WriteAllText(Path.Combine(root, "machine.runtime.json"), "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":6,\"machineId\":\"machine\",\"displayName\":\"machine\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"" + platform + "\",\"platformSettingsJson\":\"{}\"},\"inputs\":[],\"faces\":[]}");
+
+                Assert.AreEqual(expected, RuntimeBuildLoader.TryLoad(root, out _, out var error), error);
+            }
+            finally
+            {
+                if (Directory.Exists(root)) Directory.Delete(root, true);
+            }
+        }
     }
 }

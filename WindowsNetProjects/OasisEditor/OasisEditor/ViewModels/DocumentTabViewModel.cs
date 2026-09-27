@@ -337,7 +337,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     }
     public FruitMachinePlatformType MachinePlatform { get => _machineDocumentModel.EmulationRuntime.Platform; set { if (value == _machineDocumentModel.EmulationRuntime.Platform) return; ExecuteMachineMutation(_machineDocumentModel with { Runtime = EmulationRuntimeDefinition.Create(value) }, "Change Machine runtime platform"); } }
     public string MachineRuntimeKind => _machineDocumentModel.Runtime.Kind;
-    public IReadOnlyList<FruitMachinePlatformType> MachinePlatforms { get; } = Enum.GetValues<FruitMachinePlatformType>();
+    public IReadOnlyList<FruitMachinePlatformType> MachinePlatforms => EmulationRuntimePlatforms.Supported;
     public IReadOnlyList<MachineSurfaceAssignment> MachineSurfaceAssignments => _machineDocumentModel.SurfaceAssignments;
     public IReadOnlyList<MachineReelAssignment> MachineReelAssignments => _machineDocumentModel.ReelAssignments;
     public IReadOnlyList<InputDefinitionModel> MachineInputs => _machineDocumentModel.InputDefinitions;

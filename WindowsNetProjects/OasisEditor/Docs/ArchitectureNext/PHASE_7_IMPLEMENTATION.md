@@ -28,6 +28,8 @@ Platform-specific reel reversal, Epoch/Amber normalization, offsets, input trans
 
 `MachineDocument.Runtime` is now the abstract, typed `RuntimeDefinition`. It exposes only `Kind`. `EmulationRuntimeDefinition` is the sole concrete runtime and owns `Platform` plus the strongly typed `PlatformSettings` object. Its factory retains the established per-platform defaults. No generic property bag, authored JSON blob, CLR type discriminator, plugin registry, or speculative Scripted/Physics/Hybrid classes were introduced.
 
+`FruitMachinePlatformType` is a broader identifier vocabulary than the currently implemented backends. `EmulationRuntimePlatforms` therefore defines the exact authored/executable subset: `None`, `Impact`, `MPU5`, `Epoch`, `MPU3`, `MaygayM1`, and `Scorpion4`. `None` remains the unconfigured default. The Emulation factory uses an exhaustive switch for that subset and rejects every other defined or numeric enum value; unsupported identifiers such as `MPU4` are not mapped to System 6 settings.
+
 An explicit `MachineDocument.EmulationRuntime` boundary is used by existing emulation-specific Editor workflows. Runtime-neutral graph/build entry points switch on `RuntimeDefinition`; unsupported kinds fail rather than silently becoming Emulation.
 
 ## Machine schema 4 and platform settings
@@ -43,6 +45,8 @@ Runtime validation checks that the only supported authored kind is Emulation, th
 ## Details and Overview UX
 
 Machine Details now has a visible Runtime section with a read-only `Type: Emulation` and the existing editable `Platform` selector. No unusable future runtime choices are shown. Switching platform still replaces settings with the selected platform's defaults as one document mutation, preserving undo/redo behavior.
+
+Both Machine Details and the active-Machine Platform Settings selector consume `EmulationRuntimePlatforms.Supported`, so historical/future enum identifiers without a current backend cannot be selected in either UI.
 
 Overview now branches at the runtime boundary. Its Runtime card title is `Emulation` and metadata is `Platform · <platform>`; the Machine summary identifies the runtime kind rather than treating platform as runtime identity. Overview remains derived/read-only and does not mutate or dirty authored data.
 

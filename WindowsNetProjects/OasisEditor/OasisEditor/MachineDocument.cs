@@ -49,6 +49,23 @@ public abstract record RuntimeDefinition
     public abstract string Kind { get; }
 }
 
+/// <summary>The explicit subset of platform identifiers currently implemented by Oasis Emulation.</summary>
+public static class EmulationRuntimePlatforms
+{
+    public static IReadOnlyList<FruitMachinePlatformType> Supported { get; } =
+    [
+        FruitMachinePlatformType.None,
+        FruitMachinePlatformType.Impact,
+        FruitMachinePlatformType.MPU5,
+        FruitMachinePlatformType.Epoch,
+        FruitMachinePlatformType.MPU3,
+        FruitMachinePlatformType.MaygayM1,
+        FruitMachinePlatformType.Scorpion4
+    ];
+
+    public static bool IsSupported(FruitMachinePlatformType platform) => Supported.Contains(platform);
+}
+
 /// <summary>Authored fruit-machine emulation configuration. Fabric/Amber remain execution backends.</summary>
 public sealed record EmulationRuntimeDefinition(FruitMachinePlatformType Platform, object PlatformSettings) : RuntimeDefinition
 {
@@ -57,12 +74,14 @@ public sealed record EmulationRuntimeDefinition(FruitMachinePlatformType Platfor
 
     public static EmulationRuntimeDefinition Create(FruitMachinePlatformType platform) => new(platform, platform switch
     {
+        FruitMachinePlatformType.None => new System6NativeRomSettings(),
+        FruitMachinePlatformType.Impact => new System6NativeRomSettings(),
         FruitMachinePlatformType.MPU5 => new Mpu5NativeRomSettings(),
         FruitMachinePlatformType.Epoch => new EpochNativeRomSettings(),
         FruitMachinePlatformType.MPU3 => new Mpu3ProjectSettings(),
         FruitMachinePlatformType.MaygayM1 => new M1ProjectSettings(),
         FruitMachinePlatformType.Scorpion4 => new Scorpion4ProjectSettings(),
-        _ => new System6NativeRomSettings()
+        _ => throw new NotSupportedException($"Emulation platform '{platform}' is not currently supported.")
     });
 
     public T PlatformSettingsAs<T>() where T : class => PlatformSettings as T
@@ -75,8 +94,8 @@ public static class RuntimeDefinitionValidation
     {
         if (runtime is not EmulationRuntimeDefinition emulation)
             throw new InvalidOperationException($"Machine '{machineName}' has unsupported Runtime '{runtime?.Kind ?? "(missing)"}'.");
-        if (!Enum.IsDefined(emulation.Platform))
-            throw new InvalidOperationException($"Machine '{machineName}', Runtime '{emulation.Kind}' has invalid Platform '{emulation.Platform}'.");
+        if (!EmulationRuntimePlatforms.IsSupported(emulation.Platform))
+            throw new InvalidOperationException($"Machine '{machineName}', Runtime '{emulation.Kind}', Platform '{emulation.Platform}' is an unsupported Emulation platform.");
         var expected = EmulationRuntimeDefinition.Create(emulation.Platform).PlatformSettings.GetType();
         if (emulation.PlatformSettings is null || emulation.PlatformSettings.GetType() != expected)
             throw new InvalidOperationException($"Machine '{machineName}', Runtime '{emulation.Kind}', Platform '{emulation.Platform}' requires {expected.Name} settings.");
@@ -141,15 +160,18 @@ public static class MachineDocumentStorage
             var runtime = root.GetProperty("runtime");
             if (runtime.GetProperty("kind").GetString() != EmulationRuntimeDefinition.RuntimeKind) { error = "Machine runtime kind is unsupported. This editor supports only Emulation."; return false; }
             if (!Enum.TryParse<FruitMachinePlatformType>(runtime.GetProperty("platform").GetString(), out var platform)) { error = "Machine runtime platform is invalid."; return false; }
+            if (!EmulationRuntimePlatforms.IsSupported(platform)) { error = $"Machine Runtime 'Emulation' Platform '{platform}' is an unsupported Emulation platform."; return false; }
             var settingsElement = runtime.GetProperty("platformSettings");
             object settings = platform switch
             {
+                FruitMachinePlatformType.None => settingsElement.Deserialize<System6NativeRomSettings>(Options)!,
+                FruitMachinePlatformType.Impact => settingsElement.Deserialize<System6NativeRomSettings>(Options)!,
                 FruitMachinePlatformType.MPU5 => settingsElement.Deserialize<Mpu5NativeRomSettings>(Options)!,
                 FruitMachinePlatformType.Epoch => settingsElement.Deserialize<EpochNativeRomSettings>(Options)!,
                 FruitMachinePlatformType.MPU3 => settingsElement.Deserialize<Mpu3ProjectSettings>(Options)!,
                 FruitMachinePlatformType.MaygayM1 => settingsElement.Deserialize<M1ProjectSettings>(Options)!,
                 FruitMachinePlatformType.Scorpion4 => settingsElement.Deserialize<Scorpion4ProjectSettings>(Options)!,
-                _ => settingsElement.Deserialize<System6NativeRomSettings>(Options)!
+                _ => throw new NotSupportedException($"Emulation platform '{platform}' is not currently supported.")
             };
             document = new MachineDocument(
                 version.GetInt32(), root.GetProperty("id").GetString() ?? string.Empty,
@@ -162,7 +184,7 @@ public static class MachineDocumentStorage
             Validate(document);
             return true;
         }
-        catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentException)
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentException or NotSupportedException)
         { error = $"Invalid Machine document: {exception.Message}"; return false; }
     }
 

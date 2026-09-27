@@ -7,6 +7,26 @@ namespace OasisEditor.Tests;
 
 public sealed class MachineDocumentTests
 {
+    private static readonly FruitMachinePlatformType[] SupportedPlatforms =
+    [
+        FruitMachinePlatformType.None,
+        FruitMachinePlatformType.Impact,
+        FruitMachinePlatformType.MPU5,
+        FruitMachinePlatformType.Epoch,
+        FruitMachinePlatformType.MPU3,
+        FruitMachinePlatformType.MaygayM1,
+        FruitMachinePlatformType.Scorpion4
+    ];
+
+    [Fact]
+    public void EmulationRuntimePlatforms_ContainsExactlyImplementedBackends()
+    {
+        Assert.Equal(SupportedPlatforms, EmulationRuntimePlatforms.Supported);
+        Assert.All(SupportedPlatforms, platform => Assert.True(EmulationRuntimePlatforms.IsSupported(platform)));
+        Assert.False(EmulationRuntimePlatforms.IsSupported(FruitMachinePlatformType.MPU4));
+        Assert.False(EmulationRuntimePlatforms.IsSupported((FruitMachinePlatformType)9999));
+    }
+
     [Fact]
     public void Schema4_RoundTripsCompositionRuntimeAndInputs()
     {
@@ -47,6 +67,39 @@ public sealed class MachineDocumentTests
             .Replace("\"kind\": \"Emulation\"", "\"kind\": \"Scripted\"");
         Assert.False(MachineDocumentStorage.TryRead(json, out _, out var error));
         Assert.Contains("supports only Emulation", error);
+    }
+
+    [Fact]
+    public void UnsupportedDefinedPlatform_IsRejectedByFactoryValidationSerializationAndReader()
+    {
+        Assert.Throws<NotSupportedException>(() => EmulationRuntimeDefinition.Create(FruitMachinePlatformType.MPU4));
+        var runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.MPU4, new System6NativeRomSettings());
+        var validation = Assert.Throws<InvalidOperationException>(() => RuntimeDefinitionValidation.Validate("Test", runtime));
+        Assert.Contains("Test", validation.Message);
+        Assert.Contains("Emulation", validation.Message);
+        Assert.Contains("MPU4", validation.Message);
+        Assert.Contains("unsupported", validation.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Throws<InvalidOperationException>(() => MachineDocumentStorage.Serialize(MachineDocument.Create("Test") with { Runtime = runtime }));
+
+        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Test"))
+            .Replace("\"platform\": \"None\"", "\"platform\": \"MPU4\"");
+        Assert.False(MachineDocumentStorage.TryRead(json, out _, out var error));
+        Assert.Contains("MPU4", error);
+        Assert.Contains("unsupported", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void InvalidNumericPlatform_IsRejected()
+    {
+        var platform = (FruitMachinePlatformType)9999;
+        Assert.Throws<NotSupportedException>(() => EmulationRuntimeDefinition.Create(platform));
+        var runtime = new EmulationRuntimeDefinition(platform, new System6NativeRomSettings());
+        Assert.Throws<InvalidOperationException>(() => RuntimeDefinitionValidation.Validate("Test", runtime));
+        Assert.Throws<InvalidOperationException>(() => MachineDocumentStorage.Serialize(MachineDocument.Create("Test") with { Runtime = runtime }));
+        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Test"))
+            .Replace("\"platform\": \"None\"", "\"platform\": \"9999\"");
+        Assert.False(MachineDocumentStorage.TryRead(json, out _, out var error));
+        Assert.Contains("unsupported", error, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
@@ -136,6 +189,15 @@ public sealed class MachineDocumentTests
         Assert.IsType<System6NativeRomSettings>(tab.GetMachineDocument().EmulationRuntime.PlatformSettings);
         Assert.True(tab.CommandService.TryRedo());
         Assert.Equal(FruitMachinePlatformType.MPU5, tab.GetMachineDocument().EmulationRuntime.Platform);
+    }
+
+    [Fact]
+    public void MachineDetails_OffersOnlySupportedEmulationPlatforms()
+    {
+        var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile("C:/Project/Assets/Machines/Game/asset.machine", "Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")));
+        Assert.Equal(SupportedPlatforms, tab.MachinePlatforms);
+        Assert.DoesNotContain(FruitMachinePlatformType.MPU4, tab.MachinePlatforms);
+        Assert.Equal(SupportedPlatforms, MainWindowViewModel.SupportedFruitMachinePlatformTypes);
     }
 
     [Fact]

@@ -460,7 +460,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public IReadOnlyList<string> CpuImageProcessingModes { get; } = ["Auto (Recommended)", "Maximum", "Custom"];
     public IReadOnlyList<string> ProjectSettingsCategories { get; } = ["General", "Platform Settings"];
     public IReadOnlyList<string> NativeProjectSettingsTabs { get; } = ["ROMS", "Stake/Prize", "Reels", "Coins"];
-    public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes { get; } = Enum.GetValues<FruitMachinePlatformType>();
+    internal static IReadOnlyList<FruitMachinePlatformType> SupportedFruitMachinePlatformTypes => EmulationRuntimePlatforms.Supported;
+    public IReadOnlyList<FruitMachinePlatformType> FruitMachinePlatformTypes => SupportedFruitMachinePlatformTypes;
     public IReadOnlyList<Mpu5CoinCommunicationStyle> Mpu5CoinCommunicationStyles { get; } = Enum.GetValues<Mpu5CoinCommunicationStyle>();
     public IReadOnlyList<EpochCoinCommunicationStyle> EpochCoinCommunicationStyles { get; } = Enum.GetValues<EpochCoinCommunicationStyle>();
     public IReadOnlyList<Mpu5PicMode> Mpu5PicModes { get; } = Enum.GetValues<Mpu5PicMode>();

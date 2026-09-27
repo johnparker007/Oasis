@@ -13,6 +13,24 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "OasisMachineBuild_" + Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void BuildFromMachineDocument_RejectsUnsupportedEmulationPlatformBeforeCreatingOutput()
+    {
+        var project = Project();
+        var machine = MachineDocument.Create("Unsupported Platform") with
+        {
+            Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.MPU4, new System6NativeRomSettings())
+        };
+        var manifestPath = new ProjectAssetPathService().GetMachineManifestPath(project, "UnsupportedPlatform");
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, manifestPath, machine, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("Unsupported Platform", result.ErrorMessage);
+        Assert.Contains("Emulation", result.ErrorMessage);
+        Assert.Contains("MPU4", result.ErrorMessage);
+        Assert.False(Directory.Exists(new MachineRuntimeBuildService().GetBuildRoot(project, "UnsupportedPlatform")));
+    }
+
+    [Fact]
     public void BuildFromMachineDocument_MissingCabinetReportsMachineContext()
     {
         var project = Project();
