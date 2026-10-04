@@ -1,86 +1,69 @@
 # Runtime Build and Oasis Player Contract
 
-## Build roots
+## Build root
 
-Target build roots are:
+Machine is the standalone playable build root.
 
-- Machine for standalone playable units;
-- Installation for linked multi-unit compositions.
-
-Project and Cabinet are not final runtime build roots.
+Future Installation builds may compose multiple Machines, but standalone Machine must remain independently buildable.
 
 ## Explicit dependency traversal
 
-Machine build walks explicit references:
+Machine build walks explicit references such as:
 
 ```text
 Machine
   -> RuntimeDefinition
   -> Cabinet
-  -> assigned Faces/Surfaces
-  -> Device assets
-  -> transitive asset dependencies
+  -> assigned Faces
+  -> Reel assets
+  -> Object3D assets (active future track)
 ```
 
-Installation build walks:
+Never enumerate all project assets to guess what belongs to a Machine.
 
-```text
-Installation
-  -> Machine instances
-  -> each Machine dependency closure
-  -> shared assemblies
-  -> link topology
-  -> physical layout
-```
+## Current Cabinet contract
 
-Never enumerate all project assets to discover what might belong to a build.
+Generated builds contain the Cabinet runtime manifest and Cabinet GLB.
 
-Unreferenced broken assets must not break an unrelated Machine/Installation build.
+Cabinet semantic geometry remains authoritative in the GLB:
+
+- Face targets;
+- fixed Colliders;
+- fixed Triggers.
+
+Do not duplicate semantic mesh geometry into runtime manifests.
+
+## Dynamic Object3D contract
+
+Object3D differs from Cabinet semantic geometry because Machine instance identity and placement are Machine-owned.
+
+When Object3D runtime support is implemented:
+
+- build reusable Object3D runtime packages;
+- deduplicate repeated references to the same Object3D asset;
+- serialize Machine instance declarations with stable IDs/transforms;
+- update Editor writer and Player reader together;
+- increment current runtime schema versions when the serialized shape changes;
+- support only the latest version.
+
+See `11_DYNAMIC_OBJECTS_BEHAVIOUR_AND_SCRIPTING.md`.
 
 ## Diagnostics
 
-A broken referenced dependency should identify the full useful path.
+Broken referenced dependencies should identify composition context rather than only low-level filesystem errors.
 
-Example:
+## Runtime state boundary
 
-```text
-Machine 'Bonanza'
-  Cabinet target 'BottomGlass'
-  -> Face 'Assets/Faces/BottomGlass/asset.face'
-  -> missing Reel profile/device ...
-```
+Runtime packages preserve the distinction between:
 
-Diagnostics should describe composition context rather than low-level path exceptions alone.
+- reusable physical definitions;
+- Machine composition;
+- dynamic live state.
 
-## Runtime package shape
+Authoring-only provenance is omitted unless Player genuinely requires it.
 
-Do not lock a final package format in this architecture document.
+## Compatibility
 
-When Machine becomes build root:
+There is no backwards-compatibility requirement.
 
-- redesign current Cabinet-rooted runtime manifests directly;
-- update Editor writer and Oasis Player reader together;
-- increment schema versions;
-- support current format only.
-
-When Installation is introduced, it may contain references/instances of Machine runtime packages or a flattened combined package depending on the cleanest Player implementation at that time.
-
-## Runtime state boundaries
-
-Runtime packages should preserve the distinction between:
-
-- static reusable physical definitions;
-- game-specific composition;
-- dynamic runtime state.
-
-Avoid baking authoring-only provenance into runtime packages unless Player needs it.
-
-## Standalone asset builds
-
-Face/Surface or Device authoring may still generate preview/build artifacts for Editor use.
-
-Those are not substitutes for final Machine composition.
-
-A standalone Face build should not need a consuming Machine merely to generate Face-owned artwork/masks/textures.
-
-Physical resolution that depends on Machine composition should happen at Machine build/preview time.
+When runtime shapes change, update current writer/reader/tests and delete superseded format code.
