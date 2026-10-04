@@ -1,106 +1,32 @@
-# Machine / Project Composition View
+# Machine Composition / Overview View
 
-## Purpose
+## Current role
 
-Provide a zoomable navigational visualization showing how authoritative assets and provenance fit together.
+Machine Overview is a derived, read-only/navigational graph built from authoritative Machine dependencies.
 
-This is not a second source of truth and not initially a graph editor.
+It is not another source of truth.
 
-## Derived view
+## Authoritative data
 
-The graph is built in memory by traversing explicit references.
+Graph nodes/edges come from Machine, Cabinet, Face, Reel, runtime and provenance references.
 
-Do not persist graph edges in a separate "pipeline" asset.
+Do not persist graph layout or graph edges as independent composition state.
 
-The authoritative data remains in Machine, Cabinet, Face/Surface, Device, Runtime and provenance assets.
+## Interaction
 
-## Terminology
+The Overview supports navigation/inspection rather than arbitrary rewiring.
 
-Prefer names such as:
+Keep it useful for:
 
-- Machine Overview;
-- Composition View;
-- Asset Graph.
+- understanding Machine composition;
+- opening referenced assets;
+- showing missing/broken dependencies;
+- provenance versus composition distinction.
 
-Avoid "Pipeline" as the primary term because many edges represent composition/reference rather than transformation.
+## Dynamic Object3D extension
 
-## Initial root
+When Object3D instances are introduced, the Overview may summarize those dependencies/instances where useful, but do not render every repeated object as a large graph node if that makes the graph unreadable.
 
-Once Machine is first-class, Machine should be the primary graph root.
+Fine-grained placement belongs in the future assembled Machine 3D viewport described in `11_DYNAMIC_OBJECTS_BEHAVIOUR_AND_SCRIPTING.md`.
 
-Example:
-
-```text
-Machine: Bonanza
-  -> Cabinet: JPM Vogue
-  -> Face: Top Glass
-       -> source Panel2D
-  -> Face: Bottom Glass
-       -> source Panel2D
-  -> Reel assets
-  -> Runtime / ROMs
-```
-
-Installation view can show Machine instances and allow drill-down into each Machine graph.
-
-## Provenance versus composition
-
-Use visually/semantically distinct edge types.
-
-Examples:
-
-- Machine **uses** Cabinet;
-- Machine **mounts** Face on target;
-- Face **derived/authored from** Panel2D;
-- Panel2D **imported from** MFME source;
-- Machine **resolves device as** Reel asset.
-
-MFME/import source should be styled as external provenance, not as an equal project asset unless it later becomes a first-class source asset.
-
-## Node content
-
-Far zoom:
-- compact type + name.
-
-Medium zoom:
-- thumbnail/preview;
-- key health/status summary.
-
-Closer zoom:
-- source/reference details;
-- counts/diagnostics;
-- hosted device summaries where useful.
-
-Do not render every lamp/button/reel as a full graph node by default. That becomes unreadable quickly.
-
-Fine-grained mappings can appear inside a selected node/details panel.
-
-## Interaction — first version
-
-Initial view should be primarily read-only/navigation:
-
-- pan/zoom;
-- fit graph;
-- frame selection;
-- select node;
-- double-click/open asset;
-- show in Assets;
-- upstream/downstream highlighting;
-- broken reference diagnostics.
-
-Do not initially support arbitrary drag/drop rewiring.
-
-Graph editing has heterogeneous semantics and should be added only after navigation proves useful.
-
-## Broken references
-
-The graph should make dependency failures visible:
-
-- missing Face;
-- missing Cabinet;
-- missing Device;
-- broken provenance;
-- unresolved profile;
-- invalid runtime dependency.
-
-This view should help explain build failures, not just decorate the project.
+The graph remains dependency/navigation-oriented; the 3D viewport becomes spatial-composition-oriented.
