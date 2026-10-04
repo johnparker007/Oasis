@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -5,6 +6,7 @@ namespace OasisPlayer.RuntimeBuild
 {
     public sealed class RuntimeMachine
     {
+        private readonly Dictionary<string, RuntimeObjectInstance> _objects = new Dictionary<string, RuntimeObjectInstance>(StringComparer.Ordinal);
         private readonly List<RuntimeFace> _faces = new List<RuntimeFace>();
         private readonly List<string> _warnings = new List<string>();
         private RuntimeLampStateTexture _lampStateTexture;
@@ -28,6 +30,7 @@ namespace OasisPlayer.RuntimeBuild
         public ResolvedRuntimeBuild Build { get; private set; }
         public GameObject Cabinet { get; private set; }
         public IReadOnlyList<RuntimeFace> Faces { get { return _faces; } }
+        public IReadOnlyDictionary<string, RuntimeObjectInstance> Objects { get { return _objects; } }
         public IReadOnlyList<string> Warnings { get { return _warnings; } }
         public IReadOnlyList<RuntimeCabinetReflectionBinding> CabinetReflectionBindings { get { return _cabinetReflectionBindings; } }
         public RuntimeLampState LampState { get; private set; }
@@ -80,6 +83,25 @@ namespace OasisPlayer.RuntimeBuild
             if (face != null) _faces.Add(face);
         }
 
+        public void RegisterObject(RuntimeObjectInstance instance)
+        {
+            if (instance == null) throw new ArgumentNullException(nameof(instance));
+            if (string.IsNullOrWhiteSpace(instance.Id)) throw new ArgumentException("Runtime Object3D instance ID is required.", nameof(instance));
+            if (_objects.ContainsKey(instance.Id)) throw new InvalidOperationException($"Runtime Object3D instance ID '{instance.Id}' is already registered.");
+            _objects.Add(instance.Id, instance);
+        }
+
+        public bool TryGetObject(string id, out RuntimeObjectInstance instance)
+        {
+            return _objects.TryGetValue(id ?? string.Empty, out instance);
+        }
+
+        public RuntimeObjectInstance GetObject(string id)
+        {
+            if (!TryGetObject(id, out var instance)) throw new KeyNotFoundException($"Runtime Object3D instance '{id}' is not registered.");
+            return instance;
+        }
+
         public void AddWarning(string warning)
         {
             if (!string.IsNullOrWhiteSpace(warning)) _warnings.Add(warning);
@@ -106,7 +128,42 @@ namespace OasisPlayer.RuntimeBuild
             }
 
             _faces.Clear();
+            foreach (var instance in _objects.Values) instance.Destroy();
+            _objects.Clear();
             _warnings.Clear();
+        }
+    }
+
+    public sealed class RuntimeObjectInstance
+    {
+        public RuntimeObjectInstance(string id, string displayName, string definitionId, ResolvedRuntimeObjectDefinition definition,
+            GameObject root, Collider collider, Rigidbody rigidbody, MachineRuntimeObjectTransform authoredInitialTransform)
+        {
+            Id = id;
+            DisplayName = displayName;
+            DefinitionId = definitionId;
+            Definition = definition;
+            Root = root;
+            Collider = collider;
+            Rigidbody = rigidbody;
+            AuthoredInitialTransform = authoredInitialTransform;
+        }
+
+        public string Id { get; private set; }
+        public string DisplayName { get; private set; }
+        public string DefinitionId { get; private set; }
+        public ResolvedRuntimeObjectDefinition Definition { get; private set; }
+        public GameObject Root { get; private set; }
+        public Collider Collider { get; private set; }
+        public Rigidbody Rigidbody { get; private set; }
+        public MachineRuntimeObjectTransform AuthoredInitialTransform { get; private set; }
+
+        internal void Destroy()
+        {
+            if (Root == null) return;
+            if (Application.isPlaying) UnityEngine.Object.Destroy(Root);
+            else UnityEngine.Object.DestroyImmediate(Root);
+            Root = null;
         }
     }
 
