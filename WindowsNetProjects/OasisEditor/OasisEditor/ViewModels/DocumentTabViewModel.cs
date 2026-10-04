@@ -23,6 +23,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private CabinetDocument _cabinetDocumentModel;
     private MachineDocument _machineDocumentModel;
     private ReelDocument _reelDocumentModel;
+    private Object3DDocument _object3DDocumentModel;
+    private string? _pendingObject3DModelSourcePath;
     private Panel2DDocumentModel _panelDocumentModel;
     private FaceDocumentModel _faceDocumentModel;
     private Dictionary<string, PanelElementModel> _lampElementsByObjectId = new(StringComparer.Ordinal);
@@ -75,7 +77,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         string? faceDocumentJson = null,
         string? cabinetDocumentJson = null,
         string? machineDocumentJson = null,
-        string? reelDocumentJson = null)
+        string? reelDocumentJson = null,
+        string? object3DDocumentJson = null)
     {
         _document = document;
         DocumentId = documentId ?? Guid.NewGuid();
@@ -121,6 +124,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _reelDocumentModel = ReelDocumentStorage.TryRead(reelDocumentJson, out var reelDocument, out _)
             ? reelDocument
             : ReelDocument.Create(document.Title);
+        _object3DDocumentModel = Object3DDocumentStorage.TryRead(object3DDocumentJson, out var object3DDocument, out _)
+            ? object3DDocument
+            : Object3DDocument.Create(document.Title);
         OpenSelectedCabinetAssetCommand = new RelayCommand(OpenSelectedCabinetAsset, () => CanOpenSelectedCabinetAsset);
         RebuildLampCaches();
         _faceWorkspace = document.DocumentType == EditorDocumentType.Face ? new FaceWorkspaceViewModel(this) : null;
@@ -147,6 +153,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         EditorDocumentType.Machine => "Machine",
         EditorDocumentType.Face => "Face",
         EditorDocumentType.Reel => "Reel",
+        EditorDocumentType.Object3D => "Object3D",
         _ => "Document Type"
     };
     public string FilePath => Document.FilePath;
@@ -281,6 +288,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
     public MachineDocument GetMachineDocument() => _machineDocumentModel;
     public ReelDocument GetReelDocument() => _reelDocumentModel;
+    public Object3DDocument GetObject3DDocument() => _object3DDocumentModel;
     public string ReelDisplayName { get => _reelDocumentModel.DisplayName; set => SetReelValue(_reelDocumentModel with { DisplayName = value?.Trim() ?? string.Empty }, "Rename Reel"); }
     public double ReelDiameterMm { get => _reelDocumentModel.DiameterMm; set => SetReelValue(_reelDocumentModel with { DiameterMm = value }, "Set Reel diameter"); }
     public double ReelWidthMm { get => _reelDocumentModel.WidthMm; set => SetReelValue(_reelDocumentModel with { WidthMm = value }, "Set Reel width"); }
@@ -288,6 +296,46 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         if (next == _reelDocumentModel || string.IsNullOrWhiteSpace(next.DisplayName) || next.DiameterMm <= 0 || next.WidthMm <= 0 || !PanelElementValidation.IsFinite(next.DiameterMm) || !PanelElementValidation.IsFinite(next.WidthMm)) return;
         _commandService.Execute(new SetReelDocumentCommand(this, next, description));
+    }
+    public string Object3DDisplayName { get => _object3DDocumentModel.DisplayName; set => SetObject3DValue(_object3DDocumentModel with { DisplayName = value?.Trim() ?? string.Empty }, "Rename Object3D"); }
+    public string Object3DModelPath { get => _object3DDocumentModel.Model.Path; set => SetObject3DValue(_object3DDocumentModel with { Model = _object3DDocumentModel.Model with { Path = value?.Trim() ?? string.Empty } }, "Set Object3D model path"); }
+    public double Object3DModelScale { get => _object3DDocumentModel.Model.Scale; set => SetObject3DValue(_object3DDocumentModel with { Model = _object3DDocumentModel.Model with { Scale = value } }, "Set Object3D model scale"); }
+    public string Object3DUpAxis { get => _object3DDocumentModel.Model.UpAxis; set => SetObject3DValue(_object3DDocumentModel with { Model = _object3DDocumentModel.Model with { UpAxis = value } }, "Set Object3D up-axis"); }
+    public IReadOnlyList<string> Object3DUpAxes { get; } = ["X", "Y", "Z"];
+    public IReadOnlyList<Object3DColliderKind> Object3DColliderKinds { get; } = Enum.GetValues<Object3DColliderKind>();
+    public IReadOnlyList<Object3DCapsuleAxis> Object3DCapsuleAxes { get; } = Enum.GetValues<Object3DCapsuleAxis>();
+    public Object3DColliderKind Object3DColliderKind { get => _object3DDocumentModel.Physics.Collider.Kind; set { var c = value switch { Object3DColliderKind.Sphere => new Object3DColliderDefinition(value, [0,0,0], Radius: .5), Object3DColliderKind.Box => new Object3DColliderDefinition(value, [0,0,0], Size: [1,1,1]), Object3DColliderKind.Capsule => new Object3DColliderDefinition(value, [0,0,0], Radius: .5, Height: 2, Axis: Object3DCapsuleAxis.Y), _ => new Object3DColliderDefinition(value) }; SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Collider = c } }, "Set Object3D collider kind"); } }
+    public double Object3DColliderCenterX { get => ColliderVector(_object3DDocumentModel.Physics.Collider.Center, 0); set => SetColliderCenter(0, value); }
+    public double Object3DColliderCenterY { get => ColliderVector(_object3DDocumentModel.Physics.Collider.Center, 1); set => SetColliderCenter(1, value); }
+    public double Object3DColliderCenterZ { get => ColliderVector(_object3DDocumentModel.Physics.Collider.Center, 2); set => SetColliderCenter(2, value); }
+    public double Object3DColliderRadius { get => _object3DDocumentModel.Physics.Collider.Radius ?? .5; set => SetCollider(_object3DDocumentModel.Physics.Collider with { Radius = value }, "Set collider radius"); }
+    public double Object3DColliderSizeX { get => ColliderVector(_object3DDocumentModel.Physics.Collider.Size, 0, 1); set => SetColliderSize(0, value); }
+    public double Object3DColliderSizeY { get => ColliderVector(_object3DDocumentModel.Physics.Collider.Size, 1, 1); set => SetColliderSize(1, value); }
+    public double Object3DColliderSizeZ { get => ColliderVector(_object3DDocumentModel.Physics.Collider.Size, 2, 1); set => SetColliderSize(2, value); }
+    public double Object3DColliderHeight { get => _object3DDocumentModel.Physics.Collider.Height ?? 2; set => SetCollider(_object3DDocumentModel.Physics.Collider with { Height = value }, "Set collider height"); }
+    public Object3DCapsuleAxis Object3DColliderAxis { get => _object3DDocumentModel.Physics.Collider.Axis ?? Object3DCapsuleAxis.Y; set => SetCollider(_object3DDocumentModel.Physics.Collider with { Axis = value }, "Set collider axis"); }
+    public bool Object3DRigidbodyEnabled { get => _object3DDocumentModel.Physics.Rigidbody.Enabled; set { var body = _object3DDocumentModel.Physics.Rigidbody with { Enabled = value, Mass = value ? _object3DDocumentModel.Physics.Rigidbody.Mass ?? 1 : null, UseGravity = value ? _object3DDocumentModel.Physics.Rigidbody.UseGravity ?? true : null }; SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Rigidbody = body } }, "Toggle Object3D Rigidbody"); } }
+    public double Object3DRigidbodyMass { get => _object3DDocumentModel.Physics.Rigidbody.Mass ?? 1; set { var body = _object3DDocumentModel.Physics.Rigidbody with { Mass = value }; SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Rigidbody = body } }, "Set Rigidbody mass"); } }
+    public bool Object3DUseGravity { get => _object3DDocumentModel.Physics.Rigidbody.UseGravity ?? true; set { var body = _object3DDocumentModel.Physics.Rigidbody with { UseGravity = value }; SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Rigidbody = body } }, "Set Rigidbody gravity"); } }
+    private static double ColliderVector(double[]? values, int index, double fallback = 0) => values is { Length: 3 } ? values[index] : fallback;
+    private void SetColliderCenter(int index, double value) { var v = (_object3DDocumentModel.Physics.Collider.Center ?? [0,0,0]).ToArray(); v[index] = value; SetCollider(_object3DDocumentModel.Physics.Collider with { Center = v }, "Set collider center"); }
+    private void SetColliderSize(int index, double value) { var v = (_object3DDocumentModel.Physics.Collider.Size ?? [1,1,1]).ToArray(); v[index] = value; SetCollider(_object3DDocumentModel.Physics.Collider with { Size = v }, "Set collider size"); }
+    private void SetCollider(Object3DColliderDefinition collider, string description) => SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Collider = collider } }, description);
+    private void SetObject3DValue(Object3DDocument next, string description) { if (next == _object3DDocumentModel) return; try { Object3DValidationService.Validate(next); } catch (InvalidOperationException) { return; } _commandService.Execute(new SetObject3DDocumentCommand(this, next, description)); }
+    internal string? PendingObject3DModelSourcePath => _pendingObject3DModelSourcePath;
+    internal void SetObject3DModelSource(string sourcePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        var packageRelativePath = Path.GetFileName(sourcePath);
+        var next = _object3DDocumentModel with { Model = _object3DDocumentModel.Model with { Path = packageRelativePath } };
+        Object3DValidationService.Validate(next);
+        _commandService.Execute(new SetObject3DModelSourceCommand(this, next, Path.GetFullPath(sourcePath)));
+    }
+    internal void ApplySavedObject3DDocument(Object3DDocument document)
+    {
+        _object3DDocumentModel = document;
+        _pendingObject3DModelSourcePath = null;
+        PropertyChanged?.Invoke(this, new(nameof(Object3DModelPath)));
     }
     public string GetMachineDocumentJson() => MachineDocumentStorage.Serialize(_machineDocumentModel);
     public string MachineDisplayName { get => _machineDocumentModel.DisplayName; set { if (string.IsNullOrWhiteSpace(value) || value == _machineDocumentModel.DisplayName) return; ExecuteMachineMutation(_machineDocumentModel with { DisplayName = value.Trim() }, "Rename Machine"); } }
@@ -643,6 +691,47 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         public void Execute() { _previous ??= _owner._reelDocumentModel; if (_owner._reelDocumentModel == _next) return; _owner._reelDocumentModel = _next; _owner.MarkDirty(); Notify(); WasExecuted = true; }
         public void Undo() { if (_previous is null) return; _owner._reelDocumentModel = _previous; _owner.MarkDirty(); Notify(); }
         private void Notify() { foreach (var name in new[] { nameof(ReelDisplayName), nameof(ReelDiameterMm), nameof(ReelWidthMm) }) _owner.PropertyChanged?.Invoke(_owner, new(name)); }
+    }
+
+    private sealed class SetObject3DDocumentCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly DocumentTabViewModel _owner; private readonly Object3DDocument _next; private readonly string _description; private Object3DDocument? _previous;
+        public SetObject3DDocumentCommand(DocumentTabViewModel owner, Object3DDocument next, string description) { _owner = owner; _next = next; _description = description; }
+        public Guid DocumentId => _owner.DocumentId; public string Description => _description; public bool WasExecuted { get; private set; }
+        public void Execute() { _previous ??= _owner._object3DDocumentModel; if (_owner._object3DDocumentModel == _next) return; Set(_next); WasExecuted = true; }
+        public void Undo() { if (_previous is not null) Set(_previous); }
+        private void Set(Object3DDocument value) { _owner._object3DDocumentModel = value; _owner.MarkDirty(); foreach (var property in Object3DPropertyNames) _owner.PropertyChanged?.Invoke(_owner, new(property)); }
+        private static readonly string[] Object3DPropertyNames = [nameof(Object3DDisplayName), nameof(Object3DModelPath), nameof(Object3DModelScale), nameof(Object3DUpAxis), nameof(Object3DColliderKind), nameof(Object3DColliderCenterX), nameof(Object3DColliderCenterY), nameof(Object3DColliderCenterZ), nameof(Object3DColliderRadius), nameof(Object3DColliderSizeX), nameof(Object3DColliderSizeY), nameof(Object3DColliderSizeZ), nameof(Object3DColliderHeight), nameof(Object3DColliderAxis), nameof(Object3DRigidbodyEnabled), nameof(Object3DRigidbodyMass), nameof(Object3DUseGravity)];
+    }
+
+    private sealed class SetObject3DModelSourceCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
+    {
+        private readonly DocumentTabViewModel _owner;
+        private readonly Object3DDocument _nextDocument;
+        private readonly string _nextSourcePath;
+        private Object3DDocument? _previousDocument;
+        private string? _previousSourcePath;
+        public SetObject3DModelSourceCommand(DocumentTabViewModel owner, Object3DDocument nextDocument, string nextSourcePath)
+        { _owner = owner; _nextDocument = nextDocument; _nextSourcePath = nextSourcePath; }
+        public Guid DocumentId => _owner.DocumentId;
+        public string Description => "Choose Object3D model";
+        public bool WasExecuted { get; private set; }
+        public void Execute()
+        {
+            _previousDocument ??= _owner._object3DDocumentModel;
+            _previousSourcePath ??= _owner._pendingObject3DModelSourcePath;
+            if (_owner._object3DDocumentModel == _nextDocument && string.Equals(_owner._pendingObject3DModelSourcePath, _nextSourcePath, StringComparison.OrdinalIgnoreCase)) return;
+            Apply(_nextDocument, _nextSourcePath);
+            WasExecuted = true;
+        }
+        public void Undo() { if (_previousDocument is not null) Apply(_previousDocument, _previousSourcePath); }
+        private void Apply(Object3DDocument document, string? sourcePath)
+        {
+            _owner._object3DDocumentModel = document;
+            _owner._pendingObject3DModelSourcePath = sourcePath;
+            _owner.MarkDirty();
+            _owner.PropertyChanged?.Invoke(_owner, new(nameof(Object3DModelPath)));
+        }
     }
 
     public string GetCabinetDocumentJson()

@@ -70,6 +70,77 @@ public sealed class DocumentSaveServiceTests
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
+
+    [Fact]
+    public void Object3DImportKeepsAuthoredPathRelativeAndAllowsEditUndoBeforeSave()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"oasis-object3d-import-{Guid.NewGuid():N}");
+        var external = Path.Combine(root, "Imports", "ball.glb");
+        var savePath = Path.Combine(root, "Project", "Assets", "Object3D", "Pool Ball", ProjectAssetPathService.Object3DManifestFileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(external)!);
+        File.WriteAllText(external, "first-model");
+        try
+        {
+            var tab = new DocumentTabViewModel(EditorDocument.CreateObject3DStub("Object3D"));
+            tab.SetObject3DModelSource(external);
+
+            Assert.Equal("ball.glb", tab.GetObject3DDocument().Model.Path);
+            Assert.Equal(Path.GetFullPath(external), tab.PendingObject3DModelSourcePath);
+            Assert.DoesNotContain(Path.GetFullPath(external), Object3DDocumentStorage.Serialize(tab.GetObject3DDocument()), StringComparison.OrdinalIgnoreCase);
+
+            tab.Object3DDisplayName = "Pool Ball";
+            tab.Object3DModelScale = .5;
+            tab.Object3DColliderKind = Object3DColliderKind.Sphere;
+            tab.Object3DColliderRadius = .028575;
+            tab.Object3DRigidbodyEnabled = true;
+            tab.Object3DRigidbodyMass = .17;
+            Assert.Equal("Pool Ball", tab.GetObject3DDocument().DisplayName);
+            Assert.Equal(.17, tab.GetObject3DDocument().Physics.Rigidbody.Mass);
+            Assert.True(tab.CommandService.TryUndo());
+            Assert.Equal(1, tab.GetObject3DDocument().Physics.Rigidbody.Mass);
+            Assert.True(tab.CommandService.TryRedo());
+
+            new DocumentSaveService().SaveDocument(tab, savePath).ApplyTo(tab);
+
+            Assert.Null(tab.PendingObject3DModelSourcePath);
+            Assert.Equal("first-model", File.ReadAllText(Path.Combine(Path.GetDirectoryName(savePath)!, "ball.glb")));
+            Assert.True(Object3DDocumentStorage.TryRead(File.ReadAllText(savePath), out var persisted, out var error), error);
+            Assert.Equal("ball.glb", persisted.Model.Path);
+            Assert.Equal("Pool Ball", persisted.DisplayName);
+            Assert.False(Path.IsPathRooted(persisted.Model.Path));
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void Object3DLatestImportedModelWinsAndSavedModelSupportsSaveAs()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"oasis-object3d-replace-{Guid.NewGuid():N}");
+        var first = Path.Combine(root, "Imports", "first.glb");
+        var latest = Path.Combine(root, "Replacement", "latest.glb");
+        var originalManifest = Path.Combine(root, "Project", "Assets", "Object3D", "Original", ProjectAssetPathService.Object3DManifestFileName);
+        var saveAsManifest = Path.Combine(root, "Project", "Assets", "Object3D", "Copy", ProjectAssetPathService.Object3DManifestFileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(first)!); Directory.CreateDirectory(Path.GetDirectoryName(latest)!);
+        File.WriteAllText(first, "old-model"); File.WriteAllText(latest, "latest-model");
+        try
+        {
+            var tab = new DocumentTabViewModel(EditorDocument.CreateObject3DStub("Object3D"));
+            tab.SetObject3DModelSource(first);
+            tab.SetObject3DModelSource(latest);
+            var service = new DocumentSaveService();
+            service.SaveDocument(tab, originalManifest).ApplyTo(tab);
+
+            Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(originalManifest)!, "first.glb")));
+            Assert.Equal("latest-model", File.ReadAllText(Path.Combine(Path.GetDirectoryName(originalManifest)!, "latest.glb")));
+
+            service.SaveDocument(tab, saveAsManifest).ApplyTo(tab);
+            Assert.Equal("latest-model", File.ReadAllText(Path.Combine(Path.GetDirectoryName(saveAsManifest)!, "latest.glb")));
+            var reopened = DocumentWorkspaceViewModel.BuildOpenDocumentData(saveAsManifest, File.ReadAllText(saveAsManifest));
+            Assert.True(Object3DDocumentStorage.TryRead(reopened.Object3DDocumentJson, out var savedAs, out var error), error);
+            Assert.Equal("latest.glb", savedAs.Model.Path);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
     [Fact]
     public void SaveDocument_MachinePreservesTabIdentityLiveStateAndUndoAcrossRepeatedSaves()
     {
