@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using OasisPlayer.RuntimeBuild;
 using UnityEngine;
@@ -329,6 +330,6 @@ public sealed class RuntimeReelRenderingTests
 
     private static RuntimeMachine Machine()
     {
-        return new RuntimeMachine(new ResolvedRuntimeBuild(string.Empty, new MachineRuntimeManifest(), string.Empty, new CabinetRuntimeManifest(), string.Empty, new MachineRuntimeFaceReference[0]), null);
+        return new RuntimeMachine(new ResolvedRuntimeBuild(string.Empty, new MachineRuntimeManifest(), string.Empty, new CabinetRuntimeManifest(), string.Empty, new MachineRuntimeFaceReference[0], new Dictionary<string, ResolvedRuntimeObjectDefinition>()), null);
     }
 }

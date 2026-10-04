@@ -16,7 +16,7 @@ Machine
   -> Cabinet
   -> assigned Faces
   -> Reel assets
-  -> Object3D assets (active future track)
+  -> Object3D assets
 ```
 
 Never enumerate all project assets to guess what belongs to a Machine.
@@ -37,14 +37,11 @@ Do not duplicate semantic mesh geometry into runtime manifests.
 
 Object3D differs from Cabinet semantic geometry because Machine instance identity and placement are Machine-owned.
 
-When Object3D runtime support is implemented:
+Machine runtime schema 7 contains Machine-owned Object3D instance declarations. Each declaration preserves its authored ID/display name and position, Euler rotation in degrees, and placement scale, and points at a generated definition manifest rather than an authoring path.
 
-- build reusable Object3D runtime packages;
-- deduplicate repeated references to the same Object3D asset;
-- serialize Machine instance declarations with stable IDs/transforms;
-- update Editor writer and Player reader together;
-- increment current runtime schema versions when the serialized shape changes;
-- support only the latest version.
+Reusable definitions are emitted once under `objects/<object-guid>/` with `object.runtime.json` (schema `oasis.object3d.runtime`, version 1) and `object.glb`. The lower-case canonical authored Object3D GUID is the deterministic package/definition identity. Definitions retain model scale/up-axis and the minimal collider/Rigidbody contract; generated paths are package-relative. Conflicting resolved definitions claiming the same GUID fail the build.
+
+The Player reader validates and retains these typed definitions and instances, but Object3D GLB loading, Unity GameObject/physics creation, and live-object registration remain the next runtime phase.
 
 See `11_DYNAMIC_OBJECTS_BEHAVIOUR_AND_SCRIPTING.md`.
 

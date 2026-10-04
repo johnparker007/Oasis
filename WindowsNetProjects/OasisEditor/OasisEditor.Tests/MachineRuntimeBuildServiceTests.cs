@@ -408,6 +408,68 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.True(File.Exists(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.glb")));
     }
 
+    [Fact]
+    public void Build_ObjectInstancesShareOneDefinitionAndPreserveTransforms()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var paths = new ProjectAssetPathService();
+        var objectManifest = paths.GetObject3DManifestPath(setup.Project, "PoolBall");
+        Directory.CreateDirectory(Path.GetDirectoryName(objectManifest)!);
+        File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(objectManifest)!, "ball.glb"), [1, 2, 3]);
+        var id = Guid.NewGuid().ToString("D");
+        var definition = new Object3DDocument(1, id, "Pool Ball", new("ball.glb", 0.5, "Z"),
+            new(new(Object3DColliderKind.Sphere, [1, 2, 3], 0.25), new(true, 0.17, true)));
+        File.WriteAllText(objectManifest, Object3DDocumentStorage.Serialize(definition));
+        var reference = AssetReference.Project(paths.ToProjectRelativePath(setup.Project, objectManifest));
+        var machine = setup.Machine with { ObjectInstances =
+        [
+            new("cueBall", "Cue Ball", reference, new(new(1, 2, 3), new(10, 20, 30), new(1, 1, 1))),
+            new("ball01", "Ball 1", reference, new(new(4, 5, 6), new(40, 50, 60), new(2, 2, 2))),
+            new("ball08", "Ball 8", reference, new(new(7, 8, 9), new(70, 80, 90), new(3, 3, 3)))
+        ] };
+
+        var result = Build(setup.Project, machine);
+
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.runtime.json", SearchOption.AllDirectories).Count());
+        Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.glb", SearchOption.AllDirectories).Count());
+        using var machineJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
+        Assert.Equal(7, machineJson.RootElement.GetProperty("schemaVersion").GetInt32());
+        var instances = machineJson.RootElement.GetProperty("objectInstances");
+        Assert.Equal(new[] { "cueBall", "ball01", "ball08" }, instances.EnumerateArray().Select(x => x.GetProperty("id").GetString()));
+        Assert.Equal(80, instances[2].GetProperty("transform").GetProperty("rotationEulerDegrees").GetProperty("y").GetDouble());
+        Assert.Equal(3, instances[2].GetProperty("transform").GetProperty("scale").GetProperty("x").GetDouble());
+        Assert.All(instances.EnumerateArray(), x => Assert.Equal(id.ToLowerInvariant(), x.GetProperty("definitionId").GetString()));
+        var runtimePath = Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.runtime.json", SearchOption.AllDirectories).Single();
+        var runtimeText = File.ReadAllText(runtimePath);
+        using var runtime = JsonDocument.Parse(runtimeText);
+        Assert.Equal("object.glb", runtime.RootElement.GetProperty("model").GetString());
+        Assert.Equal(0.5, runtime.RootElement.GetProperty("modelScale").GetDouble());
+        Assert.Equal("Sphere", runtime.RootElement.GetProperty("collider").GetProperty("kind").GetString());
+        Assert.Equal(0.17, runtime.RootElement.GetProperty("rigidbody").GetProperty("mass").GetDouble());
+        Assert.DoesNotContain(setup.Project.ProjectDirectory, runtimeText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Assets/", runtimeText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Build_MissingAndWrongTypeObjectDependenciesFailWithInstanceContext()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var missing = setup.Machine with { ObjectInstances = [new("cueBall", "Cue", AssetReference.Project("Assets/Object3D/Missing/asset.object3d"), MachineObjectTransform.Identity)] };
+        var missingResult = Build(setup.Project, missing);
+        Assert.False(missingResult.Success);
+        Assert.Contains("cueBall", missingResult.ErrorMessage);
+        Assert.Contains("missing Object3D", missingResult.ErrorMessage);
+
+        var wrong = setup.Machine with { ObjectInstances = [new("cueBall", "Cue", setup.CabinetReference, MachineObjectTransform.Identity)] };
+        var wrongResult = Build(setup.Project, wrong);
+        Assert.False(wrongResult.Success);
+        Assert.Contains("cueBall", wrongResult.ErrorMessage);
+        Assert.Contains("not an Object3D", wrongResult.ErrorMessage);
+    }
+
     private (EditorProject Project, MachineDocument Machine, string LibraryRoot) CreateLibraryBuild()
     {
         var local = CreateReelBuild([0], [(0, "Standard", 290d, 70d)]);
