@@ -1,95 +1,42 @@
 # Projects, Libraries and Reuse
 
-## Project definition
+## Project
 
 Project is an authoring workspace.
 
-It should eventually contain/reference:
+Machine-specific runtime/composition does not belong in Project settings.
 
-- project-local assets;
-- one or more Machine assets;
-- optional Installation assets;
-- generated output;
-- workspace/editor metadata.
+A Project may contain multiple Machine assets.
 
-Project should not be the hidden owner of one machine's ROM/platform composition.
+## AssetReference
 
-## Common case
+Reusable physical assets use explicit typed `AssetReference` values with current Project/Library scopes.
 
-The common standalone workflow must remain simple.
+Resolution is centralized and build output is self-contained; Oasis Player must not depend on an authoring Library path.
 
-A new Project can automatically create/select one Machine.
+## Current reusable library
 
-Users should not need to understand multi-machine concepts unless they use them.
+Current proven reusable asset types include:
 
-## Reusable library
+- Cabinet;
+- Reel.
 
-Cabinets and physical devices are often reused across many real games.
+The active dynamic-object track should extend the same Project/Library model to:
 
-Oasis therefore needs a reusable asset library.
+- Object3D.
 
-Initial likely library asset types:
+Do not invent a separate package/reference system for Object3D.
 
-- Cabinets;
-- Reels.
+## Build rule
 
-Later:
+A Machine build follows explicit asset references and copies/flattens required runtime resources into generated output.
 
-- Buttons;
-- CoinMechs;
-- NoteAcceptors;
-- Joysticks;
-- Screens;
-- Speakers;
-- other typed devices.
+Broken referenced dependencies should fail clearly.
 
-## Initial implementation preference
+Unreferenced assets should not affect an unrelated Machine build.
 
-Do not begin with a complex package manager, dependency resolver or online registry.
+## Distribution
 
-A simple user-local Oasis Library directory with explicit asset references is sufficient for the first implementation if it fits current project path infrastructure.
+Do not add an online registry/package manager yet.
 
-The architecture should allow later packaging/sharing, but do not implement speculative distribution infrastructure now.
-
-## Example workflow
-
-```text
-New Project
-  -> creates Machine: Bonanza
-
-Import MFME
-  -> Panel2D/provenance/game data
-
-Choose Cabinet
-  -> Library/Cabinets/JPM Vogue
-
-Machine assigns Faces
-  -> generated/authored Bonanza surfaces
-
-Device resolution
-  -> standard-reel profiles resolve to reusable JPM reel assets
-```
-
-The user should not re-import/configure Vogue's GLB for every game.
-
-## Library versus project copy
-
-The exact policy—direct external library references versus copied/localized project assets—must be decided in the library phase after inspecting current asset/path assumptions.
-
-Requirements:
-
-- explicit and deterministic references;
-- build can calculate complete dependencies;
-- broken library references produce clear diagnostics;
-- no project-directory scanning to guess dependencies.
-
-## Variants
-
-Do not implement generic inheritance/variants initially.
-
-Prefer:
-
-- reusable base Cabinet;
-- Machine-owned appearance/configuration overrides.
-
-Only add reusable variants when real authoring examples demonstrate they are needed.
+The local Oasis Library remains sufficient until a concrete sharing/distribution workflow requires more.
