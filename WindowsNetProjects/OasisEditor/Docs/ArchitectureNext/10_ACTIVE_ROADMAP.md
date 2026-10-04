@@ -98,14 +98,16 @@ Pool milestone: 16 authored balls can appear physically on the loaded pool table
 
 #### PR A5 — Assembled Machine 3D composition view
 
-Provide a Machine viewport showing:
+Implemented: the Machine Composition tab projects authored assets directly into a Helix viewport showing:
 
 - Cabinet;
 - mounted Faces where practical;
 - Object3D instances;
 - optional Cabinet collider/trigger diagnostics.
 
-Support selecting Object3D instances and editing transforms. Reuse current Cabinet/Helix infrastructure where sensible; do not create a second authoritative scene representation.
+It supports instance-ID selection, shared Details/Composition numeric transform editing, transient semantic preview filters, missing-reference diagnostics, assembled bounds camera reset, and per-document Object3D definition/model reuse. It reuses the Machine command history and does not create a second authoritative scene representation.
+
+Translation/rotation/scale manipulators, Object3D collider diagnostics, and mounted Face rendering remain focused follow-ups; numeric editing is the A5 transform interaction.
 
 #### PR A6 — Machine anchors
 
