@@ -84,10 +84,13 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             cancellationToken.ThrowIfCancellationRequested();
             var cabinetRoot = Path.Combine(stagingRoot, CabinetDirectoryName);
             Directory.CreateDirectory(cabinetRoot);
-            progress.Report(0.15, "Copying cabinet model...");
+            var cabinetAssetIdentity = machineDocument.CabinetAsset.ToString();
+            progress.Report(0.12, "Validating cabinet semantic geometry...");
+            new GlbCabinetSemanticGeometryValidator().Validate(sourceGlb, cabinetAssetIdentity, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            progress.Report(0.17, "Copying cabinet model...");
             File.Copy(sourceGlb, Path.Combine(cabinetRoot, CabinetGlbFileName), overwrite: true);
             cancellationToken.ThrowIfCancellationRequested();
-            var cabinetAssetIdentity = machineDocument.CabinetAsset.ToString();
             ValidateFaceAssignmentTargets(machineDocument.DisplayName, machineDocument.SurfaceAssignments, sourceGlb, cabinetAssetIdentity, cancellationToken);
             var faceReferences = ExportReferencedFaces(project, stagingRoot, machineDocument, cabinetDocument, cabinetAssetIdentity, progress.CreateChild(0.2, 0.7), cancellationToken);
             progress.Report(0.72, "Validating cabinet reflections...");
@@ -105,7 +108,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             progress.Report(1, "Oasis Player machine build complete.");
             return MachineRuntimeBuildResult.Ok(buildRoot);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or InvalidOperationException)
         {
             return MachineRuntimeBuildResult.Fail($"Failed to build Oasis Player runtime output: {ex.Message}");
         }
