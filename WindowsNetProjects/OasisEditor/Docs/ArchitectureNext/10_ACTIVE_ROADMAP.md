@@ -88,11 +88,11 @@ Repeated references are deduplicated by authored Object3D GUID; identity collisi
 
 #### PR A4 — Player Object3D instantiation
 
-Player loads each referenced Object3D once as appropriate and instantiates Machine object instances with authored transforms.
+Implemented: Player loads each referenced Object3D definition once per Machine session and instantiates Machine object instances with authored placement transforms, separate intrinsic scale/up-axis conversion, configured physics, and stable runtime registration.
 
-Configure primitive/Mesh colliders and Rigidbody defaults.
+Primitive/Mesh colliders and Rigidbody defaults are configured from Object3D runtime schema 1. Mesh collision requires exactly one usable model mesh.
 
-Register each live instance in `RuntimeMachine` under its stable `object:<id>` identity.
+Each live instance is registered in `RuntimeMachine` under its stable `object:<id>` identity.
 
 Pool milestone: 16 authored balls can appear physically on the loaded pool table with working Unity physics, without scripting.
 

@@ -3,6 +3,7 @@
     "rootNamespace": "OasisPlayer.Tests",
     "references": [
         "OasisPlayer.RuntimeBuild",
+        "OasisPlayer.Loading",
         "OasisPlayer.Settings"
     ],
     "includePlatforms": [
