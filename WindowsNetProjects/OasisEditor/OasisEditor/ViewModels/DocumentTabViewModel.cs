@@ -7,6 +7,7 @@ using OasisEditor.Commands;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
 using OasisEditor.Features.CabinetEditor.ViewModels;
+using OasisEditor.Features.MachineComposition.ViewModels;
 using OasisEditor.Progress;
 using SkiaSharp;
 
@@ -52,6 +53,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private Action<string>? _openAssetDocument;
     private readonly FaceWorkspaceViewModel? _faceWorkspace;
     private readonly MachineCompositionGraphViewModel? _machineCompositionGraph;
+    private MachineComposition3DViewModel? _machineComposition3D;
+    internal Func<ICabinetModelLoader> MachineCompositionLoaderFactory { get; set; } = static () => new SharpGltfWpfModelLoader();
     private readonly MachineRuntimeSettingsViewModel? _machineRuntimeSettings;
     private readonly FaceRuntimeAssetsConfigurationService _runtimeAssetsConfiguration = new();
     private SKBitmap? _correctionInputBitmap;
@@ -143,9 +146,13 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public DocumentSelectionState SelectionState { get; } = new();
     public FaceWorkspaceViewModel? FaceWorkspace => _faceWorkspace;
     public MachineCompositionGraphViewModel? MachineCompositionGraph => _machineCompositionGraph;
+    public MachineComposition3DViewModel? ExistingMachineComposition3D => _machineComposition3D;
+    public MachineComposition3DViewModel? MachineComposition3D => Document.DocumentType == EditorDocumentType.Machine ? GetOrCreateMachineComposition3D() : null;
     public MachineRuntimeSettingsViewModel? MachineRuntimeSettings => _machineRuntimeSettings;
     internal IProgressDialogService ProgressDialogService => _progressDialogService;
     internal string? ProjectDirectory => _projectAccessor?.Invoke()?.ProjectDirectory;
+    internal EditorProject? CurrentProject => _projectAccessor?.Invoke();
+    internal string CurrentLibraryRoot => LibraryRoot();
     public string Title => Document.IsDirty ? $"{Document.Title}*" : Document.Title;
     public string TypeLabel => Document.DocumentType switch
     {
@@ -187,11 +194,22 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         return viewer;
     }
 
+    private MachineComposition3DViewModel GetOrCreateMachineComposition3D()
+    {
+        if (_machineComposition3D is not null) return _machineComposition3D;
+        var composition = new MachineComposition3DViewModel(this, MachineCompositionLoaderFactory());
+        _machineComposition3D = composition;
+        composition.Refresh(GetMachineDocument(), cabinetChanged: false, objectInstancesChanged: true);
+        composition.RefreshDefinitions();
+        return composition;
+    }
+
     public void SetOpenDocumentsAccessor(Func<IReadOnlyList<DocumentTabViewModel>> openDocumentsAccessor)
     {
         _openDocumentsAccessor = openDocumentsAccessor;
         ReconcileRuntimeAssetsConfiguration();
         RefreshMachineCompositionGraph();
+        _machineComposition3D?.RefreshDefinitions();
     }
 
     public void SetProjectAccessor(Func<EditorProject?> projectAccessor)
@@ -201,6 +219,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _cabinetViewer?.ReflectionEditor.RefreshProjectContext();
         RefreshMachineCompositionChoices();
         RefreshMachineCompositionGraph();
+        _machineComposition3D?.RefreshDefinitions();
     }
     public void SetLibraryRootAccessor(Func<string> libraryRootAccessor)
     {
@@ -208,6 +227,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         RefreshMachineCompositionChoices();
         _cabinetViewer?.RefreshFacePreviews();
         RefreshMachineCompositionGraph();
+        _machineComposition3D?.RefreshDefinitions();
     }
 
     public void SetAssetDocumentOpener(Action<string> openAssetDocument)
@@ -428,6 +448,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                 RefreshMachineReelRowsFromAssignedFaces(project);
         }
         if (objectInstancesChanged) RefreshMachineObjectInstanceRows();
+        _machineComposition3D?.Refresh(document, cabinetChanged, objectInstancesChanged);
         NotifyMachineAssetNavigationChanged();
         RefreshMachineCompositionGraph();
     }
@@ -803,6 +824,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         CancelCalibrationPlacement();
         InvalidateCorrectionInputCache();
         DisposeCabinetViewer();
+        _machineComposition3D?.Dispose();
         SelectionState.SelectionChanged -= OnSelectionStateChanged;
     }
 
