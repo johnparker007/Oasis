@@ -121,6 +121,28 @@
                 </StackPanel>
             </ScrollViewer>
 
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{DynamicResource WorkspaceBackgroundBrush}">
+                <ScrollViewer.Style><Style TargetType="ScrollViewer"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Object3D}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></ScrollViewer.Style>
+                <StackPanel Margin="16" MaxWidth="600" HorizontalAlignment="Left">
+                    <TextBlock Text="Object3D" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,16"/>
+                    <TextBlock Text="Display Name" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding Object3DDisplayName, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,12"/>
+                    <TextBlock Text="Model" FontWeight="SemiBold" Margin="0,4,0,8"/>
+                    <TextBlock Text="Package-relative GLB path" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding Object3DModelPath, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,8"/>
+                    <TextBlock Text="Scale" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding Object3DModelScale, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,8"/>
+                    <TextBlock Text="Up axis" Foreground="{DynamicResource TextSecondaryBrush}"/><ComboBox ItemsSource="{Binding Object3DUpAxes}" SelectedItem="{Binding Object3DUpAxis}" Margin="0,3,0,12"/>
+                    <TextBlock Text="Physics" FontWeight="SemiBold" Margin="0,4,0,8"/>
+                    <TextBlock Text="Collider" Foreground="{DynamicResource TextSecondaryBrush}"/><ComboBox ItemsSource="{Binding Object3DColliderKinds}" SelectedItem="{Binding Object3DColliderKind}" Margin="0,3,0,8"/>
+                    <StackPanel><StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding Object3DColliderKind}" Value="{x:Static local:Object3DColliderKind.None}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding Object3DColliderKind}" Value="{x:Static local:Object3DColliderKind.Mesh}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+                        <TextBlock Text="Center (X, Y, Z)" Foreground="{DynamicResource TextSecondaryBrush}"/><UniformGrid Columns="3" Margin="0,3,0,8"><TextBox Text="{Binding Object3DColliderCenterX, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding Object3DColliderCenterY, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding Object3DColliderCenterZ, UpdateSourceTrigger=LostFocus}"/></UniformGrid>
+                    </StackPanel>
+                    <StackPanel><StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Object3DColliderKind}" Value="{x:Static local:Object3DColliderKind.Sphere}"><Setter Property="Visibility" Value="Visible"/></DataTrigger><DataTrigger Binding="{Binding Object3DColliderKind}" Value="{x:Static local:Object3DColliderKind.Capsule}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style><TextBlock Text="Radius" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding Object3DColliderRadius, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,8"/></StackPanel>
+                    <StackPanel><StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Object3DColliderKind}" Value="{x:Static local:Object3DColliderKind.Box}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style><TextBlock Text="Size (X, Y, Z)" Foreground="{DynamicResource TextSecondaryBrush}"/><UniformGrid Columns="3" Margin="0,3,0,8"><TextBox Text="{Binding Object3DColliderSizeX, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding Object3DColliderSizeY, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding Object3DColliderSizeZ, UpdateSourceTrigger=LostFocus}"/></UniformGrid></StackPanel>
+                    <StackPanel><StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Object3DColliderKind}" Value="{x:Static local:Object3DColliderKind.Capsule}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style><TextBlock Text="Height" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding Object3DColliderHeight, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,8"/><TextBlock Text="Axis" Foreground="{DynamicResource TextSecondaryBrush}"/><ComboBox ItemsSource="{Binding Object3DCapsuleAxes}" SelectedItem="{Binding Object3DColliderAxis}" Margin="0,3,0,8"/></StackPanel>
+                    <CheckBox Content="Rigidbody enabled" IsChecked="{Binding Object3DRigidbodyEnabled}" Margin="0,8,0,8"/>
+                    <StackPanel IsEnabled="{Binding Object3DRigidbodyEnabled}"><TextBlock Text="Mass (kg)" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding Object3DRigidbodyMass, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,8"/><CheckBox Content="Use gravity" IsChecked="{Binding Object3DUseGravity}"/></StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
             <Border Padding="10"
                     CornerRadius="4"
                     Background="{DynamicResource SelectionBrush}"
@@ -138,6 +160,7 @@
                             </DataTrigger>
                             <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Machine}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
                             <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Reel}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                            <DataTrigger Binding="{Binding Document.DocumentType}" Value="{x:Static local:EditorDocumentType.Object3D}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
                             <DataTrigger Binding="{Binding HasCabinetViewer}" Value="True">
                                 <Setter Property="Visibility" Value="Collapsed" />
                             </DataTrigger>

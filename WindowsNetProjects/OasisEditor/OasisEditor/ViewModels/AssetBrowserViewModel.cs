@@ -519,6 +519,11 @@ public sealed class AssetBrowserViewModel : IDisposable
             _addOutputEntry($"Reel was not copied to the Oasis Library: {validationError}", OutputLogStatus.Warning);
             return;
         }
+        if (typeFolder == "Object3D" && !TryValidateObject3DPackage(package, out validationError))
+        {
+            _addOutputEntry($"Object3D was not copied to the Oasis Library: {validationError}", OutputLogStatus.Warning);
+            return;
+        }
         var libraryRoot = _libraryRootAccessor();
         if (string.IsNullOrWhiteSpace(libraryRoot)) { _addOutputEntry("Configure the Oasis Library root in Preferences before copying an asset.", OutputLogStatus.Warning); return; }
         var packageName = Path.GetFileName(package);
@@ -541,6 +546,7 @@ public sealed class AssetBrowserViewModel : IDisposable
         package = Directory.Exists(path) ? path : Path.GetDirectoryName(path) ?? string.Empty;
         if (File.Exists(Path.Combine(package, ProjectAssetPathService.Cabinet3DManifestFileName))) { typeFolder = "Cabinets"; return true; }
         if (File.Exists(Path.Combine(package, ProjectAssetPathService.ReelManifestFileName))) { typeFolder = "Reels"; return true; }
+        if (File.Exists(Path.Combine(package, ProjectAssetPathService.Object3DManifestFileName))) { typeFolder = "Object3D"; return true; }
         typeFolder = string.Empty; return false;
     }
 
@@ -578,6 +584,18 @@ public sealed class AssetBrowserViewModel : IDisposable
         if (!File.Exists(manifest)) { error = "asset.reel is missing."; return false; }
         if (!ReelDocumentStorage.TryRead(File.ReadAllText(manifest), out _, out var readerError))
         { error = $"asset.reel is missing or invalid: {readerError}"; return false; }
+        error = string.Empty;
+        return true;
+    }
+
+    public static bool TryValidateObject3DPackage(string package, out string error)
+    {
+        var manifest = Path.Combine(package, ProjectAssetPathService.Object3DManifestFileName);
+        if (!File.Exists(manifest)) { error = "asset.object3d is missing."; return false; }
+        if (!Object3DDocumentStorage.TryRead(File.ReadAllText(manifest), out var document, out var readerError))
+        { error = $"asset.object3d is missing or invalid: {readerError}"; return false; }
+        try { Object3DValidationService.Validate(document, package); }
+        catch (InvalidOperationException exception) { error = exception.Message; return false; }
         error = string.Empty;
         return true;
     }

@@ -8,7 +8,8 @@ public enum EditorDocumentType
     Cabinet3D,
     Machine,
     Face,
-    Reel
+    Reel,
+    Object3D
 }
 
 public sealed class EditorDocument
@@ -84,6 +85,9 @@ public sealed class EditorDocument
     public static EditorDocument CreateReelStub(string title) => CreateUntitledWithType(
         title, EditorDocumentType.Reel, "Not saved yet (.reel)", "Reusable physical reel definition");
 
+    public static EditorDocument CreateObject3DStub(string title) => CreateUntitledWithType(
+        title, EditorDocumentType.Object3D, "Not saved yet (.object3d)", "Reusable physical 3D object definition");
+
     private static EditorDocument CreateUntitledWithType(
         string title,
         EditorDocumentType documentType,
@@ -135,6 +139,10 @@ public sealed class EditorDocument
         else if (normalizedExtension == ".reel")
         {
             documentType = EditorDocumentType.Reel;
+        }
+        else if (normalizedExtension == ".object3d")
+        {
+            documentType = EditorDocumentType.Object3D;
         }
         else
         {
