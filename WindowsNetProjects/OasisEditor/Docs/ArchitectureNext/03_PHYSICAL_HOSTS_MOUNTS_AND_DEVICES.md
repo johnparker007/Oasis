@@ -1,128 +1,75 @@
-# Physical Hosts, Mounts and Devices
+# Physical Hosts, Mounts, Devices and General Objects
 
-## Core rule
+## Core host rule
 
-**Placement belongs to the physical host. Physical implementation belongs to a typed reusable Device asset. Machine resolves the final composition.**
+Placement for a mounted device belongs to the physical host. Physical implementation belongs to the reusable typed asset. Machine resolves the final composition.
 
-This rule exists because real arcade hardware does not place every device at Cabinet level.
-
-## Hosts
-
-A host is an asset/assembly whose geometry physically contains or positions another object.
-
-Current important hosts:
+Current important hosts include:
 
 - Cabinet;
-- Face/Surface.
+- Face.
 
-Future hosts/assemblies may be added when required.
-
-## Examples
-
-### Face-hosted reel
-
-Different games using the same cabinet can place reels in different locations and combinations.
-
-Therefore Face owns:
-
-- reel position;
-- reel aperture/window;
-- logical machine reference such as Reel:0;
-- orientation/visual placement;
-- requested physical profile/type where required.
-
-Reusable Reel asset owns:
-
-- physical diameter;
-- width;
-- 3D mechanism;
-- pivot/axis;
-- reusable lighting/mechanical properties.
-
-### Cabinet-hosted button
-
-Cabinet owns:
-
-- button mount transform;
-- opening/mount geometry;
-- compatible/default button profile.
-
-Button asset owns the reusable button model/physical behavior.
-
-Machine maps game input semantics to the mount/device as needed.
-
-### Face-hosted button
-
-If the button passes through a game-specific glass, Face owns the mount/aperture.
-
-The reusable Button asset remains separate.
-
-### Coin mechanism / note acceptor
-
-Typically Cabinet owns the mount/aperture.
-
-CoinMech or NoteAcceptor asset owns reusable physical implementation.
-
-## Typed mounts
-
-Do not prematurely create a giant generic mount schema.
-
-Prefer clear typed concepts where requirements differ:
-
-- FaceReelMount;
-- FaceButtonMount;
-- CabinetButtonMount;
-- CabinetCoinMechMount;
-- CabinetNoteAcceptorMount.
-
-Small shared primitives for transforms/profile IDs may be extracted when duplication becomes real.
-
-## Device profiles
-
-A host may need to express a compatibility/requested profile without embedding full physical dimensions.
-
-Example:
-
-```text
-Face reel mount
-  logicalReference = Reel:3
-  requestedProfile = small-reel
-```
-
-Cabinet family knowledge may map:
-
-```text
-small-reel -> JPM Small Reel asset
-```
-
-This allows a Face to encode that its artwork/aperture expects a small reel without coupling it to literal dimensions or a particular Machine instance.
-
-Exact profile schema should be proven with Reel assets before generalization.
-
-## Logical machine objects
-
-Logical references identify runtime semantics, not physical implementation.
+## Typed mounted devices
 
 Examples:
 
-- Reel:0;
-- Lamp:27;
-- input/button ID;
-- display ID.
+### Face-hosted reel
 
-A Face may retain logical references because they describe what the visual/physical element represents.
+Face owns:
 
-Do not use logical references as substitutes for physical asset identity.
+- reel placement/aperture;
+- logical Reel reference;
+- visual orientation.
 
-## Simulation entities are not necessarily devices
+Reel asset owns intrinsic reusable physical properties.
 
-Physics-heavy games may contain entities such as:
+### Cabinet-hosted control/device
 
-- coins;
+Cabinet owns the mount/opening/placement.
+
+The typed reusable device owns its physical implementation.
+
+Do not prematurely create one universal mount/device schema.
+
+## Logical machine references
+
+Logical references identify runtime semantics, not physical asset identity.
+
+Current examples include:
+
+- `lamp:17`;
+- `reel:2`;
+- `input:start`;
+- display references.
+
+The active Object3D architecture extends this with:
+
+- `object:<id>`.
+
+When Cabinet trigger behaviour is exposed to scripting, use a stable typed trigger identity rather than raw Unity object paths.
+
+## General simulation objects are not typed devices
+
+Physics-heavy or scripted games contain reusable objects such as:
+
 - pool balls;
 - pucks;
-- pusher-bed contents.
+- moles;
+- prize balls.
 
-Do not force these into MachineObjectReference/device infrastructure.
+These should not be forced into Reel/Button/etc. device schemas.
 
-The runtime may own dynamic simulation entities directly.
+Use reusable Object3D assets plus Machine-owned instances.
+
+This is distinct from saying dynamic entities are anonymous runtime-only objects: authored gameplay objects need stable Machine identity so Editor composition, Player registries, triggers and scripting can refer to them consistently.
+
+## Runtime-only ephemeral entities
+
+A future runtime may also create truly ephemeral entities that are not authored Machine instances.
+
+Do not require every transient simulation particle/object to become an authored Object3D instance or MachineObjectReference.
+
+The distinction is:
+
+- authored, designer-addressable object -> Object3D + Machine instance;
+- ephemeral runtime-only entity -> runtime-owned state.

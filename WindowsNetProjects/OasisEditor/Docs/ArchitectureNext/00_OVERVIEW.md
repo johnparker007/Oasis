@@ -2,18 +2,9 @@
 
 ## Purpose
 
-This document set defines the target architecture for the next major Oasis Editor refactor. It is intentionally broader than the current fruit-machine-only workflow because the Editor and Oasis Player are intended to support:
+This document set defines the durable target architecture for Oasis Editor and Oasis Player. It intentionally extends beyond fruit-machine emulation to support video arcade machines, linked installations, scripted physical games, and physics-heavy machines such as pool tables and coin pushers.
 
-- emulated fruit machines;
-- video arcade machines such as JAMMA cabinets;
-- linked multi-cabinet installations;
-- physical arcade games driven by scripted logic;
-- physics-heavy arcade games such as coin pushers and pool tables;
-- reusable physical assets such as cabinets, reels, buttons, coin mechanisms, displays and other devices.
-
-Pinball is explicitly out of scope for this architecture pass because it is likely to use a specialized external/editor workflow.
-
-These documents describe target ownership and composition rules. They do not preserve compatibility with old Oasis project or runtime formats.
+These documents describe current ownership rules and active target architecture. Historical implementation-phase notes are intentionally removed once merged so future work is not guided by obsolete transitional state.
 
 ## Repository policy
 
@@ -43,166 +34,114 @@ A Project may contain one or more Machine assets and, later, one or more Install
 
 ### Machine
 
-A Machine is one independently playable/runtime unit.
+A Machine is one independently playable/runtime unit and the primary standalone composition/build root.
 
 Examples:
 
 - one fruit machine;
 - one Pac-Man cabinet;
 - one linked racing cabinet;
-- one slave cabinet in a linked fruit-machine installation;
+- one slave cabinet in a linked installation;
 - one coin pusher;
 - one whack-a-mole game;
 - one pool table.
 
-A Machine does not imply ROM emulation. Its runtime can be emulated, scripted, physics-driven or hybrid.
+A Machine does not imply ROM emulation.
 
 ### Installation
 
-An Installation is an optional composition above Machine.
-
-It is used only when several independently running Machines and/or shared physical assemblies are intended to form one linked physical setup.
-
-Examples:
-
-- four linked fruit-machine slaves plus a shared topper;
-- two to four linked driving cabinets;
-- a multi-unit attraction with a shared jackpot display.
+An Installation is an optional composition above Machine, used only when multiple independently running Machines and/or shared assemblies form one linked physical setup.
 
 Standalone Machines do not require an Installation.
 
-### Cabinet / physical host
+### Cabinet
 
-A Cabinet is a reusable physical structure, not a particular game.
+A Cabinet is a reusable fixed physical structure, not a particular game.
 
-It owns facts that remain true when different games are installed in that cabinet family/model, such as:
+It owns reusable facts such as:
 
 - base 3D model;
-- named surface/Face targets;
-- default surface orientation;
-- reflection receiver geometry;
-- material roles;
-- cabinet-hosted mounting points;
-- default/compatible device profiles where appropriate.
+- `OasisFace_*` surface targets;
+- `OasisCollider_*` fixed collision geometry;
+- `OasisTrigger_*` fixed trigger geometry;
+- target orientation defaults;
+- reflection receiver geometry/settings;
+- future cabinet-hosted mounts where justified.
 
 ### Face / Surface
 
-A Face is the game-specific assembly associated with a cabinet surface. Current fruit-machine Faces contain artwork plus semantic/physical layout such as reel windows, lamp windows, displays and potentially glass-mounted controls.
+A Face is the current game-specific surface assembly. It can contain artwork, lamp/reel/display layout, controls and provenance. It does not know which Machine or Cabinet consumes it.
 
-The architecture should leave room to generalize this into a broader Surface concept for video-game bezels, marquees, control-panel artwork and similar surfaces.
+Generalizing Face into a broader Surface concept remains deferred until a real video-machine workflow requires it.
 
 ### Device asset
 
-A Device asset is a reusable typed physical implementation.
+A Device asset is a reusable typed physical implementation such as Reel, Button, CoinMech or Display hardware.
+
+Do not introduce a universal Device mega-schema.
+
+### Object3D asset
+
+Object3D is the reusable physical asset for general 3D objects that are instantiated directly by Machine rather than mounted through a typed host/device relationship.
 
 Examples:
 
-- Reel;
-- Button;
-- CoinMech;
-- NoteAcceptor;
-- Joystick;
-- Screen;
-- Speaker;
-- Dice;
-- Wheel.
+- pool ball;
+- mole;
+- puck;
+- prize ball;
+- movable prop.
 
-Do not introduce a giant universal device schema. Prefer strongly typed assets with only small shared infrastructure.
+Object3D owns intrinsic model/physics defaults. Machine owns each instance's identity and placement.
 
 ### Runtime definition
 
-A RuntimeDefinition describes how the Machine behaves.
+A RuntimeDefinition describes how the Machine behaves. Emulation is one runtime implementation rather than the architectural center of Oasis.
 
-Examples:
+Scripted/physics/hybrid behaviour is an active future track, documented separately.
 
-- emulation backend;
-- scripted high-level game logic;
-- physics simulation;
-- hybrid physics + scripted/emulated logic.
-
-Emulation is one backend, not the architectural center of Oasis.
-
-## Non-negotiable ownership invariants
+## Ownership invariants
 
 1. Project is a workspace, not a machine.
 2. Machine is one independently playable/runtime unit.
-3. Installation composes Machine instances/shared assemblies; it is optional.
-4. Face/Surface never knows which Machine or Cabinet instance consumes it.
-5. Reusable Device assets never know which Machine consumes them.
-6. Placement belongs to the physical host that contains the mount/aperture.
-7. Physical implementation belongs to a typed reusable Device asset.
+3. Installation composes Machine instances/shared assemblies and is optional.
+4. Face never knows which Machine or Cabinet consumes it.
+5. Reusable Cabinet/Reel/Object3D assets never know which Machine consumes them.
+6. Placement belongs to the owning host or Machine composition.
+7. Intrinsic physical implementation belongs to the reusable asset.
 8. Machine owns final game-specific composition.
 9. Installation owns relationships between Machine instances.
-10. Build traversal follows explicit references from its root. Do not scan the project to infer ownership.
+10. Build traversal follows explicit references from its root; do not scan a project to infer ownership.
 11. Do not duplicate authoritative relationships in both directions.
-12. Provenance is not the same as composition.
-13. A graph/overview view is derived from authoritative assets; it is not another source of truth.
+12. Provenance is not composition.
+13. Derived overview/viewport data is not another source of truth.
 14. Do not add backwards compatibility.
-
-## Placement rule
-
-The host that physically contains a device placement owns that placement.
-
-Examples:
-
-- reel windows/positions on a game-specific glass belong to Face;
-- a button mounted through a game-specific glass belongs to Face;
-- a cabinet-mounted button position belongs to Cabinet;
-- a coin-mech mounting position belongs to Cabinet;
-- a note-acceptor mounting position belongs to Cabinet.
-
-The physical Reel/Button/CoinMech implementation is a separate reusable asset.
 
 ## Composition rule
 
-Machine resolves hosts, surfaces, devices and runtime into one playable unit.
+Machine resolves reusable assets and game-specific content into one playable unit.
 
-A future Machine might conceptually look like:
+Current examples include:
 
-```text
-Machine: Bonanza
-  Runtime
-    Platform / ROM configuration
+- Cabinet selection;
+- Face assignments;
+- Reel asset resolution;
+- Machine inputs;
+- Machine-owned runtime configuration.
 
-  Cabinet
-    JPM Vogue
-
-  Surface assignments
-    TopGlass    -> Bonanza Top.face
-    BottomGlass -> Bonanza Bottom.face
-
-  Device resolution
-    Face Reel:0 profile standard-reel -> JPM Standard Reel
-    Face Reel:3 profile small-reel    -> JPM Small Reel
-
-  Appearance overrides
-    SideTrim -> red sparkle
-```
-
-## Current-state warning
-
-The current repository is transitional.
-
-At the time this architecture was written:
-
-- Cabinet owns explicit Face assignments and logical-reel -> Cabinet reel-spec assignments;
-- project metadata still owns fruit-machine platform/ROM settings;
-- a dormant `.machine` document type exists but is not yet the true composition root;
-- Face retains Panel2D provenance and logical machine-object references;
-- the runtime build is currently rooted in Cabinet.
-
-Those current choices are stepping stones. Later phases intentionally move game-specific composition from Cabinet/Project into Machine and replace embedded reel specifications with reusable Reel assets.
+The active Object3D track extends this with Machine-owned dynamic/general 3D object instances and later behaviour/scripting.
 
 ## Implementation strategy
 
-Do not implement this architecture in one giant PR.
+Do not implement future architecture in one giant PR.
 
-The master plan defines phases. Each implementation task must:
+For active sequencing, read:
 
-- read this overview;
-- read only the relevant specialist documents;
-- inspect the current repository before changing code;
-- implement only its assigned phase;
-- avoid speculative implementation of later-phase concepts.
+- `10_ACTIVE_ROADMAP.md`;
+- the specialist document relevant to the task.
 
-The target architecture is broad; each phase should remain narrow and testable.
+For the current dynamic-object/scripting track, read:
+
+- `11_DYNAMIC_OBJECTS_BEHAVIOUR_AND_SCRIPTING.md`.
+
+Inspect the current repository before each phase and implement only that phase.

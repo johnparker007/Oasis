@@ -2,77 +2,68 @@
 
 ## Goal
 
-Define what is a reusable asset, what belongs to Machine composition, and what remains project/workspace metadata.
+Define what is reusable, what belongs to Machine composition, and what remains Project/workspace metadata.
 
-## Main asset categories
+## Reusable physical assets
 
-### Reusable physical assets
-
-These describe reusable real-world objects or structures.
-
-Initial/likely types:
+Current/proven reusable physical assets include:
 
 - Cabinet;
-- Reel;
-- Button;
-- CoinMech;
-- NoteAcceptor;
-- Joystick;
-- Screen;
-- Speaker;
-- Dice;
-- Wheel.
+- Reel.
 
-Additional types should be introduced only when a real workflow requires them.
+The next active reusable asset is:
 
-### Game-specific surface assets
+- Object3D.
 
-Current Face assets are game-specific surface assemblies.
+Likely future typed devices should be introduced only when a real workflow requires them, for example Button, CoinMech, NoteAcceptor, Joystick, Screen or Speaker.
+
+### Object3D versus typed Device
+
+Use a typed Device asset where the object has a specific host/mount/runtime role that deserves its own model.
+
+Use Object3D for reusable general 3D objects instantiated directly by Machine, such as pool balls, moles or pucks.
+
+Do not replace proven typed concepts such as Reel with Object3D merely to make everything generic.
+
+## Game-specific surface assets
+
+Face assets are game-specific surface assemblies.
 
 They may contain:
 
 - artwork;
 - source/provenance metadata;
-- lamp windows;
-- reel windows and reel positions;
-- displays;
+- lamp/reel/display placement;
+- controls;
 - game-specific apertures;
-- glass-mounted buttons/devices;
 - logical machine-object references.
 
-A future generalized Surface abstraction may cover:
+Face must not point back at the consuming Machine or Cabinet.
 
-- fruit-machine glass Faces;
-- arcade control panels;
-- bezels;
-- marquees;
-- side-art surfaces.
-
-Do not force that generalization until real video-game workflows require it.
-
-### Composition assets
+## Composition assets
 
 - Machine;
 - Installation.
 
-Composition assets reference reusable/game-specific assets. Referenced assets must not point back at the composition that consumes them.
+Machine is the standalone composition root. Installation is an optional higher-level composition root for linked Machines.
 
 ## Asset identity and references
 
-Use explicit stable asset references/paths following existing Oasis project asset conventions.
+Use explicit stable references following current Oasis `AssetReference` conventions.
 
-Do not infer ownership by scanning directories.
+Do not infer composition by scanning directories.
 
 Examples:
 
 ```text
 Machine -> Cabinet asset
-Machine -> Face/Surface asset
-Machine -> Device asset
+Machine -> Face asset
+Machine -> Reel asset
+Machine -> Object3D asset
 Installation -> Machine asset
 ```
 
-A build should be the transitive closure of those explicit references.
+A build is the transitive closure of explicit references.
 
 ## One-way dependencies
 
@@ -82,9 +73,10 @@ Preferred direction:
 Project
   -> Machine
        -> Cabinet
-       -> Faces/Surfaces
+       -> Faces
             -> Panel2D provenance
-       -> Devices
+       -> Reel assets
+       -> Object3D assets
        -> RuntimeDefinition
 
 Installation
@@ -92,78 +84,54 @@ Installation
   -> shared assemblies
 ```
 
-Avoid:
+Avoid reverse consumption references such as:
 
 ```text
-Face -> Cabinet
-Device -> Machine
+Face -> Machine
+Object3D -> Machine
 Cabinet -> current game
-Machine A -> Machine B
 ```
-
-For linked machines, Installation owns links between instances.
 
 ## Reuse test
 
-When deciding whether state belongs on a reusable asset or Machine, ask:
+When deciding whether data belongs on a reusable asset or Machine, ask:
 
-> If a different game is installed in this same physical object, should this fact normally remain unchanged?
-
-If yes, it probably belongs on the reusable asset.
+> If a different game reused this same physical thing, should the fact normally remain unchanged?
 
 Examples:
 
 Cabinet:
 - GLB;
-- face-target geometry;
-- reflection receiver geometry;
-- cabinet-hosted button mounts.
+- Face target geometry;
+- fixed Collider/Trigger geometry;
+- reflection receiver geometry.
 
 Machine:
 - selected Cabinet;
 - selected Faces;
-- selected ROM set;
-- game-specific cabinet appearance overrides.
+- Object3D instances and transforms;
+- game-specific inputs;
+- game-specific behaviour;
+- runtime configuration.
 
-Face:
-- reel placement on this game's glass;
-- reel window/aperture;
-- artwork;
-- logical Reel:N link.
+Object3D:
+- reusable model;
+- intrinsic collider defaults;
+- Rigidbody defaults;
+- physical mass/gravity defaults.
 
 Reel:
-- physical diameter;
-- width;
-- 3D mechanism;
-- pivot/axis;
-- reusable lighting/mechanical properties.
+- physical diameter/width;
+- mechanism/model properties.
 
 ## Asset granularity
 
-Prefer one asset per reusable physical type when the item has independent identity/reuse.
+A standalone asset should earn its existence through reuse, independent identity/editing, or runtime behaviour.
 
-Example:
+Do not split trivial internal geometry into assets merely for conceptual purity.
 
-```text
-Assets/Reels/JPM Standard Reel/asset.reel
-Assets/Reels/JPM Small Reel/asset.reel
-```
+## No inheritance framework
 
-rather than one monolithic asset containing every JPM reel definition.
+Do not add generic asset inheritance/variants until repeated real use cases justify it.
 
-Do not split trivial internal geometry into assets merely for purity. Standalone assets should earn their existence through reuse, identity, independent editing or runtime behavior.
-
-## No inheritance framework yet
-
-Do not introduce a generic asset inheritance/variant hierarchy in the first refactor.
-
-For game-specific variation, prefer Machine-owned overrides over reusable base assets.
-
-Example:
-
-```text
-Machine CabinetAppearanceOverrides
-  SideTrim -> red sparkle
-```
-
-Only introduce reusable Cabinet variants later if repeated real data shows that full physical variants are needed.
+Prefer Machine-owned composition and narrowly scoped overrides.
