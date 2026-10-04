@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -167,7 +168,7 @@ public sealed class RuntimeFacePlacementTests
 
     private static RuntimeMachine CreateMachine(RuntimeFace face)
     {
-        var machine = new RuntimeMachine(new ResolvedRuntimeBuild(string.Empty, new MachineRuntimeManifest(), string.Empty, new CabinetRuntimeManifest(), string.Empty, new MachineRuntimeFaceReference[0]), null);
+        var machine = new RuntimeMachine(new ResolvedRuntimeBuild(string.Empty, new MachineRuntimeManifest(), string.Empty, new CabinetRuntimeManifest(), string.Empty, new MachineRuntimeFaceReference[0], new Dictionary<string, ResolvedRuntimeObjectDefinition>()), null);
         machine.RegisterFace(face);
         return machine;
     }

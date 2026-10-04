@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Security.Cryptography;
 using OasisEditor.Features.CabinetEditor.Models;
 using OasisEditor.Features.CabinetEditor.Services;
 using OasisEditor.Progress;
@@ -19,10 +20,15 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string CabinetDirectoryName = "cabinet";
     public const string CabinetManifestFileName = "cabinet.runtime.json";
     public const string CabinetGlbFileName = "cabinet.glb";
+    public const string ObjectsDirectoryName = "objects";
+    public const string ObjectManifestFileName = "object.runtime.json";
+    public const string ObjectGlbFileName = "object.glb";
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
-    public const int MachineSchemaVersion = 6;
+    public const string ObjectSchema = "oasis.object3d.runtime";
+    public const int MachineSchemaVersion = 7;
     public const int CabinetSchemaVersion = 5;
+    public const int ObjectSchemaVersion = 1;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -93,6 +99,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             cancellationToken.ThrowIfCancellationRequested();
             ValidateFaceAssignmentTargets(machineDocument.DisplayName, machineDocument.SurfaceAssignments, sourceGlb, cabinetAssetIdentity, cancellationToken);
             var faceReferences = ExportReferencedFaces(project, stagingRoot, machineDocument, cabinetDocument, cabinetAssetIdentity, progress.CreateChild(0.2, 0.7), cancellationToken);
+            var objectInstances = ExportReferencedObjects(project, stagingRoot, machineDocument, cancellationToken);
             progress.Report(0.72, "Validating cabinet reflections...");
             cancellationToken.ThrowIfCancellationRequested();
             ValidateReflections(cabinetDocument.Reflections ?? [], GlbCabinetReflectionReceiverDiscovery.Discover(sourceGlb), faceReferences);
@@ -100,7 +107,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             progress.Report(0.85, "Writing runtime manifests...");
             cancellationToken.ThrowIfCancellationRequested();
             File.WriteAllText(Path.Combine(cabinetRoot, CabinetManifestFileName), JsonSerializer.Serialize(cabinetManifest, JsonOptions));
-            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, machineDocument.Id, machineDocument.DisplayName, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, MachineRuntimeManifestDefinition.From(machineDocument.Runtime), machineDocument.InputDefinitions);
+            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, machineDocument.Id, machineDocument.DisplayName, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, objectInstances, MachineRuntimeManifestDefinition.From(machineDocument.Runtime), machineDocument.InputDefinitions);
             File.WriteAllText(Path.Combine(stagingRoot, MachineManifestFileName), JsonSerializer.Serialize(machineManifest, JsonOptions));
             progress.Report(0.95, "Finalising Oasis Player machine...");
             cancellationToken.ThrowIfCancellationRequested();
@@ -116,6 +123,50 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         {
             if (Directory.Exists(stagingRoot)) Directory.Delete(stagingRoot, recursive: true);
         }
+    }
+
+    private IReadOnlyList<MachineRuntimeObjectInstance> ExportReferencedObjects(EditorProject project, string stagingRoot, MachineDocument machine, CancellationToken cancellationToken)
+    {
+        var instances = new List<MachineRuntimeObjectInstance>();
+        var definitions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var instance in machine.ObjectInstances)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var reference = instance.ObjectAsset ?? throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' requires an Object3D asset reference.");
+            string manifestPath;
+            try { manifestPath = _assetResolver.Resolve(project, _libraryRoot, reference); }
+            catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+            { throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' cannot resolve Object3D asset {reference}: {exception.Message}", exception); }
+            if (!File.Exists(manifestPath)) throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' references missing Object3D asset {reference}.");
+            if (!string.Equals(Path.GetFileName(manifestPath), ProjectAssetPathService.Object3DManifestFileName, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' reference {reference} is not an Object3D package manifest.");
+            if (!Object3DDocumentStorage.TryRead(File.ReadAllText(manifestPath), out var document, out var error))
+                throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' references invalid Object3D asset {reference}: {error}");
+            try { Object3DValidationService.Validate(document, Path.GetDirectoryName(manifestPath)); }
+            catch (InvalidOperationException exception)
+            { throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}', Object3D asset '{document.DisplayName}' is invalid: {exception.Message}", exception); }
+
+            var definitionId = Guid.Parse(document.Id).ToString("D").ToLowerInvariant();
+            var sourceModel = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifestPath)!, document.Model.Path.Replace('/', Path.DirectorySeparatorChar)));
+            var fingerprint = Object3DDocumentStorage.Serialize(document) + "\nmodel-sha256:" + Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(sourceModel)));
+            if (definitions.TryGetValue(definitionId, out var existingFingerprint))
+            {
+                if (!string.Equals(existingFingerprint, fingerprint, StringComparison.Ordinal))
+                    throw new InvalidOperationException($"Object3D stable ID collision '{definitionId}': resolved packages contain conflicting definitions or model content.");
+            }
+            else
+            {
+                definitions.Add(definitionId, fingerprint);
+                var destination = Path.Combine(stagingRoot, ObjectsDirectoryName, definitionId);
+                Directory.CreateDirectory(destination);
+                File.Copy(sourceModel, Path.Combine(destination, ObjectGlbFileName), true);
+                var runtimeDefinition = Object3DRuntimeManifest.From(document, definitionId);
+                File.WriteAllText(Path.Combine(destination, ObjectManifestFileName), JsonSerializer.Serialize(runtimeDefinition, JsonOptions));
+            }
+            var definitionManifest = ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(ObjectsDirectoryName, definitionId, ObjectManifestFileName));
+            instances.Add(new MachineRuntimeObjectInstance(instance.Id, instance.DisplayName, definitionId, definitionManifest, MachineRuntimeTransform.From(instance.Transform)));
+        }
+        return instances;
     }
 
     internal static void ValidateFaceAssignmentTargets(string machineDisplayName, IReadOnlyList<MachineSurfaceAssignment> assignments, string sourceGlb, string cabinetAssetPath, CancellationToken cancellationToken)
@@ -293,7 +344,7 @@ public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, 
     public static MachineRuntimeBuildResult Fail(string errorMessage) => new(false, null, errorMessage);
 }
 
-public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, MachineRuntimeManifestDefinition Runtime, IReadOnlyList<InputDefinitionModel> Inputs);
+public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, IReadOnlyList<MachineRuntimeObjectInstance> ObjectInstances, MachineRuntimeManifestDefinition Runtime, IReadOnlyList<InputDefinitionModel> Inputs);
 
 /// <summary>Generated Player contract projection; distinct from the authored RuntimeDefinition.</summary>
 public sealed record MachineRuntimeManifestDefinition(string Kind, string Platform, string PlatformSettingsJson)
@@ -305,4 +356,32 @@ public sealed record MachineRuntimeManifestDefinition(string Kind, string Platfo
     };
 }
 public sealed record MachineRuntimeFaceReference(string FaceId, string AssetName, string CabinetFaceTargetId, string FrontSide, int FaceRotation, bool FaceFlipHorizontal, string Manifest);
+public sealed record RuntimeVector3(double X, double Y, double Z)
+{
+    public static RuntimeVector3 From(MachineVector3 value) => new(value.X, value.Y, value.Z);
+}
+public sealed record MachineRuntimeTransform(RuntimeVector3 Position, RuntimeVector3 RotationEulerDegrees, RuntimeVector3 Scale)
+{
+    public static MachineRuntimeTransform From(MachineObjectTransform value) => new(RuntimeVector3.From(value.Position), RuntimeVector3.From(value.Rotation), RuntimeVector3.From(value.Scale));
+}
+public sealed record MachineRuntimeObjectInstance(string Id, string DisplayName, string DefinitionId, string DefinitionManifest, MachineRuntimeTransform Transform);
+public sealed record Object3DRuntimeManifest(string Schema, int SchemaVersion, string DefinitionId, string DisplayName, string Model, double ModelScale, string UpAxis, Object3DRuntimeCollider Collider, Object3DRuntimeRigidbody Rigidbody)
+{
+    public static Object3DRuntimeManifest From(Object3DDocument document, string definitionId) => new(MachineRuntimeBuildService.ObjectSchema, MachineRuntimeBuildService.ObjectSchemaVersion, definitionId, document.DisplayName, MachineRuntimeBuildService.ObjectGlbFileName, document.Model.Scale, document.Model.UpAxis, Object3DRuntimeCollider.From(document.Physics.Collider), Object3DRuntimeRigidbody.From(document.Physics.Rigidbody));
+}
+public sealed record Object3DRuntimeCollider(string Kind, double[]? Center = null, double? Radius = null, double[]? Size = null, double? Height = null, string? Axis = null)
+{
+    public static Object3DRuntimeCollider From(Object3DColliderDefinition value) => value.Kind switch
+    {
+        Object3DColliderKind.Sphere => new("Sphere", value.Center, value.Radius),
+        Object3DColliderKind.Box => new("Box", value.Center, Size: value.Size),
+        Object3DColliderKind.Capsule => new("Capsule", value.Center, value.Radius, Height: value.Height, Axis: value.Axis!.Value.ToString()),
+        Object3DColliderKind.Mesh => new("Mesh"),
+        _ => new("None")
+    };
+}
+public sealed record Object3DRuntimeRigidbody(bool Enabled, double? Mass, bool? UseGravity)
+{
+    public static Object3DRuntimeRigidbody From(Object3DRigidbodyDefinition value) => value.Enabled ? new(true, value.Mass, value.UseGravity) : new(false, null, null);
+}
 public sealed record CabinetRuntimeManifest(string Schema, int SchemaVersion, string CabinetId, string Glb, double Scale, string UpAxis, IReadOnlyList<CabinetReflectionDefinition> Reflections);

@@ -82,11 +82,9 @@ Expose basic Machine Details/Hierarchy editing. Keep the authoritative state on 
 
 #### PR A3 — Runtime build contract
 
-Resolve Object3D dependencies during Machine build.
+Implemented: Machine builds resolve Project/Library Object3D dependencies into GUID-keyed reusable runtime packages and export Machine-owned instance declarations. Machine runtime schema 7 and Object3D runtime schema 1 are read by the Player without instantiating Unity objects.
 
-Generated runtime output should contain reusable Object3D runtime packages and Machine instance declarations. Deduplicate repeated references to the same Object3D asset.
-
-This changes generated runtime serialized shapes, so update Editor writer and Player reader together, increment current schema versions as required, update fixtures/tests, and support only the latest format.
+Repeated references are deduplicated by authored Object3D GUID; identity collisions with conflicting definitions fail the build.
 
 #### PR A4 — Player Object3D instantiation
 

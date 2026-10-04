@@ -24,8 +24,24 @@ namespace OasisPlayer.RuntimeBuild
         public string displayName = string.Empty;
         public string cabinetManifest = string.Empty;
         public MachineRuntimeFaceReference[] faces = Array.Empty<MachineRuntimeFaceReference>();
+        public MachineRuntimeObjectInstance[] objectInstances = Array.Empty<MachineRuntimeObjectInstance>();
         public MachineRuntimeManifestDefinition runtime;
         public MachineInputDefinition[] inputs = Array.Empty<MachineInputDefinition>();
+    }
+
+    [Serializable] public sealed class RuntimeVector3Definition { public float x; public float y; public float z; public Vector3 Value { get { return new Vector3(x, y, z); } } }
+    [Serializable] public sealed class MachineRuntimeObjectTransform { public RuntimeVector3Definition position = new RuntimeVector3Definition(); public RuntimeVector3Definition rotationEulerDegrees = new RuntimeVector3Definition(); public RuntimeVector3Definition scale = new RuntimeVector3Definition(); }
+    [Serializable] public sealed class MachineRuntimeObjectInstance { public string id = string.Empty; public string displayName = string.Empty; public string definitionId = string.Empty; public string definitionManifest = string.Empty; public MachineRuntimeObjectTransform transform = new MachineRuntimeObjectTransform(); }
+    [Serializable] public sealed class Object3DRuntimeCollider { public string kind = string.Empty; public float[] center = Array.Empty<float>(); public float radius; public float[] size = Array.Empty<float>(); public float height; public string axis = string.Empty; }
+    [Serializable] public sealed class Object3DRuntimeRigidbody { public bool enabled; public float mass; public bool useGravity; }
+    [Serializable] public sealed class Object3DRuntimeManifest { public string schema = string.Empty; public int schemaVersion; public string definitionId = string.Empty; public string displayName = string.Empty; public string model = string.Empty; public float modelScale; public string upAxis = string.Empty; public Object3DRuntimeCollider collider; public Object3DRuntimeRigidbody rigidbody; }
+
+    public sealed class ResolvedRuntimeObjectDefinition
+    {
+        public ResolvedRuntimeObjectDefinition(string manifestPath, string modelPath, Object3DRuntimeManifest manifest) { ManifestPath = manifestPath; ModelPath = modelPath; Manifest = manifest; }
+        public string ManifestPath { get; private set; }
+        public string ModelPath { get; private set; }
+        public Object3DRuntimeManifest Manifest { get; private set; }
     }
 
     [Serializable]
@@ -209,7 +225,7 @@ namespace OasisPlayer.RuntimeBuild
 
     public sealed class ResolvedRuntimeBuild
     {
-        public ResolvedRuntimeBuild(string buildRoot, MachineRuntimeManifest machine, string cabinetManifestPath, CabinetRuntimeManifest cabinet, string glbPath, MachineRuntimeFaceReference[] faces)
+        public ResolvedRuntimeBuild(string buildRoot, MachineRuntimeManifest machine, string cabinetManifestPath, CabinetRuntimeManifest cabinet, string glbPath, MachineRuntimeFaceReference[] faces, IReadOnlyDictionary<string, ResolvedRuntimeObjectDefinition> objectDefinitions)
         {
             BuildRoot = buildRoot;
             Machine = machine;
@@ -217,6 +233,7 @@ namespace OasisPlayer.RuntimeBuild
             Cabinet = cabinet;
             GlbPath = glbPath;
             Faces = faces ?? Array.Empty<MachineRuntimeFaceReference>();
+            ObjectDefinitions = objectDefinitions ?? new Dictionary<string, ResolvedRuntimeObjectDefinition>();
         }
 
         public string BuildRoot { get; }
@@ -225,12 +242,16 @@ namespace OasisPlayer.RuntimeBuild
         public CabinetRuntimeManifest Cabinet { get; }
         public string GlbPath { get; }
         public IReadOnlyList<MachineRuntimeFaceReference> Faces { get; }
+        public IReadOnlyDictionary<string, ResolvedRuntimeObjectDefinition> ObjectDefinitions { get; }
     }
 
     public static class RuntimeBuildLoader
     {
         public const string MachineSchema = "oasis.machine.runtime";
         public const string CabinetSchema = "oasis.cabinet.runtime";
+        public const string ObjectSchema = "oasis.object3d.runtime";
+        public const int MachineSchemaVersion = 7;
+        public const int ObjectSchemaVersion = 1;
 
         public static bool TryLoad(string buildDirectory, out ResolvedRuntimeBuild build, out string error)
         {
@@ -267,7 +288,7 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            if (machine == null || machine.schema != MachineSchema || machine.schemaVersion != 6)
+            if (machine == null || machine.schema != MachineSchema || machine.schemaVersion != MachineSchemaVersion)
             {
                 error = $"Unsupported machine manifest schema/version in {machinePath}.";
                 return false;
@@ -334,7 +355,28 @@ namespace OasisPlayer.RuntimeBuild
                 }
             }
 
-            build = new ResolvedRuntimeBuild(root, machine, cabinetPath, cabinet, glbPath, machine.faces);
+            var objectDefinitions = new Dictionary<string, ResolvedRuntimeObjectDefinition>(StringComparer.OrdinalIgnoreCase);
+            var objectInstances = machine.objectInstances ?? Array.Empty<MachineRuntimeObjectInstance>();
+            for (var i = 0; i < objectInstances.Length; i++)
+            {
+                var instance = objectInstances[i];
+                if (instance == null || string.IsNullOrWhiteSpace(instance.id) || string.IsNullOrWhiteSpace(instance.definitionId) || instance.transform == null)
+                { error = $"Machine Object3D instance at index {i} is invalid in {machinePath}."; return false; }
+                if (objectDefinitions.ContainsKey(instance.definitionId)) continue;
+                if (!TryResolveContained(root, root, instance.definitionManifest, out var objectManifestPath, out error))
+                { error = $"Invalid Object3D manifest path for instance '{instance.id}' in {machinePath}: {error}"; return false; }
+                if (!File.Exists(objectManifestPath)) { error = $"Object3D runtime manifest is missing: {objectManifestPath}"; return false; }
+                Object3DRuntimeManifest objectManifest;
+                try { objectManifest = JsonUtility.FromJson<Object3DRuntimeManifest>(File.ReadAllText(objectManifestPath)); }
+                catch (Exception ex) { error = $"Object3D manifest is invalid JSON: {objectManifestPath}. {ex.Message}"; return false; }
+                if (objectManifest == null || objectManifest.schema != ObjectSchema || objectManifest.schemaVersion != ObjectSchemaVersion || objectManifest.definitionId != instance.definitionId || objectManifest.collider == null || objectManifest.rigidbody == null)
+                { error = $"Unsupported or invalid Object3D manifest schema/definition in {objectManifestPath}."; return false; }
+                if (!TryResolveContained(root, Path.GetDirectoryName(objectManifestPath), objectManifest.model, out var modelPath, out error))
+                { error = $"Invalid Object3D model path in {objectManifestPath}: {error}"; return false; }
+                if (!File.Exists(modelPath)) { error = $"Object3D GLB is missing: {modelPath}"; return false; }
+                objectDefinitions.Add(instance.definitionId, new ResolvedRuntimeObjectDefinition(objectManifestPath, modelPath, objectManifest));
+            }
+            build = new ResolvedRuntimeBuild(root, machine, cabinetPath, cabinet, glbPath, machine.faces, objectDefinitions);
             return true;
         }
 

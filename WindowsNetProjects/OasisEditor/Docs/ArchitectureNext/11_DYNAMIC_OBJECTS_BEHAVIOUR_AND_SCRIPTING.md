@@ -270,19 +270,22 @@ Repeated Machine instances referencing one Object3D asset should not require dup
 
 The Machine runtime manifest contains instance declarations because placement and instance identity belong to Machine, not to the reusable Object3D GLB.
 
-Illustrative generated instance:
+Generated instance (Machine runtime schema 7) preserves authoring coordinates without conversion; rotation remains XYZ Euler degrees for the documented Unity conversion in A4:
 
 ```json
 {
   "id": "ball08",
-  "objectManifest": "objects/PoolBall08/object.runtime.json",
-  "position": [0.1, 0.8, -0.2],
-  "rotation": [0, 0, 0, 1],
-  "scale": [1, 1, 1]
+  "definitionId": "<object-guid>",
+  "definitionManifest": "objects/<object-guid>/object.runtime.json",
+  "transform": {
+    "position": { "x": 0.1, "y": 0.8, "z": -0.2 },
+    "rotationEulerDegrees": { "x": 0, "y": 0, "z": 0 },
+    "scale": { "x": 1, "y": 1, "z": 1 }
+  }
 }
 ```
 
-When this shape is implemented, increment the affected generated runtime schema version and update Editor writer/Player reader together. Support only the new current schema.
+Definitions use `oasis.object3d.runtime` schema version 1 and contain the generated model filename, intrinsic model scale/up-axis, shape-specific collider values, and enabled/mass/useGravity Rigidbody values. The Player reader supports only Machine runtime schema 7 and retains the resolved definitions for A4.
 
 ## Player runtime model
 
