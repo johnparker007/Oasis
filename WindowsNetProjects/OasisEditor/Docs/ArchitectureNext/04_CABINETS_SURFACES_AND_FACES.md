@@ -2,100 +2,63 @@
 
 ## Cabinet role
 
-Cabinet is a reusable physical asset.
+Cabinet is a reusable fixed physical asset.
 
-A designer should be able to author JPM Vogue once and reuse it for many games.
-
-Cabinet should eventually own only reusable facts, such as:
+It owns intrinsic reusable facts such as:
 
 - source/model GLB;
-- semantic visual, Face-target, Collider, and Trigger geometry authored in that GLB;
-- stable named surface targets;
-- target geometry/orientation defaults;
-- reflection receiver geometry/settings defaults;
-- reusable material roles;
-- cabinet-hosted mounts;
-- device profile defaults/compatibility where appropriate.
+- `OasisFace_*` surface targets;
+- `OasisCollider_*` fixed collision geometry;
+- `OasisTrigger_*` fixed trigger geometry;
+- target orientation/front-side defaults;
+- reflection receiver geometry/settings;
+- future cabinet-hosted mounts where a concrete workflow requires them.
 
-Game-specific Face assignments do not belong on Cabinet in the final architecture.
+Cabinet does not own game-specific Face assignments.
 
-## Current transitional state
+## GLB semantic geometry
 
-The current Cabinet schema owns:
+Current Cabinet semantic prefixes are:
 
-- FaceAssignments;
-- ReelSpecifications;
-- ReelAssignments.
+```text
+OasisFace_<name>
+OasisCollider_<name>
+OasisTrigger_<name>
+```
 
-This was an improvement over Face -> Cabinet references and remains a useful intermediate state.
+Node semantic identity takes precedence over mesh semantic identity.
 
-However:
+`COL_*` and `TRG_*` are not Oasis compatibility aliases.
 
-- FaceAssignments are specific to a particular game/Machine and should move to Machine.
-- ReelAssignments are machine composition and should move/reform under Machine/device resolution.
-- ReelSpecifications should eventually be replaced by reusable Reel assets.
+Machine build validates/preserves the authored Cabinet GLB. Oasis Player turns Collider/Trigger semantic geometry into Unity MeshColliders.
 
-Do not interpret the current Cabinet schema as final architecture.
-
-## GLB import and reusable Cabinet authoring
-
-Current repeated workflow—importing the same GLB into every project and reconfiguring orientation, reflection targets and reel sizes—is a sign that Cabinet should be reusable/library-authored.
-
-Target workflow:
-
-1. Author/import `JPM Vogue.cabinet` once.
-2. Configure its stable target orientation, reflection geometry, material roles and cabinet-hosted mounts.
-3. Save it to a reusable library.
-4. New game selects `JPM Vogue` rather than rebuilding it.
+The GLB remains authoritative for that fixed geometry; do not duplicate Collider/Trigger mesh declarations into runtime JSON.
 
 ## Face role
 
-Current fruit-machine Face should be viewed conceptually as a **game-specific surface assembly**, not merely artwork.
+Face is a game-specific surface assembly.
 
-It can legitimately contain:
+It may own:
 
 - artwork;
 - Panel2D provenance;
-- lamps/windows;
-- reel positions and apertures;
-- displays;
+- lamp/reel/display layout;
+- game-specific apertures;
 - glass-mounted controls;
-- logical machine-object mappings;
-- other game-specific geometry aligned to that surface.
+- logical machine-object mappings.
 
-Face must not know which Cabinet/Machine consumes it.
+Face must not know which Cabinet or Machine consumes it.
+
+Machine owns the assignment from Cabinet surface target to Face asset.
 
 ## Surface generalization
 
-Video arcade machines introduce surfaces such as:
+Do not rename/rewrite Face into a universal Surface abstraction until a real video-machine workflow proves the requirements.
 
-- control panel;
-- bezel;
-- marquee;
-- side art.
+The first concrete video/JAMMA vertical slice should drive that decision.
 
-Do not immediately rename/rewrite Face into a universal Surface in early phases.
+## Dynamic objects are not Cabinet contents
 
-Instead:
+Pool balls, moles and similar designer-controlled dynamic/general objects are not part of the Cabinet GLB merely because they appear physically near the Cabinet.
 
-- keep Face stable for fruit-machine authoring during foundational refactors;
-- design Machine/Cabinet composition using terminology broad enough to allow Surface later;
-- introduce generalized Surface only when implementing the first real video-machine workflow.
-
-## Material roles and appearance overrides
-
-Cabinet should expose reusable semantic material roles where useful:
-
-- Body;
-- SideTrim;
-- TopTrim;
-- CoinDoor.
-
-Machine may apply game-specific appearance overrides:
-
-- color;
-- material;
-- sparkle/finish;
-- decals where appropriate.
-
-Avoid full inheritance/variant infrastructure initially.
+Use Object3D assets plus Machine-owned instances. See `11_DYNAMIC_OBJECTS_BEHAVIOUR_AND_SCRIPTING.md`.
