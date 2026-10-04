@@ -11,6 +11,7 @@ public sealed class MachineObjectReferenceTests
     [InlineData("alpha:0", MachineObjectKind.AlphaDisplay, "0")]
     [InlineData("sevenSegment:12", MachineObjectKind.SevenSegmentDisplay, "12")]
     [InlineData("input:Start", MachineObjectKind.Input, "Start")]
+    [InlineData("object:ball08", MachineObjectKind.Object, "ball08")]
     public void TryParse_ValidReference_ReturnsMachineObjectReference(string value, MachineObjectKind expectedKind, string expectedId)
     {
         var parsed = MachineObjectReference.TryParse(value, out var reference);
@@ -40,4 +41,7 @@ public sealed class MachineObjectReferenceTests
 
         Assert.Equal("sevenSegment:12", reference.ToString());
     }
+
+    [Fact]
+    public void Object_UsesCanonicalObjectPrefix() => Assert.Equal("object:ball08", MachineObjectReference.Object("ball08").ToString());
 }

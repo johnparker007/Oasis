@@ -12,10 +12,11 @@ public sealed record MachineDocument(
     AssetReference? CabinetAsset,
     MachineSurfaceAssignment[] SurfaceAssignments,
     MachineReelAssignment[] ReelAssignments,
+    MachineObject3DInstance[] ObjectInstances,
     RuntimeDefinition Runtime,
     List<InputDefinitionModel> InputDefinitions)
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     [JsonIgnore]
     public EmulationRuntimeDefinition EmulationRuntime => Runtime as EmulationRuntimeDefinition
@@ -28,9 +29,29 @@ public sealed record MachineDocument(
         null,
         [],
         [],
+        [],
         EmulationRuntimeDefinition.Create(FruitMachinePlatformType.None),
         []);
 }
+
+/// <summary>A three-dimensional value in Machine authoring coordinates.</summary>
+public sealed record MachineVector3(double X, double Y, double Z)
+{
+    public static MachineVector3 Zero { get; } = new(0, 0, 0);
+    public static MachineVector3 One { get; } = new(1, 1, 1);
+}
+
+/// <summary>
+/// A Machine-level transform. Rotation is authored as Euler angles in degrees around X, Y and Z;
+/// runtime conversion applies them in Unity's standard Z-X-Y order. There is no parent transform in schema 5.
+/// </summary>
+public sealed record MachineObjectTransform(MachineVector3 Position, MachineVector3 Rotation, MachineVector3 Scale)
+{
+    public static MachineObjectTransform Identity { get; } = new(MachineVector3.Zero, MachineVector3.Zero, MachineVector3.One);
+}
+
+/// <summary>One independently identified use of a reusable Object3D asset in a Machine.</summary>
+public sealed record MachineObject3DInstance(string Id, string DisplayName, AssetReference? ObjectAsset, MachineObjectTransform Transform);
 
 public sealed record MachineSurfaceAssignment(string TargetId, string FaceAssetPath)
 {
@@ -127,6 +148,7 @@ public static class MachineDocumentStorage
             if (document.CabinetAsset is not null) { writer.WritePropertyName("cabinetAsset"); JsonSerializer.Serialize(writer, document.CabinetAsset, Options); }
             writer.WritePropertyName("surfaceAssignments"); JsonSerializer.Serialize(writer, document.SurfaceAssignments.Select(x => x.Normalized()), Options);
             writer.WritePropertyName("reelAssignments"); JsonSerializer.Serialize(writer, document.ReelAssignments.Select(x => x.Normalized()), Options);
+            writer.WritePropertyName("objectInstances"); JsonSerializer.Serialize(writer, document.ObjectInstances, Options);
             writer.WritePropertyName("runtime");
             writer.WriteStartObject();
             switch (document.Runtime)
@@ -179,12 +201,13 @@ public static class MachineDocumentStorage
                 root.TryGetProperty("cabinetAsset", out var cabinet) ? cabinet.Deserialize<AssetReference>(Options) : null,
                 root.TryGetProperty("surfaceAssignments", out var surfaces) ? surfaces.Deserialize<MachineSurfaceAssignment[]>(Options) ?? [] : [],
                 root.TryGetProperty("reelAssignments", out var reels) ? reels.Deserialize<MachineReelAssignment[]>(Options) ?? [] : [],
+                root.GetProperty("objectInstances").Deserialize<MachineObject3DInstance[]>(Options) ?? throw new InvalidOperationException("Machine ObjectInstances collection is required."),
                 new EmulationRuntimeDefinition(platform, settings),
                 root.TryGetProperty("inputDefinitions", out var inputs) ? inputs.Deserialize<List<InputDefinitionModel>>(Options) ?? [] : []);
             Validate(document);
             return true;
         }
-        catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentException or NotSupportedException)
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentException or NotSupportedException or KeyNotFoundException)
         { error = $"Invalid Machine document: {exception.Message}"; return false; }
     }
 
@@ -197,9 +220,35 @@ public static class MachineDocumentStorage
         if (document.SurfaceAssignments.GroupBy(x => x.TargetId, StringComparer.Ordinal).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine surface target assignments must be unique.");
         if (document.ReelAssignments.GroupBy(x => x.MachineReelReference).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine reel assignments must be unique.");
         if (document.ReelAssignments.Any(x => x.MachineReelReference.Kind != MachineObjectKind.Reel || x.ReelAsset is null)) throw new InvalidOperationException("Machine reel assignments require a logical Reel reference and Reel asset reference.");
+        if (document.ObjectInstances is null) throw new InvalidOperationException("Machine ObjectInstances collection is required.");
+        if (document.ObjectInstances.GroupBy(x => x.Id, StringComparer.Ordinal).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine Object3D instance IDs must be unique (case-sensitive).");
+        foreach (var instance in document.ObjectInstances)
+        {
+            if (!MachineObject3DInstanceId.IsValid(instance.Id)) throw new InvalidOperationException($"Machine Object3D instance ID '{instance.Id}' is invalid; use letters, digits, underscore, or hyphen.");
+            if (string.IsNullOrWhiteSpace(instance.DisplayName)) throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' display name is required.");
+            if (instance.ObjectAsset is null) throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' requires an Object3D asset reference.");
+            _ = new AssetReference(instance.ObjectAsset.Scope, instance.ObjectAsset.Path);
+            ValidateTransform(instance.Id, instance.Transform);
+        }
         if (document.CabinetAsset is not null) _ = new AssetReference(document.CabinetAsset.Scope, document.CabinetAsset.Path);
         foreach (var assignment in document.ReelAssignments) _ = new AssetReference(assignment.ReelAsset.Scope, assignment.ReelAsset.Path);
     }
+
+    private static void ValidateTransform(string id, MachineObjectTransform? transform)
+    {
+        if (transform is null || transform.Position is null || transform.Rotation is null || transform.Scale is null)
+            throw new InvalidOperationException($"Machine Object3D instance '{id}' requires a transform.");
+        static bool Finite(MachineVector3 value) => double.IsFinite(value.X) && double.IsFinite(value.Y) && double.IsFinite(value.Z);
+        if (!Finite(transform.Position) || !Finite(transform.Rotation) || !Finite(transform.Scale))
+            throw new InvalidOperationException($"Machine Object3D instance '{id}' transform values must be finite.");
+        if (transform.Scale.X <= 0 || transform.Scale.Y <= 0 || transform.Scale.Z <= 0)
+            throw new InvalidOperationException($"Machine Object3D instance '{id}' scale values must be positive.");
+    }
+}
+
+public static class MachineObject3DInstanceId
+{
+    public static bool IsValid(string? id) => !string.IsNullOrWhiteSpace(id) && id.All(character => char.IsAsciiLetterOrDigit(character) || character is '_' or '-');
 }
 
 public static class MachineStartupSelectionPolicy
