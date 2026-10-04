@@ -41,7 +41,9 @@ Machine runtime schema 7 contains Machine-owned Object3D instance declarations. 
 
 Reusable definitions are emitted once under `objects/<object-guid>/` with `object.runtime.json` (schema `oasis.object3d.runtime`, version 1) and `object.glb`. The lower-case canonical authored Object3D GUID is the deterministic package/definition identity. Definitions retain model scale/up-axis and the minimal collider/Rigidbody contract; generated paths are package-relative. Conflicting resolved definitions claiming the same GUID fail the build.
 
-The Player reader validates and retains these typed definitions and instances, but Object3D GLB loading, Unity GameObject/physics creation, and live-object registration remain the next runtime phase.
+The Player validates the typed definitions, loads each referenced GLB definition once per Machine session, and instantiates every Machine occurrence from that shared import. A live instance has a placement root under `RuntimeMachine/Objects`, with a child definition root that keeps intrinsic model scale and up-axis conversion separate from Machine placement. Y-up is unchanged, Z-up rotates -90 degrees around X, and X-up rotates +90 degrees around Z. The definition root owns primitive physics; a Mesh collider is attached to the sole usable rendered mesh and fails clearly when the model has zero or multiple usable meshes. A Mesh collider is made convex when its definition also enables a dynamic Rigidbody, as required by Unity physics; Oasis does not perform convex decomposition.
+
+`RuntimeMachine` registers live `RuntimeObjectInstance` values by raw Machine instance ID (the Object3D domain represented canonically as `object:<id>`). Each value retains identity/display name, its resolved definition, root GameObject, optional Collider/Rigidbody, and authored initial transform. Unload destroys all instance roots, clears the registry, and releases the per-load glTF imports. Object3D GLBs remain visible and are not processed using Cabinet semantic-name conventions.
 
 See `11_DYNAMIC_OBJECTS_BEHAVIOUR_AND_SCRIPTING.md`.
 

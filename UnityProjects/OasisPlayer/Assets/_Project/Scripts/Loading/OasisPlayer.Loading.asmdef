@@ -1,0 +1,17 @@
+{
+    "name": "OasisPlayer.Loading",
+    "rootNamespace": "OasisPlayer.Loading",
+    "references": [
+        "OasisPlayer.RuntimeBuild",
+        "glTFast"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

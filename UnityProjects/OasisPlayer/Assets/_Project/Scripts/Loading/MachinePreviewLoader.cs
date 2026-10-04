@@ -13,6 +13,7 @@ namespace OasisPlayer.Loading
         private readonly RuntimeFaceRenderer _faceRenderer;
         private GameObject _current;
         private RuntimeMachine _runtimeMachine;
+        private Object3DRuntimeLoader _objectLoader;
 
         public MachinePreviewLoader(ICabinetModelLoader modelLoader)
             : this(modelLoader, new RuntimeFaceLoader(new PngRuntimeTextureAssetLoader()), new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory()))
@@ -44,31 +45,43 @@ namespace OasisPlayer.Loading
                     : "MachinePreview scene contains duplicate root transforms named 'MachineSpawn'.");
             }
 
-            var correctionRoot = new GameObject("OasisCabinetCorrectionRoot");
-            correctionRoot.transform.SetParent(spawns[0], false);
-            correctionRoot.transform.localScale = Vector3.one * Mathf.Max(0.0001f, build.Cabinet.scale);
-            correctionRoot.transform.localRotation = build.Cabinet.upAxis == "Z" ? Quaternion.Euler(-90f, 0f, 0f) : Quaternion.identity;
-            _current = correctionRoot;
-            var cabinet = await _modelLoader.LoadAsync(build.GlbPath, correctionRoot.transform);
-            var machine = new RuntimeMachine(build, cabinet);
-            _runtimeMachine = machine;
-            _faceLoader.LoadFaces(machine);
-            _faceRenderer.RenderFaces(machine);
-            new RuntimeCabinetReflectionRenderer().Render(machine);
-            new RuntimeReelRenderer().RenderReels(machine);
-            var segmentRenderer = new RuntimeSegmentDisplayRenderer();
-            segmentRenderer.RenderDisplays(machine);
-            machine.SetSegmentDisplayRenderer(segmentRenderer);
-            var updater = correctionRoot.AddComponent<RuntimeMachineStateUpdater>();
-            updater.Initialize(machine);
+            var sessionRoot = new GameObject("RuntimeMachine");
+            sessionRoot.transform.SetParent(spawns[0], false);
+            _current = sessionRoot;
+            try
+            {
+                var correctionRoot = new GameObject("Cabinet");
+                correctionRoot.transform.SetParent(sessionRoot.transform, false);
+                correctionRoot.transform.localScale = Vector3.one * Mathf.Max(0.0001f, build.Cabinet.scale);
+                correctionRoot.transform.localRotation = build.Cabinet.upAxis == "Z" ? Quaternion.Euler(-90f, 0f, 0f) : Quaternion.identity;
+                var cabinet = await _modelLoader.LoadAsync(build.GlbPath, correctionRoot.transform);
+                var machine = new RuntimeMachine(build, cabinet);
+                _runtimeMachine = machine;
+                _objectLoader = new Object3DRuntimeLoader(new GltfFastObject3DModelLoader());
+                await _objectLoader.LoadAsync(machine, sessionRoot.transform);
+                _faceLoader.LoadFaces(machine);
+                _faceRenderer.RenderFaces(machine);
+                new RuntimeCabinetReflectionRenderer().Render(machine);
+                new RuntimeReelRenderer().RenderReels(machine);
+                var segmentRenderer = new RuntimeSegmentDisplayRenderer();
+                segmentRenderer.RenderDisplays(machine);
+                machine.SetSegmentDisplayRenderer(segmentRenderer);
+                var updater = sessionRoot.AddComponent<RuntimeMachineStateUpdater>();
+                updater.Initialize(machine);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            var controls = correctionRoot.AddComponent<RuntimeLampDevelopmentControls>();
-            controls.Initialize(machine);
-            var reelControls = correctionRoot.AddComponent<RuntimeReelDevelopmentControls>();
-            reelControls.Initialize(machine);
+                var controls = sessionRoot.AddComponent<RuntimeLampDevelopmentControls>();
+                controls.Initialize(machine);
+                var reelControls = sessionRoot.AddComponent<RuntimeReelDevelopmentControls>();
+                reelControls.Initialize(machine);
 #endif
-            foreach (var warning in machine.Warnings) Debug.LogWarning(warning);
-            return machine;
+                foreach (var warning in machine.Warnings) Debug.LogWarning(warning);
+                return machine;
+            }
+            catch
+            {
+                Unload();
+                throw;
+            }
         }
 
         public void Unload()
@@ -77,6 +90,11 @@ namespace OasisPlayer.Loading
             {
                 _runtimeMachine.UnloadAssets();
                 _runtimeMachine = null;
+            }
+            if (_objectLoader != null)
+            {
+                _objectLoader.Dispose();
+                _objectLoader = null;
             }
 
             if (_current != null)
