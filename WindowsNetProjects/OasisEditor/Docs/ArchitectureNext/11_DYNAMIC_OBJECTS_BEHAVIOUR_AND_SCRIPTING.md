@@ -14,6 +14,12 @@ The architecture separates:
 - generic events/commands;
 - later scripting/behaviour syntax.
 
+## Editor composition projection
+
+The Machine **Composition** tab is an authoring-time projection of the selected Cabinet and Machine-owned Object3D instances. It resolves Project/Library manifests and package-local GLBs directly, caches repeated Object3D definitions for that Machine view, and applies the same intrinsic up-axis/model-scale correction beneath the authoritative Machine placement as the Player.
+
+Viewport camera, selection, derived bounds, diagnostics, and Cabinet semantic visibility filters are transient. Numeric transform editing uses the existing Machine instance command path, so Details, dirty state, and undo/redo remain synchronized. No viewport scene representation is persisted.
+
 Scripting is deliberately last. It consumes a stable Oasis runtime object model rather than defining that model.
 
 ## Ownership model
