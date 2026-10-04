@@ -2,134 +2,75 @@
 
 ## Definition
 
-A Machine is one independently playable/runtime unit.
+Machine is one independently playable/runtime unit and the primary standalone build root.
 
-It is the primary build root for a standalone game.
+It owns final game-specific composition.
 
-## Why Machine must become first-class
+## Current authoritative composition
 
-Current Oasis distributes machine-specific state across:
+Machine currently owns:
 
-- Project metadata (platform/ROM settings);
-- Cabinet (Face assignments, reel configuration);
-- Faces;
-- runtime build services.
+- stable Machine identity/display name;
+- selected Cabinet via `AssetReference`;
+- Cabinet surface/Face assignments;
+- Reel asset assignments;
+- Machine inputs;
+- RuntimeDefinition and emulation settings.
 
-This makes Cabinet and Project act as implicit partial Machine objects.
+The active dynamic-object track will add:
 
-The target architecture makes Machine the explicit composition root.
+- Object3D instances;
+- later Machine anchors;
+- later behaviour/script references.
 
-## Target conceptual model
+## Dependency direction
 
-Exact C# schema should be designed during implementation after the current-state audit, but the semantic shape is:
+Machine references reusable/game-specific assets.
+
+Referenced assets do not point back at the Machine.
 
 ```text
 Machine
-  Identity
-
-  RuntimeDefinition
-
-  CabinetReference
-
-  SurfaceAssignments[]
-    CabinetSurfaceTarget -> Face/Surface asset
-
-  DeviceResolution / DeviceOverrides[]
-
-  CabinetAppearanceOverrides[]
-
-  Other game-specific composition/runtime mappings
+  -> Cabinet
+  -> Faces
+  -> Reels
+  -> Object3D assets
+  -> RuntimeDefinition
 ```
+
+Build traversal follows these explicit references. Do not scan the project to infer Machine ownership.
 
 ## Surface assignment
 
-Cabinet declares available reusable surface targets.
+Cabinet declares reusable `OasisFace_*` surface targets.
 
-Machine selects the game-specific surface asset mounted on each target.
+Machine assigns the game-specific Face to each target.
 
-Example:
+Cabinet must not store the current game's Face assignment, and Face must not know which Cabinet/Machine consumes it.
 
-```text
-Machine: Bonanza
-  Cabinet = JPM Vogue
+## Object3D instances
 
-  SurfaceAssignments
-    Vogue.TopGlass    -> Bonanza Top.face
-    Vogue.BottomGlass -> Bonanza Bottom.face
-```
+General 3D objects such as pool balls and moles are Machine composition rather than Cabinet contents.
 
-Cabinet must not contain Bonanza-specific Face references.
+Machine owns each instance's:
 
-Face must not know about Vogue.
+- stable ID;
+- display name;
+- Object3D asset reference;
+- transform.
 
-## Device resolution
+The reusable Object3D asset owns intrinsic model/physics defaults.
 
-A Face may host a logical reel at a particular position and request a compatible physical profile:
-
-```text
-Bottom.face
-  Reel:0
-    placement
-    aperture
-    requestedProfile = standard-reel
-```
-
-The selected Cabinet/family can provide defaults/compatible assets:
-
-```text
-JPM Vogue
-  standard-reel -> JPM Standard Reel.reel
-  small-reel    -> JPM Small Reel.reel
-```
-
-Machine performs final resolution and may support explicit overrides when needed.
-
-The exact profile/resolution mechanism is deferred until the Reel/device phases. Do not preserve the current Cabinet reel-spec model merely because it exists today.
-
-## Project-to-Machine state migration
-
-Machine-specific state currently stored at Project level should move to Machine over the refactor, including fruit-machine runtime/platform and ROM configuration where appropriate.
-
-Project should retain only workspace-level concerns.
-
-Initially Oasis may automatically create one Machine per project to preserve a simple common workflow.
-
-## Build root
-
-Standalone build:
-
-```text
-Machine
-  -> RuntimeDefinition
-  -> Cabinet
-  -> assigned Faces/Surfaces
-  -> resolved Device assets
-  -> transitive dependencies
-```
-
-No project-wide scanning.
+See `11_DYNAMIC_OBJECTS_BEHAVIOUR_AND_SCRIPTING.md`.
 
 ## Editor UX
 
-The common case should remain simple:
+Machine should increasingly be the place where a designer understands the assembled playable unit.
 
-1. New Project.
-2. Import/create source.
-3. One Machine is created/selected automatically.
-4. Choose reusable Cabinet.
-5. Assign/generated surfaces.
-6. Resolve devices, mostly by defaults.
-7. Preview/build Machine.
-
-Multiple Machine assets should become visible only when the user actually creates or imports more than one.
+The existing Overview graph remains derived/read-only. The active Object3D track will add an assembled 3D composition view in a later PR after the authored/build/runtime object model exists.
 
 ## Machine does not imply emulation
 
-Machine can use:
+The current implemented RuntimeDefinition is Emulation.
 
-- EmulationRuntimeDefinition;
-- ScriptedRuntimeDefinition;
-- PhysicsRuntimeDefinition;
-- HybridRuntimeDefinition.
-
-Runtime abstraction is detailed separately.
+Future scripted/physics behaviour should extend the runtime model only when concrete vertical slices require it. Do not make physical composition depend on emulation-specific ownership.
