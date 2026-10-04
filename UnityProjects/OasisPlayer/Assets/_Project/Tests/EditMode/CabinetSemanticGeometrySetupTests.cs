@@ -2,6 +2,7 @@ using NUnit.Framework;
 using OasisPlayer.RuntimeBuild;
 using UnityEngine;
 using UnityEngine.TestTools;
+using System.Collections.Generic;
 
 namespace OasisPlayer.Tests
 {
@@ -136,6 +137,55 @@ namespace OasisPlayer.Tests
             var exception = Assert.Throws<System.InvalidOperationException>(() => CabinetSemanticGeometrySetup.Setup(_root));
             StringAssert.Contains("OasisTrigger_Broken", exception.Message);
             StringAssert.Contains("no MeshFilter mesh", exception.Message);
+        }
+
+        [Test]
+        public void RegisterTriggersUsesWinningSemanticNameAndAddsNoRigidbody()
+        {
+            _mesh.name = "OasisTrigger_PocketLeftCorner";
+            var instance = CreateMeshInstance("OrdinaryNode", _mesh, true);
+            CabinetSemanticGeometrySetup.Setup(_root);
+            var machine = Machine();
+            LogAssert.Expect(LogType.Log, "Cabinet semantic triggers registered: 1");
+            Assert.AreEqual(1, CabinetSemanticGeometrySetup.RegisterTriggers(_root, machine));
+            Assert.AreSame(instance.GetComponent<MeshCollider>(), machine.GetTrigger("PocketLeftCorner").Collider);
+            Assert.IsNull(_root.GetComponentInChildren<Rigidbody>());
+        }
+
+        [Test]
+        public void DuplicateAndInvalidTriggerIdsFailClearly()
+        {
+            CreateMeshInstance("OasisTrigger_Pocket", _mesh, true);
+            CreateMeshInstance("OasisTrigger_Pocket", _mesh, true);
+            CabinetSemanticGeometrySetup.Setup(_root);
+            StringAssert.Contains("Duplicate Cabinet trigger ID 'Pocket'", Assert.Throws<System.InvalidOperationException>(() => CabinetSemanticGeometrySetup.RegisterTriggers(_root, Machine())).Message);
+
+            Object.DestroyImmediate(_root);
+            _root = new GameObject("Cabinet");
+            CreateMeshInstance("OasisTrigger_", _mesh, true);
+            CabinetSemanticGeometrySetup.Setup(_root);
+            StringAssert.Contains("empty or invalid", Assert.Throws<System.InvalidOperationException>(() => CabinetSemanticGeometrySetup.RegisterTriggers(_root, Machine())).Message);
+        }
+
+        [Test]
+        public void TriggerRelayIgnoresColliderWithoutRegisteredObjectIdentity()
+        {
+            var trigger = CreateMeshInstance("OasisTrigger_Pocket", _mesh, true);
+            CabinetSemanticGeometrySetup.Setup(_root);
+            var machine = Machine();
+            LogAssert.Expect(LogType.Log, "Cabinet semantic triggers registered: 1");
+            CabinetSemanticGeometrySetup.RegisterTriggers(_root, machine);
+            var events = 0; machine.Events.Subscribe(_ => events++);
+            var unrelated = new GameObject("Unrelated");
+            try { trigger.GetComponent<RuntimeTriggerRelay>().PublishEntered(unrelated.AddComponent<BoxCollider>()); }
+            finally { Object.DestroyImmediate(unrelated); }
+            Assert.AreEqual(0, events);
+        }
+
+        private static RuntimeMachine Machine()
+        {
+            var manifest = new MachineRuntimeManifest { anchors = System.Array.Empty<MachineRuntimeAnchor>() };
+            return new RuntimeMachine(new ResolvedRuntimeBuild("", manifest, "", new CabinetRuntimeManifest(), "", System.Array.Empty<MachineRuntimeFaceReference>(), new Dictionary<string, ResolvedRuntimeObjectDefinition>()), null);
         }
 
         private GameObject CreateMeshInstance(string name, Mesh mesh, bool withMaterial, Transform parent = null)

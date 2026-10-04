@@ -46,4 +46,12 @@ Future scripts must call approved Oasis APIs against stable references.
 
 Do not expose arbitrary Unity/`.NET` APIs or use raw `GameObject.Find` names as the authored contract.
 
+The implemented A7 boundary is scoped to one loaded `RuntimeMachine`. Its typed event stream publishes `MachineStarted`, input pressed/released, trigger entered/exited, Object3D collision entered/exited, and timer elapsed events. Payloads contain only stable logical IDs; Unity `GameObject`, `Transform`, `Collider`, `Collision`, and `Rigidbody` values remain implementation details. Subscriber delivery is synchronous in subscription order, unsubscribe is explicit, and subscriber exceptions propagate rather than being hidden.
+
+Cabinet semantics map the winning classified `OasisTrigger_<id>` node-or-mesh name to the sole canonical `trigger:<id>` domain. Initial collision events are directional Object3D-to-Object3D notifications: each registered object's Unity callback may publish its own `(objectId, otherObjectId)` event. Static Cabinet collisions still affect physics but emit no invented collider identity.
+
+Declared `input:<id>` values become Machine-session runtime input state. `SetInputState(id, pressed)` publishes only false-to-true and true-to-false transitions. The command service resolves stable IDs for `SetActive`, anchor/direct-pose `Teleport`, linear/angular velocity, impulse, reset, and named timer operations. `RuntimeVector3` and `RuntimePose` keep command inputs Unity-independent.
+
+Direct poses and anchors use Machine composition space at the authoritative Object3D root; intrinsic model scale/up-axis correction is not reapplied. Teleport preserves velocity. Reset reactivates the existing instance, restores authored position/rotation/scale, and clears both velocities without reloading its definition. Timers are named, one-shot, replace-on-start values advanced deterministically by `Advance`; the Unity driver supplies scaled `Time.deltaTime`. Unload clears timers, subscribers, input state, runtime registries, and callback reachability.
+
 See `11_DYNAMIC_OBJECTS_BEHAVIOUR_AND_SCRIPTING.md`.

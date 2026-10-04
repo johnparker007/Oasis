@@ -57,6 +57,7 @@ namespace OasisPlayer.Loading
                 var cabinet = await _modelLoader.LoadAsync(build.GlbPath, correctionRoot.transform);
                 var machine = new RuntimeMachine(build, cabinet);
                 _runtimeMachine = machine;
+                CabinetSemanticGeometrySetup.RegisterTriggers(cabinet, machine);
                 _objectLoader = new Object3DRuntimeLoader(new GltfFastObject3DModelLoader());
                 await _objectLoader.LoadAsync(machine, sessionRoot.transform);
                 _faceLoader.LoadFaces(machine);
@@ -68,6 +69,8 @@ namespace OasisPlayer.Loading
                 machine.SetSegmentDisplayRenderer(segmentRenderer);
                 var updater = sessionRoot.AddComponent<RuntimeMachineStateUpdater>();
                 updater.Initialize(machine);
+                var behaviorDriver = sessionRoot.AddComponent<RuntimeBehaviorDriver>();
+                behaviorDriver.Initialize(machine);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 var controls = sessionRoot.AddComponent<RuntimeLampDevelopmentControls>();
                 controls.Initialize(machine);
@@ -75,6 +78,7 @@ namespace OasisPlayer.Loading
                 reelControls.Initialize(machine);
 #endif
                 foreach (var warning in machine.Warnings) Debug.LogWarning(warning);
+                machine.CompleteStartup();
                 return machine;
             }
             catch

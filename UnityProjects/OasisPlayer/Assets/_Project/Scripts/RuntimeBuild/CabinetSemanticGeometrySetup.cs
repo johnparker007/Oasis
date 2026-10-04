@@ -31,6 +31,11 @@ namespace OasisPlayer.RuntimeBuild
             if (name != null && name.StartsWith(TriggerPrefix, StringComparison.Ordinal)) return CabinetSemanticGeometryKind.Trigger;
             return CabinetSemanticGeometryKind.Visual;
         }
+
+        public static string ResolveSemanticName(string nodeName, string meshName)
+        {
+            return ClassifyName(nodeName) != CabinetSemanticGeometryKind.Visual ? nodeName : meshName;
+        }
     }
 
     public readonly struct CabinetSemanticGeometrySetupResult
@@ -63,7 +68,7 @@ namespace OasisPlayer.RuntimeBuild
 
                 var semanticName = CabinetSemanticGeometry.ClassifyName(transform.name) == kind
                     ? transform.name
-                    : mesh != null ? mesh.name : transform.name;
+                    : mesh != null ? CabinetSemanticGeometry.ResolveSemanticName(transform.name, mesh.name) : transform.name;
                 if (mesh == null)
                 {
                     throw new InvalidOperationException($"{semanticName} could not create a MeshCollider because its instantiated GameObject has no MeshFilter mesh.");
@@ -81,6 +86,33 @@ namespace OasisPlayer.RuntimeBuild
 
             Debug.Log($"Cabinet semantic geometry: Colliders: {colliderCount}, Triggers: {triggerCount}");
             return new CabinetSemanticGeometrySetupResult(colliderCount, triggerCount);
+        }
+
+        /// <summary>Registers trigger identities from the same winning semantic names used during classification.</summary>
+        public static int RegisterTriggers(GameObject cabinetRoot, RuntimeMachine machine)
+        {
+            if (cabinetRoot == null) throw new ArgumentNullException(nameof(cabinetRoot));
+            if (machine == null) throw new ArgumentNullException(nameof(machine));
+            var count = 0;
+            foreach (var transform in cabinetRoot.GetComponentsInChildren<Transform>(true))
+            {
+                var filter = transform.GetComponent<MeshFilter>();
+                var meshName = filter != null && filter.sharedMesh != null ? filter.sharedMesh.name : null;
+                if (CabinetSemanticGeometry.Classify(transform.name, meshName) != CabinetSemanticGeometryKind.Trigger) continue;
+                var semanticName = CabinetSemanticGeometry.ResolveSemanticName(transform.name, meshName);
+                var id = semanticName != null && semanticName.StartsWith(CabinetSemanticGeometry.TriggerPrefix, StringComparison.Ordinal)
+                    ? semanticName.Substring(CabinetSemanticGeometry.TriggerPrefix.Length) : string.Empty;
+                if (!RuntimeIdentity.IsValid(id)) throw new InvalidOperationException($"{semanticName ?? CabinetSemanticGeometry.TriggerPrefix} has an empty or invalid logical trigger ID.");
+                var collider = transform.GetComponent<MeshCollider>();
+                if (collider == null || !collider.isTrigger) throw new InvalidOperationException($"Cabinet semantic trigger '{semanticName}' has not been configured as a trigger MeshCollider.");
+                machine.RegisterTrigger(new RuntimeTrigger(id, collider));
+                var relay = transform.GetComponent<RuntimeTriggerRelay>();
+                if (relay == null) relay = transform.gameObject.AddComponent<RuntimeTriggerRelay>();
+                relay.Initialize(machine, id);
+                count++;
+            }
+            Debug.Log($"Cabinet semantic triggers registered: {count}");
+            return count;
         }
 
         private static void ConfigureMeshCollider(MeshCollider meshCollider, Mesh mesh, CabinetSemanticGeometryKind kind, string semanticName)
