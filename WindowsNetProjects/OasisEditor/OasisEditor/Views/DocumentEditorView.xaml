@@ -81,6 +81,27 @@
                 </TabControl.Style>
                 <TabItem Header="Overview" Style="{StaticResource OasisWorkspaceTabItemStyle}"><views:MachineCompositionGraphView/></TabItem>
                 <TabItem Header="Composition" Style="{StaticResource OasisWorkspaceTabItemStyle}"><machineViews:MachineComposition3DView/></TabItem>
+                <TabItem Header="Behaviour" Style="{StaticResource OasisWorkspaceTabItemStyle}">
+                  <Grid Margin="16">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <StackPanel>
+                      <TextBlock Text="Behaviour" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                      <Button Content="Add Oasis Script Behaviour" Command="{Binding AddMachineBehaviorCommand}" HorizontalAlignment="Left" Padding="10,4">
+                        <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasMachineBehavior}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                      </Button>
+                    </StackPanel>
+                    <Grid Grid.Row="1">
+                      <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasMachineBehavior}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Grid.Style>
+                      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="3*"/><RowDefinition Height="Auto"/><RowDefinition Height="2*"/></Grid.RowDefinitions>
+                      <DockPanel Margin="0,0,0,8"><Button DockPanel.Dock="Right" Content="Remove Behaviour" Command="{Binding RemoveMachineBehaviorCommand}" Padding="8,2"/><TextBlock Text="Oasis Script — behavior.oasis" FontWeight="SemiBold" VerticalAlignment="Center"/></DockPanel>
+                      <TextBox Grid.Row="1" Text="{Binding MachineBehaviorSource, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas, Courier New" FontSize="13" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" TextWrapping="NoWrap" IsUndoEnabled="True"/>
+                      <TextBlock Grid.Row="2" Text="Diagnostics" FontWeight="SemiBold" Margin="0,12,0,5"/>
+                      <DataGrid Grid.Row="3" ItemsSource="{Binding MachineBehaviorDiagnostics}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" CanUserAddRows="False">
+                        <DataGrid.Columns><DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="85"/><DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="85"/><DataGridTextColumn Header="Line" Binding="{Binding Line}" Width="55"/><DataGridTextColumn Header="Column" Binding="{Binding Column}" Width="65"/><DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="*"/></DataGrid.Columns>
+                      </DataGrid>
+                    </Grid>
+                  </Grid>
+                </TabItem>
                 <TabItem Header="Details" Style="{StaticResource OasisWorkspaceTabItemStyle}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{DynamicResource WorkspaceBackgroundBrush}">
                   <StackPanel Margin="16" MaxWidth="900" HorizontalAlignment="Left">

@@ -10,6 +10,7 @@ using OasisEditor.Features.CabinetEditor.ViewModels;
 using OasisEditor.Features.MachineComposition.ViewModels;
 using OasisEditor.Progress;
 using SkiaSharp;
+using Oasis.Scripting;
 
 namespace OasisEditor;
 
@@ -23,6 +24,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private string? _cabinetDocumentJson;
     private CabinetDocument _cabinetDocumentModel;
     private MachineDocument _machineDocumentModel;
+    private string _machineBehaviorSource = string.Empty;
+    private bool _machineBehaviorSourceMissing;
+    private OasisScriptMachineReferenceIndexBuildResult? _machineBehaviorReferenceIndex;
     private ReelDocument _reelDocumentModel;
     private Object3DDocument _object3DDocumentModel;
     private string? _pendingObject3DModelSourcePath;
@@ -124,6 +128,12 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _machineDocumentModel = MachineDocumentStorage.TryRead(machineDocumentJson, out var machineDocument, out _)
             ? machineDocument
             : MachineDocument.Create(document.Title);
+        if (_machineDocumentModel.Behavior is not null && !document.IsUntitled && !string.IsNullOrWhiteSpace(document.FilePath))
+        {
+            var sourcePath = Path.Combine(Path.GetDirectoryName(document.FilePath)!, MachineBehaviorDefinition.CanonicalSourcePath);
+            if (File.Exists(sourcePath)) _machineBehaviorSource = File.ReadAllText(sourcePath);
+            else _machineBehaviorSourceMissing = true;
+        }
         _reelDocumentModel = ReelDocumentStorage.TryRead(reelDocumentJson, out var reelDocument, out _)
             ? reelDocument
             : ReelDocument.Create(document.Title);
@@ -133,12 +143,15 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         OpenSelectedCabinetAssetCommand = new RelayCommand(OpenSelectedCabinetAsset, () => CanOpenSelectedCabinetAsset);
         AddMachineObjectInstanceCommand = new RelayCommand(AddMachineObjectInstance);
         AddMachineAnchorCommand = new RelayCommand(AddMachineAnchor);
+        AddMachineBehaviorCommand = new RelayCommand(AddMachineBehavior, () => _machineDocumentModel.Behavior is null);
+        RemoveMachineBehaviorCommand = new RelayCommand(RemoveMachineBehavior, () => _machineDocumentModel.Behavior is not null);
         RefreshMachineObjectInstanceRows();
         RefreshMachineAnchorRows();
         RebuildLampCaches();
         _faceWorkspace = document.DocumentType == EditorDocumentType.Face ? new FaceWorkspaceViewModel(this) : null;
         _machineCompositionGraph = document.DocumentType == EditorDocumentType.Machine ? new MachineCompositionGraphViewModel(this) : null;
         _machineRuntimeSettings = document.DocumentType == EditorDocumentType.Machine ? new MachineRuntimeSettingsViewModel(this) : null;
+        ValidateMachineBehaviorSource();
     }
 
     public EditorDocument Document => _document;
@@ -217,6 +230,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public void SetProjectAccessor(Func<EditorProject?> projectAccessor)
     {
         _projectAccessor = projectAccessor;
+        InvalidateMachineBehaviorReferenceIndex();
         ReconcileRuntimeAssetsConfiguration();
         _cabinetViewer?.ReflectionEditor.RefreshProjectContext();
         RefreshMachineCompositionChoices();
@@ -226,6 +240,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public void SetLibraryRootAccessor(Func<string> libraryRootAccessor)
     {
         _libraryRootAccessor = libraryRootAccessor;
+        InvalidateMachineBehaviorReferenceIndex();
         RefreshMachineCompositionChoices();
         _cabinetViewer?.RefreshFacePreviews();
         RefreshMachineCompositionGraph();
@@ -311,6 +326,58 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     }
 
     public MachineDocument GetMachineDocument() => _machineDocumentModel;
+    public const string DefaultMachineBehaviorSource = "on machine.started()\n{\n}\n";
+    public bool HasMachineBehavior => _machineDocumentModel.Behavior is not null;
+    public string MachineBehaviorSource
+    {
+        get => _machineBehaviorSource;
+        set
+        {
+            value ??= string.Empty;
+            if (value == _machineBehaviorSource) return;
+            _machineBehaviorSource = value;
+            _machineBehaviorSourceMissing = false;
+            MarkDirty();
+            PropertyChanged?.Invoke(this, new(nameof(MachineBehaviorSource)));
+            ValidateMachineBehaviorSource();
+        }
+    }
+    public ObservableCollection<OasisScriptEditorDiagnostic> MachineBehaviorDiagnostics { get; } = [];
+    public System.Windows.Input.ICommand AddMachineBehaviorCommand { get; }
+    public System.Windows.Input.ICommand RemoveMachineBehaviorCommand { get; }
+    private void AddMachineBehavior()
+    {
+        if (_machineDocumentModel.Behavior is not null) return;
+        if (string.IsNullOrEmpty(_machineBehaviorSource)) _machineBehaviorSource = DefaultMachineBehaviorSource;
+        _machineBehaviorSourceMissing = false;
+        ExecuteMachineMutation(machine => machine with { Behavior = MachineBehaviorDefinition.OasisScript() }, "Add Oasis Script behaviour");
+    }
+    private void RemoveMachineBehavior() => ExecuteMachineMutation(machine => machine with { Behavior = null }, "Remove Oasis Script behaviour");
+    private void ValidateMachineBehaviorSource()
+    {
+        MachineBehaviorDiagnostics.Clear();
+        if (_machineDocumentModel.Behavior is null) return;
+        if (_machineBehaviorSourceMissing)
+        {
+            MachineBehaviorDiagnostics.Add(new("Error", "OSM3100", $"{MachineBehaviorDefinition.CanonicalSourcePath} is missing from the Machine package.", 1, 1, 0));
+            return;
+        }
+        var compilation = OasisScriptCompiler.Compile(_machineBehaviorSource, MachineBehaviorDefinition.CanonicalSourcePath);
+        foreach (var diagnostic in compilation.Diagnostics)
+            MachineBehaviorDiagnostics.Add(new(diagnostic.Severity.ToString(), diagnostic.Code, diagnostic.Message, diagnostic.Line, diagnostic.Column, diagnostic.Span.Start));
+        if (!compilation.Success) return;
+        var index = GetMachineBehaviorReferenceIndex();
+        foreach (var diagnostic in index.Diagnostics.Concat(OasisScriptMachineValidator.Validate(compilation.Program!, index.References)))
+            MachineBehaviorDiagnostics.Add(new(diagnostic.Severity.ToString(), diagnostic.Code, diagnostic.Message, diagnostic.Line, diagnostic.Column, diagnostic.Span.Start));
+    }
+    internal bool IsMachineBehaviorSourceMissing => _machineBehaviorSourceMissing;
+    internal OasisScriptMachineReferenceIndexBuildResult GetMachineBehaviorReferenceIndex() =>
+        _machineBehaviorReferenceIndex ??= new OasisScriptMachineReferenceIndexBuilder().Build(_projectAccessor?.Invoke(), LibraryRoot(), _machineDocumentModel);
+    private void InvalidateMachineBehaviorReferenceIndex()
+    {
+        _machineBehaviorReferenceIndex = null;
+        ValidateMachineBehaviorSource();
+    }
     public ReelDocument GetReelDocument() => _reelDocumentModel;
     public Object3DDocument GetObject3DDocument() => _object3DDocumentModel;
     public string ReelDisplayName { get => _reelDocumentModel.DisplayName; set => SetReelValue(_reelDocumentModel with { DisplayName = value?.Trim() ?? string.Empty }, "Rename Reel"); }
@@ -438,10 +505,14 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var objectInstancesChanged = !_machineDocumentModel.ObjectInstances.SequenceEqual(document.ObjectInstances);
         var anchorsChanged = !_machineDocumentModel.Anchors.SequenceEqual(document.Anchors);
         _machineDocumentModel = document;
+        _machineBehaviorReferenceIndex = null;
+        ValidateMachineBehaviorSource();
         _machineRuntimeSettings?.Refresh();
         MarkDirty();
-        foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachineRuntimeKind), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineObjectInstances), nameof(MachineAnchors), nameof(MachineInputs) })
+        foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachineRuntimeKind), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineObjectInstances), nameof(MachineAnchors), nameof(MachineInputs), nameof(HasMachineBehavior), nameof(MachineBehaviorSource) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
+        if (AddMachineBehaviorCommand is RelayCommand addBehavior) addBehavior.RaiseCanExecuteChanged();
+        if (RemoveMachineBehaviorCommand is RelayCommand removeBehavior) removeBehavior.RaiseCanExecuteChanged();
         if (cabinetChanged)
         {
             _machineCompositionCatalogSignature = null;
@@ -463,6 +534,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     internal void RefreshMachineCompositionChoices()
     {
         if (Document.DocumentType != EditorDocumentType.Machine || _projectAccessor?.Invoke() is not { } project) return;
+        _machineBehaviorReferenceIndex = null;
+        ValidateMachineBehaviorSource();
         var cabinetChoices = DiscoverAssetChoices(project, EditorAssetType.Cabinet3D);
         var faceChoices = DiscoverProjectAssetChoices(project, EditorAssetType.Face);
         var reelChoices = DiscoverAssetChoices(project, EditorAssetType.Reel);
