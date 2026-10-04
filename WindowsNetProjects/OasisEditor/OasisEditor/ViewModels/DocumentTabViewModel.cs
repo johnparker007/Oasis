@@ -132,7 +132,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             : Object3DDocument.Create(document.Title);
         OpenSelectedCabinetAssetCommand = new RelayCommand(OpenSelectedCabinetAsset, () => CanOpenSelectedCabinetAsset);
         AddMachineObjectInstanceCommand = new RelayCommand(AddMachineObjectInstance);
+        AddMachineAnchorCommand = new RelayCommand(AddMachineAnchor);
         RefreshMachineObjectInstanceRows();
+        RefreshMachineAnchorRows();
         RebuildLampCaches();
         _faceWorkspace = document.DocumentType == EditorDocumentType.Face ? new FaceWorkspaceViewModel(this) : null;
         _machineCompositionGraph = document.DocumentType == EditorDocumentType.Machine ? new MachineCompositionGraphViewModel(this) : null;
@@ -364,6 +366,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public object? MachineCabinetAssetPath { get => _machineDocumentModel.CabinetAsset; set { var reference = value switch { null => null, AssetReference typed => typed, string path when !string.IsNullOrWhiteSpace(path) => AssetReference.Project(path), _ => null }; if (_isRefreshingMachineCompositionChoices || reference == _machineDocumentModel.CabinetAsset) return; ExecuteMachineMutation(_machineDocumentModel with { CabinetAsset = reference, SurfaceAssignments = [], ReelAssignments = [] }, "Select Machine Cabinet"); } }
     public System.Windows.Input.ICommand OpenSelectedCabinetAssetCommand { get; }
     public System.Windows.Input.ICommand AddMachineObjectInstanceCommand { get; }
+    public System.Windows.Input.ICommand AddMachineAnchorCommand { get; }
     public bool CanOpenSelectedCabinetAsset => CanOpenMachineAsset(_machineDocumentModel.CabinetAsset);
 
     private bool CanOpenMachineAsset(AssetReference? reference)
@@ -417,12 +420,14 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public IReadOnlyList<MachineSurfaceAssignment> MachineSurfaceAssignments => _machineDocumentModel.SurfaceAssignments;
     public IReadOnlyList<MachineReelAssignment> MachineReelAssignments => _machineDocumentModel.ReelAssignments;
     public IReadOnlyList<MachineObject3DInstance> MachineObjectInstances => _machineDocumentModel.ObjectInstances;
+    public IReadOnlyList<MachineAnchor> MachineAnchors => _machineDocumentModel.Anchors ?? [];
     public IReadOnlyList<InputDefinitionModel> MachineInputs => _machineDocumentModel.InputDefinitions;
     public ObservableCollection<MachineAssetChoice> MachineCabinetChoices { get; } = [];
     public ObservableCollection<MachineAssetChoice> MachineFaceChoices { get; } = [];
     public ObservableCollection<MachineSurfaceAssignmentRow> MachineSurfaceAssignmentRows { get; } = [];
     public ObservableCollection<MachineReelAssignmentRow> MachineReelAssignmentRows { get; } = [];
     public ObservableCollection<MachineObjectInstanceRow> MachineObjectInstanceRows { get; } = [];
+    public ObservableCollection<MachineAnchorRow> MachineAnchorRows { get; } = [];
 
     internal void SetMachineDocument(MachineDocument document)
     {
@@ -431,10 +436,11 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var surfaceAssignmentsChanged = !_machineDocumentModel.SurfaceAssignments.SequenceEqual(document.SurfaceAssignments);
         var reelAssignmentsChanged = !_machineDocumentModel.ReelAssignments.SequenceEqual(document.ReelAssignments);
         var objectInstancesChanged = !_machineDocumentModel.ObjectInstances.SequenceEqual(document.ObjectInstances);
+        var anchorsChanged = !(_machineDocumentModel.Anchors ?? []).SequenceEqual(document.Anchors ?? []);
         _machineDocumentModel = document;
         _machineRuntimeSettings?.Refresh();
         MarkDirty();
-        foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachineRuntimeKind), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineObjectInstances), nameof(MachineInputs) })
+        foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachineRuntimeKind), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineObjectInstances), nameof(MachineAnchors), nameof(MachineInputs) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
         if (cabinetChanged)
         {
@@ -448,7 +454,8 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
                 RefreshMachineReelRowsFromAssignedFaces(project);
         }
         if (objectInstancesChanged) RefreshMachineObjectInstanceRows();
-        _machineComposition3D?.Refresh(document, cabinetChanged, objectInstancesChanged);
+        if (anchorsChanged) RefreshMachineAnchorRows();
+        _machineComposition3D?.Refresh(document, cabinetChanged, objectInstancesChanged || anchorsChanged);
         NotifyMachineAssetNavigationChanged();
         RefreshMachineCompositionGraph();
     }
@@ -656,6 +663,12 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             MachineObjectInstanceRows.Add(new MachineObjectInstanceRow(this, instance, choices));
     }
 
+    private void RefreshMachineAnchorRows()
+    {
+        MachineAnchorRows.Clear();
+        foreach (var anchor in _machineDocumentModel.Anchors ?? []) MachineAnchorRows.Add(new MachineAnchorRow(this, anchor));
+    }
+
     private static IEnumerable<string> EnumerateManifests(string root, string manifest) => Directory.Exists(root) ? Directory.EnumerateFiles(root, manifest, SearchOption.AllDirectories).OrderBy(path => path, StringComparer.OrdinalIgnoreCase) : [];
     private static IEnumerable<MachineObjectReference> DiscoverFaceReelReferences(EditorProject project, string faceAssetPath)
     {
@@ -723,6 +736,21 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         if (!MachineObject3DInstanceId.IsValid(replacement.Id) || _machineDocumentModel.ObjectInstances.Any(instance => !string.Equals(instance.Id, originalId, StringComparison.Ordinal) && string.Equals(instance.Id, replacement.Id, StringComparison.Ordinal))) return false;
         ExecuteMachineMutation(machine => machine with { ObjectInstances = machine.ObjectInstances.Select(instance => string.Equals(instance.Id, originalId, StringComparison.Ordinal) ? replacement : instance).ToArray() }, description);
+        return true;
+    }
+    private void AddMachineAnchor()
+    {
+        var number = 1;
+        var ids = (_machineDocumentModel.Anchors ?? []).Select(anchor => anchor.Id).ToHashSet(StringComparer.Ordinal);
+        while (ids.Contains($"anchor{number}")) number++;
+        var anchor = MachineAnchor.Create($"anchor{number}");
+        ExecuteMachineMutation(machine => machine with { Anchors = [.. (machine.Anchors ?? []), anchor] }, "Add Machine anchor");
+    }
+    internal void RemoveMachineAnchor(string id) => ExecuteMachineMutation(machine => machine with { Anchors = (machine.Anchors ?? []).Where(anchor => !string.Equals(anchor.Id, id, StringComparison.Ordinal)).ToArray() }, "Remove Machine anchor");
+    internal bool UpdateMachineAnchor(string originalId, MachineAnchor replacement, string description)
+    {
+        if (!MachineCompositionId.IsValid(replacement.Id) || (_machineDocumentModel.Anchors ?? []).Any(anchor => anchor.Id != originalId && anchor.Id == replacement.Id)) return false;
+        ExecuteMachineMutation(machine => machine with { Anchors = (machine.Anchors ?? []).Select(anchor => anchor.Id == originalId ? replacement : anchor).ToArray() }, description);
         return true;
     }
     internal bool IsRefreshingMachineCompositionChoices => _isRefreshingMachineCompositionChoices;
@@ -2317,6 +2345,27 @@ public sealed class MachineObjectInstanceRow : INotifyPropertyChanged
         else if (rejectedPropertyName is not null) PropertyChanged?.Invoke(this, new(rejectedPropertyName));
     }
     internal void NotifyAssetNavigationChanged() { PropertyChanged?.Invoke(this, new(nameof(CanOpenSelectedAsset))); if (OpenSelectedAssetCommand is RelayCommand command) command.RaiseCanExecuteChanged(); }
+}
+
+public sealed class MachineAnchorRow : INotifyPropertyChanged
+{
+    private readonly DocumentTabViewModel _owner;
+    private MachineAnchor _anchor;
+    public MachineAnchorRow(DocumentTabViewModel owner, MachineAnchor anchor) { _owner = owner; _anchor = anchor; RemoveCommand = new RelayCommand(() => owner.RemoveMachineAnchor(_anchor.Id)); }
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public System.Windows.Input.ICommand RemoveCommand { get; }
+    public string Id { get => _anchor.Id; set => Update(_anchor with { Id = value?.Trim() ?? string.Empty }, "Rename Machine anchor", nameof(Id)); }
+    public string DisplayName { get => _anchor.DisplayName; set { if (!string.IsNullOrWhiteSpace(value)) Update(_anchor with { DisplayName = value.Trim() }, "Rename Machine anchor display name", nameof(DisplayName)); else PropertyChanged?.Invoke(this, new(nameof(DisplayName))); } }
+    public double PositionX { get => _anchor.Position.X; set => SetPosition(_anchor.Position with { X = value }); }
+    public double PositionY { get => _anchor.Position.Y; set => SetPosition(_anchor.Position with { Y = value }); }
+    public double PositionZ { get => _anchor.Position.Z; set => SetPosition(_anchor.Position with { Z = value }); }
+    public double RotationX { get => _anchor.Rotation.X; set => SetRotation(_anchor.Rotation with { X = value }); }
+    public double RotationY { get => _anchor.Rotation.Y; set => SetRotation(_anchor.Rotation with { Y = value }); }
+    public double RotationZ { get => _anchor.Rotation.Z; set => SetRotation(_anchor.Rotation with { Z = value }); }
+    private void SetPosition(MachineVector3 value) { if (Finite(value)) Update(_anchor with { Position = value }, "Edit Machine anchor position"); }
+    private void SetRotation(MachineVector3 value) { if (Finite(value)) Update(_anchor with { Rotation = value }, "Edit Machine anchor rotation"); }
+    private static bool Finite(MachineVector3 value) => double.IsFinite(value.X) && double.IsFinite(value.Y) && double.IsFinite(value.Z);
+    private void Update(MachineAnchor replacement, string description, string? rejected = null) { if (_owner.UpdateMachineAnchor(_anchor.Id, replacement, description)) _anchor = replacement; else if (rejected is not null) PropertyChanged?.Invoke(this, new(rejected)); }
 }
 
 internal readonly record struct LampVisualState(bool IsLampTestOn, double Intensity);
