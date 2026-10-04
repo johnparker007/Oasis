@@ -26,7 +26,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
     public const string ObjectSchema = "oasis.object3d.runtime";
-    public const int MachineSchemaVersion = 7;
+    public const int MachineSchemaVersion = 8;
     public const int CabinetSchemaVersion = 5;
     public const int ObjectSchemaVersion = 1;
 
@@ -107,7 +107,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             progress.Report(0.85, "Writing runtime manifests...");
             cancellationToken.ThrowIfCancellationRequested();
             File.WriteAllText(Path.Combine(cabinetRoot, CabinetManifestFileName), JsonSerializer.Serialize(cabinetManifest, JsonOptions));
-            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, machineDocument.Id, machineDocument.DisplayName, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, objectInstances, MachineRuntimeManifestDefinition.From(machineDocument.Runtime), machineDocument.InputDefinitions);
+            var anchors = machineDocument.Anchors.Select(MachineRuntimeAnchor.From).ToArray();
+            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, machineDocument.Id, machineDocument.DisplayName, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, objectInstances, anchors, MachineRuntimeManifestDefinition.From(machineDocument.Runtime), machineDocument.InputDefinitions);
             File.WriteAllText(Path.Combine(stagingRoot, MachineManifestFileName), JsonSerializer.Serialize(machineManifest, JsonOptions));
             progress.Report(0.95, "Finalising Oasis Player machine...");
             cancellationToken.ThrowIfCancellationRequested();
@@ -344,7 +345,7 @@ public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, 
     public static MachineRuntimeBuildResult Fail(string errorMessage) => new(false, null, errorMessage);
 }
 
-public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, IReadOnlyList<MachineRuntimeObjectInstance> ObjectInstances, MachineRuntimeManifestDefinition Runtime, IReadOnlyList<InputDefinitionModel> Inputs);
+public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, IReadOnlyList<MachineRuntimeObjectInstance> ObjectInstances, IReadOnlyList<MachineRuntimeAnchor> Anchors, MachineRuntimeManifestDefinition Runtime, IReadOnlyList<InputDefinitionModel> Inputs);
 
 /// <summary>Generated Player contract projection; distinct from the authored RuntimeDefinition.</summary>
 public sealed record MachineRuntimeManifestDefinition(string Kind, string Platform, string PlatformSettingsJson)
@@ -365,6 +366,10 @@ public sealed record MachineRuntimeTransform(RuntimeVector3 Position, RuntimeVec
     public static MachineRuntimeTransform From(MachineObjectTransform value) => new(RuntimeVector3.From(value.Position), RuntimeVector3.From(value.Rotation), RuntimeVector3.From(value.Scale));
 }
 public sealed record MachineRuntimeObjectInstance(string Id, string DisplayName, string DefinitionId, string DefinitionManifest, MachineRuntimeTransform Transform);
+public sealed record MachineRuntimeAnchor(string Id, string DisplayName, RuntimeVector3 Position, RuntimeVector3 RotationEulerDegrees)
+{
+    public static MachineRuntimeAnchor From(MachineAnchor value) => new(value.Id, value.DisplayName, RuntimeVector3.From(value.Position), RuntimeVector3.From(value.Rotation));
+}
 public sealed record Object3DRuntimeManifest(string Schema, int SchemaVersion, string DefinitionId, string DisplayName, string Model, double ModelScale, string UpAxis, Object3DRuntimeCollider Collider, Object3DRuntimeRigidbody Rigidbody)
 {
     public static Object3DRuntimeManifest From(Object3DDocument document, string definitionId) => new(MachineRuntimeBuildService.ObjectSchema, MachineRuntimeBuildService.ObjectSchemaVersion, definitionId, document.DisplayName, MachineRuntimeBuildService.ObjectGlbFileName, document.Model.Scale, document.Model.UpAxis, Object3DRuntimeCollider.From(document.Physics.Collider), Object3DRuntimeRigidbody.From(document.Physics.Rigidbody));

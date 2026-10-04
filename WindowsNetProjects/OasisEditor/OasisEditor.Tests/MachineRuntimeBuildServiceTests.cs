@@ -435,7 +435,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.runtime.json", SearchOption.AllDirectories).Count());
         Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.glb", SearchOption.AllDirectories).Count());
         using var machineJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
-        Assert.Equal(7, machineJson.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(8, machineJson.RootElement.GetProperty("schemaVersion").GetInt32());
         var instances = machineJson.RootElement.GetProperty("objectInstances");
         Assert.Equal(new[] { "cueBall", "ball01", "ball08" }, instances.EnumerateArray().Select(x => x.GetProperty("id").GetString()));
         Assert.Equal(80, instances[2].GetProperty("transform").GetProperty("rotationEulerDegrees").GetProperty("y").GetDouble());

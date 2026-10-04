@@ -28,9 +28,12 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
     private Model3DGroup? _cabinetColliders;
     private Model3DGroup? _cabinetTriggers;
     private Model3DGroup _objects = CreateFrozenGroup();
+    private Model3DGroup _anchors = CreateFrozenGroup();
     private MachineObjectInstanceRow? _selectedObject;
     private bool _showCabinetVisual = true;
     private bool _showObjects = true;
+    private bool _showAnchors = true;
+    private MachineAnchorRow? _selectedAnchor;
     private bool _showCabinetCollision;
     private bool _showColliders = true;
     private bool _showTriggers = true;
@@ -43,13 +46,14 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
         _document = document;
         _loader = loader;
         ResetCameraCommand = new RelayCommand(ResetCamera);
-        RemoveSelectedCommand = new RelayCommand(() => { if (SelectedObject is not null) _document.RemoveMachineObjectInstance(SelectedObject.Id); });
+        RemoveSelectedCommand = new RelayCommand(() => { if (SelectedObject is not null) _document.RemoveMachineObjectInstance(SelectedObject.Id); else if (SelectedAnchor is not null) _document.RemoveMachineAnchor(SelectedAnchor.Id); });
         ResetCamera();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public ObservableCollection<string> Diagnostics { get; } = [];
     public ObservableCollection<MachineObjectInstanceRow> Objects { get; } = [];
+    public ObservableCollection<MachineAnchorRow> Anchors { get; } = [];
     public ICommand ResetCameraCommand { get; }
     public ICommand RemoveSelectedCommand { get; }
     public ICommand AddCommand => _document.AddMachineObjectInstanceCommand;
@@ -59,17 +63,25 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
     public Model3DGroup? CabinetColliderPreview => ShowCabinetCollision && ShowColliders ? _cabinetColliders : null;
     public Model3DGroup? CabinetTriggerPreview => ShowCabinetCollision && ShowTriggers ? _cabinetTriggers : null;
     public Model3DGroup? ObjectVisuals => ShowObjects ? _objects : null;
+    public Model3DGroup? AnchorVisuals => ShowAnchors ? _anchors : null;
     public bool ShowCabinetVisual { get => _showCabinetVisual; set => SetFilter(ref _showCabinetVisual, value, nameof(CabinetVisual)); }
     public bool ShowObjects { get => _showObjects; set => SetFilter(ref _showObjects, value, nameof(ObjectVisuals)); }
+    public bool ShowAnchors { get => _showAnchors; set => SetFilter(ref _showAnchors, value, nameof(AnchorVisuals)); }
     public bool ShowCabinetCollision { get => _showCabinetCollision; set { if (_showCabinetCollision == value) return; _showCabinetCollision = value; Notify(); Notify(nameof(CabinetColliderPreview)); Notify(nameof(CabinetTriggerPreview)); RecalculateBounds(); } }
     public bool ShowColliders { get => _showColliders; set => SetFilter(ref _showColliders, value, nameof(CabinetColliderPreview)); }
     public bool ShowTriggers { get => _showTriggers; set => SetFilter(ref _showTriggers, value, nameof(CabinetTriggerPreview)); }
-    public MachineObjectInstanceRow? SelectedObject { get => _selectedObject; set { if (ReferenceEquals(_selectedObject, value)) return; _selectedObject = value; Notify(); Notify(nameof(HasSelection)); Notify(nameof(SelectedBounds)); } }
-    public bool HasSelection => SelectedObject is not null;
+    public MachineObjectInstanceRow? SelectedObject { get => _selectedObject; set { if (ReferenceEquals(_selectedObject, value)) return; _selectedObject = value; if (value is not null) { _selectedAnchor = null; Notify(nameof(SelectedAnchor)); } Notify(); Notify(nameof(HasSelection)); Notify(nameof(SelectedBounds)); } }
+    public MachineAnchorRow? SelectedAnchor { get => _selectedAnchor; set { if (ReferenceEquals(_selectedAnchor, value)) return; _selectedAnchor = value; if (value is not null) { _selectedObject = null; Notify(nameof(SelectedObject)); } Notify(); Notify(nameof(HasSelection)); Notify(nameof(SelectedBounds)); RebuildAnchors(); } }
+    public bool HasSelection => SelectedObject is not null || SelectedAnchor is not null;
     public Rect3D SelectedBounds
     {
         get
         {
+            if (SelectedAnchor is not null)
+            {
+                var anchor = _document.GetMachineDocument().Anchors.FirstOrDefault(item => item.Id == SelectedAnchor.Id);
+                return anchor is null ? Rect3D.Empty : new Rect3D(anchor.Position.X - .08, anchor.Position.Y - .08, anchor.Position.Z - .08, .16, .16, .16);
+            }
             if (SelectedObject is null) return Rect3D.Empty;
             var instance = _document.GetMachineDocument().ObjectInstances.FirstOrDefault(item => item.Id == SelectedObject.Id);
             if (instance?.ObjectAsset is null || !_definitionCache.TryGetValue(instance.ObjectAsset, out var loaded)) return Rect3D.Empty;
@@ -95,12 +107,16 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
     internal void Refresh(MachineDocument machine, bool cabinetChanged, bool objectInstancesChanged)
     {
         var selectedId = SelectedObject?.Id;
+        var selectedAnchorId = SelectedAnchor?.Id;
         Objects.Clear();
         foreach (var row in _document.MachineObjectInstanceRows) Objects.Add(row);
         SelectedObject = Objects.FirstOrDefault(row => row.Id == selectedId);
+        Anchors.Clear();
+        foreach (var row in _document.MachineAnchorRows) Anchors.Add(row);
+        SelectedAnchor = Anchors.FirstOrDefault(row => row.Id == selectedAnchorId);
         Notify(nameof(CabinetLabel));
         if (cabinetChanged || DefinitionsChanged(machine)) _refreshTask = RebuildAsync(clearCache: false);
-        else if (objectInstancesChanged) RebuildObjectInstances();
+        else if (objectInstancesChanged) { RebuildObjectInstances(); RebuildAnchors(); }
     }
 
     private bool DefinitionsChanged(MachineDocument machine) => machine.ObjectInstances.Any(instance => instance.ObjectAsset is not null && !_definitionCache.ContainsKey(instance.ObjectAsset));
@@ -127,6 +143,7 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
         if (!IsCurrent(version, token)) return;
         Refresh(machine, false, false);
         RebuildObjectInstances();
+        RebuildAnchors();
         ResetCamera();
     }
 
@@ -205,9 +222,33 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
         var bounds = Rect3D.Empty;
         if (ShowCabinetVisual && _cabinetVisual is not null) bounds.Union(_cabinetVisual.Bounds);
         if (ShowObjects) bounds.Union(_objects.Bounds);
+        if (ShowAnchors) bounds.Union(_anchors.Bounds);
         if (ShowCabinetCollision && ShowColliders && _cabinetColliders is not null) bounds.Union(_cabinetColliders.Bounds);
         if (ShowCabinetCollision && ShowTriggers && _cabinetTriggers is not null) bounds.Union(_cabinetTriggers.Bounds);
         Bounds = bounds;
+    }
+
+    private void RebuildAnchors()
+    {
+        var group = new Model3DGroup();
+        foreach (var anchor in _document.GetMachineDocument().Anchors)
+        {
+            var selected = SelectedAnchor?.Id == anchor.Id;
+            var size = selected ? .08 : .05;
+            var mesh = new MeshGeometry3D
+            {
+                Positions = new Point3DCollection { new(-size, 0, 0), new(size, 0, 0), new(0, -size, 0), new(0, size, 0), new(0, 0, 0), new(0, 0, size * 2) },
+                TriangleIndices = new Int32Collection { 0, 2, 4, 1, 3, 4, 0, 3, 5, 1, 2, 5 }
+            };
+            var material = new DiffuseMaterial(new SolidColorBrush(selected ? Colors.Yellow : Colors.Orange));
+            var transform = new Transform3DGroup();
+            transform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new(0, 0, 1), anchor.Rotation.Z)));
+            transform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new(1, 0, 0), anchor.Rotation.X)));
+            transform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new(0, 1, 0), anchor.Rotation.Y)));
+            transform.Children.Add(new TranslateTransform3D(anchor.Position.X, anchor.Position.Y, anchor.Position.Z));
+            group.Children.Add(new GeometryModel3D(mesh, material) { BackMaterial = material, Transform = transform });
+        }
+        group.Freeze(); _anchors = group; Notify(nameof(AnchorVisuals)); Notify(nameof(SelectedBounds)); RecalculateBounds();
     }
 
     private void ResetCamera()

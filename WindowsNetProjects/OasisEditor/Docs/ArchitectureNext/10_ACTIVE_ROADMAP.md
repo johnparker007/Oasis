@@ -111,7 +111,7 @@ Translation/rotation/scale manipulators, Object3D collider diagnostics, and moun
 
 #### PR A6 — Machine anchors
 
-Add generic Machine-owned spatial anchors:
+Implemented: generic Machine-owned spatial anchors provide:
 
 - stable ID;
 - display name;
@@ -128,7 +128,7 @@ Examples:
 - mole up/down positions;
 - spawn/drop locations.
 
-Anchors have no rendering or physics semantics.
+Anchors have no persisted rendering or physics semantics. Details and Composition share command-backed rows; Composition adds transient oriented diagnostics, selection, and visibility. Machine authored schema 6 and runtime schema 8 are current, with lightweight Player registry values and no anchor GameObjects.
 
 #### PR A7 — Runtime event/command boundary
 

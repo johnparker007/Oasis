@@ -109,6 +109,8 @@ Examples:
 
 Anchors keep spatial authoring in the Editor instead of forcing scripts to contain layout mathematics.
 
+The settled A6 contract is Machine-owned, case-sensitive within the anchor namespace, and uses the same conservative letters/digits/underscore/hyphen ID syntax as Object3D instances. Its canonical typed reference is only `anchor:<id>`. Position and XYZ Euler rotation are expressed directly in Machine composition space; there is no scale and no Object3D `modelScale`/`upAxis` correction. The generated schema-8 declaration is registered as lightweight `RuntimeAnchor` data in `RuntimeMachine`; no Unity GameObject or Transform is created merely to represent an anchor.
+
 ### Behaviour/script
 
 Machine behaviour owns game rules and state transitions.
@@ -276,7 +278,7 @@ Repeated Machine instances referencing one Object3D asset should not require dup
 
 The Machine runtime manifest contains instance declarations because placement and instance identity belong to Machine, not to the reusable Object3D GLB.
 
-Generated instance (Machine runtime schema 7) preserves authoring coordinates without conversion; rotation remains XYZ Euler degrees for the documented Unity conversion in A4:
+Generated instance (Machine runtime schema 8) preserves authoring coordinates without conversion; rotation remains XYZ Euler degrees for the documented Unity conversion in A4:
 
 ```json
 {
@@ -291,7 +293,7 @@ Generated instance (Machine runtime schema 7) preserves authoring coordinates wi
 }
 ```
 
-Definitions use `oasis.object3d.runtime` schema version 1 and contain the generated model filename, intrinsic model scale/up-axis, shape-specific collider values, and enabled/mass/useGravity Rigidbody values. The Player reader supports only Machine runtime schema 7 and retains the resolved definitions for A4.
+Definitions use `oasis.object3d.runtime` schema version 1 and contain the generated model filename, intrinsic model scale/up-axis, shape-specific collider values, and enabled/mass/useGravity Rigidbody values. The Player reader supports only Machine runtime schema 8 and retains the resolved definitions for A4.
 
 ## Player runtime model
 
