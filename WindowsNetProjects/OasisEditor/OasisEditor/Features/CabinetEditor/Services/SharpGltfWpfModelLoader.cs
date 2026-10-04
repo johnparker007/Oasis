@@ -50,6 +50,8 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
                 return CabinetModelLoadResult.Failure("The .glb loaded, but it did not contain a scene to display.");
             }
 
+            GlbCabinetSemanticGeometryValidator.Validate(scene, modelPath, cancellationToken);
+
             var faceTargets = FaceTargetDetector.DetectTargets(modelPath, cancellationToken);
             var reflectionTargets = GlbCabinetReflectionReceiverDiscovery.Discover(modelPath);
             var visualMeshes = new Dictionary<int, MeshGeometry3D>();

@@ -160,6 +160,87 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
     }
 
     [Fact]
+    public void Build_CabinetWithoutPhysicsSemanticsStillBuilds()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true), ("COL_Legacy", false, false), ("TRG_Legacy", false, false)]);
+
+        var result = Build(setup.Project, setup.Machine);
+
+        Assert.True(result.Success, result.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData("OasisCollider_Test")]
+    [InlineData("OasisTrigger_Test")]
+    public void Build_PhysicsSemanticPositionGeometryNeedsNeitherUvNorMaterial(string semanticName)
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [(semanticName, true, true)]);
+
+        var result = Build(setup.Project, setup.Machine);
+
+        Assert.True(result.Success, result.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData("OasisCollider_Broken", "Collider")]
+    [InlineData("OasisTrigger_Broken", "Trigger")]
+    public void Build_PhysicsSemanticWithoutMeshFailsWithSemanticContext(string semanticName, string kind)
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [(semanticName, false, false)]);
+
+        var result = Build(setup.Project, setup.Machine);
+
+        Assert.False(result.Success);
+        Assert.Contains(setup.CabinetReference.ToString(), result.ErrorMessage);
+        Assert.Contains(semanticName, result.ErrorMessage);
+        Assert.Contains(kind, result.ErrorMessage);
+        Assert.Contains("does not reference a mesh", result.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData("OasisCollider_NoPosition", "Collider")]
+    [InlineData("OasisTrigger_NoPosition", "Trigger")]
+    public void Build_PhysicsSemanticPrimitiveWithoutPositionFailsClearly(string semanticName, string kind)
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [(semanticName, true, false)]);
+
+        var result = Build(setup.Project, setup.Machine);
+
+        Assert.False(result.Success);
+        Assert.Contains(semanticName, result.ErrorMessage);
+        Assert.Contains(kind, result.ErrorMessage);
+        Assert.Contains("POSITION", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void Build_CopiesCabinetGlbByteForByteWithAllSemanticIdentities()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb,
+        [
+            ("Cabinet", true, true),
+            ("OasisFace_Test", true, true),
+            ("OasisCollider_Test", true, true),
+            ("OasisTrigger_Test", true, true)
+        ]);
+        var sourceBytes = File.ReadAllBytes(setup.Glb);
+
+        var result = Build(setup.Project, setup.Machine);
+
+        Assert.True(result.Success, result.ErrorMessage);
+        var builtGlb = Path.Combine(result.BuildRoot!, MachineRuntimeBuildService.CabinetDirectoryName, MachineRuntimeBuildService.CabinetGlbFileName);
+        Assert.Equal(sourceBytes, File.ReadAllBytes(builtGlb));
+        var builtBytes = Encoding.UTF8.GetString(File.ReadAllBytes(builtGlb));
+        Assert.Contains("OasisFace_Test", builtBytes);
+        Assert.Contains("OasisCollider_Test", builtBytes);
+        Assert.Contains("OasisTrigger_Test", builtBytes);
+    }
+
+    [Fact]
     public void Build_ResolvesReferencedReelAssetIntoFaceRuntimeDimensions()
     {
         var setup = CreateReelBuild([0], [(0, "Standard", 290d, 70d)]);
@@ -388,6 +469,19 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         return (project, machine);
     }
 
+    private (EditorProject Project, MachineDocument Machine, string Glb, AssetReference CabinetReference) CreateCabinetOnlyBuild()
+    {
+        var project = Project();
+        var paths = new ProjectAssetPathService();
+        var cabinetManifest = paths.GetCabinet3DManifestPath(project, "SemanticCabinet");
+        Directory.CreateDirectory(Path.GetDirectoryName(cabinetManifest)!);
+        var glb = Path.Combine(Path.GetDirectoryName(cabinetManifest)!, "cabinet.glb");
+        File.WriteAllText(cabinetManifest, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb")));
+        var reference = AssetReference.Project(paths.ToProjectRelativePath(project, cabinetManifest));
+        var machine = MachineDocument.Create("Semantic Machine") with { CabinetAsset = reference };
+        return (project, machine, glb, reference);
+    }
+
     private MachineRuntimeBuildResult Build(EditorProject project, MachineDocument machine)
         => new MachineRuntimeBuildService().BuildFromMachineDocument(project, WriteMachine(project, machine), NoOpEditorProgressReporter.Instance, CancellationToken.None);
     private MachineRuntimeBuildResult Build(EditorProject project, MachineDocument machine, string libraryRoot)
@@ -429,6 +523,37 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         var paddedJsonLength = (jsonBytes.Length + 3) & ~3;
         using var stream = File.Create(path);
         using var writer = new BinaryWriter(stream);
+        writer.Write(0x46546C67); writer.Write(2); writer.Write(12 + 8 + paddedJsonLength + 8 + binary.Length);
+        writer.Write(paddedJsonLength); writer.Write(0x4E4F534A); writer.Write(jsonBytes); writer.Write(Enumerable.Repeat((byte)0x20, paddedJsonLength - jsonBytes.Length).ToArray());
+        writer.Write(binary.Length); writer.Write(0x004E4942); writer.Write(binary);
+    }
+
+    private static void WriteSemanticGlb(string path, (string Name, bool HasMesh, bool HasPosition)[] definitions)
+    {
+        var positions = new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0 };
+        var binary = new byte[positions.Length * sizeof(float)];
+        Buffer.BlockCopy(positions, 0, binary, 0, binary.Length);
+        var meshIndex = 0;
+        var nodes = new List<string>();
+        var meshes = new List<string>();
+        foreach (var definition in definitions)
+        {
+            nodes.Add(definition.HasMesh
+                ? $$"""{"name":"{{definition.Name}}","mesh":{{meshIndex}}}"""
+                : $$"""{"name":"{{definition.Name}}"}""");
+            if (definition.HasMesh)
+            {
+                var attributes = definition.HasPosition ? "\"POSITION\":0" : string.Empty;
+                meshes.Add($$"""{"name":"Mesh{{meshIndex}}","primitives":[{"attributes":{ {{attributes}} }}]}""");
+                meshIndex++;
+            }
+        }
+
+        var sceneNodes = string.Join(',', Enumerable.Range(0, definitions.Length));
+        var json = $$"""{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[{{sceneNodes}}]}],"nodes":[{{string.Join(',', nodes)}}],"meshes":[{{string.Join(',', meshes)}}],"buffers":[{"byteLength":{{binary.Length}}}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":{{binary.Length}}}],"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3"}]}""";
+        var jsonBytes = Encoding.UTF8.GetBytes(json);
+        var paddedJsonLength = (jsonBytes.Length + 3) & ~3;
+        using var writer = new BinaryWriter(File.Create(path));
         writer.Write(0x46546C67); writer.Write(2); writer.Write(12 + 8 + paddedJsonLength + 8 + binary.Length);
         writer.Write(paddedJsonLength); writer.Write(0x4E4F534A); writer.Write(jsonBytes); writer.Write(Enumerable.Repeat((byte)0x20, paddedJsonLength - jsonBytes.Length).ToArray());
         writer.Write(binary.Length); writer.Write(0x004E4942); writer.Write(binary);

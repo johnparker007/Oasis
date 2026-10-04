@@ -9,6 +9,7 @@ A designer should be able to author JPM Vogue once and reuse it for many games.
 Cabinet should eventually own only reusable facts, such as:
 
 - source/model GLB;
+- semantic visual, Face-target, Collider, and Trigger geometry authored in that GLB;
 - stable named surface targets;
 - target geometry/orientation defaults;
 - reflection receiver geometry/settings defaults;
