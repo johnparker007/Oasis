@@ -7,6 +7,7 @@ namespace OasisPlayer.RuntimeBuild
     public sealed class RuntimeMachine
     {
         private readonly Dictionary<string, RuntimeObjectInstance> _objects = new Dictionary<string, RuntimeObjectInstance>(StringComparer.Ordinal);
+        private readonly Dictionary<string, RuntimeAnchor> _anchors = new Dictionary<string, RuntimeAnchor>(StringComparer.Ordinal);
         private readonly List<RuntimeFace> _faces = new List<RuntimeFace>();
         private readonly List<string> _warnings = new List<string>();
         private RuntimeLampStateTexture _lampStateTexture;
@@ -25,12 +26,15 @@ namespace OasisPlayer.RuntimeBuild
             LampState = new RuntimeLampState();
             ReelState = new RuntimeReelState();
             SegmentDisplayState = new RuntimeSegmentDisplayState();
+            var anchors = build.Machine.anchors ?? Array.Empty<MachineRuntimeAnchor>();
+            foreach (var declaration in anchors) RegisterAnchor(new RuntimeAnchor(declaration.id, declaration.displayName, declaration.position.Value, declaration.rotationEulerDegrees.Value));
         }
 
         public ResolvedRuntimeBuild Build { get; private set; }
         public GameObject Cabinet { get; private set; }
         public IReadOnlyList<RuntimeFace> Faces { get { return _faces; } }
         public IReadOnlyDictionary<string, RuntimeObjectInstance> Objects { get { return _objects; } }
+        public IReadOnlyDictionary<string, RuntimeAnchor> Anchors { get { return _anchors; } }
         public IReadOnlyList<string> Warnings { get { return _warnings; } }
         public IReadOnlyList<RuntimeCabinetReflectionBinding> CabinetReflectionBindings { get { return _cabinetReflectionBindings; } }
         public RuntimeLampState LampState { get; private set; }
@@ -102,6 +106,22 @@ namespace OasisPlayer.RuntimeBuild
             return instance;
         }
 
+        public void RegisterAnchor(RuntimeAnchor anchor)
+        {
+            if (anchor == null) throw new ArgumentNullException(nameof(anchor));
+            if (string.IsNullOrWhiteSpace(anchor.Id)) throw new ArgumentException("Runtime anchor ID is required.", nameof(anchor));
+            if (_anchors.ContainsKey(anchor.Id)) throw new InvalidOperationException($"Runtime anchor ID '{anchor.Id}' is already registered.");
+            _anchors.Add(anchor.Id, anchor);
+        }
+
+        public bool TryGetAnchor(string id, out RuntimeAnchor anchor) { return _anchors.TryGetValue(id ?? string.Empty, out anchor); }
+
+        public RuntimeAnchor GetAnchor(string id)
+        {
+            if (!TryGetAnchor(id, out var anchor)) throw new KeyNotFoundException($"Runtime anchor '{id}' is not registered.");
+            return anchor;
+        }
+
         public void AddWarning(string warning)
         {
             if (!string.IsNullOrWhiteSpace(warning)) _warnings.Add(warning);
@@ -130,8 +150,19 @@ namespace OasisPlayer.RuntimeBuild
             _faces.Clear();
             foreach (var instance in _objects.Values) instance.Destroy();
             _objects.Clear();
+            _anchors.Clear();
             _warnings.Clear();
         }
+    }
+
+    /// <summary>Lightweight Machine-space anchor data. It deliberately has no Unity GameObject or Transform.</summary>
+    public sealed class RuntimeAnchor
+    {
+        public RuntimeAnchor(string id, string displayName, Vector3 position, Vector3 rotationEulerDegrees) { Id = id; DisplayName = displayName; Position = position; RotationEulerDegrees = rotationEulerDegrees; }
+        public string Id { get; private set; }
+        public string DisplayName { get; private set; }
+        public Vector3 Position { get; private set; }
+        public Vector3 RotationEulerDegrees { get; private set; }
     }
 
     public sealed class RuntimeObjectInstance
