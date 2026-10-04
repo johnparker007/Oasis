@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using GLTFast;
+using OasisPlayer.RuntimeBuild;
 using UnityEngine;
 
 namespace OasisPlayer.Loading
@@ -29,6 +30,16 @@ namespace OasisPlayer.Loading
             {
                 Object.Destroy(sessionRoot);
                 throw new System.InvalidOperationException($"glTFast failed to instantiate GLB: {glbPath}");
+            }
+
+            try
+            {
+                CabinetSemanticGeometrySetup.Setup(sessionRoot);
+            }
+            catch
+            {
+                Object.Destroy(sessionRoot);
+                throw;
             }
 
             return sessionRoot;
