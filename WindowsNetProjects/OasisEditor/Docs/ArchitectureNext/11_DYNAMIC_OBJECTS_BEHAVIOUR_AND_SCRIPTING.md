@@ -22,6 +22,23 @@ Viewport camera, selection, derived bounds, diagnostics, and Cabinet semantic vi
 
 Scripting is deliberately last. It consumes a stable Oasis runtime object model rather than defining that model.
 
+## Authored behaviour (A8.2)
+
+A Machine now owns zero or one Oasis Script behaviour. The authored schema 7 manifest
+contains only `{ "kind": "OasisScript", "source": "behavior.oasis" }`; source is a
+separate canonical file in the Machine package and is never an external or reusable
+Project/Library asset. The Machine Behaviour tab permits temporary syntax/type/reference
+errors, reports their source line and column, and folds source changes into the Machine's
+normal dirty/save/close lifecycle. Add and Remove are document commands; ordinary typing
+uses the text control's local undo rather than flooding global history.
+
+Machine-aware reference validation is an Editor/domain concern layered after successful
+pure-language compilation. It walks the complete validated syntax tree and resolves
+Object3D instances, anchors, Cabinet semantic triggers, Machine inputs, and existing
+numeric lamp/reel/alpha/seven-segment identities through Machine composition. It does not
+treat event bindings as authored references. Player packaging and execution remain A8.3;
+runtime builds currently fail explicitly rather than silently discarding behaviour.
+
 ## Ownership model
 
 ### Cabinet

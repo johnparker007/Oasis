@@ -15,9 +15,10 @@ public sealed record MachineDocument(
     MachineObject3DInstance[] ObjectInstances,
     RuntimeDefinition Runtime,
     List<InputDefinitionModel> InputDefinitions,
-    MachineAnchor[] Anchors)
+    MachineAnchor[] Anchors,
+    MachineBehaviorDefinition? Behavior)
 {
-    public const int CurrentSchemaVersion = 6;
+    public const int CurrentSchemaVersion = 7;
 
     [JsonIgnore]
     public EmulationRuntimeDefinition EmulationRuntime => Runtime as EmulationRuntimeDefinition
@@ -33,7 +34,16 @@ public sealed record MachineDocument(
         [],
         EmulationRuntimeDefinition.Create(FruitMachinePlatformType.None),
         [],
-        []);
+        [],
+        null);
+}
+
+/// <summary>The single optional behaviour source owned by a Machine package.</summary>
+public sealed record MachineBehaviorDefinition(string Kind, string Source)
+{
+    public const string OasisScriptKind = "OasisScript";
+    public const string CanonicalSourcePath = "behavior.oasis";
+    public static MachineBehaviorDefinition OasisScript() => new(OasisScriptKind, CanonicalSourcePath);
 }
 
 /// <summary>A three-dimensional value in Machine authoring coordinates.</summary>
@@ -45,7 +55,7 @@ public sealed record MachineVector3(double X, double Y, double Z)
 
 /// <summary>
 /// A Machine-level transform. Rotation is authored as Euler angles in degrees around X, Y and Z;
-/// runtime conversion applies them in Unity's standard Z-X-Y order. There is no parent transform in schema 6.
+/// runtime conversion applies them in Unity's standard Z-X-Y order. There is no parent transform in schema 7.
 /// </summary>
 public sealed record MachineObjectTransform(MachineVector3 Position, MachineVector3 Rotation, MachineVector3 Scale)
 {
@@ -158,6 +168,7 @@ public static class MachineDocumentStorage
             writer.WritePropertyName("reelAssignments"); JsonSerializer.Serialize(writer, document.ReelAssignments.Select(x => x.Normalized()), Options);
             writer.WritePropertyName("objectInstances"); JsonSerializer.Serialize(writer, document.ObjectInstances, Options);
             writer.WritePropertyName("anchors"); JsonSerializer.Serialize(writer, document.Anchors, Options);
+            if (document.Behavior is not null) { writer.WritePropertyName("behavior"); JsonSerializer.Serialize(writer, document.Behavior, Options); }
             writer.WritePropertyName("runtime");
             writer.WriteStartObject();
             switch (document.Runtime)
@@ -213,7 +224,8 @@ public static class MachineDocumentStorage
                 root.GetProperty("objectInstances").Deserialize<MachineObject3DInstance[]>(Options) ?? throw new InvalidOperationException("Machine ObjectInstances collection is required."),
                 new EmulationRuntimeDefinition(platform, settings),
                 root.TryGetProperty("inputDefinitions", out var inputs) ? inputs.Deserialize<List<InputDefinitionModel>>(Options) ?? [] : [],
-                root.GetProperty("anchors").Deserialize<MachineAnchor[]>(Options) ?? throw new InvalidOperationException("Machine Anchors collection is required."));
+                root.GetProperty("anchors").Deserialize<MachineAnchor[]>(Options) ?? throw new InvalidOperationException("Machine Anchors collection is required."),
+                root.TryGetProperty("behavior", out var behavior) ? behavior.Deserialize<MachineBehaviorDefinition>(Options) : null);
             Validate(document);
             return true;
         }
@@ -227,6 +239,13 @@ public static class MachineDocumentStorage
         if (!Guid.TryParse(document.Id, out _)) throw new InvalidOperationException("Machine ID must be a stable GUID.");
         if (string.IsNullOrWhiteSpace(document.DisplayName)) throw new InvalidOperationException("Machine display name is required.");
         RuntimeDefinitionValidation.Validate(document.DisplayName, document.Runtime);
+        if (document.Behavior is { } behavior)
+        {
+            if (!string.Equals(behavior.Kind, MachineBehaviorDefinition.OasisScriptKind, StringComparison.Ordinal))
+                throw new InvalidOperationException($"Machine behaviour kind '{behavior.Kind}' is unsupported.");
+            if (!string.Equals(behavior.Source, MachineBehaviorDefinition.CanonicalSourcePath, StringComparison.Ordinal))
+                throw new InvalidOperationException($"Oasis Script source must be exactly '{MachineBehaviorDefinition.CanonicalSourcePath}'.");
+        }
         if (document.SurfaceAssignments.GroupBy(x => x.TargetId, StringComparer.Ordinal).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine surface target assignments must be unique.");
         if (document.ReelAssignments.GroupBy(x => x.MachineReelReference).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine reel assignments must be unique.");
         if (document.ReelAssignments.Any(x => x.MachineReelReference.Kind != MachineObjectKind.Reel || x.ReelAsset is null)) throw new InvalidOperationException("Machine reel assignments require a logical Reel reference and Reel asset reference.");
