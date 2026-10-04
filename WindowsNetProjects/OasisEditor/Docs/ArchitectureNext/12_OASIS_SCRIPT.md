@@ -9,8 +9,22 @@ behaviour. Its canonical source extension is `.oasis`; examples use
 networking, reflection, CLR interop, or host-object dependency, so Editor and Player
 can consume one lexer/parser/type-checker implementation.
 
-A8.1 ends at a validated in-memory program. Machine authoring, packaging, the
-interpreter, and the A7 host adapter belong to later A8 stages.
+A8.1 ends at a validated in-memory program. A8.2 adds Machine authoring without changing
+that pure core: a Machine may own one optional source at package-local `behavior.oasis`,
+declared by its authored schema 7 `behavior` metadata. Runtime packaging, the interpreter,
+and the A7 host adapter remain later A8 stages.
+
+The Editor compiles the current buffer after edits and, only after core success, runs a
+Machine-domain syntax-tree validator for all typed reference literals. Core and Machine
+diagnostics share one line/column list while retaining distinct `OS...` and `OSM3...`
+codes. Temporary invalid text is retained and marks the Machine dirty; a saved package
+must compile and resolve. Add/Remove participate in document undo, while normal source
+typing uses local text undo. A8.2 does not package or execute source in Oasis Player.
+Machine reference discovery follows assembled composition: authored Object3D/anchor/input
+and reel identities, semantic triggers from the resolved Cabinet GLB, and linked
+lamp/alpha/seven-segment references from assigned Faces. Missing composition assets and a
+missing declared `behavior.oasis` are explicit authoring diagnostics, not empty domains or
+implicitly valid empty programs.
 
 ## Lexical syntax and diagnostics
 

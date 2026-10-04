@@ -61,4 +61,14 @@ public sealed class MachineCompositionGraphXamlTests
         Assert.Contains(expandedTrigger.Elements(Presentation + "Setter"), setter =>
             setter.Attribute("TargetName")?.Value == "Arrow" && setter.Attribute("Value")?.Value == "▾");
     }
+
+    [Fact]
+    public void BehaviourAddButtonRetainsTheApplicationButtonTheme()
+    {
+        var document = XDocument.Load(Path.Combine(AppContext.BaseDirectory, "Views", "DocumentEditorView.xaml"));
+        var button = document.Descendants(Presentation + "Button")
+            .Single(element => element.Attribute("Content")?.Value == "Add Oasis Script Behaviour");
+        var style = button.Element(Presentation + "Button.Style")?.Element(Presentation + "Style");
+        Assert.Equal("{StaticResource {x:Type Button}}", style?.Attribute("BasedOn")?.Value);
+    }
 }
