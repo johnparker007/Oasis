@@ -154,20 +154,25 @@ Initial object commands:
 
 Do not expose arbitrary Unity APIs.
 
-#### PR A8 — Behaviour/scripting implementation
+#### A8 — Oasis Script staged implementation
 
-Choose the first scripting/behaviour implementation only after A7 is proven.
+- **A8.1 Oasis Script core (implemented):** pure managed lexer, parser, immutable AST,
+  semantic/type validation, declarative event and built-in signatures, and a validated
+  in-memory program model. There is no Machine, Editor, or Player integration.
+- **A8.2 Machine authoring:** choose the authored Machine contract and source editing
+  workflow without changing the language core.
+- **A8.3 Runtime packaging/interpreter:** package `.oasis` source and execute validated
+  programs with an instruction budget.
+- **A8.4 A7 host adapter:** adapt the interpreter to the existing A7 event and command
+  boundary without exposing Unity APIs.
+- **A8.5 Pool vertical slice:** implement pocket, tray, rerack, and new-game behaviour.
+- **A8.6 fruit-device scripting boundary:** add only the lamp/reel/display commands
+  proven by a real fruit-machine workflow.
+- **A8.7 Whac-A-Mole validation:** validate the generic language/runtime boundary with
+  timer-driven mole behaviour.
 
-Script references use stable Oasis IDs, never Unity/GameObject names.
-
-Initial pool behaviour should cover:
-
-- pocket entry;
-- moving collected balls to tray positions;
-- reracking;
-- new-game input.
-
-Then validate the same runtime API with Whac-A-Mole.
+Stages after A8.1 remain planned, not implemented. Script references use stable Oasis
+IDs, never Unity/GameObject names.
 
 ## Active track B — Installation assets
 
