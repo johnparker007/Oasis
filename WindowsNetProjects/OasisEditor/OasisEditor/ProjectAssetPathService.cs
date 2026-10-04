@@ -8,7 +8,8 @@ public enum EditorAssetType
     Face,
     Cabinet3D,
     Machine,
-    Reel
+    Reel,
+    Object3D
 }
 
 public sealed class ProjectAssetPathService
@@ -18,6 +19,7 @@ public sealed class ProjectAssetPathService
     public const string Cabinet3DManifestFileName = "asset.cabinet3d";
     public const string MachineManifestFileName = "asset.machine";
     public const string ReelManifestFileName = "asset.reel";
+    public const string Object3DManifestFileName = "asset.object3d";
     public const string FaceArtworkFileName = "artwork.png";
     public const string FaceArtworkDirectoryName = "Artwork";
     public const string FaceMaskFileName = "mask.png";
@@ -54,6 +56,7 @@ public sealed class ProjectAssetPathService
     public string GetCabinet3DManifestPath(EditorProject project, string assetName) => GetAssetManifestPath(project, EditorAssetType.Cabinet3D, assetName);
     public string GetMachineManifestPath(EditorProject project, string assetName) => GetAssetManifestPath(project, EditorAssetType.Machine, assetName);
     public string GetReelManifestPath(EditorProject project, string assetName) => GetAssetManifestPath(project, EditorAssetType.Reel, assetName);
+    public string GetObject3DManifestPath(EditorProject project, string assetName) => GetAssetManifestPath(project, EditorAssetType.Object3D, assetName);
     public string GetFaceArtworkDirectory(EditorProject project, string assetName) => Path.Combine(project.GeneratedDirectory, "Faces", SanitizePathSegment(assetName), FaceArtworkDirectoryName);
     public string GetFaceArtworkPath(EditorProject project, string assetName) => Path.Combine(GetFaceArtworkDirectory(project, assetName), FaceArtworkFileName);
     public string GetFaceMaskPath(EditorProject project, string assetName) => Path.Combine(GetAssetPackageDirectory(project, EditorAssetType.Face, assetName), FaceMaskFileName);
@@ -93,6 +96,6 @@ public sealed class ProjectAssetPathService
 
     public DirectoryInfo CreateAssetPackageDirectory(EditorProject project, EditorAssetType assetType, string assetName) => Directory.CreateDirectory(GetAssetPackageDirectory(project, assetType, assetName));
     public static string NormalizeProjectRelativePath(string path) => path.Replace(Path.DirectorySeparatorChar, '/').Replace(Path.AltDirectorySeparatorChar, '/');
-    private static string GetAssetTypeFolderName(EditorAssetType assetType) => assetType switch { EditorAssetType.Panel2D => "Panel2D", EditorAssetType.Face => "Faces", EditorAssetType.Cabinet3D => "Cabinet3D", EditorAssetType.Machine => "Machines", EditorAssetType.Reel => "Reels", _ => throw new ArgumentOutOfRangeException(nameof(assetType), assetType, null) };
-    private static string GetManifestFileName(EditorAssetType assetType) => assetType switch { EditorAssetType.Panel2D => Panel2DManifestFileName, EditorAssetType.Face => FaceManifestFileName, EditorAssetType.Cabinet3D => Cabinet3DManifestFileName, EditorAssetType.Machine => MachineManifestFileName, EditorAssetType.Reel => ReelManifestFileName, _ => throw new ArgumentOutOfRangeException(nameof(assetType), assetType, null) };
+    private static string GetAssetTypeFolderName(EditorAssetType assetType) => assetType switch { EditorAssetType.Panel2D => "Panel2D", EditorAssetType.Face => "Faces", EditorAssetType.Cabinet3D => "Cabinet3D", EditorAssetType.Machine => "Machines", EditorAssetType.Reel => "Reels", EditorAssetType.Object3D => "Object3D", _ => throw new ArgumentOutOfRangeException(nameof(assetType), assetType, null) };
+    private static string GetManifestFileName(EditorAssetType assetType) => assetType switch { EditorAssetType.Panel2D => Panel2DManifestFileName, EditorAssetType.Face => FaceManifestFileName, EditorAssetType.Cabinet3D => Cabinet3DManifestFileName, EditorAssetType.Machine => MachineManifestFileName, EditorAssetType.Reel => ReelManifestFileName, EditorAssetType.Object3D => Object3DManifestFileName, _ => throw new ArgumentOutOfRangeException(nameof(assetType), assetType, null) };
 }

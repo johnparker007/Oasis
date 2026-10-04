@@ -31,7 +31,7 @@ public interface IDocumentSaveService
     DocumentSaveResult SaveDocument(DocumentTabViewModel current, string savePath, EditorProject? project = null, IEditorProgressReporter? progress = null);
 }
 
-public sealed record DocumentSaveResult(string SavePath, FaceDocumentModel? SavedFaceDocument = null, CabinetDocument? SavedCabinetDocument = null)
+public sealed record DocumentSaveResult(string SavePath, FaceDocumentModel? SavedFaceDocument = null, CabinetDocument? SavedCabinetDocument = null, Object3DDocument? SavedObject3DDocument = null)
 {
     public void ApplyTo(DocumentTabViewModel document)
     {
@@ -40,6 +40,8 @@ public sealed record DocumentSaveResult(string SavePath, FaceDocumentModel? Save
             document.ApplySavedFaceDocument(SavedFaceDocument);
         if (SavedCabinetDocument is not null)
             document.SetCabinetDocument(SavedCabinetDocument);
+        if (SavedObject3DDocument is not null)
+            document.ApplySavedObject3DDocument(SavedObject3DDocument);
         document.ApplySavedDocumentState(SavePath);
     }
 }
@@ -72,6 +74,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
 
         FaceDocumentModel? savedFaceDocument = null;
         CabinetDocument? savedCabinetDocument = null;
+        Object3DDocument? savedObject3DDocument = null;
         progress.Report(0.1, "Collecting document content...");
         if (current.Document.DocumentType == EditorDocumentType.Face && project is not null)
         {
@@ -95,17 +98,46 @@ public sealed class DocumentSaveService : IDocumentSaveService
             progress.Report(0.15, "Importing Cabinet model into its package...");
             savedCabinetDocument = EnsureCabinetPackageModel(current, savePath);
         }
+        else if (current.Document.DocumentType == EditorDocumentType.Object3D)
+        {
+            progress.Report(0.15, "Importing Object3D model into its package...");
+            savedObject3DDocument = EnsureObject3DPackageModel(current, savePath);
+        }
 
         progress.Report(0.8, "Serializing document...");
         var content = savedFaceDocument is not null ? FaceDocumentStorage.Serialize(savedFaceDocument)
             : savedCabinetDocument is not null ? CabinetDocumentStorage.Serialize(savedCabinetDocument)
+            : savedObject3DDocument is not null ? Object3DDocumentStorage.Serialize(savedObject3DDocument)
             : DocumentWorkspaceViewModel.BuildDocumentContent(current);
         progress.Report(0.9, "Writing document file...");
         File.WriteAllText(savePath, content);
         progress.Report(0.95, "Finalizing document save...");
 
         progress.Report(1.0, "Document saved.");
-        return new DocumentSaveResult(savePath, savedFaceDocument, savedCabinetDocument);
+        return new DocumentSaveResult(savePath, savedFaceDocument, savedCabinetDocument, savedObject3DDocument);
+    }
+
+    private static Object3DDocument EnsureObject3DPackageModel(DocumentTabViewModel current, string savePath)
+    {
+        var document = current.GetObject3DDocument();
+        var package = Path.GetFullPath(Path.GetDirectoryName(savePath) ?? throw new InvalidOperationException("Object3D save path has no package directory."));
+        Directory.CreateDirectory(package);
+        var currentPackage = !current.Document.IsUntitled && !string.IsNullOrWhiteSpace(current.FilePath) ? Path.GetDirectoryName(current.FilePath) : null;
+        var source = Path.IsPathFullyQualified(document.Model.Path) || Path.IsPathRooted(document.Model.Path)
+            ? Path.GetFullPath(document.Model.Path)
+            : Path.GetFullPath(Path.Combine(currentPackage ?? package, document.Model.Path));
+        if (!File.Exists(source)) throw new InvalidOperationException($"Object3D GLB model was not found: {source}");
+        if (!string.Equals(Path.GetExtension(source), ".glb", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Object3D model must be a GLB file.");
+        var fileName = Path.GetFileName(source);
+        var destination = Path.Combine(package, fileName);
+        if (!string.Equals(source, destination, StringComparison.OrdinalIgnoreCase))
+        {
+            if (File.Exists(destination) && !File.ReadAllBytes(source).SequenceEqual(File.ReadAllBytes(destination))) throw new InvalidOperationException($"Object3D package already contains a different model named '{fileName}'.");
+            if (!File.Exists(destination)) File.Copy(source, destination, false);
+        }
+        var saved = document with { Model = document.Model with { Path = fileName } };
+        Object3DValidationService.Validate(saved, package);
+        return saved;
     }
 
     private static CabinetDocument EnsureCabinetPackageModel(DocumentTabViewModel current, string savePath)

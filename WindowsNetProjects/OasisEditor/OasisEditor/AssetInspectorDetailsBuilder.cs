@@ -13,7 +13,8 @@ public static class AssetInspectorDetailsBuilder
         ProjectAssetPathService.FaceManifestFileName,
         ProjectAssetPathService.Cabinet3DManifestFileName,
         "asset.machine",
-        "asset.reel"
+        "asset.reel",
+        "asset.object3d"
     ];
 
     public static void BuildRows(ICollection<InspectorPropertyRowViewModel> rows, EditorProject project, string path, bool isDirectory)
@@ -285,6 +286,7 @@ public static class AssetInspectorDetailsBuilder
             ProjectAssetPathService.Cabinet3DManifestFileName => "Cabinet3D",
             "asset.machine" => "Machine",
             "asset.reel" => "Reel",
+            "asset.object3d" => "Object3D",
             _ => string.Empty
         };
         return assetType.Length > 0;

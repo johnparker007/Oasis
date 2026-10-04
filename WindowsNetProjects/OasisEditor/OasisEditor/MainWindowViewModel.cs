@@ -157,6 +157,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenCabinet3DStubCommand = new RelayCommand(OpenCabinet3DStubDocument, CanOpenUntitledDocument);
         OpenMachineStubCommand = new RelayCommand(OpenMachineStubDocument, CanOpenUntitledDocument);
         OpenReelStubCommand = new RelayCommand(OpenReelStubDocument, CanOpenUntitledDocument);
+        OpenObject3DStubCommand = new RelayCommand(OpenObject3DStubDocument, CanOpenUntitledDocument);
         ImportMfmeFmlCommand = new RelayCommand(ImportMfmeFml, CanImportMfmeFml);
         ImportGlbModelCommand = new RelayCommand(ImportGlbModel, CanImportGlbModel);
         BuildOasisPlayerMachineCommand = new RelayCommand(BuildOasisPlayerMachine, CanBuildOasisPlayerMachine);
@@ -385,6 +386,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenCabinet3DStubCommand { get; }
     public ICommand OpenMachineStubCommand { get; }
     public ICommand OpenReelStubCommand { get; }
+    public ICommand OpenObject3DStubCommand { get; }
     public ICommand ImportMfmeFmlCommand { get; }
     public ICommand ImportGlbModelCommand { get; }
     public ICommand BuildOasisPlayerMachineCommand { get; }
@@ -1153,6 +1155,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     private void OpenReelStubDocument() => _documentWorkspace.OpenReelStubDocument();
+    private void OpenObject3DStubDocument() => _documentWorkspace.OpenObject3DStubDocument();
 
     private bool CanCloseSelectedDocument()
     {
@@ -1289,7 +1292,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private bool CanImportGlbModel()
     {
         return LoadedProject is not null
-               && SelectedDocument?.Document.DocumentType == EditorDocumentType.Cabinet3D;
+               && SelectedDocument?.Document.DocumentType is EditorDocumentType.Cabinet3D or EditorDocumentType.Object3D;
     }
 
     private void ImportGlbModel()
@@ -1300,11 +1303,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var activeDocument = SelectedDocument;
-        if (activeDocument?.Document.DocumentType != EditorDocumentType.Cabinet3D)
+        if (activeDocument?.Document.DocumentType is not (EditorDocumentType.Cabinet3D or EditorDocumentType.Object3D))
         {
-            AddOutputEntry("GLB import is supported only when a Cabinet3D document is active.", OutputLogStatus.Warning);
+            AddOutputEntry("GLB import is supported only when a Cabinet3D or Object3D document is active.", OutputLogStatus.Warning);
             MessageBox.Show(
-                "GLB import is currently supported only for Cabinet3D documents.",
+                "GLB import is currently supported only for Cabinet3D and Object3D documents.",
                 "Import GLB Model",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -1324,13 +1327,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        activeDocument.SetCabinetDocument(CabinetDocument.FromModelPath(dialog.FileName));
-        activeDocument.MarkDirty();
+        if (activeDocument.Document.DocumentType == EditorDocumentType.Object3D) activeDocument.SetObject3DModelSource(dialog.FileName);
+        else { activeDocument.SetCabinetDocument(CabinetDocument.FromModelPath(dialog.FileName)); activeDocument.MarkDirty(); }
         NotifyInspectorChanged();
         NotifyDocumentCommands();
 
-        StatusMessage = $"Imported GLB model into Cabinet3D asset: {dialog.FileName}";
-        AddOutputEntry($"Imported GLB model into Cabinet3D asset: {dialog.FileName}", OutputLogStatus.Info);
+        StatusMessage = $"Selected GLB model for {activeDocument.TypeLabel}: {dialog.FileName}";
+        AddOutputEntry($"Selected GLB model for {activeDocument.TypeLabel}: {dialog.FileName}", OutputLogStatus.Info);
     }
 
     private async void ImportMfmeFml()
@@ -1547,7 +1550,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             || string.Equals(extension, ".face", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".cabinet3d", StringComparison.OrdinalIgnoreCase)
             || string.Equals(extension, ".machine", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(extension, ".reel", StringComparison.OrdinalIgnoreCase);
+            || string.Equals(extension, ".reel", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(extension, ".object3d", StringComparison.OrdinalIgnoreCase);
     }
 
     private void OpenDocumentFromPath(string path)
@@ -1562,7 +1566,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             openData.FaceDocumentJson,
             openData.CabinetDocumentJson,
             openData.MachineDocumentJson,
-            openData.ReelDocumentJson);
+            openData.ReelDocumentJson,
+            openData.Object3DDocumentJson);
         if (SelectedDocument?.Document.DocumentType == EditorDocumentType.Cabinet3D) SelectedDocument.SetMachineCompositionContext(_activeMachineDocument);
         if (!openedNewTab)
         {
@@ -1724,7 +1729,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var selectedDocument = SelectedDocument;
         var defaultName = selectedDocument?.Document.Title ?? "Document";
 
-        if (selectedDocument?.Document.DocumentType is EditorDocumentType.Panel2D or EditorDocumentType.Cabinet3D or EditorDocumentType.Face or EditorDocumentType.Machine or EditorDocumentType.Reel)
+        if (selectedDocument?.Document.DocumentType is EditorDocumentType.Panel2D or EditorDocumentType.Cabinet3D or EditorDocumentType.Face or EditorDocumentType.Machine or EditorDocumentType.Reel or EditorDocumentType.Object3D)
         {
             var nameDialog = new HierarchyRenameDialog(defaultName, "Save Asset", "Asset name")
             {
@@ -1743,6 +1748,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
                 EditorDocumentType.Cabinet3D => EditorAssetType.Cabinet3D,
                 EditorDocumentType.Machine => EditorAssetType.Machine,
                 EditorDocumentType.Reel => EditorAssetType.Reel,
+                EditorDocumentType.Object3D => EditorAssetType.Object3D,
                 _ => EditorAssetType.Panel2D
             };
             var assetName = pathService.EnsureUniqueAssetName(LoadedProject, assetType, nameDialog.NameText);
@@ -3366,6 +3372,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             openReelRelayCommand.RaiseCanExecuteChanged();
         }
+        if (OpenObject3DStubCommand is RelayCommand openObject3DRelayCommand)
+        {
+            openObject3DRelayCommand.RaiseCanExecuteChanged();
+        }
 
         if (ImportMfmeFmlCommand is RelayCommand importMfmeFmlRelayCommand)
         {
@@ -3586,7 +3596,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
 }
 
-internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null, string? CabinetDocumentJson = null, string? MachineDocumentJson = null, string? ReelDocumentJson = null);
+internal readonly record struct OpenDocumentData(string Summary, string? PanelLayoutJson, string? PanelTitle = null, string? FaceDocumentJson = null, string? CabinetDocumentJson = null, string? MachineDocumentJson = null, string? ReelDocumentJson = null, string? Object3DDocumentJson = null);
 
 
 public sealed class System6CoinSettingsViewModel : INotifyPropertyChanged
