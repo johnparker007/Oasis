@@ -4,6 +4,7 @@ using OasisEditor.Features.FmlImport;
 using OasisEditor.Progress;
 using OasisEditor.Features.CabinetEditor.Models;
 using SkiaSharp;
+using Oasis.Scripting;
 
 namespace OasisEditor.Automation;
 
@@ -103,6 +104,10 @@ public sealed class DocumentSaveService : IDocumentSaveService
             progress.Report(0.15, "Importing Object3D model into its package...");
             savedObject3DDocument = EnsureObject3DPackageModel(current, savePath);
         }
+        else if (current.Document.DocumentType == EditorDocumentType.Machine)
+        {
+            SaveMachineBehavior(current, savePath);
+        }
 
         progress.Report(0.8, "Serializing document...");
         var content = savedFaceDocument is not null ? FaceDocumentStorage.Serialize(savedFaceDocument)
@@ -115,6 +120,28 @@ public sealed class DocumentSaveService : IDocumentSaveService
 
         progress.Report(1.0, "Document saved.");
         return new DocumentSaveResult(savePath, savedFaceDocument, savedCabinetDocument, savedObject3DDocument);
+    }
+
+    private static void SaveMachineBehavior(DocumentTabViewModel current, string savePath)
+    {
+        var package = Path.GetFullPath(Path.GetDirectoryName(savePath)
+            ?? throw new InvalidOperationException("Machine save path has no package directory."));
+        Directory.CreateDirectory(package);
+        var destination = Path.Combine(package, MachineBehaviorDefinition.CanonicalSourcePath);
+        var machine = current.GetMachineDocument();
+        if (machine.Behavior is null)
+        {
+            if (File.Exists(destination)) File.Delete(destination);
+            return;
+        }
+
+        var compilation = OasisScriptCompiler.Compile(current.MachineBehaviorSource, MachineBehaviorDefinition.CanonicalSourcePath);
+        if (!compilation.Success)
+            throw new InvalidOperationException("Machine Oasis Script does not compile: " + compilation.Diagnostics.First().ToString());
+        var referenceDiagnostics = OasisScriptMachineValidator.Validate(compilation.Program!, OasisScriptMachineReferenceIndex.FromMachine(machine));
+        if (referenceDiagnostics.Count > 0)
+            throw new InvalidOperationException("Machine Oasis Script has unresolved references: " + referenceDiagnostics[0]);
+        File.WriteAllText(destination, current.MachineBehaviorSource);
     }
 
     private static Object3DDocument EnsureObject3DPackageModel(DocumentTabViewModel current, string savePath)
