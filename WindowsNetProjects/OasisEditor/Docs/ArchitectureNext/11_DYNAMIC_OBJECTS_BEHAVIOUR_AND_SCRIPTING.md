@@ -405,6 +405,14 @@ Events should carry stable Oasis references/IDs.
 
 Do not expose Unity `Collider`, `Rigidbody` or `GameObject` as the authored script contract.
 
+### Settled A7 event contract
+
+The event types are `RuntimeMachineStartedEvent`, `RuntimeInputPressedEvent`, `RuntimeInputReleasedEvent`, `RuntimeTriggerEnteredEvent`, `RuntimeTriggerExitedEvent`, `RuntimeCollisionEnteredEvent`, `RuntimeCollisionExitedEvent`, and `RuntimeTimerElapsedEvent`. `RuntimeMachine.Events` delivers them synchronously in subscription order. Subscriptions can be removed, are cleared at unload, and exceptions propagate to the future behaviour host.
+
+`MachineStarted` is emitted once, after Cabinet triggers, Object3D instances, anchors, declared inputs, Faces/devices, renderers, and runtime drivers have been initialized. Trigger payloads contain the raw IDs represented canonically by `trigger:<id>` and `object:<id>`. Classification retains node-name precedence over mesh name, and the semantic name that wins classification supplies the trigger ID.
+
+Collision events initially cover only registered Object3D-to-Object3D interactions and are directional: Unity may publish one event from each participant's perspective. Unregistered objects and static Cabinet geometry publish no collision event and no fake `collider:` identity.
+
 ## Runtime command boundary
 
 Initial generic commands:
@@ -423,6 +431,16 @@ StopTimer(id)
 `Teleport` and `ResetObject` should own correct Unity physics synchronization rather than requiring scripts to manipulate Transform and Rigidbody independently.
 
 The API can expand when real machines require additional operations.
+
+### Settled A7 command and state contract
+
+`RuntimeMachine.Commands` implements `SetActive`, `Teleport(object, anchor)`, `Teleport(object, RuntimePose)`, `SetVelocity`, `SetAngularVelocity`, `ApplyImpulse`, `ResetObject`, `StartTimer`, and `StopTimer`. `RuntimeVector3` and `RuntimePose` are the behaviour-facing values; conversion to Unity vectors/quaternions is internal.
+
+Teleport targets the authoritative root in Machine space, moves its root Rigidbody when present, synchronizes transforms, and deliberately preserves both velocities. It never reapplies Object3D model scale or up-axis correction. Velocity commands require the root Rigidbody; impulse uses Unity impulse mode in Machine/Unity units. Reset reuses the same registered instance and definition, reactivates it, restores authored position/rotation/scale, and clears linear/angular velocity.
+
+The runtime registers existing Machine input declarations by the ID in `input:<id>`. `SetInputState` emits only actual pressed/released transitions and rejects unknown IDs. Named timers use the same conservative letters/digits/underscore/hyphen ID rule, reject non-finite or negative duration, replace an existing timer on start, are harmless to stop when absent, publish once and remove themselves on elapsed, and are cleared on unload. Timer logic exposes deterministic `Advance(deltaSeconds)`; the play-mode adapter uses scaled `Time.deltaTime`.
+
+No authored behaviour schema, scripting language, arbitrary component/property mutation, or Unity API access is part of A7. Those choices remain deferred to A8.
 
 ## Pool vertical slice
 

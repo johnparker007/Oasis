@@ -132,7 +132,7 @@ Anchors have no persisted rendering or physics semantics. Details and Compositio
 
 #### PR A7 — Runtime event/command boundary
 
-Before choosing a scripting language, define and implement the engine-neutral runtime API that behaviour will consume.
+Implemented: the Player now owns a Machine-session, engine-neutral runtime API that behaviour will consume. It provides typed, synchronously dispatched events; stable-ID trigger/object/input/anchor registries; logical input transitions; deterministic one-shot timers; and focused Object3D commands. Unity physics callbacks and values are adapted behind this boundary.
 
 Initial events:
 
