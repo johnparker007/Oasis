@@ -7,7 +7,8 @@ public enum MachineObjectKind
     Reel,
     AlphaDisplay,
     SevenSegmentDisplay,
-    Input
+    Input,
+    Object
 }
 
 public readonly record struct MachineObjectReference(MachineObjectKind Kind, string Id)
@@ -25,6 +26,7 @@ public readonly record struct MachineObjectReference(MachineObjectKind Kind, str
     public static MachineObjectReference SevenSegmentDisplay(int displayId) => Create(MachineObjectKind.SevenSegmentDisplay, displayId.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
     public static MachineObjectReference Input(string inputId) => Create(MachineObjectKind.Input, inputId);
+    public static MachineObjectReference Object(string objectId) => Create(MachineObjectKind.Object, objectId);
 
     public static MachineObjectReference Create(MachineObjectKind kind, string id)
     {
@@ -57,6 +59,7 @@ public readonly record struct MachineObjectReference(MachineObjectKind Kind, str
             "alpha" or "alphadisplay" or "alpha-display" => MachineObjectKind.AlphaDisplay,
             "sevensegment" or "seven-segment" or "sevensegmentdisplay" => MachineObjectKind.SevenSegmentDisplay,
             "input" => MachineObjectKind.Input,
+            "object" => MachineObjectKind.Object,
             _ => MachineObjectKind.Unknown
         };
 
@@ -83,6 +86,7 @@ public readonly record struct MachineObjectReference(MachineObjectKind Kind, str
             MachineObjectKind.AlphaDisplay => "alpha",
             MachineObjectKind.SevenSegmentDisplay => "sevenSegment",
             MachineObjectKind.Input => "input",
+            MachineObjectKind.Object => "object",
             _ => string.Empty
         };
 
