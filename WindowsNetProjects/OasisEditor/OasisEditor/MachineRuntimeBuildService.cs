@@ -66,6 +66,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         ArgumentNullException.ThrowIfNull(machineDocument);
         ArgumentNullException.ThrowIfNull(progress);
         cancellationToken.ThrowIfCancellationRequested();
+        if (machineDocument.Behavior is not null)
+            return MachineRuntimeBuildResult.Fail("Oasis Script behaviour is authored but is not packaged or executed until A8.3.");
         try { RuntimeDefinitionValidation.Validate(machineDocument.DisplayName, machineDocument.Runtime); }
         catch (InvalidOperationException exception) { return MachineRuntimeBuildResult.Fail(exception.Message); }
         var machineAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(machineManifestPath, EditorAssetType.Machine);
