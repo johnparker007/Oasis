@@ -198,7 +198,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
                 return;
             }
 
-            Viewport.Model = result.Model;
+            Viewport.SetLoadedModels(result.Model, result.ColliderModel, result.TriggerModel, result.Bounds);
             FaceTargets.Clear();
             foreach (var target in result.FaceTargets)
             {
@@ -242,7 +242,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
 
     private void ClearLoadedModelDiscovery()
     {
-        Viewport.Model = null;
+        Viewport.SetLoadedModels(null, null, null, Rect3D.Empty);
         Viewport.FacePreviewModel = null;
         FaceTargets.Clear();
         SelectedFaceTarget = null;

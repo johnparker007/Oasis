@@ -9,6 +9,12 @@ public sealed class CabinetViewportViewModel : INotifyPropertyChanged
 {
     private Model3DGroup? _model;
     private Model3DGroup? _facePreviewModel;
+    private Model3DGroup? _colliderModel;
+    private Model3DGroup? _triggerModel;
+    private bool _showVisualMeshes = true;
+    private bool _showCollisionMeshes;
+    private bool _showColliders = true;
+    private bool _showTriggers = true;
     private Rect3D _modelBounds = Rect3D.Empty;
     private Point3D _cameraPosition;
     private Vector3D _cameraLookDirection;
@@ -34,6 +40,28 @@ public sealed class CabinetViewportViewModel : INotifyPropertyChanged
             ModelBounds = value?.Bounds ?? Rect3D.Empty;
             ResetCamera();
         }
+    }
+
+    public Model3DGroup? VisualModel => ShowVisualMeshes ? _model : null;
+    public Model3DGroup? ColliderPreviewModel => ShowCollisionMeshes && ShowColliders ? _colliderModel : null;
+    public Model3DGroup? TriggerPreviewModel => ShowCollisionMeshes && ShowTriggers ? _triggerModel : null;
+
+    public bool ShowVisualMeshes { get => _showVisualMeshes; set { if (_showVisualMeshes == value) return; _showVisualMeshes = value; OnPropertyChanged(); OnPropertyChanged(nameof(VisualModel)); } }
+    public bool ShowCollisionMeshes { get => _showCollisionMeshes; set { if (_showCollisionMeshes == value) return; _showCollisionMeshes = value; OnPropertyChanged(); OnPropertyChanged(nameof(ColliderPreviewModel)); OnPropertyChanged(nameof(TriggerPreviewModel)); } }
+    public bool ShowColliders { get => _showColliders; set { if (_showColliders == value) return; _showColliders = value; OnPropertyChanged(); OnPropertyChanged(nameof(ColliderPreviewModel)); } }
+    public bool ShowTriggers { get => _showTriggers; set { if (_showTriggers == value) return; _showTriggers = value; OnPropertyChanged(); OnPropertyChanged(nameof(TriggerPreviewModel)); } }
+
+    public void SetLoadedModels(Model3DGroup? visualModel, Model3DGroup? colliderModel, Model3DGroup? triggerModel, Rect3D bounds)
+    {
+        _model = visualModel;
+        _colliderModel = colliderModel;
+        _triggerModel = triggerModel;
+        OnPropertyChanged(nameof(Model));
+        OnPropertyChanged(nameof(VisualModel));
+        OnPropertyChanged(nameof(ColliderPreviewModel));
+        OnPropertyChanged(nameof(TriggerPreviewModel));
+        ModelBounds = bounds;
+        ResetCamera();
     }
 
     public Model3DGroup? FacePreviewModel

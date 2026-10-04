@@ -19,6 +19,17 @@
                 <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding CabinetViewer.LoadStatus}" />
             </StackPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <ToggleButton x:Name="PreviewButton" Padding="10,4" Margin="0,0,8,0" Content="Preview" />
+                <Popup DataContext="{Binding DataContext, ElementName=PreviewButton}" PlacementTarget="{Binding ElementName=PreviewButton}" Placement="Bottom" StaysOpen="False" IsOpen="{Binding IsChecked, ElementName=PreviewButton, Mode=TwoWay}">
+                    <Border Margin="0,4,0,0" Padding="10" Background="{DynamicResource ToolBarBackgroundBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="4">
+                        <StackPanel MinWidth="170">
+                            <CheckBox Content="Visual meshes" IsChecked="{Binding CabinetViewer.Viewport.ShowVisualMeshes, Mode=TwoWay}" />
+                            <CheckBox Margin="0,8,0,0" Content="Collision meshes" IsChecked="{Binding CabinetViewer.Viewport.ShowCollisionMeshes, Mode=TwoWay}" />
+                            <CheckBox Margin="18,6,0,0" Content="Colliders" IsEnabled="{Binding CabinetViewer.Viewport.ShowCollisionMeshes}" IsChecked="{Binding CabinetViewer.Viewport.ShowColliders, Mode=TwoWay}" />
+                            <CheckBox Margin="18,6,0,0" Content="Triggers" IsEnabled="{Binding CabinetViewer.Viewport.ShowCollisionMeshes}" IsChecked="{Binding CabinetViewer.Viewport.ShowTriggers, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Border>
+                </Popup>
                 <Button Padding="10,4" Margin="0,0,8,0" Command="{Binding CabinetViewer.ReloadCommand}" Content="Reload" />
                 <Button Padding="10,4" Command="{Binding CabinetViewer.ResetCameraCommand}" Content="Reset Camera" />
             </StackPanel>
@@ -61,7 +72,9 @@
                 <h:ArrowVisual3D Point1="0,0,0" Point2="{Binding CabinetViewer.Viewport.XAxisEnd}" Diameter="0.025" Fill="Red" />
                 <h:ArrowVisual3D Point1="0,0,0" Point2="{Binding CabinetViewer.Viewport.YAxisEnd}" Diameter="0.025" Fill="LimeGreen" />
                 <h:ArrowVisual3D Point1="0,0,0" Point2="{Binding CabinetViewer.Viewport.ZAxisEnd}" Diameter="0.025" Fill="DodgerBlue" />
-                <ModelVisual3D Content="{Binding CabinetViewer.Viewport.Model}" />
+                <ModelVisual3D Content="{Binding CabinetViewer.Viewport.VisualModel}" />
+                <ModelVisual3D Content="{Binding CabinetViewer.Viewport.ColliderPreviewModel}" />
+                <ModelVisual3D Content="{Binding CabinetViewer.Viewport.TriggerPreviewModel}" />
                 <ModelVisual3D Content="{Binding CabinetViewer.Viewport.FacePreviewModel}" />
             </h:HelixViewport3D>
 
