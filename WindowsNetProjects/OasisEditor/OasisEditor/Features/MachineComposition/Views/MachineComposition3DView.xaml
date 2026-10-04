@@ -1,0 +1,46 @@
+<UserControl x:Class="OasisEditor.Features.MachineComposition.Views.MachineComposition3DView" x:Name="CompositionRoot"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:h="http://helix-toolkit.org/wpf">
+    <Grid DataContext="{Binding MachineComposition3D}">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="190"/></Grid.RowDefinitions>
+        <DockPanel Margin="8">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <ToggleButton x:Name="PreviewButton" Padding="10,4" Margin="0,0,8,0" Content="Preview"/>
+                <Popup DataContext="{Binding DataContext, ElementName=PreviewButton}" PlacementTarget="{Binding ElementName=PreviewButton}" Placement="Bottom" StaysOpen="False" IsOpen="{Binding IsChecked, ElementName=PreviewButton, Mode=TwoWay}">
+                    <Border Margin="0,4,0,0" Padding="10" Background="{DynamicResource ToolBarBackgroundBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="4">
+                        <StackPanel MinWidth="190">
+                            <CheckBox Content="Cabinet visual" IsChecked="{Binding ShowCabinetVisual}"/>
+                            <CheckBox Margin="0,6,0,0" Content="Object3D instances" IsChecked="{Binding ShowObjects}"/>
+                            <CheckBox Margin="0,6,0,0" Content="Cabinet collision" IsChecked="{Binding ShowCabinetCollision}"/>
+                            <CheckBox Margin="18,6,0,0" Content="Colliders" IsEnabled="{Binding ShowCabinetCollision}" IsChecked="{Binding ShowColliders}"/>
+                            <CheckBox Margin="18,6,0,0" Content="Triggers" IsEnabled="{Binding ShowCabinetCollision}" IsChecked="{Binding ShowTriggers}"/>
+                        </StackPanel>
+                    </Border>
+                </Popup>
+                <Button Padding="10,4" Command="{Binding ResetCameraCommand}" Content="Reset Camera"/>
+            </StackPanel>
+            <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="Assembled Machine"/>
+        </DockPanel>
+        <Grid Grid.Row="1">
+            <h:HelixViewport3D IsHeadLightEnabled="False" CameraRotationMode="Turntable" ModelUpDirection="0,1,0" RotateAroundMouseDownPoint="False">
+                <h:HelixViewport3D.Camera><PerspectiveCamera Position="{Binding CameraPosition, Mode=TwoWay}" LookDirection="{Binding CameraLookDirection, Mode=TwoWay}" UpDirection="{Binding CameraUpDirection, Mode=TwoWay}" FieldOfView="{Binding CameraFieldOfView, Mode=TwoWay}"/></h:HelixViewport3D.Camera>
+                <ModelVisual3D><ModelVisual3D.Content><Model3DGroup><AmbientLight Color="#666666"/><DirectionalLight Color="#F4F4F4" Direction="-0.45,-0.8,-0.35"/><DirectionalLight Color="#8C98AA" Direction="0.6,-0.35,0.55"/></Model3DGroup></ModelVisual3D.Content></ModelVisual3D>
+                <h:GridLinesVisual3D Width="{Binding GridSize}" Length="{Binding GridSize}" MinorDistance="{Binding GridSpacing}" Normal="0,1,0" LengthDirection="1,0,0" Thickness="0.01"/>
+                <h:ArrowVisual3D Point1="0,0,0" Point2="{Binding XAxisEnd}" Diameter="0.025" Fill="Red"/><h:ArrowVisual3D Point1="0,0,0" Point2="{Binding YAxisEnd}" Diameter="0.025" Fill="LimeGreen"/><h:ArrowVisual3D Point1="0,0,0" Point2="{Binding ZAxisEnd}" Diameter="0.025" Fill="DodgerBlue"/>
+                <ModelVisual3D Content="{Binding CabinetVisual}"/><ModelVisual3D Content="{Binding CabinetColliderPreview}"/><ModelVisual3D Content="{Binding CabinetTriggerPreview}"/><ModelVisual3D Content="{Binding ObjectVisuals}"/>
+                <h:BoundingBoxVisual3D BoundingBox="{Binding SelectedBounds}" Color="Gold" Diameter="0.012"/>
+            </h:HelixViewport3D>
+            <Border Margin="12" Padding="8" VerticalAlignment="Bottom" Background="{DynamicResource ToolBarBackgroundBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1"><ItemsControl ItemsSource="{Binding Diagnostics}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></Border>
+        </Grid>
+        <Grid Grid.Row="2" Margin="8"><Grid.ColumnDefinitions><ColumnDefinition Width="280"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <DockPanel><StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6"><Button Content="+ Add" Command="{Binding AddCommand}" Padding="8,2"/><Button Content="Remove" Command="{Binding RemoveSelectedCommand}" Padding="8,2" Margin="6,0,0,0"/></StackPanel><ListBox ItemsSource="{Binding Objects}" SelectedItem="{Binding SelectedObject}" DisplayMemberPath="DisplayName"/></DockPanel>
+            <Border Grid.Column="1" Margin="8,0,0,0" Padding="10" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1"><StackPanel DataContext="{Binding SelectedObject}" IsEnabled="{Binding DataContext.MachineComposition3D.HasSelection, ElementName=CompositionRoot}">
+                <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName, TargetNullValue=Select an Object3D instance}"/>
+                <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="Position"/><TextBox Grid.Column="1" Text="{Binding PositionX, UpdateSourceTrigger=LostFocus}"/><TextBox Grid.Column="2" Text="{Binding PositionY, UpdateSourceTrigger=LostFocus}" Margin="4,0"/><TextBox Grid.Column="3" Text="{Binding PositionZ, UpdateSourceTrigger=LostFocus}"/></Grid>
+                <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="Rotation (°)"/><TextBox Grid.Column="1" Text="{Binding RotationX, UpdateSourceTrigger=LostFocus}"/><TextBox Grid.Column="2" Text="{Binding RotationY, UpdateSourceTrigger=LostFocus}" Margin="4,0"/><TextBox Grid.Column="3" Text="{Binding RotationZ, UpdateSourceTrigger=LostFocus}"/></Grid>
+                <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="Scale"/><TextBox Grid.Column="1" Text="{Binding ScaleX, UpdateSourceTrigger=LostFocus}"/><TextBox Grid.Column="2" Text="{Binding ScaleY, UpdateSourceTrigger=LostFocus}" Margin="4,0"/><TextBox Grid.Column="3" Text="{Binding ScaleZ, UpdateSourceTrigger=LostFocus}"/></Grid>
+            </StackPanel></Border>
+        </Grid>
+    </Grid>
+</UserControl>
