@@ -330,6 +330,6 @@ public sealed class RuntimeReelRenderingTests
 
     private static RuntimeMachine Machine()
     {
-        return new RuntimeMachine(new ResolvedRuntimeBuild(string.Empty, new MachineRuntimeManifest(), string.Empty, new CabinetRuntimeManifest(), string.Empty, new MachineRuntimeFaceReference[0], new Dictionary<string, ResolvedRuntimeObjectDefinition>()), null);
+        return new RuntimeMachine(new ResolvedRuntimeBuild(string.Empty, new MachineRuntimeManifest { anchors = new MachineRuntimeAnchor[0] }, string.Empty, new CabinetRuntimeManifest(), string.Empty, new MachineRuntimeFaceReference[0], new Dictionary<string, ResolvedRuntimeObjectDefinition>()), null);
     }
 }

@@ -14,9 +14,10 @@ public sealed record MachineDocument(
     MachineReelAssignment[] ReelAssignments,
     MachineObject3DInstance[] ObjectInstances,
     RuntimeDefinition Runtime,
-    List<InputDefinitionModel> InputDefinitions)
+    List<InputDefinitionModel> InputDefinitions,
+    MachineAnchor[] Anchors)
 {
-    public const int CurrentSchemaVersion = 5;
+    public const int CurrentSchemaVersion = 6;
 
     [JsonIgnore]
     public EmulationRuntimeDefinition EmulationRuntime => Runtime as EmulationRuntimeDefinition
@@ -31,6 +32,7 @@ public sealed record MachineDocument(
         [],
         [],
         EmulationRuntimeDefinition.Create(FruitMachinePlatformType.None),
+        [],
         []);
 }
 
@@ -43,7 +45,7 @@ public sealed record MachineVector3(double X, double Y, double Z)
 
 /// <summary>
 /// A Machine-level transform. Rotation is authored as Euler angles in degrees around X, Y and Z;
-/// runtime conversion applies them in Unity's standard Z-X-Y order. There is no parent transform in schema 5.
+/// runtime conversion applies them in Unity's standard Z-X-Y order. There is no parent transform in schema 6.
 /// </summary>
 public sealed record MachineObjectTransform(MachineVector3 Position, MachineVector3 Rotation, MachineVector3 Scale)
 {
@@ -52,6 +54,12 @@ public sealed record MachineObjectTransform(MachineVector3 Position, MachineVect
 
 /// <summary>One independently identified use of a reusable Object3D asset in a Machine.</summary>
 public sealed record MachineObject3DInstance(string Id, string DisplayName, AssetReference? ObjectAsset, MachineObjectTransform Transform);
+
+/// <summary>A stable, Machine-owned position and XYZ Euler rotation in composition space. Anchors have no scale or scene object.</summary>
+public sealed record MachineAnchor(string Id, string DisplayName, MachineVector3 Position, MachineVector3 Rotation)
+{
+    public static MachineAnchor Create(string id, string displayName = "Anchor") => new(id, displayName, MachineVector3.Zero, MachineVector3.Zero);
+}
 
 public sealed record MachineSurfaceAssignment(string TargetId, string FaceAssetPath)
 {
@@ -149,6 +157,7 @@ public static class MachineDocumentStorage
             writer.WritePropertyName("surfaceAssignments"); JsonSerializer.Serialize(writer, document.SurfaceAssignments.Select(x => x.Normalized()), Options);
             writer.WritePropertyName("reelAssignments"); JsonSerializer.Serialize(writer, document.ReelAssignments.Select(x => x.Normalized()), Options);
             writer.WritePropertyName("objectInstances"); JsonSerializer.Serialize(writer, document.ObjectInstances, Options);
+            writer.WritePropertyName("anchors"); JsonSerializer.Serialize(writer, document.Anchors, Options);
             writer.WritePropertyName("runtime");
             writer.WriteStartObject();
             switch (document.Runtime)
@@ -203,7 +212,8 @@ public static class MachineDocumentStorage
                 root.TryGetProperty("reelAssignments", out var reels) ? reels.Deserialize<MachineReelAssignment[]>(Options) ?? [] : [],
                 root.GetProperty("objectInstances").Deserialize<MachineObject3DInstance[]>(Options) ?? throw new InvalidOperationException("Machine ObjectInstances collection is required."),
                 new EmulationRuntimeDefinition(platform, settings),
-                root.TryGetProperty("inputDefinitions", out var inputs) ? inputs.Deserialize<List<InputDefinitionModel>>(Options) ?? [] : []);
+                root.TryGetProperty("inputDefinitions", out var inputs) ? inputs.Deserialize<List<InputDefinitionModel>>(Options) ?? [] : [],
+                root.GetProperty("anchors").Deserialize<MachineAnchor[]>(Options) ?? throw new InvalidOperationException("Machine Anchors collection is required."));
             Validate(document);
             return true;
         }
@@ -230,6 +240,15 @@ public static class MachineDocumentStorage
             _ = new AssetReference(instance.ObjectAsset.Scope, instance.ObjectAsset.Path);
             ValidateTransform(instance.Id, instance.Transform);
         }
+        if (document.Anchors is null) throw new InvalidOperationException("Machine Anchors collection is required.");
+        if (document.Anchors.GroupBy(x => x.Id, StringComparer.Ordinal).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine anchor IDs must be unique (case-sensitive).");
+        foreach (var anchor in document.Anchors)
+        {
+            if (!MachineCompositionId.IsValid(anchor.Id)) throw new InvalidOperationException($"Machine anchor ID '{anchor.Id}' is invalid; use letters, digits, underscore, or hyphen.");
+            if (string.IsNullOrWhiteSpace(anchor.DisplayName)) throw new InvalidOperationException($"Machine anchor '{anchor.Id}' display name is required.");
+            if (anchor.Position is null || anchor.Rotation is null || !Finite(anchor.Position) || !Finite(anchor.Rotation))
+                throw new InvalidOperationException($"Machine anchor '{anchor.Id}' position and rotation must be finite.");
+        }
         if (document.CabinetAsset is not null) _ = new AssetReference(document.CabinetAsset.Scope, document.CabinetAsset.Path);
         foreach (var assignment in document.ReelAssignments) _ = new AssetReference(assignment.ReelAsset.Scope, assignment.ReelAsset.Path);
     }
@@ -238,17 +257,23 @@ public static class MachineDocumentStorage
     {
         if (transform is null || transform.Position is null || transform.Rotation is null || transform.Scale is null)
             throw new InvalidOperationException($"Machine Object3D instance '{id}' requires a transform.");
-        static bool Finite(MachineVector3 value) => double.IsFinite(value.X) && double.IsFinite(value.Y) && double.IsFinite(value.Z);
         if (!Finite(transform.Position) || !Finite(transform.Rotation) || !Finite(transform.Scale))
             throw new InvalidOperationException($"Machine Object3D instance '{id}' transform values must be finite.");
         if (transform.Scale.X <= 0 || transform.Scale.Y <= 0 || transform.Scale.Z <= 0)
             throw new InvalidOperationException($"Machine Object3D instance '{id}' scale values must be positive.");
     }
+
+    private static bool Finite(MachineVector3 value) => double.IsFinite(value.X) && double.IsFinite(value.Y) && double.IsFinite(value.Z);
+}
+
+public static class MachineCompositionId
+{
+    public static bool IsValid(string? id) => !string.IsNullOrWhiteSpace(id) && id.All(character => char.IsAsciiLetterOrDigit(character) || character is '_' or '-');
 }
 
 public static class MachineObject3DInstanceId
 {
-    public static bool IsValid(string? id) => !string.IsNullOrWhiteSpace(id) && id.All(character => char.IsAsciiLetterOrDigit(character) || character is '_' or '-');
+    public static bool IsValid(string? id) => MachineCompositionId.IsValid(id);
 }
 
 public static class MachineStartupSelectionPolicy

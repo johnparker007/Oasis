@@ -207,7 +207,7 @@ namespace OasisPlayer.Tests
 
         private RuntimeMachine Machine(MachineRuntimeObjectInstance[] instances, ResolvedRuntimeObjectDefinition definition)
         {
-            var manifest = new MachineRuntimeManifest { objectInstances = instances };
+            var manifest = new MachineRuntimeManifest { anchors = Array.Empty<MachineRuntimeAnchor>(), objectInstances = instances };
             var definitions = new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "def", definition } };
             return new RuntimeMachine(new ResolvedRuntimeBuild("", manifest, "", new CabinetRuntimeManifest(), "", Array.Empty<MachineRuntimeFaceReference>(), definitions), null);
         }

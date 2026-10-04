@@ -25,6 +25,7 @@ namespace OasisPlayer.RuntimeBuild
         public string cabinetManifest = string.Empty;
         public MachineRuntimeFaceReference[] faces = Array.Empty<MachineRuntimeFaceReference>();
         public MachineRuntimeObjectInstance[] objectInstances = Array.Empty<MachineRuntimeObjectInstance>();
+        public MachineRuntimeAnchor[] anchors;
         public MachineRuntimeManifestDefinition runtime;
         public MachineInputDefinition[] inputs = Array.Empty<MachineInputDefinition>();
     }
@@ -32,6 +33,7 @@ namespace OasisPlayer.RuntimeBuild
     [Serializable] public sealed class RuntimeVector3Definition { public float x; public float y; public float z; public Vector3 Value { get { return new Vector3(x, y, z); } } }
     [Serializable] public sealed class MachineRuntimeObjectTransform { public RuntimeVector3Definition position = new RuntimeVector3Definition(); public RuntimeVector3Definition rotationEulerDegrees = new RuntimeVector3Definition(); public RuntimeVector3Definition scale = new RuntimeVector3Definition(); }
     [Serializable] public sealed class MachineRuntimeObjectInstance { public string id = string.Empty; public string displayName = string.Empty; public string definitionId = string.Empty; public string definitionManifest = string.Empty; public MachineRuntimeObjectTransform transform = new MachineRuntimeObjectTransform(); }
+    [Serializable] public sealed class MachineRuntimeAnchor { public string id = string.Empty; public string displayName = string.Empty; public RuntimeVector3Definition position = new RuntimeVector3Definition(); public RuntimeVector3Definition rotationEulerDegrees = new RuntimeVector3Definition(); }
     [Serializable] public sealed class Object3DRuntimeCollider { public string kind = string.Empty; public float[] center = Array.Empty<float>(); public float radius; public float[] size = Array.Empty<float>(); public float height; public string axis = string.Empty; }
     [Serializable] public sealed class Object3DRuntimeRigidbody { public bool enabled; public float mass; public bool useGravity; }
     [Serializable] public sealed class Object3DRuntimeManifest { public string schema = string.Empty; public int schemaVersion; public string definitionId = string.Empty; public string displayName = string.Empty; public string model = string.Empty; public float modelScale; public string upAxis = string.Empty; public Object3DRuntimeCollider collider; public Object3DRuntimeRigidbody rigidbody; }
@@ -250,7 +252,7 @@ namespace OasisPlayer.RuntimeBuild
         public const string MachineSchema = "oasis.machine.runtime";
         public const string CabinetSchema = "oasis.cabinet.runtime";
         public const string ObjectSchema = "oasis.object3d.runtime";
-        public const int MachineSchemaVersion = 7;
+        public const int MachineSchemaVersion = 8;
         public const int ObjectSchemaVersion = 1;
 
         public static bool TryLoad(string buildDirectory, out ResolvedRuntimeBuild build, out string error)
@@ -301,6 +303,22 @@ namespace OasisPlayer.RuntimeBuild
             {
                 error = $"Machine runtime definition is missing or invalid in {machinePath}.";
                 return false;
+            }
+
+            if (machine.anchors == null)
+            {
+                error = $"Machine anchors collection is missing or null in {machinePath}.";
+                return false;
+            }
+            var anchorIds = new HashSet<string>(StringComparer.Ordinal);
+            var anchors = machine.anchors;
+            for (var i = 0; i < anchors.Length; i++)
+            {
+                var anchor = anchors[i];
+                if (anchor == null || !IsCompositionId(anchor.id) || string.IsNullOrWhiteSpace(anchor.displayName)
+                    || anchor.position == null || anchor.rotationEulerDegrees == null
+                    || !IsFinite(anchor.position) || !IsFinite(anchor.rotationEulerDegrees) || !anchorIds.Add(anchor.id))
+                { error = $"Machine anchor at index {i} is invalid or duplicated in {machinePath}."; return false; }
             }
 
             if (!TryResolveContained(root, root, machine.cabinetManifest, out var cabinetPath, out error))
@@ -385,6 +403,22 @@ namespace OasisPlayer.RuntimeBuild
             if (string.IsNullOrWhiteSpace(json)) return false;
             var trimmed = json.Trim();
             return trimmed.Length >= 2 && trimmed[0] == '{' && trimmed[trimmed.Length - 1] == '}';
+        }
+
+        private static bool IsCompositionId(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return false;
+            for (var i = 0; i < id.Length; i++)
+            {
+                var value = id[i];
+                if (!((value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z') || (value >= '0' && value <= '9') || value == '_' || value == '-')) return false;
+            }
+            return true;
+        }
+
+        private static bool IsFinite(RuntimeVector3Definition value)
+        {
+            return !float.IsNaN(value.x) && !float.IsInfinity(value.x) && !float.IsNaN(value.y) && !float.IsInfinity(value.y) && !float.IsNaN(value.z) && !float.IsInfinity(value.z);
         }
 
         private static bool IsSupportedEmulationPlatform(string platform)

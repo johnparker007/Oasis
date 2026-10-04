@@ -28,7 +28,7 @@ public sealed class MachineDocumentTests
     }
 
     [Fact]
-    public void Schema5_RoundTripsCompositionRuntimeAndInputs()
+    public void Schema6_RoundTripsCompositionRuntimeAndInputs()
     {
         var machine = MachineDocument.Create("Machine A") with
         {
@@ -40,7 +40,7 @@ public sealed class MachineDocumentTests
         var json = MachineDocumentStorage.Serialize(machine);
         using (var authored = JsonDocument.Parse(json))
         {
-            Assert.Equal(5, authored.RootElement.GetProperty("schemaVersion").GetInt32());
+            Assert.Equal(6, authored.RootElement.GetProperty("schemaVersion").GetInt32());
             Assert.Empty(authored.RootElement.GetProperty("objectInstances").EnumerateArray());
             Assert.Equal("Emulation", authored.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
             Assert.False(authored.RootElement.GetProperty("runtime").TryGetProperty("$type", out _));
@@ -56,9 +56,52 @@ public sealed class MachineDocumentTests
     [Fact]
     public void WrongSchema_IsRejectedWithoutCompatibilityFallback()
     {
-        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")).Replace("\"schemaVersion\": 5", "\"schemaVersion\": 4");
+        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")).Replace("\"schemaVersion\": 6", "\"schemaVersion\": 5");
         Assert.False(MachineDocumentStorage.TryRead(json, out _, out var error));
-        Assert.Contains("only version 5", error);
+        Assert.Contains("only version 6", error);
+    }
+
+    [Fact]
+    public void Anchors_RoundTripIndependentMachineSpaceTransforms()
+    {
+        var anchors = new[]
+        {
+            new MachineAnchor("rackCueBall", "Rack Cue Ball", new(1, 2, 3), new(0, 90, 0)),
+            new MachineAnchor("rackBall01", "Rack Ball 1", new(.1, .2, .3), new(10, 20, 30)),
+            new MachineAnchor("rackBall08", "Rack Ball 8", new(.4, .5, .6), new(40, 50, 60)),
+            new MachineAnchor("traySlot01", "Tray Slot 1", new(7, 8, 9), new(70, 80, 90))
+        };
+        var source = MachineDocument.Create("Pool") with { Anchors = anchors };
+        Assert.True(MachineDocumentStorage.TryRead(MachineDocumentStorage.Serialize(source), out var result, out var error), error);
+        Assert.Equal(anchors, result.Anchors);
+        Assert.Equal(MachineVector3.Zero, MachineAnchor.Create("anchor1").Position);
+        Assert.Equal(MachineVector3.Zero, MachineAnchor.Create("anchor1").Rotation);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("bad id")]
+    [InlineData("a:b")]
+    public void InvalidAnchorIds_AreRejected(string id)
+    {
+        var source = MachineDocument.Create("Machine") with { Anchors = [MachineAnchor.Create(id)] };
+        Assert.Throws<InvalidOperationException>(() => MachineDocumentStorage.Serialize(source));
+        Assert.True(MachineObjectReference.Anchor(id).IsEmpty);
+    }
+
+    [Fact]
+    public void AnchorReferences_AreCanonicalAndObjectNamespaceMayCoexist()
+    {
+        Assert.True(MachineObjectReference.TryParse("anchor:rackBall08", out var reference));
+        Assert.Equal(MachineObjectKind.Anchor, reference.Kind);
+        Assert.Equal("anchor:rackBall08", reference.ToString());
+        Assert.False(MachineObjectReference.TryParse("anchor:a:b", out _));
+        var machine = MachineDocument.Create("Machine") with
+        {
+            Anchors = [MachineAnchor.Create("same")],
+            ObjectInstances = [new("same", "Same", AssetReference.Project("Assets/Object3D/Same/asset.object3d"), MachineObjectTransform.Identity)]
+        };
+        Assert.Contains("\"anchors\"", MachineDocumentStorage.Serialize(machine));
     }
 
     [Fact]

@@ -37,7 +37,7 @@ Do not duplicate semantic mesh geometry into runtime manifests.
 
 Object3D differs from Cabinet semantic geometry because Machine instance identity and placement are Machine-owned.
 
-Machine runtime schema 7 contains Machine-owned Object3D instance declarations. Each declaration preserves its authored ID/display name and position, Euler rotation in degrees, and placement scale, and points at a generated definition manifest rather than an authoring path.
+Machine runtime schema 8 contains Machine-owned Object3D instance declarations. Each declaration preserves its authored ID/display name and position, Euler rotation in degrees, and placement scale, and points at a generated definition manifest rather than an authoring path.
 
 Reusable definitions are emitted once under `objects/<object-guid>/` with `object.runtime.json` (schema `oasis.object3d.runtime`, version 1) and `object.glb`. The lower-case canonical authored Object3D GUID is the deterministic package/definition identity. Definitions retain model scale/up-axis and the minimal collider/Rigidbody contract; generated paths are package-relative. Conflicting resolved definitions claiming the same GUID fail the build.
 
@@ -48,6 +48,8 @@ Object3D primitive collider coordinates are authored in source-model coordinates
 `RuntimeMachine` registers live `RuntimeObjectInstance` values by raw Machine instance ID (the Object3D domain represented canonically as `object:<id>`). Each value retains identity/display name, its resolved definition, authoritative live root GameObject, optional Collider/root Rigidbody, and authored initial-transform data that physics does not mutate. Unload destroys all instance roots, clears the registry, and releases the per-load glTF imports. Object3D GLBs remain visible and are not processed using Cabinet semantic-name conventions.
 
 See `11_DYNAMIC_OBJECTS_BEHAVIOUR_AND_SCRIPTING.md`.
+
+Machine runtime schema 8 also exports lightweight `anchors[]` declarations with raw stable ID, display name, Machine-space position, and `rotationEulerDegrees`. Anchors have no scale, asset, physics, or Editor-only viewport state. The Player validates and registers them as `RuntimeAnchor` values before content setup; it does not create Unity GameObjects to store them.
 
 ## Diagnostics
 

@@ -12,6 +12,7 @@
                         <StackPanel MinWidth="190">
                             <CheckBox Content="Cabinet visual" IsChecked="{Binding ShowCabinetVisual}"/>
                             <CheckBox Margin="0,6,0,0" Content="Object3D instances" IsChecked="{Binding ShowObjects}"/>
+                            <CheckBox Margin="0,6,0,0" Content="Anchors" IsChecked="{Binding ShowAnchors}"/>
                             <CheckBox Margin="0,6,0,0" Content="Cabinet collision" IsChecked="{Binding ShowCabinetCollision}"/>
                             <CheckBox Margin="18,6,0,0" Content="Colliders" IsEnabled="{Binding ShowCabinetCollision}" IsChecked="{Binding ShowColliders}"/>
                             <CheckBox Margin="18,6,0,0" Content="Triggers" IsEnabled="{Binding ShowCabinetCollision}" IsChecked="{Binding ShowTriggers}"/>
@@ -28,13 +29,13 @@
                 <ModelVisual3D><ModelVisual3D.Content><Model3DGroup><AmbientLight Color="#666666"/><DirectionalLight Color="#F4F4F4" Direction="-0.45,-0.8,-0.35"/><DirectionalLight Color="#8C98AA" Direction="0.6,-0.35,0.55"/></Model3DGroup></ModelVisual3D.Content></ModelVisual3D>
                 <h:GridLinesVisual3D Width="{Binding GridSize}" Length="{Binding GridSize}" MinorDistance="{Binding GridSpacing}" Normal="0,1,0" LengthDirection="1,0,0" Thickness="0.01"/>
                 <h:ArrowVisual3D Point1="0,0,0" Point2="{Binding XAxisEnd}" Diameter="0.025" Fill="Red"/><h:ArrowVisual3D Point1="0,0,0" Point2="{Binding YAxisEnd}" Diameter="0.025" Fill="LimeGreen"/><h:ArrowVisual3D Point1="0,0,0" Point2="{Binding ZAxisEnd}" Diameter="0.025" Fill="DodgerBlue"/>
-                <ModelVisual3D Content="{Binding CabinetVisual}"/><ModelVisual3D Content="{Binding CabinetColliderPreview}"/><ModelVisual3D Content="{Binding CabinetTriggerPreview}"/><ModelVisual3D Content="{Binding ObjectVisuals}"/>
+                <ModelVisual3D Content="{Binding CabinetVisual}"/><ModelVisual3D Content="{Binding CabinetColliderPreview}"/><ModelVisual3D Content="{Binding CabinetTriggerPreview}"/><ModelVisual3D Content="{Binding ObjectVisuals}"/><ModelVisual3D Content="{Binding AnchorVisuals}"/>
                 <h:BoundingBoxVisual3D BoundingBox="{Binding SelectedBounds}" Diameter="0.012"/>
             </h:HelixViewport3D>
             <Border Margin="12" Padding="8" VerticalAlignment="Bottom" Background="{DynamicResource ToolBarBackgroundBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1"><ItemsControl ItemsSource="{Binding Diagnostics}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></Border>
         </Grid>
         <Grid Grid.Row="2" Margin="8"><Grid.ColumnDefinitions><ColumnDefinition Width="280"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <DockPanel><StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6"><Button Content="+ Add" Command="{Binding AddCommand}" Padding="8,2"/><Button Content="Remove" Command="{Binding RemoveSelectedCommand}" Padding="8,2" Margin="6,0,0,0"/></StackPanel><ListBox ItemsSource="{Binding Objects}" SelectedItem="{Binding SelectedObject}" DisplayMemberPath="DisplayName"/></DockPanel>
+            <StackPanel><TextBlock Text="Objects" FontWeight="SemiBold"/><ListBox Height="60" ItemsSource="{Binding Objects}" SelectedItem="{Binding SelectedObject}" DisplayMemberPath="DisplayName"/><TextBlock Text="Anchors" FontWeight="SemiBold" Margin="0,8,0,0"/><ListBox Height="60" ItemsSource="{Binding Anchors}" SelectedItem="{Binding SelectedAnchor}" DisplayMemberPath="DisplayName"/></StackPanel>
             <Border Grid.Column="1" Margin="8,0,0,0" Padding="10" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1"><StackPanel DataContext="{Binding SelectedObject}" IsEnabled="{Binding DataContext.MachineComposition3D.HasSelection, ElementName=CompositionRoot}">
                 <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName, TargetNullValue=Select an Object3D instance}"/>
                 <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="Position"/><TextBox Grid.Column="1" Text="{Binding PositionX, UpdateSourceTrigger=LostFocus}"/><TextBox Grid.Column="2" Text="{Binding PositionY, UpdateSourceTrigger=LostFocus}" Margin="4,0"/><TextBox Grid.Column="3" Text="{Binding PositionZ, UpdateSourceTrigger=LostFocus}"/></Grid>
