@@ -517,7 +517,10 @@ public sealed class FabricManagedBehaviorTests
             new FakeAudioSink(), new FakeClock(), errors.Add);
 
         await backend.StartAsync(CreateRequest(), CancellationToken.None);
-        await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        // The backend pump uses a dedicated OS thread, which can start late while the
+        // full test suite is running in parallel on a busy CI worker. This test is
+        // verifying stop cancellation rather than thread-start latency.
+        await session.FirstAdvance.Task.WaitAsync(TimeSpan.FromSeconds(10));
         await backend.StopAsync(CancellationToken.None);
 
         Assert.Null(backend.LastFailure);
