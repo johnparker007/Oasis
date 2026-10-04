@@ -9,7 +9,8 @@ public enum MachineObjectKind
     SevenSegmentDisplay,
     Input,
     Object,
-    Anchor
+    Anchor,
+    Trigger
 }
 
 public readonly record struct MachineObjectReference(MachineObjectKind Kind, string Id)
@@ -29,11 +30,12 @@ public readonly record struct MachineObjectReference(MachineObjectKind Kind, str
     public static MachineObjectReference Input(string inputId) => Create(MachineObjectKind.Input, inputId);
     public static MachineObjectReference Object(string objectId) => Create(MachineObjectKind.Object, objectId);
     public static MachineObjectReference Anchor(string anchorId) => Create(MachineObjectKind.Anchor, anchorId);
+    public static MachineObjectReference Trigger(string triggerId) => Create(MachineObjectKind.Trigger, triggerId);
 
     public static MachineObjectReference Create(MachineObjectKind kind, string id)
     {
         if (kind == MachineObjectKind.Unknown || string.IsNullOrWhiteSpace(id)
-            || (kind is MachineObjectKind.Object or MachineObjectKind.Anchor) && !MachineCompositionId.IsValid(id))
+            || (kind is MachineObjectKind.Object or MachineObjectKind.Anchor or MachineObjectKind.Trigger) && !MachineCompositionId.IsValid(id))
         {
             return Empty;
         }
@@ -64,6 +66,7 @@ public readonly record struct MachineObjectReference(MachineObjectKind Kind, str
             "input" => MachineObjectKind.Input,
             "object" => MachineObjectKind.Object,
             "anchor" => MachineObjectKind.Anchor,
+            "trigger" => MachineObjectKind.Trigger,
             _ => MachineObjectKind.Unknown
         };
 
@@ -92,6 +95,7 @@ public readonly record struct MachineObjectReference(MachineObjectKind Kind, str
             MachineObjectKind.Input => "input",
             MachineObjectKind.Object => "object",
             MachineObjectKind.Anchor => "anchor",
+            MachineObjectKind.Trigger => "trigger",
             _ => string.Empty
         };
 

@@ -58,8 +58,8 @@ namespace OasisPlayer.RuntimeBuild
     [Serializable]
     public sealed class MachineInputDefinition
     {
+        public string id = string.Empty;
         public string name = string.Empty;
-        public string machineReference = string.Empty;
     }
 
     [Serializable]

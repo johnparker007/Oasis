@@ -12,6 +12,8 @@ public sealed class MachineObjectReferenceTests
     [InlineData("sevenSegment:12", MachineObjectKind.SevenSegmentDisplay, "12")]
     [InlineData("input:Start", MachineObjectKind.Input, "Start")]
     [InlineData("object:ball08", MachineObjectKind.Object, "ball08")]
+    [InlineData("anchor:traySlot01", MachineObjectKind.Anchor, "traySlot01")]
+    [InlineData("trigger:PocketLeftCorner", MachineObjectKind.Trigger, "PocketLeftCorner")]
     public void TryParse_ValidReference_ReturnsMachineObjectReference(string value, MachineObjectKind expectedKind, string expectedId)
     {
         var parsed = MachineObjectReference.TryParse(value, out var reference);
@@ -44,6 +46,25 @@ public sealed class MachineObjectReferenceTests
 
     [Fact]
     public void Object_UsesCanonicalObjectPrefix() => Assert.Equal("object:ball08", MachineObjectReference.Object("ball08").ToString());
+
+    [Fact]
+    public void Trigger_UsesCanonicalPrefixAndKind()
+    {
+        var reference = MachineObjectReference.Trigger("PocketLeftCorner");
+        Assert.Equal(MachineObjectKind.Trigger, reference.Kind);
+        Assert.Equal("trigger:PocketLeftCorner", reference.ToString());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("bad id")]
+    [InlineData("bad:id")]
+    [InlineData("bad/id")]
+    public void Trigger_InvalidIdDoesNotCreateOrParseReference(string id)
+    {
+        Assert.True(MachineObjectReference.Trigger(id).IsEmpty);
+        Assert.False(MachineObjectReference.TryParse($"trigger:{id}", out _));
+    }
 
     [Theory]
     [InlineData("")]
