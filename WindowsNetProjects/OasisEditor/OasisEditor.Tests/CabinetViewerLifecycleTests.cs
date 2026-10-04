@@ -79,6 +79,14 @@ public sealed class CabinetViewerLifecycleTests
         var secondMachine = MachineTab("Second");
 
         viewer.SelectedLampPreviewMode = CabinetLampPreviewMode.LampsAllOn;
+        Assert.True(viewer.Viewport.ShowVisualMeshes);
+        Assert.False(viewer.Viewport.ShowCollisionMeshes);
+        Assert.True(viewer.Viewport.ShowColliders);
+        Assert.True(viewer.Viewport.ShowTriggers);
+        viewer.Viewport.ShowVisualMeshes = false;
+        viewer.Viewport.ShowCollisionMeshes = true;
+        viewer.Viewport.ShowColliders = false;
+        viewer.Viewport.ShowTriggers = false;
         viewer.SetMachineCompositionContext(firstMachine);
         viewer.SetMachineCompositionContext(secondMachine);
         viewer.SetMachineCompositionContext(null);
@@ -88,6 +96,22 @@ public sealed class CabinetViewerLifecycleTests
         Assert.Equal("No Machine context", viewer.PreviewingMachine);
         Assert.Null(viewer.Viewport.FacePreviewModel);
         viewer.Dispose();
+    }
+
+    [Fact]
+    public async Task PreviewVisibilityUsesLoadedModelsWithoutReloading()
+    {
+        var document = CreateDocument();
+        var loader = new CountingLoader(CreateModel());
+        using var viewer = new CabinetModelDocumentViewModel(loader, document);
+        await viewer.LoadAsync();
+
+        viewer.Viewport.ShowCollisionMeshes = true;
+        viewer.Viewport.ShowVisualMeshes = false;
+        viewer.Viewport.ShowVisualMeshes = true;
+
+        Assert.Equal(1, loader.LoadCount);
+        Assert.False(document.IsDirty);
     }
 
     [Fact]

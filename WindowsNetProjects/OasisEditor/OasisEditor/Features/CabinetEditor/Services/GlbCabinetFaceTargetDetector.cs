@@ -10,7 +10,7 @@ namespace OasisEditor.Features.CabinetEditor.Services;
 
 public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
 {
-    private const string TargetPrefix = "OasisFace_";
+    private const string TargetPrefix = CabinetSemanticGeometry.FaceTargetPrefix;
 
     public IReadOnlyList<CabinetFaceTarget> DetectTargets(string modelPath, CancellationToken cancellationToken = default)
     {
@@ -36,7 +36,9 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
             var nodeName = node.TryGetProperty("name", out var nameElement) ? nameElement.GetString() : null;
             var meshIndex = node.TryGetProperty("mesh", out var meshElement) ? meshElement.GetInt32() : -1;
             var meshName = TryGetMeshName(root, meshIndex);
-            var sourceName = IsTargetName(nodeName) ? nodeName! : IsTargetName(meshName) ? meshName! : null;
+            var sourceName = CabinetSemanticGeometry.Classify(nodeName, meshName) == CabinetSemanticGeometryKind.FaceTarget
+                ? IsTargetName(nodeName) ? nodeName! : meshName
+                : null;
             if (sourceName is null) continue;
 
             targets.Add(ExtractTarget(root, glb.BinaryChunk, meshIndex, transform, sourceName));
@@ -311,7 +313,7 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
     private static string? TryGetMeshName(JsonElement root, int meshIndex)
         => TryGetArrayItem(root, "meshes", meshIndex, out var mesh) && mesh.TryGetProperty("name", out var name) ? name.GetString() : null;
 
-    private static bool IsTargetName(string? name) => name?.StartsWith(TargetPrefix, StringComparison.Ordinal) == true;
+    private static bool IsTargetName(string? name) => CabinetSemanticGeometry.ClassifyName(name) == CabinetSemanticGeometryKind.FaceTarget;
     private static CabinetFaceTarget Invalid(string id, string sourceName, string displayName, string message) => new(id, sourceName, displayName, Array.Empty<Point3D>(), default, default, false, message);
 
     private static string CreateStableId(string sourceName)

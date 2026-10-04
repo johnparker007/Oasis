@@ -1,4 +1,5 @@
 using System.IO;
+using System.Diagnostics;
 using System.Numerics;
 using System.Text;
 using System.Text.Json;
@@ -6,8 +7,6 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
-using SharpGLTF.Geometry;
-using SharpGLTF.Geometry.VertexTypes;
 using SharpGLTF.Schema2;
 
 namespace OasisEditor.Features.CabinetEditor.Services;
@@ -53,29 +52,13 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
 
             var faceTargets = FaceTargetDetector.DetectTargets(modelPath, cancellationToken);
             var reflectionTargets = GlbCabinetReflectionReceiverDiscovery.Discover(modelPath);
-            var primitiveMeshes = new Dictionary<int, MeshGeometry3D>();
+            var visualMeshes = new Dictionary<int, MeshGeometry3D>();
+            var colliderMesh = new MeshGeometry3D();
+            var triggerMesh = new MeshGeometry3D();
             var triangleCount = 0;
-            foreach (var (a, b, c, material) in scene.EvaluateTriangles())
+            foreach (var node in scene.VisualChildren)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var pointA = ToPoint3D(a);
-                var pointB = ToPoint3D(b);
-                var pointC = ToPoint3D(c);
-                if (IsFaceTargetLocatorTriangle(pointA, pointB, pointC, faceTargets))
-                {
-                    continue;
-                }
-
-                var materialIndex = GetLogicalIndex(material);
-                var mesh = GetMeshForMaterial(primitiveMeshes, materialIndex);
-                var fallbackNormal = CalculateNormal(pointA, pointB, pointC);
-
-                AddTriangleVertex(mesh, a, pointA, fallbackNormal);
-                AddTriangleVertex(mesh, b, pointB, fallbackNormal);
-                AddTriangleVertex(mesh, c, pointC, fallbackNormal);
-
-                triangleCount++;
+                AddNodeGeometry(node, visualMeshes, colliderMesh, triggerMesh, ref triangleCount, cancellationToken);
             }
 
             if (triangleCount == 0)
@@ -84,7 +67,7 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
             }
 
             var group = new Model3DGroup();
-            foreach (var (materialIndex, mesh) in primitiveMeshes)
+            foreach (var (materialIndex, mesh) in visualMeshes)
             {
                 mesh.Freeze();
                 var materialInfo = materialInfos.GetMaterialInfo(materialIndex);
@@ -99,8 +82,10 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
                 group.Children.Add(model);
             }
 
+            var colliderGroup = CreateDiagnosticGroup(colliderMesh, Color.FromArgb(105, 40, 170, 255));
+            var triggerGroup = CreateDiagnosticGroup(triggerMesh, Color.FromArgb(105, 255, 90, 185));
             group.Freeze();
-            return CabinetModelLoadResult.Success(group, faceTargets, reflectionTargets);
+            return CabinetModelLoadResult.Success(group, faceTargets, reflectionTargets, colliderGroup, triggerGroup);
         }
         catch (OperationCanceledException)
         {
@@ -108,24 +93,54 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
         }
         catch (Exception ex)
         {
-            return CabinetModelLoadResult.Failure($"SharpGLTF fallback failed: {ex.Message}");
+            Trace.TraceError($"Cabinet GLB loader stage=SharpGLTF path='{modelPath}' exception={ex}");
+            return CabinetModelLoadResult.Failure($"SharpGLTF fallback failed ({ex.GetType().Name}): {ex.Message}");
         }
     }
 
-
-    private static bool IsFaceTargetLocatorTriangle(Point3D a, Point3D b, Point3D c, IReadOnlyList<Models.CabinetFaceTarget> faceTargets)
+    private static void AddNodeGeometry(Node node, Dictionary<int, MeshGeometry3D> visualMeshes, MeshGeometry3D colliderMesh, MeshGeometry3D triggerMesh, ref int triangleCount, CancellationToken cancellationToken)
     {
-        return faceTargets.Any(target => target.IsValid
-            && target.Corners.Count == 4
-            && IsTargetCorner(a, target.Corners)
-            && IsTargetCorner(b, target.Corners)
-            && IsTargetCorner(c, target.Corners));
+        if (node.Mesh is not null)
+        {
+            var kind = CabinetSemanticGeometry.Classify(node.Name, node.Mesh.Name);
+            if (kind != CabinetSemanticGeometryKind.FaceTarget)
+            {
+                foreach (var primitive in node.Mesh.Primitives)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var positions = primitive.GetVertexAccessor("POSITION")?.AsVector3Array()
+                        ?? throw new InvalidDataException($"Mesh '{node.Mesh.Name ?? node.Name}' has a primitive without POSITION.");
+                    var normals = primitive.GetVertexAccessor("NORMAL")?.AsVector3Array();
+                    var textureCoordinates = primitive.GetVertexAccessor("TEXCOORD_0")?.AsVector2Array();
+                    var target = kind switch
+                    {
+                        CabinetSemanticGeometryKind.Collider => colliderMesh,
+                        CabinetSemanticGeometryKind.Trigger => triggerMesh,
+                        _ => GetMeshForMaterial(visualMeshes, GetLogicalIndex(primitive.Material))
+                    };
+                    foreach (var (a, b, c) in primitive.GetTriangleIndices())
+                    {
+                        ValidateTriangleIndex(a, positions.Count, node);
+                        ValidateTriangleIndex(b, positions.Count, node);
+                        ValidateTriangleIndex(c, positions.Count, node);
+                        var pointA = TransformPoint(positions[a], node.WorldMatrix);
+                        var pointB = TransformPoint(positions[b], node.WorldMatrix);
+                        var pointC = TransformPoint(positions[c], node.WorldMatrix);
+                        var fallbackNormal = CalculateNormal(pointA, pointB, pointC);
+                        AddTriangleVertex(target, a, positions, normals, textureCoordinates, node.WorldMatrix, fallbackNormal);
+                        AddTriangleVertex(target, b, positions, normals, textureCoordinates, node.WorldMatrix, fallbackNormal);
+                        AddTriangleVertex(target, c, positions, normals, textureCoordinates, node.WorldMatrix, fallbackNormal);
+                        triangleCount++;
+                    }
+                }
+            }
+        }
+        foreach (var child in node.VisualChildren) AddNodeGeometry(child, visualMeshes, colliderMesh, triggerMesh, ref triangleCount, cancellationToken);
     }
 
-    private static bool IsTargetCorner(Point3D point, IReadOnlyList<Point3D> targetCorners)
+    private static void ValidateTriangleIndex(int index, int count, Node node)
     {
-        const double toleranceSquared = 1e-8;
-        return targetCorners.Any(corner => (corner - point).LengthSquared <= toleranceSquared);
+        if (index < 0 || index >= count) throw new InvalidDataException($"Mesh '{node.Mesh?.Name ?? node.Name}' contains triangle index {index} outside its {count} POSITION values.");
     }
 
     private static MeshGeometry3D GetMeshForMaterial(Dictionary<int, MeshGeometry3D> meshes, int materialIndex)
@@ -139,25 +154,30 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
         return mesh;
     }
 
-    private static Point3D ToPoint3D(IVertexBuilder vertex)
+    private static Point3D TransformPoint(Vector3 position, Matrix4x4 transform)
     {
-        var position = vertex.GetGeometry().GetPosition();
-        return new Point3D(position.X, position.Y, position.Z);
+        var transformed = Vector3.Transform(position, transform);
+        return new Point3D(transformed.X, transformed.Y, transformed.Z);
     }
 
-    private static void AddTriangleVertex(MeshGeometry3D mesh, IVertexBuilder vertex, Point3D point, Vector3D fallbackNormal)
+    private static void AddTriangleVertex(MeshGeometry3D mesh, int sourceIndex, IList<Vector3> positions, IList<Vector3>? normals, IList<Vector2>? textureCoordinates, Matrix4x4 transform, Vector3D fallbackNormal)
     {
         var index = mesh.Positions.Count;
-        mesh.Positions.Add(point);
-        mesh.Normals.Add(TryGetNormal(vertex, out var normal) ? normal : fallbackNormal);
-        mesh.TextureCoordinates.Add(ToTextureCoordinate(vertex));
+        mesh.Positions.Add(TransformPoint(positions[sourceIndex], transform));
+        mesh.Normals.Add(TryGetNormal(normals, sourceIndex, transform, out var normal) ? normal : fallbackNormal);
+        var uv = textureCoordinates is not null && sourceIndex < textureCoordinates.Count ? textureCoordinates[sourceIndex] : Vector2.Zero;
+        mesh.TextureCoordinates.Add(new Point(uv.X, uv.Y));
         mesh.TriangleIndices.Add(index);
     }
 
-    private static bool TryGetNormal(IVertexBuilder vertex, out Vector3D normal)
+    private static bool TryGetNormal(IList<Vector3>? normals, int index, Matrix4x4 transform, out Vector3D normal)
     {
-        if (vertex.GetGeometry().TryGetNormal(out Vector3 sourceNormal) && sourceNormal.LengthSquared() > float.Epsilon)
+        if (normals is not null && index < normals.Count && normals[index].LengthSquared() > float.Epsilon)
         {
+            var normalTransform = Matrix4x4.Invert(transform, out var inverse)
+                ? Matrix4x4.Transpose(inverse)
+                : transform;
+            var sourceNormal = Vector3.TransformNormal(normals[index], normalTransform);
             normal = new Vector3D(sourceNormal.X, sourceNormal.Y, sourceNormal.Z);
             normal.Normalize();
             return true;
@@ -167,13 +187,20 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
         return false;
     }
 
-    private static Point ToTextureCoordinate(IVertexBuilder vertex)
+    private static Model3DGroup? CreateDiagnosticGroup(MeshGeometry3D mesh, Color color)
     {
-        var material = vertex.GetMaterial();
-        if (material is null) return new Point(0, 0);
-
-        var uv = material.GetTexCoord(0);
-        return new Point(uv.X, uv.Y);
+        if (mesh.TriangleIndices.Count == 0) return null;
+        mesh.Freeze();
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        var material = new DiffuseMaterial(brush);
+        material.Freeze();
+        var geometry = new GeometryModel3D(mesh, material) { BackMaterial = material };
+        geometry.Freeze();
+        var group = new Model3DGroup();
+        group.Children.Add(geometry);
+        group.Freeze();
+        return group;
     }
 
     private static Vector3D CalculateNormal(Point3D a, Point3D b, Point3D c)
