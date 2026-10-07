@@ -11,4 +11,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
   </ItemGroup>
   <ItemGroup><ProjectReference Include="..\Oasis.Scripting\Oasis.Scripting.csproj" /></ItemGroup>
+  <ItemGroup>
+    <Content Include="..\Examples\Pool\behavior.oasis" Link="Pool\behavior.oasis" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

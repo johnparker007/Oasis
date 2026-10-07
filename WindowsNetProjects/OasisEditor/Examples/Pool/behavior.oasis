@@ -1,0 +1,98 @@
+// A8.5 collection/reset sample. Spatial data belongs to Machine anchors.
+const balls = [
+    object:ball01, object:ball02, object:ball03, object:ball04, object:ball05,
+    object:ball06, object:ball07, object:ball08, object:ball09, object:ball10,
+    object:ball11, object:ball12, object:ball13, object:ball14, object:ball15
+];
+const rack = [
+    anchor:rackBall01, anchor:rackBall02, anchor:rackBall03, anchor:rackBall04, anchor:rackBall05,
+    anchor:rackBall06, anchor:rackBall07, anchor:rackBall08, anchor:rackBall09, anchor:rackBall10,
+    anchor:rackBall11, anchor:rackBall12, anchor:rackBall13, anchor:rackBall14, anchor:rackBall15
+];
+const tray = [
+    anchor:traySlot01, anchor:traySlot02, anchor:traySlot03, anchor:traySlot04, anchor:traySlot05,
+    anchor:traySlot06, anchor:traySlot07, anchor:traySlot08, anchor:traySlot09, anchor:traySlot10,
+    anchor:traySlot11, anchor:traySlot12, anchor:traySlot13, anchor:traySlot14, anchor:traySlot15
+];
+const emptyCollection = [
+    false, false, false, false, false,
+    false, false, false, false, false,
+    false, false, false, false, false
+];
+state collected = emptyCollection;
+state trayCount = 0;
+
+on machine.started() {
+    collected = emptyCollection;
+    trayCount = 0;
+    for i in range(0, 15) {
+        object.set_active(balls[i], true);
+        object.teleport(balls[i], rack[i]);
+        object.set_velocity(balls[i], vec3(0, 0, 0));
+        object.set_angular_velocity(balls[i], vec3(0, 0, 0));
+    }
+    object.set_active(object:cueBall, true);
+    object.teleport(object:cueBall, anchor:rackCueBall);
+    object.set_velocity(object:cueBall, vec3(0, 0, 0));
+    object.set_angular_velocity(object:cueBall, vec3(0, 0, 0));
+}
+
+on input.pressed(input:rerack) {
+    collected = emptyCollection;
+    trayCount = 0;
+    for i in range(0, 15) {
+        object.set_active(balls[i], true);
+        object.teleport(balls[i], rack[i]);
+        object.set_velocity(balls[i], vec3(0, 0, 0));
+        object.set_angular_velocity(balls[i], vec3(0, 0, 0));
+    }
+    object.set_active(object:cueBall, true);
+    object.teleport(object:cueBall, anchor:rackCueBall);
+    object.set_velocity(object:cueBall, vec3(0, 0, 0));
+    object.set_angular_velocity(object:cueBall, vec3(0, 0, 0));
+}
+
+on input.pressed(input:newGame) {
+    collected = emptyCollection;
+    trayCount = 0;
+    for i in range(0, 15) {
+        object.set_active(balls[i], true);
+        object.teleport(balls[i], rack[i]);
+        object.set_velocity(balls[i], vec3(0, 0, 0));
+        object.set_angular_velocity(balls[i], vec3(0, 0, 0));
+    }
+    object.set_active(object:cueBall, true);
+    object.teleport(object:cueBall, anchor:rackCueBall);
+    object.set_velocity(object:cueBall, vec3(0, 0, 0));
+    object.set_angular_velocity(object:cueBall, vec3(0, 0, 0));
+}
+
+on trigger.entered(pocket, ball) {
+    if pocket == trigger:PocketLeftCorner or pocket == trigger:PocketLeftMiddle
+        or pocket == trigger:PocketLeftFarCorner or pocket == trigger:PocketRightCorner
+        or pocket == trigger:PocketRightMiddle or pocket == trigger:PocketRightFarCorner {
+        if ball == object:cueBall {
+            object.set_active(object:cueBall, true);
+            object.teleport(object:cueBall, anchor:rackCueBall);
+            object.set_velocity(object:cueBall, vec3(0, 0, 0));
+            object.set_angular_velocity(object:cueBall, vec3(0, 0, 0));
+        } else {
+            for index in range(0, 15) {
+                if ball == balls[index] and not collected[index] and trayCount < 15 {
+                    object.teleport(ball, tray[trayCount]);
+                    object.set_velocity(ball, vec3(0, 0, 0));
+                    object.set_angular_velocity(ball, vec3(0, 0, 0));
+                    // V1 lists are immutable: replace the entire fixed flag list.
+                    collected = [
+                        collected[0] or index == 0, collected[1] or index == 1, collected[2] or index == 2,
+                        collected[3] or index == 3, collected[4] or index == 4, collected[5] or index == 5,
+                        collected[6] or index == 6, collected[7] or index == 7, collected[8] or index == 8,
+                        collected[9] or index == 9, collected[10] or index == 10, collected[11] or index == 11,
+                        collected[12] or index == 12, collected[13] or index == 13, collected[14] or index == 14
+                    ];
+                    trayCount = trayCount + 1;
+                }
+            }
+        }
+    }
+}

@@ -479,55 +479,36 @@ The A7 layer itself owns no authored behaviour schema or scripting language. A8.
 adapts Oasis Script to these services; arbitrary component/property mutation and
 Unity API access remain excluded from the authored contract.
 
-## Pool vertical slice
+## Pool vertical slice (A8.5 reusable implementation)
 
-### Composition
+Canonical gameplay is `Examples/Pool/behavior.oasis`; the exact setup and manual
+checklist are in [the Pool guide](../../Examples/Pool/README.md). No authored Pool
+Machine, Cabinet or Object3D packages are available in this checkout, so no actual
+asset wiring or playable-asset verification is claimed.
 
-```text
-Cabinet:
-  PoolTable
+Reference composition uses `cueBall`, `ball01` through `ball15`, six Cabinet triggers
+`PocketLeftCorner`, `PocketLeftMiddle`, `PocketLeftFarCorner`, `PocketRightCorner`,
+`PocketRightMiddle`, `PocketRightFarCorner`, fifteen `rackBall01`–`rackBall15` anchors,
+fifteen `traySlot01`–`traySlot15` anchors, `rackCueBall`, and logical `rerack`/`newGame`
+inputs. These are documented sample IDs; map typed literals to the real composition.
+Anchors are already implemented Machine-space data, not future spatial work.
 
-Objects:
-  cueBall
-  ball01..ball15
+machine.started, rerack and newGame activate/rack all sixteen balls and zero both
+velocities, numbered-ball flags and tray occupancy. NewGame intentionally shares
+rerack's outcome until rules/scoring exist. One bound handler admits only declared
+pockets/balls. Collection order chooses consecutive tray slots; immutable Bool
+flags prevent duplicate/overlapping callbacks from moving collected balls or
+advancing occupancy. A `< 15` guard protects the tray index. Collected balls remain
+active/visible and require physical tray support. Cue scratches return/activate/zero
+only the cue ball. Unrelated triggers/objects do nothing. Reload creates fresh state.
 
-Cabinet triggers:
-  six pocket triggers
-
-Machine inputs:
-  rerack
-  newGame
-```
-
-### Initial state
-
-Machine-authored positions can initially be the rack/start positions.
-
-Later anchors allow alternate rack/tray/spawn positions without embedding coordinates in script.
-
-### Pocket behaviour
-
-Conceptually:
-
-```text
-TriggerEntered(pocket, ball)
-  -> choose next tray slot
-  -> Teleport(ball, traySlot)
-  -> clear velocity/angular velocity
-```
-
-### Rerack
-
-Conceptually:
-
-```text
-InputPressed(rerack)
-  -> Teleport each ball to rack anchor
-  -> reset velocity/angular velocity
-  -> activate all balls
-```
-
-The runtime should not contain pool-specific APIs. Pool is authored behaviour using generic object/trigger/input/anchor capabilities.
+The committed script is consumed by interpreter, Machine-aware validator and live
+A7 Unity integration tests. These tests are added, not executed here; local suites
+and actual Machine manual verification remain required. Player preview supplies an
+empty, configurable development key bridge; Inspector bindings drive SetInputState
+pressed/released transitions and release on disable/focus loss/reconfiguration.
+No Pool-specific runtime APIs, new grammar or serialized changes are needed.
+Scoring, full rules, aiming, cue animation, shot controls and multiplayer are deferred.
 
 ## Whac-A-Mole validation
 

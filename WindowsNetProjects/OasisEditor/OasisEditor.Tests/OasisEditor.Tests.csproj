@@ -29,4 +29,7 @@
     <Content Include="..\OasisEditor\App.xaml" Link="App.xaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\Examples\Pool\behavior.oasis" Link="Pool\behavior.oasis" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

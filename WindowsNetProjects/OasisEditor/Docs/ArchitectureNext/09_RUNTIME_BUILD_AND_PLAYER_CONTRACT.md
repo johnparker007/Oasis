@@ -137,7 +137,7 @@ order. Existing trigger/collision relays are reused without duplicate components
 them with scaled `Time.deltaTime`; `RuntimeTimerElapsedEvent` flows back through
 the adapter into `timer.elapsed`. There is no second timer service or event queue.
 Logical `RuntimeMachine.SetInputState` drives pressed/released handlers directly;
-keyboard/controller bindings remain deferred.
+A8.5 adds configurable development keyboard bindings; production input authoring remains deferred.
 
 Global initialization faults abort startup before CompleteStartup, report once,
 and enter the loader's normal cleanup path. A handler fault, including a fault in
@@ -152,7 +152,7 @@ before clearing timers/events and destroying assets. The adapter unsubscribes,
 detaches its host and drops session/host/Machine/reporter references; already
 snapshotted callbacks also skip disposed sessions. Repeated loads create fresh
 state. No schema or serialized shapes change: authored Machine 8, runtime Machine
-9, Object3D 1 and Cabinet 5. Production Pool behaviour remains A8.5.
+9, Object3D 1 and Cabinet 5. A8.5 supplies reusable Pool gameplay in `Examples/Pool/behavior.oasis`; actual asset wiring remains local.
 
 ## Canonical scripting assembly
 
@@ -198,3 +198,19 @@ path, assembly identity, and absence of copied compiler/session source under Ass
     loaded. A global `1 / 0` initialization fault should instead fail/clean the load.
 11. Reload and confirm script state resets; then load an Emulation Machine and
     confirm existing behaviour and absence of a script attachment.
+
+## A8.5 Pool setup and development input
+
+See [Pool setup/manual checklist](../../Examples/Pool/README.md) for exact sample
+object/pocket/anchor/input mappings and authored versus generated source placement.
+No actual Pool asset package was available or modified. The canonical script is
+linked into .NET test output and read directly from the repository by Unity tests.
+Automated coverage has been added but suites/manual verification remain unexecuted.
+
+Editor/development Machine preview creates RuntimeInputDevelopmentControls with
+empty Inspector bindings. Set R/rerack and N/newGame on the loaded session root.
+Held-key transitions use A7 SetInputState; multiple keys aggregate per input.
+Disable, focus loss and binding replacement release held inputs; inactive/unloaded
+Machines are detached without dispatch. Reload destroys session settings, so reapply
+bindings. No serialized Machine format, production input UI or hard-coded game IDs
+are introduced. Existing A8.4 adapter and fault/unload semantics are unchanged.

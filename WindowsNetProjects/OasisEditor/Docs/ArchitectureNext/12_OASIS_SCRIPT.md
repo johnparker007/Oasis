@@ -253,8 +253,11 @@ RuntimeMachine's generic disposable attachment is disposed on unload before
 clearing events/timers and destroying objects; the adapter unsubscribes and drops
 host/session references. Every reload gets fresh state. Canonical package ownership
 and schemas (Machine authored 8/runtime 9, Object3D 1, Cabinet 5) are unchanged.
-Pool and Whac-A-Mole scripts in integration tests are fixtures only; A8.5 owns the
-first real Pool behaviour.
+A8.4 inline Pool/Whac-A-Mole examples remain fixtures. A8.5 delivers the canonical
+reusable `Examples/Pool/behavior.oasis` consumed by pure and live A7 tests. It uses
+fixed immutable flag-list replacement, literal-bounded loops and typed membership
+checks, with no compiler/interpreter additions. Actual Pool asset wiring and local
+verification remain outstanding; see the [Pool guide](../../Examples/Pool/README.md).
 
 ## Representative program
 
