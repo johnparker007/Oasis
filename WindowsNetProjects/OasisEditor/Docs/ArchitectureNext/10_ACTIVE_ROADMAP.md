@@ -17,7 +17,7 @@ The following foundations are already implemented and should be treated as curre
 - Machine owns runtime/emulation configuration and inputs.
 - Project/Library assets use explicit `AssetReference` values.
 - Machine has a derived Composition/Overview view.
-- Runtime abstraction exists with the current `Emulation` implementation.
+- Runtime abstraction exists with the current `Emulation` and native `Oasis` implementations.
 - Cabinet GLB semantic geometry uses:
   - `OasisFace_*`
   - `OasisCollider_*`
@@ -82,7 +82,7 @@ Expose basic Machine Details/Hierarchy editing. Keep the authoritative state on 
 
 #### PR A3 — Runtime build contract
 
-Implemented: Machine builds resolve Project/Library Object3D dependencies into GUID-keyed reusable runtime packages and export Machine-owned instance declarations. Machine runtime schema 7 and Object3D runtime schema 1 are read by the Player without instantiating Unity objects.
+Implemented: Machine builds resolve Project/Library Object3D dependencies into GUID-keyed reusable runtime packages and export Machine-owned instance declarations. Machine runtime schema 9 and Object3D runtime schema 1 are read by the Player without instantiating Unity objects.
 
 Repeated references are deduplicated by authored Object3D GUID; identity collisions with conflicting definitions fail the build.
 
@@ -128,7 +128,7 @@ Examples:
 - mole up/down positions;
 - spawn/drop locations.
 
-Anchors have no persisted rendering or physics semantics. Details and Composition share command-backed rows; Composition adds transient oriented diagnostics, selection, and visibility. A6 introduced Machine authored schema 6 (superseded by schema 7 in A8.2); runtime schema 8 remains current, with lightweight Player registry values and no anchor GameObjects.
+Anchors have no persisted rendering or physics semantics. Details and Composition share command-backed rows; Composition adds transient oriented diagnostics, selection, and visibility. Machine authored schema 8 and runtime schema 9 are current, with lightweight Player registry values and no anchor GameObjects.
 
 #### PR A7 — Runtime event/command boundary
 
@@ -163,8 +163,10 @@ Do not expose arbitrary Unity APIs.
   behaviour, stored as package-local `behavior.oasis`, with plain-text editing,
   unified diagnostics, Machine-reference validation, dirty/save/Save-As, and
   structural undo/redo. Invalid source may remain in the editor while typing.
-- **A8.3 Runtime packaging/interpreter:** package `.oasis` source and execute validated
-  programs with an instruction budget.
+- **A8.3 Runtime packaging/interpreter (implemented):** native Oasis runtime kind,
+  authored schema 8/runtime schema 9, validated package-local source, canonical UPM
+  sharing with Unity, and pure typed sessions with deterministic budgets and faults.
+  Player loading compiles source; normal preview explicitly stops at the A8.4 boundary.
 - **A8.4 A7 host adapter:** adapt the interpreter to the existing A7 event and command
   boundary without exposing Unity APIs.
 - **A8.5 Pool vertical slice:** implement pocket, tray, rerack, and new-game behaviour.
@@ -173,9 +175,10 @@ Do not expose arbitrary Unity APIs.
 - **A8.7 Whac-A-Mole validation:** validate the generic language/runtime boundary with
   timer-driven mole behaviour.
 
-Stages after A8.2 remain planned, not implemented. Script references use stable Oasis
-IDs, never Unity/GameObject names. A8.2 deliberately fails Player runtime builds for
-Machines with behaviour because runtime packaging and execution belong to A8.3.
+Stages after A8.3 remain planned. Script references use stable Oasis IDs, never
+Unity/GameObject names. A8.4 must supply the real IOasisScriptHost implementation,
+A7 event translation/subscriptions, startup emission, and fault/unload lifecycle.
+No A7 integration or hybrid runtime is included in A8.3.
 
 ## Active track B — Installation assets
 

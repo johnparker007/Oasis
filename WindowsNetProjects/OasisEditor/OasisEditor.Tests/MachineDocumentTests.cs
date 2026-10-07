@@ -28,7 +28,7 @@ public sealed class MachineDocumentTests
     }
 
     [Fact]
-    public void Schema7_RoundTripsCompositionRuntimeAndInputs()
+    public void Schema8_RoundTripsCompositionRuntimeAndInputs()
     {
         var machine = MachineDocument.Create("Machine A") with
         {
@@ -40,7 +40,7 @@ public sealed class MachineDocumentTests
         var json = MachineDocumentStorage.Serialize(machine);
         using (var authored = JsonDocument.Parse(json))
         {
-            Assert.Equal(7, authored.RootElement.GetProperty("schemaVersion").GetInt32());
+            Assert.Equal(8, authored.RootElement.GetProperty("schemaVersion").GetInt32());
             Assert.Empty(authored.RootElement.GetProperty("objectInstances").EnumerateArray());
             Assert.Equal("Emulation", authored.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
             Assert.False(authored.RootElement.GetProperty("runtime").TryGetProperty("$type", out _));
@@ -56,9 +56,9 @@ public sealed class MachineDocumentTests
     [Fact]
     public void WrongSchema_IsRejectedWithoutCompatibilityFallback()
     {
-        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")).Replace("\"schemaVersion\": 7", "\"schemaVersion\": 6");
+        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")).Replace("\"schemaVersion\": 8", "\"schemaVersion\": 7");
         Assert.False(MachineDocumentStorage.TryRead(json, out _, out var error));
-        Assert.Contains("only version 7", error);
+        Assert.Contains("only version 8", error);
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed class MachineDocumentTests
         var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine"))
             .Replace("\"kind\": \"Emulation\"", "\"kind\": \"Scripted\"");
         Assert.False(MachineDocumentStorage.TryRead(json, out _, out var error));
-        Assert.Contains("supports only Emulation", error);
+        Assert.Contains("Unsupported Machine runtime kind", error);
     }
 
     [Fact]
@@ -212,7 +212,7 @@ public sealed class MachineDocumentTests
     public void RuntimeProjection_RetainsConcreteSelectedPlatformSettingsAsJson()
     {
         var runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.MPU5, new Mpu5NativeRomSettings { ProgramRom1Path = "game.bin" });
-        var projected = MachineRuntimeManifestDefinition.From(runtime);
+        var projected = Assert.IsType<EmulationMachineRuntimeManifestDefinition>(MachineRuntimeManifestDefinition.From(runtime));
         Assert.Equal("MPU5", projected.Platform);
         using var settings = JsonDocument.Parse(projected.PlatformSettingsJson);
         Assert.Equal("game.bin", settings.RootElement.GetProperty("programRom1Path").GetString());

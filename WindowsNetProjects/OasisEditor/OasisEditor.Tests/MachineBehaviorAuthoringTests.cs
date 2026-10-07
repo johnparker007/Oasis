@@ -17,7 +17,7 @@ public sealed class MachineBehaviorAuthoringTests
         Assert.True(MachineDocumentStorage.TryRead(withoutJson, out var reopenedWithout, out var error), error);
         Assert.Null(reopenedWithout.Behavior);
 
-        var with = without with { Behavior = MachineBehaviorDefinition.OasisScript() };
+        var with = without with { Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript() };
         var json = MachineDocumentStorage.Serialize(with);
         Assert.Contains("\"kind\": \"OasisScript\"", json);
         Assert.Contains("\"source\": \"behavior.oasis\"", json);
@@ -82,6 +82,7 @@ public sealed class MachineBehaviorAuthoringTests
             Assert.DoesNotContain("save-as", File.ReadAllText(Path.Combine(root, "Original", "behavior.oasis")));
             Assert.Contains("save-as", File.ReadAllText(Path.Combine(root, "Copy", "behavior.oasis")));
 
+            tab.ConfirmRemoveMachineBehavior = () => true;
             tab.RemoveMachineBehaviorCommand.Execute(null);
             new DocumentSaveService().SaveDocument(tab, copy).ApplyTo(tab);
             Assert.False(File.Exists(Path.Combine(root, "Copy", "behavior.oasis")));
@@ -111,7 +112,7 @@ public sealed class MachineBehaviorAuthoringTests
         {
             Directory.CreateDirectory(root);
             var manifest = Path.Combine(root, "asset.machine");
-            var machine = MachineDocument.Create("Machine") with { Behavior = MachineBehaviorDefinition.OasisScript() };
+            var machine = MachineDocument.Create("Machine") with { Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript() };
             File.WriteAllText(manifest, MachineDocumentStorage.Serialize(machine));
             var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile(manifest, "Machine"), machineDocumentJson: File.ReadAllText(manifest));
 
@@ -135,7 +136,7 @@ public sealed class MachineBehaviorAuthoringTests
             var manifest = Path.Combine(root, "asset.machine");
             var machine = MachineDocument.Create("Machine") with
             {
-                Behavior = MachineBehaviorDefinition.OasisScript(),
+                Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript(),
                 ObjectInstances = [new("ball", "Ball", AssetReference.Project("Assets/Object3D/Ball/asset.object3d"), MachineObjectTransform.Identity)]
             };
             File.WriteAllText(manifest, MachineDocumentStorage.Serialize(machine));
@@ -195,7 +196,7 @@ public sealed class MachineBehaviorAuthoringTests
             WriteFace(root, "Lamp18", MachineObjectReference.Lamp(18));
             var machine = MachineDocument.Create("Machine") with
             {
-                Behavior = MachineBehaviorDefinition.OasisScript(),
+                Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript(),
                 SurfaceAssignments = [new("screen", "Assets/Faces/Lamp17/asset.face")]
             };
             var tab = new DocumentTabViewModel(EditorDocument.CreateMachineStub("Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(machine));

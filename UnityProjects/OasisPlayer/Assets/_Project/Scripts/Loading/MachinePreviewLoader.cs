@@ -34,6 +34,8 @@ namespace OasisPlayer.Loading
 
         public async Task<RuntimeMachine> LoadAsync(ResolvedRuntimeBuild build)
         {
+            if (build.Machine.runtime.kind == "Oasis")
+                throw new InvalidOperationException("Oasis Script runtime package loaded successfully; runtime host adapter is not implemented until A8.4.");
             Unload();
             var spawns = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsSortMode.None)
                 .Where(t => t.parent == null && t.name == "MachineSpawn")

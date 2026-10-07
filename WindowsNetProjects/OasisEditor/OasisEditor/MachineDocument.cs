@@ -18,7 +18,7 @@ public sealed record MachineDocument(
     MachineAnchor[] Anchors,
     MachineBehaviorDefinition? Behavior)
 {
-    public const int CurrentSchemaVersion = 7;
+    public const int CurrentSchemaVersion = 8;
 
     [JsonIgnore]
     public EmulationRuntimeDefinition EmulationRuntime => Runtime as EmulationRuntimeDefinition
@@ -55,7 +55,7 @@ public sealed record MachineVector3(double X, double Y, double Z)
 
 /// <summary>
 /// A Machine-level transform. Rotation is authored as Euler angles in degrees around X, Y and Z;
-/// runtime conversion applies them in Unity's standard Z-X-Y order. There is no parent transform in schema 7.
+/// runtime conversion applies them in Unity's standard Z-X-Y order. There is no parent transform in schema 8.
 /// </summary>
 public sealed record MachineObjectTransform(MachineVector3 Position, MachineVector3 Rotation, MachineVector3 Scale)
 {
@@ -86,6 +86,13 @@ public sealed record MachineReelAssignment(MachineObjectReference MachineReelRef
 public abstract record RuntimeDefinition
 {
     public abstract string Kind { get; }
+}
+
+/// <summary>Oasis owns this Machine's behaviour directly.</summary>
+public sealed record OasisRuntimeDefinition : RuntimeDefinition
+{
+    public const string RuntimeKind = "Oasis";
+    public override string Kind => RuntimeKind;
 }
 
 /// <summary>The explicit subset of platform identifiers currently implemented by Oasis Emulation.</summary>
@@ -129,10 +136,18 @@ public sealed record EmulationRuntimeDefinition(FruitMachinePlatformType Platfor
 
 public static class RuntimeDefinitionValidation
 {
-    public static void Validate(string machineName, RuntimeDefinition runtime)
+    public static void Validate(string machineName, RuntimeDefinition runtime, MachineBehaviorDefinition? behavior = null)
     {
+        if (runtime is OasisRuntimeDefinition)
+        {
+            if (behavior is null || behavior.Kind != MachineBehaviorDefinition.OasisScriptKind || behavior.Source != MachineBehaviorDefinition.CanonicalSourcePath)
+                throw new InvalidOperationException($"Machine '{machineName}' Runtime 'Oasis' requires OasisScript behaviour at behavior.oasis.");
+            return;
+        }
         if (runtime is not EmulationRuntimeDefinition emulation)
             throw new InvalidOperationException($"Machine '{machineName}' has unsupported Runtime '{runtime?.Kind ?? "(missing)"}'.");
+        if (behavior is not null)
+            throw new InvalidOperationException($"Machine '{machineName}' Runtime 'Emulation' must not declare behaviour.");
         if (!EmulationRuntimePlatforms.IsSupported(emulation.Platform))
             throw new InvalidOperationException($"Machine '{machineName}', Runtime '{emulation.Kind}', Platform '{emulation.Platform}' is an unsupported Emulation platform.");
         var expected = EmulationRuntimeDefinition.Create(emulation.Platform).PlatformSettings.GetType();
@@ -179,6 +194,9 @@ public static class MachineDocumentStorage
                     writer.WritePropertyName("platformSettings");
                     JsonSerializer.Serialize(writer, emulation.PlatformSettings, emulation.PlatformSettings.GetType(), Options);
                     break;
+                case OasisRuntimeDefinition oasis:
+                    writer.WriteString("kind", oasis.Kind);
+                    break;
                 default:
                     throw new InvalidOperationException($"Machine '{document.DisplayName}' has unsupported Runtime '{document.Runtime.Kind}'.");
             }
@@ -200,21 +218,28 @@ public static class MachineDocumentStorage
             if (!root.TryGetProperty("schemaVersion", out var version) || version.GetInt32() != MachineDocument.CurrentSchemaVersion)
             { error = $"Unsupported Machine schema version. This editor supports only version {MachineDocument.CurrentSchemaVersion}."; return false; }
             var runtime = root.GetProperty("runtime");
-            if (runtime.GetProperty("kind").GetString() != EmulationRuntimeDefinition.RuntimeKind) { error = "Machine runtime kind is unsupported. This editor supports only Emulation."; return false; }
-            if (!Enum.TryParse<FruitMachinePlatformType>(runtime.GetProperty("platform").GetString(), out var platform)) { error = "Machine runtime platform is invalid."; return false; }
-            if (!EmulationRuntimePlatforms.IsSupported(platform)) { error = $"Machine Runtime 'Emulation' Platform '{platform}' is an unsupported Emulation platform."; return false; }
-            var settingsElement = runtime.GetProperty("platformSettings");
-            object settings = platform switch
+            RuntimeDefinition definition;
+            var kind = runtime.GetProperty("kind").GetString();
+            if (kind == OasisRuntimeDefinition.RuntimeKind) definition = new OasisRuntimeDefinition();
+            else if (kind == EmulationRuntimeDefinition.RuntimeKind)
             {
-                FruitMachinePlatformType.None => settingsElement.Deserialize<System6NativeRomSettings>(Options)!,
-                FruitMachinePlatformType.Impact => settingsElement.Deserialize<System6NativeRomSettings>(Options)!,
-                FruitMachinePlatformType.MPU5 => settingsElement.Deserialize<Mpu5NativeRomSettings>(Options)!,
-                FruitMachinePlatformType.Epoch => settingsElement.Deserialize<EpochNativeRomSettings>(Options)!,
-                FruitMachinePlatformType.MPU3 => settingsElement.Deserialize<Mpu3ProjectSettings>(Options)!,
-                FruitMachinePlatformType.MaygayM1 => settingsElement.Deserialize<M1ProjectSettings>(Options)!,
-                FruitMachinePlatformType.Scorpion4 => settingsElement.Deserialize<Scorpion4ProjectSettings>(Options)!,
-                _ => throw new NotSupportedException($"Emulation platform '{platform}' is not currently supported.")
-            };
+                if (!Enum.TryParse<FruitMachinePlatformType>(runtime.GetProperty("platform").GetString(), out var platform)) { error = "Machine runtime platform is invalid."; return false; }
+                if (!EmulationRuntimePlatforms.IsSupported(platform)) { error = $"Machine Runtime 'Emulation' Platform '{platform}' is an unsupported Emulation platform."; return false; }
+                var settingsElement = runtime.GetProperty("platformSettings");
+                object settings = platform switch
+                {
+                    FruitMachinePlatformType.None => settingsElement.Deserialize<System6NativeRomSettings>(Options)!,
+                    FruitMachinePlatformType.Impact => settingsElement.Deserialize<System6NativeRomSettings>(Options)!,
+                    FruitMachinePlatformType.MPU5 => settingsElement.Deserialize<Mpu5NativeRomSettings>(Options)!,
+                    FruitMachinePlatformType.Epoch => settingsElement.Deserialize<EpochNativeRomSettings>(Options)!,
+                    FruitMachinePlatformType.MPU3 => settingsElement.Deserialize<Mpu3ProjectSettings>(Options)!,
+                    FruitMachinePlatformType.MaygayM1 => settingsElement.Deserialize<M1ProjectSettings>(Options)!,
+                    FruitMachinePlatformType.Scorpion4 => settingsElement.Deserialize<Scorpion4ProjectSettings>(Options)!,
+                    _ => throw new NotSupportedException($"Emulation platform '{platform}' is not currently supported.")
+                };
+                definition = new EmulationRuntimeDefinition(platform, settings);
+            }
+            else { error = $"Unsupported Machine runtime kind '{kind}'."; return false; }
             document = new MachineDocument(
                 version.GetInt32(), root.GetProperty("id").GetString() ?? string.Empty,
                 root.GetProperty("displayName").GetString() ?? string.Empty,
@@ -222,7 +247,7 @@ public static class MachineDocumentStorage
                 root.TryGetProperty("surfaceAssignments", out var surfaces) ? surfaces.Deserialize<MachineSurfaceAssignment[]>(Options) ?? [] : [],
                 root.TryGetProperty("reelAssignments", out var reels) ? reels.Deserialize<MachineReelAssignment[]>(Options) ?? [] : [],
                 root.GetProperty("objectInstances").Deserialize<MachineObject3DInstance[]>(Options) ?? throw new InvalidOperationException("Machine ObjectInstances collection is required."),
-                new EmulationRuntimeDefinition(platform, settings),
+                definition,
                 root.TryGetProperty("inputDefinitions", out var inputs) ? inputs.Deserialize<List<InputDefinitionModel>>(Options) ?? [] : [],
                 root.GetProperty("anchors").Deserialize<MachineAnchor[]>(Options) ?? throw new InvalidOperationException("Machine Anchors collection is required."),
                 root.TryGetProperty("behavior", out var behavior) ? behavior.Deserialize<MachineBehaviorDefinition>(Options) : null);
@@ -233,19 +258,12 @@ public static class MachineDocumentStorage
         { error = $"Invalid Machine document: {exception.Message}"; return false; }
     }
 
-    private static void Validate(MachineDocument document)
+    internal static void Validate(MachineDocument document)
     {
         if (document.SchemaVersion != MachineDocument.CurrentSchemaVersion) throw new InvalidOperationException("Only the current Machine schema can be written.");
         if (!Guid.TryParse(document.Id, out _)) throw new InvalidOperationException("Machine ID must be a stable GUID.");
         if (string.IsNullOrWhiteSpace(document.DisplayName)) throw new InvalidOperationException("Machine display name is required.");
-        RuntimeDefinitionValidation.Validate(document.DisplayName, document.Runtime);
-        if (document.Behavior is { } behavior)
-        {
-            if (!string.Equals(behavior.Kind, MachineBehaviorDefinition.OasisScriptKind, StringComparison.Ordinal))
-                throw new InvalidOperationException($"Machine behaviour kind '{behavior.Kind}' is unsupported.");
-            if (!string.Equals(behavior.Source, MachineBehaviorDefinition.CanonicalSourcePath, StringComparison.Ordinal))
-                throw new InvalidOperationException($"Oasis Script source must be exactly '{MachineBehaviorDefinition.CanonicalSourcePath}'.");
-        }
+        RuntimeDefinitionValidation.Validate(document.DisplayName, document.Runtime, document.Behavior);
         if (document.SurfaceAssignments.GroupBy(x => x.TargetId, StringComparer.Ordinal).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine surface target assignments must be unique.");
         if (document.ReelAssignments.GroupBy(x => x.MachineReelReference).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine reel assignments must be unique.");
         if (document.ReelAssignments.Any(x => x.MachineReelReference.Kind != MachineObjectKind.Reel || x.ReelAsset is null)) throw new InvalidOperationException("Machine reel assignments require a logical Reel reference and Reel asset reference.");

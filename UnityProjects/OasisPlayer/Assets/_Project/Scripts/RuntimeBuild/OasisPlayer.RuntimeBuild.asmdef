@@ -2,7 +2,8 @@
     "name": "OasisPlayer.RuntimeBuild",
     "rootNamespace": "OasisPlayer.RuntimeBuild",
     "references": [
-        "OasisPlayer.Settings"
+        "OasisPlayer.Settings",
+        "Oasis.Scripting"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

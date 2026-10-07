@@ -530,7 +530,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
             if (LoadedProject is not null)
             {
-                if (_activeMachineDocument is not null)
+                if (_activeMachineDocument is not null && ActiveMachine?.Runtime is EmulationRuntimeDefinition)
                     _activeMachineDocument.ExecuteMachineMutation(machine => machine with { Runtime = machine.EmulationRuntime.Platform == value ? machine.Runtime : EmulationRuntimeDefinition.Create(value) }, "Change Machine runtime platform");
                 RefreshInputMapDiagnostics();
             }
@@ -745,7 +745,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void UpdateActiveRuntime(FruitMachinePlatformType platform, object settings)
     {
-        _activeMachineDocument?.ExecuteMachineMutation(machine => machine with { Runtime = new EmulationRuntimeDefinition(platform, settings) }, "Update Machine runtime settings");
+        if (ActiveMachine?.Runtime is EmulationRuntimeDefinition)
+            _activeMachineDocument?.ExecuteMachineMutation(machine => machine with { Runtime = new EmulationRuntimeDefinition(platform, settings) }, "Update Machine runtime settings");
     }
 
     private void OnActiveMachineDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -758,7 +759,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void RebindActiveMachineSettings()
     {
-        _selectedFruitMachinePlatform = ActiveMachine?.EmulationRuntime.Platform ?? FruitMachinePlatformType.None;
+        _selectedFruitMachinePlatform = (ActiveMachine?.Runtime as EmulationRuntimeDefinition)?.Platform ?? FruitMachinePlatformType.None;
         OnPropertyChanged(nameof(SelectedFruitMachinePlatform));
         ApplySystem6NativeRomSettingsToViewModel(ActiveSettings<System6NativeRomSettings>());
         ApplyMpu5NativeRomSettingsToViewModel(ActiveSettings<Mpu5NativeRomSettings>());
@@ -1192,7 +1193,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             var result = await _progressDialogService.RunAsync(
                 new EditorProgressRequest("Building Oasis Player Machine", "Preparing Oasis Player machine build...", EditorProgressMode.Determinate, CanCancel: true),
-                (progress, token) => Task.FromResult(new MachineRuntimeBuildService(libraryRoot: OasisAssetLibraryRoot).BuildFromMachineDocument(LoadedProject, selectedDocument.Document.FilePath, selectedDocument.GetMachineDocument(), progress, token)));
+                (progress, token) => Task.FromResult(new MachineRuntimeBuildService(libraryRoot: OasisAssetLibraryRoot).BuildFromMachineDocument(LoadedProject, selectedDocument.Document.FilePath, progress, token)));
             if (!result.Success)
             {
                 ReportEditorOperationError(result.ErrorMessage ?? "Failed to build Oasis Player runtime output.", OutputLogStatus.Error);
@@ -2006,7 +2007,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OpenProjectSettings()
     {
-        if (!HasActiveMachine) { AddOutputEntry("Open or select a Machine before editing runtime settings.", OutputLogStatus.Warning); return; }
+        if (ActiveMachine?.Runtime is not EmulationRuntimeDefinition) { AddOutputEntry("Select an Emulation Machine before editing platform/ROM settings.", OutputLogStatus.Warning); return; }
         ToolWindowOpenRequested?.Invoke(EditorToolWindowId.ProjectSettings);
         AddOutputEntry("Opened Project Settings pane.", OutputLogStatus.Info);
     }
@@ -2115,7 +2116,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private bool CanStartEmulation()
     {
-        return HasLoadedProject && HasActiveMachine && EmulationState is EmulationBackendState.Stopped or EmulationBackendState.Failed;
+        return HasLoadedProject && ActiveMachine?.Runtime is EmulationRuntimeDefinition && EmulationState is EmulationBackendState.Stopped or EmulationBackendState.Failed;
     }
 
     private async void StartEmulation()

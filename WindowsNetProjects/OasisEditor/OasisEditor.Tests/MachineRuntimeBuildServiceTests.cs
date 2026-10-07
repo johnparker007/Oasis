@@ -240,11 +240,13 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.Contains("OasisTrigger_Test", builtBytes);
     }
 
-    [Fact]
-    public void Build_ResolvesReferencedReelAssetIntoFaceRuntimeDimensions()
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void Build_ResolvesReferencedReelAssetIntoFaceRuntimeDimensions(bool oasis)
     {
         var setup = CreateReelBuild([0], [(0, "Standard", 290d, 70d)]);
-        var result = Build(setup.Project, setup.Machine);
+        var machine = WithRuntimeBehavior(setup.Project, setup.Machine, oasis);
+        var result = Build(setup.Project, machine);
         Assert.True(result.Success, result.ErrorMessage);
         Assert.Equal(new[] { (70d, 145d) }, ReadRuntimeReelDimensions(result.BuildRoot!));
     }
@@ -408,8 +410,9 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.True(File.Exists(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.glb")));
     }
 
-    [Fact]
-    public void Build_ObjectInstancesShareOneDefinitionAndPreserveTransforms()
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void Build_ObjectInstancesShareOneDefinitionAndPreserveTransforms(bool oasis)
     {
         var setup = CreateCabinetOnlyBuild();
         WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
@@ -429,13 +432,14 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
             new("ball08", "Ball 8", reference, new(new(7, 8, 9), new(70, 80, 90), new(3, 3, 3)))
         ] };
 
+        machine = WithRuntimeBehavior(setup.Project, machine, oasis);
         var result = Build(setup.Project, machine);
 
         Assert.True(result.Success, result.ErrorMessage);
         Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.runtime.json", SearchOption.AllDirectories).Count());
         Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.glb", SearchOption.AllDirectories).Count());
         using var machineJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
-        Assert.Equal(8, machineJson.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(9, machineJson.RootElement.GetProperty("schemaVersion").GetInt32());
         var instances = machineJson.RootElement.GetProperty("objectInstances");
         Assert.Equal(new[] { "cueBall", "ball01", "ball08" }, instances.EnumerateArray().Select(x => x.GetProperty("id").GetString()));
         Assert.Equal(80, instances[2].GetProperty("transform").GetProperty("rotationEulerDegrees").GetProperty("y").GetDouble());
@@ -468,6 +472,84 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.False(wrongResult.Success);
         Assert.Contains("cueBall", wrongResult.ErrorMessage);
         Assert.Contains("not an Object3D", wrongResult.ErrorMessage);
+    }
+
+    [Fact]
+    public void OasisBuildPackagesOneSourceAndEmulationRebuildRemovesStaleBehavior()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var machine = setup.Machine with { Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript() };
+        var path = WriteMachine(setup.Project, machine);
+        var source = "state score = 0; on machine.started() { score = score + 1; }";
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "behavior.oasis"), source);
+        var service = new MachineRuntimeBuildService();
+        var result = service.BuildFromMachineDocument(setup.Project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal(source, File.ReadAllText(Path.Combine(result.BuildRoot!, "behavior", "behavior.oasis")));
+        Assert.Single(Directory.EnumerateFiles(result.BuildRoot!, "*.oasis", SearchOption.AllDirectories));
+        var json = File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json"));
+        using var manifest = JsonDocument.Parse(json);
+        Assert.Equal(9, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
+        var runtime = manifest.RootElement.GetProperty("runtime");
+        Assert.Equal("Oasis", runtime.GetProperty("kind").GetString());
+        Assert.False(runtime.TryGetProperty("platform", out _));
+        Assert.Equal("behavior/behavior.oasis", runtime.GetProperty("behavior").GetProperty("source").GetString());
+        Assert.DoesNotContain(setup.Project.ProjectDirectory, json);
+        Assert.True(File.Exists(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.glb")));
+
+        // Failed build must retain the previously successful package.
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "behavior.oasis"), "on machine.started() { object.reset(1); }");
+        Assert.False(service.BuildFromMachineDocument(setup.Project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None).Success);
+        Assert.Equal(source, File.ReadAllText(Path.Combine(result.BuildRoot!, "behavior", "behavior.oasis")));
+        Assert.False(Directory.Exists(result.BuildRoot + ".staging"));
+
+        WriteMachine(setup.Project, machine with { Runtime = EmulationRuntimeDefinition.Create(FruitMachinePlatformType.None), Behavior = null });
+        result = service.BuildFromMachineDocument(setup.Project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.True(result.Success, result.ErrorMessage); Assert.False(Directory.Exists(Path.Combine(result.BuildRoot!, "behavior")));
+        Assert.Empty(Directory.EnumerateFiles(result.BuildRoot!, "*.oasis", SearchOption.AllDirectories));
+        using var emulation = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
+        Assert.Equal(9, emulation.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("Emulation", emulation.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
+        Assert.False(emulation.RootElement.GetProperty("runtime").TryGetProperty("behavior", out _));
+    }
+
+    [Theory]
+    [InlineData(null, "missing")]
+    [InlineData("on machine.started() { object.reset(1); }", "OS2303")]
+    [InlineData("on machine.started() { object.reset(object:missing); }", "OSM3001")]
+    public void OasisBuildRevalidatesPersistedSource(string? source, string expectedDiagnostic)
+    {
+        var setup = CreateCabinetOnlyBuild(); WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var machine = setup.Machine with { Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript() };
+        var path = WriteMachine(setup.Project, machine);
+        if (source is not null) File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "behavior.oasis"), source);
+        var service = new MachineRuntimeBuildService();
+        var result = service.BuildFromMachineDocument(setup.Project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(result.Success); Assert.Contains(machine.DisplayName, result.ErrorMessage); Assert.Contains("behavior.oasis", result.ErrorMessage); Assert.Contains(expectedDiagnostic, result.ErrorMessage);
+        if (source is not null) Assert.Contains("behavior.oasis:1:", result.ErrorMessage);
+        Assert.False(Directory.Exists(service.GetBuildRoot(setup.Project, machine.DisplayName)));
+    }
+
+    [Fact]
+    public void BuildRejectsPreviousAuthoredSchemaEvenThroughDocumentOverload()
+    {
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(Project(), "asset.machine",
+            MachineDocument.Create("Previous") with { SchemaVersion = 7 }, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(result.Success); Assert.Contains("current Machine schema", result.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData(true)] [InlineData(false)]
+    public void BuildRejectsUnsupportedRuntimeBehaviorCombination(bool oasis)
+    {
+        var machine = MachineDocument.Create("Invalid") with
+        {
+            Runtime = oasis ? new OasisRuntimeDefinition() : EmulationRuntimeDefinition.Create(FruitMachinePlatformType.None),
+            Behavior = oasis ? null : MachineBehaviorDefinition.OasisScript()
+        };
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(Project(), "asset.machine", machine, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(result.Success); Assert.Contains("Invalid", result.ErrorMessage); Assert.Contains(oasis ? "requires" : "must not", result.ErrorMessage);
     }
 
     private (EditorProject Project, MachineDocument Machine, string LibraryRoot) CreateLibraryBuild()
@@ -542,6 +624,15 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         var reference = AssetReference.Project(paths.ToProjectRelativePath(project, cabinetManifest));
         var machine = MachineDocument.Create("Semantic Machine") with { CabinetAsset = reference };
         return (project, machine, glb, reference);
+    }
+
+    private static MachineDocument WithRuntimeBehavior(EditorProject project, MachineDocument machine, bool oasis)
+    {
+        if (!oasis) return machine;
+        machine = machine with { Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript() };
+        var path = WriteMachine(project, machine);
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "behavior.oasis"), "on machine.started() { }");
+        return machine;
     }
 
     private MachineRuntimeBuildResult Build(EditorProject project, MachineDocument machine)

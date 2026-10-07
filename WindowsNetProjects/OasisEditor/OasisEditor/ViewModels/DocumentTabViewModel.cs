@@ -350,9 +350,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         if (_machineDocumentModel.Behavior is not null) return;
         if (string.IsNullOrEmpty(_machineBehaviorSource)) _machineBehaviorSource = DefaultMachineBehaviorSource;
         _machineBehaviorSourceMissing = false;
-        ExecuteMachineMutation(machine => machine with { Behavior = MachineBehaviorDefinition.OasisScript() }, "Add Oasis Script behaviour");
+        ExecuteMachineMutation(machine => machine with { Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript() }, "Add Oasis Script behaviour");
     }
-    private void RemoveMachineBehavior() => ExecuteMachineMutation(machine => machine with { Behavior = null }, "Remove Oasis Script behaviour");
+    private void RemoveMachineBehavior() => MachineRuntimeKind = EmulationRuntimeDefinition.RuntimeKind;
     private void ValidateMachineBehaviorSource()
     {
         MachineBehaviorDiagnostics.Clear();
@@ -481,8 +481,36 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             MachineCabinetAssetPath = value?.AssetPath;
         }
     }
-    public FruitMachinePlatformType MachinePlatform { get => _machineDocumentModel.EmulationRuntime.Platform; set { if (value == _machineDocumentModel.EmulationRuntime.Platform) return; ExecuteMachineMutation(_machineDocumentModel with { Runtime = EmulationRuntimeDefinition.Create(value) }, "Change Machine runtime platform"); } }
-    public string MachineRuntimeKind => _machineDocumentModel.Runtime.Kind;
+    public FruitMachinePlatformType MachinePlatform
+    {
+        get => (_machineDocumentModel.Runtime as EmulationRuntimeDefinition)?.Platform ?? FruitMachinePlatformType.None;
+        set
+        {
+            if (!IsMachineEmulationRuntime || value == MachinePlatform) return;
+            ExecuteMachineMutation(_machineDocumentModel with { Runtime = EmulationRuntimeDefinition.Create(value) }, "Change Machine runtime platform");
+        }
+    }
+    public bool IsMachineEmulationRuntime => _machineDocumentModel.Runtime is EmulationRuntimeDefinition;
+    public IReadOnlyList<string> MachineRuntimeKinds { get; } = ["Emulation", "Oasis"];
+    public Func<bool> ConfirmRemoveMachineBehavior { get; set; } = () => System.Windows.MessageBox.Show(
+        "Switch to Emulation and remove Oasis Script behaviour? Saving will delete behavior.oasis. You can undo this change before closing the Machine.",
+        "Remove Oasis Script behaviour", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning) == System.Windows.MessageBoxResult.Yes;
+    public string MachineRuntimeKind
+    {
+        get => _machineDocumentModel.Runtime.Kind;
+        set
+        {
+            if (string.IsNullOrEmpty(value) || value == MachineRuntimeKind) return;
+            if (value == OasisRuntimeDefinition.RuntimeKind) AddMachineBehavior();
+            else if (value == EmulationRuntimeDefinition.RuntimeKind)
+            {
+                if (HasMachineBehavior && !ConfirmRemoveMachineBehavior())
+                { PropertyChanged?.Invoke(this, new(nameof(MachineRuntimeKind))); return; }
+                ExecuteMachineMutation(machine => machine with { Runtime = EmulationRuntimeDefinition.Create(FruitMachinePlatformType.None), Behavior = null }, "Switch Machine to Emulation and remove behaviour");
+            }
+            else throw new ArgumentException($"Unsupported Machine runtime '{value}'.");
+        }
+    }
     public IReadOnlyList<FruitMachinePlatformType> MachinePlatforms => EmulationRuntimePlatforms.Supported;
     public IReadOnlyList<MachineSurfaceAssignment> MachineSurfaceAssignments => _machineDocumentModel.SurfaceAssignments;
     public IReadOnlyList<MachineReelAssignment> MachineReelAssignments => _machineDocumentModel.ReelAssignments;
@@ -509,7 +537,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         ValidateMachineBehaviorSource();
         _machineRuntimeSettings?.Refresh();
         MarkDirty();
-        foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachineRuntimeKind), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineObjectInstances), nameof(MachineAnchors), nameof(MachineInputs), nameof(HasMachineBehavior), nameof(MachineBehaviorSource) })
+        foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachineRuntimeKind), nameof(IsMachineEmulationRuntime), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineObjectInstances), nameof(MachineAnchors), nameof(MachineInputs), nameof(HasMachineBehavior), nameof(MachineBehaviorSource) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
         if (AddMachineBehaviorCommand is RelayCommand addBehavior) addBehavior.RaiseCanExecuteChanged();
         if (RemoveMachineBehaviorCommand is RelayCommand removeBehavior) removeBehavior.RaiseCanExecuteChanged();

@@ -1,4 +1,5 @@
 using System;
+using Oasis.Scripting;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -53,6 +54,12 @@ namespace OasisPlayer.RuntimeBuild
         public string platform = string.Empty;
         // Complete selected-platform settings encoded as JSON for reliable retention without Fabric hosting.
         public string platformSettingsJson = string.Empty;
+        public MachineRuntimeBehavior behavior;
+    }
+    [Serializable] public sealed class MachineRuntimeBehavior
+    {
+        public string kind = string.Empty;
+        public string source = string.Empty;
     }
 
     [Serializable]
@@ -227,7 +234,7 @@ namespace OasisPlayer.RuntimeBuild
 
     public sealed class ResolvedRuntimeBuild
     {
-        public ResolvedRuntimeBuild(string buildRoot, MachineRuntimeManifest machine, string cabinetManifestPath, CabinetRuntimeManifest cabinet, string glbPath, MachineRuntimeFaceReference[] faces, IReadOnlyDictionary<string, ResolvedRuntimeObjectDefinition> objectDefinitions)
+        public ResolvedRuntimeBuild(string buildRoot, MachineRuntimeManifest machine, string cabinetManifestPath, CabinetRuntimeManifest cabinet, string glbPath, MachineRuntimeFaceReference[] faces, IReadOnlyDictionary<string, ResolvedRuntimeObjectDefinition> objectDefinitions, OasisScriptProgram scriptProgram = null)
         {
             BuildRoot = buildRoot;
             Machine = machine;
@@ -236,8 +243,11 @@ namespace OasisPlayer.RuntimeBuild
             GlbPath = glbPath;
             Faces = faces ?? Array.Empty<MachineRuntimeFaceReference>();
             ObjectDefinitions = objectDefinitions ?? new Dictionary<string, ResolvedRuntimeObjectDefinition>();
+            ScriptProgram = scriptProgram;
         }
 
+        // Session-ready program. A8.4 supplies the real host and event adapter.
+        public OasisScriptProgram ScriptProgram { get; }
         public string BuildRoot { get; }
         public MachineRuntimeManifest Machine { get; }
         public string CabinetManifestPath { get; }
@@ -252,7 +262,7 @@ namespace OasisPlayer.RuntimeBuild
         public const string MachineSchema = "oasis.machine.runtime";
         public const string CabinetSchema = "oasis.cabinet.runtime";
         public const string ObjectSchema = "oasis.object3d.runtime";
-        public const int MachineSchemaVersion = 8;
+        public const int MachineSchemaVersion = 9;
         public const int ObjectSchemaVersion = 1;
 
         public static bool TryLoad(string buildDirectory, out ResolvedRuntimeBuild build, out string error)
@@ -296,14 +306,37 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            if (machine.runtime == null || machine.runtime.kind != "Emulation" || string.IsNullOrWhiteSpace(machine.runtime.platform)
-                || !IsSupportedEmulationPlatform(machine.runtime.platform)
-                || string.IsNullOrWhiteSpace(machine.runtime.platformSettingsJson)
-                || !LooksLikeJsonObject(machine.runtime.platformSettingsJson))
+            OasisScriptProgram scriptProgram = null;
+            if (machine.runtime == null) { error = $"Machine runtime definition is missing in {machinePath}."; return false; }
+            if (machine.runtime.kind == "Emulation")
             {
-                error = $"Machine runtime definition is missing or invalid in {machinePath}.";
-                return false;
+                if (machine.runtime.behavior != null || !IsSupportedEmulationPlatform(machine.runtime.platform)
+                    || !LooksLikeJsonObject(machine.runtime.platformSettingsJson))
+                { error = $"Machine Emulation runtime definition is invalid in {machinePath}."; return false; }
             }
+            else if (machine.runtime.kind == "Oasis")
+            {
+                var behavior = machine.runtime.behavior;
+                if (behavior == null || behavior.kind != "OasisScript")
+                { error = $"Machine '{machine.displayName}' Oasis runtime requires OasisScript behavior."; return false; }
+                if (!TryResolveContained(root, root, behavior.source, out var sourcePath, out error))
+                { error = $"Machine '{machine.displayName}' behavior source: {error}"; return false; }
+                if (behavior.source != "behavior/behavior.oasis")
+                { error = "Oasis behavior source must be behavior/behavior.oasis."; return false; }
+                if (!string.IsNullOrEmpty(machine.runtime.platform) || !string.IsNullOrEmpty(machine.runtime.platformSettingsJson))
+                { error = "Oasis runtime must not contain Emulation settings."; return false; }
+                if (!File.Exists(sourcePath)) { error = $"Machine '{machine.displayName}' behavior/behavior.oasis is missing."; return false; }
+                try
+                {
+                    var compilation = OasisScriptCompiler.Compile(File.ReadAllText(sourcePath), behavior.source);
+                    if (!compilation.Success)
+                    { error = $"Machine '{machine.displayName}': {string.Join(Environment.NewLine, compilation.Diagnostics)}"; return false; }
+                    scriptProgram = compilation.Program;
+                }
+                catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
+                { error = $"Machine '{machine.displayName}' behavior/behavior.oasis: {exception.Message}"; return false; }
+            }
+            else { error = $"Unknown Machine runtime kind '{machine.runtime.kind}'."; return false; }
 
             if (machine.anchors == null)
             {
@@ -394,7 +427,7 @@ namespace OasisPlayer.RuntimeBuild
                 if (!File.Exists(modelPath)) { error = $"Object3D GLB is missing: {modelPath}"; return false; }
                 objectDefinitions.Add(instance.definitionId, new ResolvedRuntimeObjectDefinition(objectManifestPath, modelPath, objectManifest));
             }
-            build = new ResolvedRuntimeBuild(root, machine, cabinetPath, cabinet, glbPath, machine.faces, objectDefinitions);
+            build = new ResolvedRuntimeBuild(root, machine, cabinetPath, cabinet, glbPath, machine.faces, objectDefinitions, scriptProgram);
             return true;
         }
 
@@ -437,15 +470,20 @@ namespace OasisPlayer.RuntimeBuild
                 return false;
             }
 
-            if (Path.IsPathRooted(relative))
+            if (Path.IsPathRooted(relative) || relative.IndexOf(':') >= 0 || relative.StartsWith("\\", StringComparison.Ordinal))
             {
                 error = "rooted paths are not allowed.";
                 return false;
             }
 
-            resolved = Path.GetFullPath(Path.Combine(baseDir, relative.Replace('/', Path.DirectorySeparatorChar)));
+            try
+            {
+                resolved = Path.GetFullPath(Path.Combine(baseDir, relative.Replace('\\', '/').Replace('/', Path.DirectorySeparatorChar)));
+            }
+            catch (Exception exception) when (exception is ArgumentException || exception is NotSupportedException || exception is PathTooLongException)
+            { error = $"invalid package path: {exception.Message}"; return false; }
             var fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            if (!resolved.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase))
+            if (!resolved.StartsWith(fullRoot, Path.DirectorySeparatorChar == '\\' ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
             {
                 error = "path traversal outside the build root is not allowed.";
                 return false;

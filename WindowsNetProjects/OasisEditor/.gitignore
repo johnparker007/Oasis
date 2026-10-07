@@ -350,3 +350,6 @@ Temporary Items
 # Exceptions to the exclusions
 !src/Microsoft.DotNet.Wpf/src/WpfGfx/codegen/mcg/main/*.rsp
 !src/Microsoft.DotNet.Wpf/src/WpfGfx/tools/csp/**/*.rsp
+
+# Canonical Unity package shares these sources with the managed scripting project.
+!Oasis.Scripting/Package/**/*.meta

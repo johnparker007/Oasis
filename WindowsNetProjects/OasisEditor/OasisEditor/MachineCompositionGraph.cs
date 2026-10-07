@@ -53,6 +53,7 @@ public sealed class MachineCompositionGraphBuilder
         {
             EmulationRuntimeDefinition emulation => new(runtimeId, MachineCompositionNodeKind.Runtime, emulation.Kind,
                 $"Platform · {emulation.Platform}"),
+            OasisRuntimeDefinition => new(runtimeId, MachineCompositionNodeKind.Runtime, "Oasis", "Oasis Script · behavior.oasis"),
             _ => new(runtimeId, MachineCompositionNodeKind.Runtime, machine.Runtime.Kind, "Unsupported runtime", IsMissing: true)
         };
         edges.Add(new(machineId, runtimeId, string.Empty, MachineCompositionEdgeKind.Composition));

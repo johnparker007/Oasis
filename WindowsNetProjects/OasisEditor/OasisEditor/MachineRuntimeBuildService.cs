@@ -1,4 +1,5 @@
 using System.IO;
+using Oasis.Scripting;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Security.Cryptography;
@@ -26,7 +27,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
     public const string ObjectSchema = "oasis.object3d.runtime";
-    public const int MachineSchemaVersion = 8;
+    public const int MachineSchemaVersion = 9;
     public const int CabinetSchemaVersion = 5;
     public const int ObjectSchemaVersion = 1;
 
@@ -66,9 +67,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         ArgumentNullException.ThrowIfNull(machineDocument);
         ArgumentNullException.ThrowIfNull(progress);
         cancellationToken.ThrowIfCancellationRequested();
-        if (machineDocument.Behavior is not null)
-            return MachineRuntimeBuildResult.Fail("Oasis Script behaviour is authored but is not packaged or executed until A8.3.");
-        try { RuntimeDefinitionValidation.Validate(machineDocument.DisplayName, machineDocument.Runtime); }
+        try { MachineDocumentStorage.Validate(machineDocument); }
         catch (InvalidOperationException exception) { return MachineRuntimeBuildResult.Fail(exception.Message); }
         var machineAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(machineManifestPath, EditorAssetType.Machine);
         if (string.IsNullOrWhiteSpace(machineAssetName)) return MachineRuntimeBuildResult.Fail("Machine manifests must be stored as Assets/Machines/<Name>/asset.machine before building for Oasis Player.");
@@ -88,7 +87,14 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         try
         {
             progress.Report(0.05, "Preparing build output...");
+            // Read and validate the persisted source again; never trust the Editor buffer.
+            var behaviorSource = ValidateBehavior(project, machineManifestPath, machineDocument);
             ReplaceEmptyDirectory(stagingRoot);
+            if (behaviorSource is not null)
+            {
+                Directory.CreateDirectory(Path.Combine(stagingRoot, "behavior"));
+                File.WriteAllText(Path.Combine(stagingRoot, "behavior", "behavior.oasis"), behaviorSource);
+            }
             cancellationToken.ThrowIfCancellationRequested();
             var cabinetRoot = Path.Combine(stagingRoot, CabinetDirectoryName);
             Directory.CreateDirectory(cabinetRoot);
@@ -126,6 +132,21 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         {
             if (Directory.Exists(stagingRoot)) Directory.Delete(stagingRoot, recursive: true);
         }
+    }
+
+    private string? ValidateBehavior(EditorProject project, string manifestPath, MachineDocument machine)
+    {
+        if (machine.Runtime is not OasisRuntimeDefinition) return null;
+        var sourcePath = Path.Combine(Path.GetDirectoryName(manifestPath)!, MachineBehaviorDefinition.CanonicalSourcePath);
+        if (!File.Exists(sourcePath)) throw new InvalidOperationException($"Machine '{machine.DisplayName}', behavior.oasis: source file is missing.");
+        var source = File.ReadAllText(sourcePath);
+        var compilation = OasisScriptCompiler.Compile(source, MachineBehaviorDefinition.CanonicalSourcePath);
+        if (!compilation.Success) throw new InvalidOperationException($"Machine '{machine.DisplayName}': {string.Join(Environment.NewLine, compilation.Diagnostics)}");
+        var index = new OasisScriptMachineReferenceIndexBuilder().Build(project, _libraryRoot, machine);
+        var diagnostics = index.Diagnostics.Concat(OasisScriptMachineValidator.Validate(compilation.Program!, index.References)).ToArray();
+        if (diagnostics.Any(x => x.Severity == OasisScriptDiagnosticSeverity.Error))
+            throw new InvalidOperationException($"Machine '{machine.DisplayName}': {string.Join(Environment.NewLine, diagnostics.Select(x => x.ToString()))}");
+        return source;
     }
 
     private IReadOnlyList<MachineRuntimeObjectInstance> ExportReferencedObjects(EditorProject project, string stagingRoot, MachineDocument machine, CancellationToken cancellationToken)
@@ -350,14 +371,21 @@ public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, 
 public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, IReadOnlyList<MachineRuntimeObjectInstance> ObjectInstances, IReadOnlyList<MachineRuntimeAnchor> Anchors, MachineRuntimeManifestDefinition Runtime, IReadOnlyList<InputDefinitionModel> Inputs);
 
 /// <summary>Generated Player contract projection; distinct from the authored RuntimeDefinition.</summary>
-public sealed record MachineRuntimeManifestDefinition(string Kind, string Platform, string PlatformSettingsJson)
+[JsonPolymorphic]
+[JsonDerivedType(typeof(EmulationMachineRuntimeManifestDefinition))]
+[JsonDerivedType(typeof(OasisMachineRuntimeManifestDefinition))]
+public abstract record MachineRuntimeManifestDefinition(string Kind)
 {
     public static MachineRuntimeManifestDefinition From(RuntimeDefinition runtime) => runtime switch
     {
-        EmulationRuntimeDefinition emulation => new(emulation.Kind, emulation.Platform.ToString(), JsonSerializer.Serialize(emulation.PlatformSettings, emulation.PlatformSettings.GetType(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })),
+        EmulationRuntimeDefinition emulation => new EmulationMachineRuntimeManifestDefinition(emulation.Platform.ToString(), JsonSerializer.Serialize(emulation.PlatformSettings, emulation.PlatformSettings.GetType(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })),
+        OasisRuntimeDefinition => new OasisMachineRuntimeManifestDefinition(new("OasisScript", "behavior/behavior.oasis")),
         _ => throw new InvalidOperationException($"Runtime '{runtime.Kind}' is not supported by the Player build pipeline.")
     };
 }
+public sealed record EmulationMachineRuntimeManifestDefinition(string Platform, string PlatformSettingsJson) : MachineRuntimeManifestDefinition("Emulation");
+public sealed record OasisMachineRuntimeManifestDefinition(MachineRuntimeBehavior Behavior) : MachineRuntimeManifestDefinition("Oasis");
+public sealed record MachineRuntimeBehavior(string Kind, string Source);
 public sealed record MachineRuntimeFaceReference(string FaceId, string AssetName, string CabinetFaceTargetId, string FrontSide, int FaceRotation, bool FaceFlipHorizontal, string Manifest);
 public sealed record RuntimeVector3(double X, double Y, double Z)
 {
