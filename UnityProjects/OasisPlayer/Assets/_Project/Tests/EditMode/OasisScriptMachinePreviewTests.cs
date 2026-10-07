@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -141,7 +142,7 @@ namespace OasisPlayer.Tests
         public void MissingOasisProgramFailsAndCleansTheNormalLoad()
         {
             var build = Build("");
-            var missing = new ResolvedRuntimeBuild(build.BuildRoot, build.Machine, build.CabinetManifestPath, build.Cabinet, build.GlbPath, build.Faces, build.ObjectDefinitions);
+            var missing = new ResolvedRuntimeBuild(build.BuildRoot, build.Machine, build.CabinetManifestPath, build.Cabinet, build.GlbPath, build.Faces.ToArray(), build.ObjectDefinitions);
             var exception = Assert.ThrowsAsync<InvalidOperationException>(() => _loader.LoadAsync(missing));
             StringAssert.Contains("compiled behavior/behavior.oasis", exception.Message);
             Assert.AreEqual(0, _spawn.transform.childCount);
