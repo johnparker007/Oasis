@@ -166,19 +166,27 @@ Do not expose arbitrary Unity APIs.
 - **A8.3 Runtime packaging/interpreter (implemented):** native Oasis runtime kind,
   authored schema 8/runtime schema 9, validated package-local source, canonical UPM
   sharing with Unity, and pure typed sessions with deterministic budgets and faults.
-  Player loading compiles source; normal preview explicitly stops at the A8.4 boundary.
-- **A8.4 A7 host adapter:** adapt the interpreter to the existing A7 event and command
-  boundary without exposing Unity APIs.
+  Player loading compiles source once through the canonical package.
+- **A8.4 A7 host adapter (implemented):** Player-side RuntimeMachineOasisScriptHost
+  delegates every approved command with typed reference/vector conversion and host
+  error results. RuntimeOasisScriptBehavior synchronously maps all eight A7 events,
+  attaches before CompleteStartup, feeds back A7 timers, logs the first fault, and
+  disposes on unload. Initialization faults fail/clean the load; handler faults keep
+  the Machine loaded with dispatch disabled. Emulation has no script session.
+  Small live-object tests cover Pool trigger and Whac-A-Mole timer flows without
+  production game content. Schemas remain authored Machine 8, runtime Machine 9,
+  Object3D 1 and Cabinet 5.
 - **A8.5 Pool vertical slice:** implement pocket, tray, rerack, and new-game behaviour.
 - **A8.6 fruit-device scripting boundary:** add only the lamp/reel/display commands
   proven by a real fruit-machine workflow.
 - **A8.7 Whac-A-Mole validation:** validate the generic language/runtime boundary with
   timer-driven mole behaviour.
 
-Stages after A8.3 remain planned. Script references use stable Oasis IDs, never
-Unity/GameObject names. A8.4 must supply the real IOasisScriptHost implementation,
-A7 event translation/subscriptions, startup emission, and fault/unload lifecycle.
-No A7 integration or hybrid runtime is included in A8.3.
+Stages after A8.4 remain planned. Script references use stable Oasis IDs, never
+Unity/GameObject names. A8.4 completes generic runtime execution; A8.5 owns the
+first production Pool behaviour, including scoring, tray selection, rerack/new-game
+and cue controls when designed. Input binding UI, random and device commands are
+not part of A8.4. No Emulation/OasisScript hybrid runtime is supported.
 
 ## Active track B — Installation assets
 

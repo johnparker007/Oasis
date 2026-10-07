@@ -107,9 +107,52 @@ Oasis requires the canonical package-relative source, lexical package containmen
 file existence, and successful canonical compiler output. `ResolvedRuntimeBuild.ScriptProgram`
 is compiled once at Machine load and ready for `OasisScriptSession(program, host)`.
 The loader creates no host, subscriptions, gameplay state or command calls.
-`MachinePreviewLoader` rejects Oasis before creating a RuntimeMachine or emitting
-MachineStarted: “Oasis Script runtime package loaded successfully; runtime host
-adapter is not implemented until A8.4.” Emulation preview remains operational.
+`MachinePreviewLoader` supports both Oasis and Emulation through the same content
+load/unload path. Every load first unloads the previous session. For Oasis, after
+Cabinet and Object3Ds are loaded, anchors/inputs/semantic triggers registered, and
+Faces/devices/renderers/drivers initialized, it attaches `RuntimeOasisScriptBehavior`
+with the required `ScriptProgram`. The adapter subscribes before the sole
+`RuntimeMachine.CompleteStartup()` call. Emulation creates no script session.
+
+## Player execution adapter (A8.4 implemented)
+
+`RuntimeMachineOasisScriptHost` delegates the nine approved host operations to A7:
+SetActive, anchor Teleport, direct-pose Teleport, SetVelocity, SetAngularVelocity,
+ApplyImpulse, ResetObject, StartTimer and StopTimer. It checks ObjectRef/AnchorRef
+domains using the value's Type and extracts raw IDs, converts finite Vec3 doubles
+to `RuntimeVector3` floats and builds Machine-space `RuntimePose` values with XYZ
+Euler degrees. Numeric overflow and malformed/null values return host failures.
+Normal A7 registry/command failures retain their domain messages; unexpected
+exceptions include command and exception context. The host manipulates no Unity
+object or physics component and does no composition-aware revalidation.
+
+`RuntimeOasisScriptBehavior` translates all eight A7 events to the corresponding
+canonical factories: MachineStarted, InputPressed/Released (InputRef),
+TriggerEntered/Exited (TriggerRef, ObjectRef), CollisionEntered/Exited (ObjectRef,
+ObjectRef in A7 directional order), and TimerElapsed (String). Dispatch completes
+synchronously before the A7 publisher continues; matching handlers retain source
+order. Existing trigger/collision relays are reused without duplicate components.
+
+`timer.start/stop` use A7 named one-shot timers. `RuntimeBehaviorDriver` advances
+them with scaled `Time.deltaTime`; `RuntimeTimerElapsedEvent` flows back through
+the adapter into `timer.elapsed`. There is no second timer service or event queue.
+Logical `RuntimeMachine.SetInputState` drives pressed/released handlers directly;
+keyboard/controller bindings remain deferred.
+
+Global initialization faults abort startup before CompleteStartup, report once,
+and enter the loader's normal cleanup path. A handler fault, including a fault in
+machine.started, leaves the Machine loaded but disables further script dispatch.
+The first diagnostic is logged with Machine name (ID fallback), source path,
+code, line, column, event name and message. Completed command effects are retained.
+`MachinePreviewLoader.HasOasisBehavior` and `OasisBehaviorFault` provide read-only
+inspection without exposing the interpreter session.
+
+RuntimeMachine owns a generic disposable behaviour attachment. Unload disposes it
+before clearing timers/events and destroying assets. The adapter unsubscribes,
+detaches its host and drops session/host/Machine/reporter references; already
+snapshotted callbacks also skip disposed sessions. Repeated loads create fresh
+state. No schema or serialized shapes change: authored Machine 8, runtime Machine
+9, Object3D 1 and Cabinet 5. Production Pool behaviour remains A8.5.
 
 ## Canonical scripting assembly
 
@@ -142,6 +185,16 @@ path, assembly identity, and absence of copied compiler/session source under Ass
    confirm stale generated behaviour disappears.
 6. Run full `Oasis.Scripting.Tests` and `OasisEditor.Tests` on the Windows/.NET 9
    toolchain. Open Player in its configured Unity 6 editor and run all EditMode tests.
-7. Load/parse an Oasis package through RuntimeBuildLoader, confirm canonical compiler
-   output is session-ready, and confirm normal preview reports the A8.4 adapter
-   boundary with no script handlers driven by A7 events or commands.
+7. Open the Pool Machine, select Oasis, and add a simple `on machine.started()`
+   handler that moves one declared object to an existing anchor. Build and load in
+   Player; confirm the temporary A8.4 guard is gone and startup executes once.
+8. Add a temporary input/trigger handler to move one ball and clear both velocities.
+   Drive logical `SetInputState` or an existing Cabinet trigger; inspect the live
+   authoritative root/Rigidbody. No production Pool script is supplied by A8.4.
+9. Start a script timer and confirm `timer.elapsed` fires through the A7 driver.
+10. In a temporary generated package, deliberately use a missing runtime object
+    (normal Editor/build validation rejects this). Confirm one source/code/line/
+    column/event diagnostic and no repeated errors on further events; Machine stays
+    loaded. A global `1 / 0` initialization fault should instead fail/clean the load.
+11. Reload and confirm script state resets; then load an Emulation Machine and
+    confirm existing behaviour and absence of a script attachment.

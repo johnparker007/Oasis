@@ -35,10 +35,26 @@ Remove Behaviour asks for confirmation, removes the declaration through one
 undoable document mutation, and preserves the in-memory source for undo. Saving
 removes the authored sidecar; a later reopened Emulation Machine has no script.
 
-The pure scripting host is an engine-neutral interface; A8.3 packages and compiles
-source and implements a session interpreter. Connecting it to the A7 event/command
-boundary remains A8.4. Normal Oasis Player preview stops after successful package
-loading with an explicit missing-adapter message.
+The pure scripting host is an engine-neutral interface. A8.3 packages and compiles
+source and implements the session interpreter; A8.4 connects it to A7 in Player.
+`RuntimeMachineOasisScriptHost` implements `IOasisScriptHost` using only
+`RuntimeMachine.Commands`. `RuntimeOasisScriptBehavior` owns one host/session and
+subscribes to the Machine event stream. The dependency remains Player ->
+Oasis.Scripting; the canonical script package has no Machine or Unity dependency.
+
+Both runtime kinds use the same preview lifecycle. After Cabinet/Object3D loading,
+anchor/input/trigger registration and Face/device/driver initialization, Oasis
+requires `ResolvedRuntimeBuild.ScriptProgram` and attaches the behaviour before
+`CompleteStartup()`. Only A7 emits `MachineStarted`, once. Emulation attaches no
+script session. A generic `IDisposable` attachment on RuntimeMachine owns cleanup;
+RuntimeMachine does not implement the script host or know interpreter types.
+
+Initialization faults report one structured diagnostic and fail the load, which
+cleans partial scene/assets. Any handler fault (including `machine.started`) leaves
+the Machine loaded for inspection, disables further script dispatch, and logs once.
+Unload disposes/unsubscribes the attachment before clearing events/timers and
+destroying objects. Reload creates fresh script state. Schema versions remain
+Machine authored 8/runtime 9, Object3D runtime 1 and Cabinet runtime 5.
 
 ## Runtime-to-presentation boundary
 
@@ -50,7 +66,7 @@ The Object3D track extends this principle to designer-addressable physical objec
 
 ## Script boundary
 
-Future scripts must call approved Oasis APIs against stable references.
+Scripts call approved Oasis APIs against stable, typed references.
 
 Do not expose arbitrary Unity/`.NET` APIs or use raw `GameObject.Find` names as the authored contract.
 
