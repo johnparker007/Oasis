@@ -34,7 +34,7 @@ public sealed class OasisPlayerPreviewService
             return OasisPlayerPreviewResult.Fail(validationError);
         }
 
-        var buildResult = _buildServiceFactory().BuildFromMachineDocument(project, machineManifestPath, machineDocument, progress, cancellationToken);
+        var buildResult = _buildServiceFactory().BuildFromMachineDocument(project, machineManifestPath, progress, cancellationToken);
         if (!buildResult.Success || string.IsNullOrWhiteSpace(buildResult.BuildRoot))
         {
             return OasisPlayerPreviewResult.Fail(buildResult.ErrorMessage ?? "Failed to build Oasis Player runtime output.");

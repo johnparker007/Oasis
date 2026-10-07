@@ -1,0 +1,7 @@
+{
+  "name": "Oasis.Scripting",
+  "rootNamespace": "Oasis.Scripting",
+  "references": [],
+  "autoReferenced": true,
+  "noEngineReferences": true
+}

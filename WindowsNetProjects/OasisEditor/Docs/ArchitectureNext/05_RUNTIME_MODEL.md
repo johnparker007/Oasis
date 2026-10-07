@@ -10,27 +10,35 @@ Physical composition and stable Machine object identities should not depend on a
 
 Machine owns a typed `RuntimeDefinition`.
 
-The currently implemented runtime kind is:
+The current variants are:
 
-- `EmulationRuntimeDefinition`.
+- `EmulationRuntimeDefinition`: existing Machine-owned Platform/ROM/settings.
+- `OasisRuntimeDefinition`: deliberately minimal `{ "kind": "Oasis" }`; Oasis owns
+  the Machine behaviour directly, including native physical games such as Pool and
+  Whac-A-Mole.
 
-Platform/ROM settings are Machine-owned and edited from the Machine rather than Project Settings.
+Authored Machine schema **8** supports only these combinations:
 
-## Future behaviour
+| Runtime | Authored Behaviour |
+| --- | --- |
+| Emulation | Must be absent |
+| Oasis | Required: `{ "kind": "OasisScript", "source": "behavior.oasis" }` |
 
-Physical games such as pool and Whac-A-Mole require scripted/physics behaviour.
+Runtime identifies who owns execution; Behaviour identifies the source/language.
+Unknown kinds and unsupported combinations fail validation. There is no hybrid
+Emulation + Oasis Script, migration, or previous-schema reader.
 
-Do not introduce `ScriptedRuntimeDefinition`, `PhysicsRuntimeDefinition` or `HybridRuntimeDefinition` merely to satisfy names predicted by old plans.
+Machine Details selects Emulation or Oasis. Choosing Oasis (including Add Oasis
+Script Behaviour) atomically creates the canonical declaration and a default source
+if needed. Platform/ROM controls are hidden for Oasis. Switching to Emulation or
+Remove Behaviour asks for confirmation, removes the declaration through one
+undoable document mutation, and preserves the in-memory source for undo. Saving
+removes the authored sidecar; a later reopened Emulation Machine has no script.
 
-First establish:
-
-- Object3D assets and Machine instances;
-- Player runtime object registry;
-- trigger/object/input identities;
-- runtime event API;
-- runtime command API.
-
-Then choose the smallest runtime/behaviour representation that the concrete pool and Whac-A-Mole workflows require.
+The pure scripting host is an engine-neutral interface; A8.3 packages and compiles
+source and implements a session interpreter. Connecting it to the A7 event/command
+boundary remains A8.4. Normal Oasis Player preview stops after successful package
+loading with an explicit missing-adapter message.
 
 ## Runtime-to-presentation boundary
 

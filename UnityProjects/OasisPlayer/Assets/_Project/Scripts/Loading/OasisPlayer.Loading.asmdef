@@ -3,7 +3,8 @@
     "rootNamespace": "OasisPlayer.Loading",
     "references": [
         "OasisPlayer.RuntimeBuild",
-        "glTFast"
+        "glTFast",
+        "Oasis.Scripting"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

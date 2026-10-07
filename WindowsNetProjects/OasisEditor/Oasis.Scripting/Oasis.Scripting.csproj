@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- Canonical UPM Runtime sources are compiled recursively by the SDK. Unity imports only Package/, never bin/obj. -->
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>9.0</LangVersion>
     <Nullable>enable</Nullable>

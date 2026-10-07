@@ -9,11 +9,11 @@ public sealed class MachineObject3DInstanceTests
     private static readonly AssetReference LibraryBall = AssetReference.Library("Object3D/Pool Ball/asset.object3d");
 
     [Fact]
-    public void EmptyInstances_RoundTripInSchema7()
+    public void EmptyInstances_RoundTripInSchema8()
     {
         var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Pool"));
         Assert.True(MachineDocumentStorage.TryRead(json, out var reopened, out var error), error);
-        Assert.Equal(7, reopened.SchemaVersion);
+        Assert.Equal(8, reopened.SchemaVersion);
         Assert.Empty(reopened.ObjectInstances);
     }
 

@@ -7,7 +7,7 @@ namespace Oasis.Scripting
 {
     public sealed class OasisScriptBuiltinSignature
     {
-        public OasisScriptBuiltinSignature(string name, OasisScriptType returnType, params OasisScriptType[] parameters) { Name = name; ReturnType = returnType; Parameters = parameters; }
+        public OasisScriptBuiltinSignature(string name, OasisScriptType returnType, params OasisScriptType[] parameters) { Name = name; ReturnType = returnType; Parameters = Array.AsReadOnly(parameters.ToArray()); }
         public string Name { get; }
         public OasisScriptType ReturnType { get; }
         public IReadOnlyList<OasisScriptType> Parameters { get; }
@@ -47,12 +47,13 @@ namespace Oasis.Scripting
     }
     public sealed class OasisScriptEventHandler
     {
-        internal OasisScriptEventHandler(int sourceOrder, string eventName, IReadOnlyList<OasisScriptEventParameter> parameters, OasisScriptBlockSyntax body) { SourceOrder = sourceOrder; EventName = eventName; Parameters = parameters; Body = body; }
+        internal OasisScriptEventHandler(int sourceOrder, string eventName, IReadOnlyList<OasisScriptEventParameter> parameters, OasisScriptBlockSyntax body) { SourceOrder = sourceOrder; EventName = eventName; Parameters = Array.AsReadOnly(parameters.ToArray()); Body = body; }
         public int SourceOrder { get; } public string EventName { get; } public IReadOnlyList<OasisScriptEventParameter> Parameters { get; } public OasisScriptBlockSyntax Body { get; }
     }
     public sealed class OasisScriptProgram
     {
-        internal OasisScriptProgram(OasisScriptProgramSyntax syntax, IReadOnlyList<OasisScriptVariable> constants, IReadOnlyList<OasisScriptVariable> states, IReadOnlyList<OasisScriptEventHandler> handlers) { Syntax = syntax; Constants = constants; States = states; EventHandlers = handlers; }
+        internal OasisScriptProgram(OasisScriptProgramSyntax syntax, IReadOnlyList<OasisScriptVariable> constants, IReadOnlyList<OasisScriptVariable> states, IReadOnlyList<OasisScriptEventHandler> handlers, string sourceName) { SourceName = sourceName; Syntax = syntax; Constants = Array.AsReadOnly(constants.ToArray()); States = Array.AsReadOnly(states.ToArray()); EventHandlers = Array.AsReadOnly(handlers.ToArray()); }
+        public string SourceName { get; }
         public OasisScriptProgramSyntax Syntax { get; } public IReadOnlyList<OasisScriptVariable> Constants { get; } public IReadOnlyList<OasisScriptVariable> States { get; } public IReadOnlyList<OasisScriptEventHandler> EventHandlers { get; }
     }
     public sealed class OasisScriptExecutionOptions
@@ -97,7 +98,7 @@ namespace Oasis.Scripting
                 }
                 else if (declaration is OasisScriptEventHandlerSyntax handler) handlers.Add(AnalyzeHandler(handler, handlers.Count));
             }
-            return new OasisScriptProgram(syntax, constants, states, handlers);
+            return new OasisScriptProgram(syntax, constants, states, handlers, _sourceName);
         }
 
         private OasisScriptEventHandler AnalyzeHandler(OasisScriptEventHandlerSyntax syntax, int sourceOrder)

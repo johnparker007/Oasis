@@ -98,7 +98,8 @@ Object3D owns intrinsic model/physics defaults. Machine owns each instance's ide
 
 A RuntimeDefinition describes how the Machine behaves. Emulation is one runtime implementation rather than the architectural center of Oasis.
 
-Scripted/physics/hybrid behaviour is an active future track, documented separately.
+Native Oasis behaviour uses `OasisRuntimeDefinition` plus one required Oasis Script
+source. Emulation forbids authored behaviour; hybrid support remains deferred.
 
 ## Ownership invariants
 

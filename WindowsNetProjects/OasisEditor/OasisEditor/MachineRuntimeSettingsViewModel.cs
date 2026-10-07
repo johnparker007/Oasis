@@ -54,7 +54,7 @@ public sealed class MachineRuntimeSettingsViewModel : INotifyPropertyChanged
         _refreshing = true;
         try
         {
-            var settings = _owner.GetMachineDocument().EmulationRuntime.PlatformSettings;
+            var settings = (_owner.GetMachineDocument().Runtime as EmulationRuntimeDefinition)?.PlatformSettings;
             if (settings is System6NativeRomSettings impact)
             {
                 _impact = Clone(impact); System6ReelOptos = Rows(_impact.ReelOptos); System6Coins = Coins(_impact.Coins);
@@ -69,8 +69,11 @@ public sealed class MachineRuntimeSettingsViewModel : INotifyPropertyChanged
         finally { _refreshing = false; }
     }
 
-    private void Commit<T>(FruitMachinePlatformType platform, T value, string description) where T : class =>
-        _owner.ExecuteMachineMutation(machine => machine with { Runtime = new EmulationRuntimeDefinition(platform, Clone(value)) }, description);
+    private void Commit<T>(FruitMachinePlatformType platform, T value, string description) where T : class
+    {
+        if (_owner.IsMachineEmulationRuntime)
+            _owner.ExecuteMachineMutation(machine => machine with { Runtime = new EmulationRuntimeDefinition(platform, Clone(value)) }, description);
+    }
     private void CommitMpu5(Mpu5NativeRomSettings value) => Commit(FruitMachinePlatformType.MPU5, value, "Edit MPU5 runtime settings");
     private void SaveImpact() { if (!_refreshing) Commit(FruitMachinePlatformType.Impact, BuildImpact(), "Edit Impact runtime settings"); }
     private System6NativeRomSettings BuildImpact() { _impact.ReelOptos = System6ReelOptos.Select(x => x.ToModel()).ToList(); _impact.Coins = System6Coins.Select(x => x.ToModel()).ToList(); return Clone(_impact); }

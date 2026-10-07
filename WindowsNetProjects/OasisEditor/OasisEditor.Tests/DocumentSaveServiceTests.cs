@@ -287,7 +287,7 @@ public sealed class DocumentSaveServiceTests
         Assert.Equal(expected.SurfaceAssignments, actual.SurfaceAssignments);
         Assert.Equal(expected.ReelAssignments, actual.ReelAssignments);
         Assert.Equal(expected.EmulationRuntime.Platform, actual.EmulationRuntime.Platform);
-        Assert.Equal(MachineRuntimeManifestDefinition.From(expected.Runtime).PlatformSettingsJson, MachineRuntimeManifestDefinition.From(actual.Runtime).PlatformSettingsJson);
+        Assert.Equal(Assert.IsType<EmulationMachineRuntimeManifestDefinition>(MachineRuntimeManifestDefinition.From(expected.Runtime)).PlatformSettingsJson, Assert.IsType<EmulationMachineRuntimeManifestDefinition>(MachineRuntimeManifestDefinition.From(actual.Runtime)).PlatformSettingsJson);
         Assert.Equal(expected.InputDefinitions.Select(input => (input.Id, input.Name, input.ButtonNumber)), actual.InputDefinitions.Select(input => (input.Id, input.Name, input.ButtonNumber)));
     }
 }

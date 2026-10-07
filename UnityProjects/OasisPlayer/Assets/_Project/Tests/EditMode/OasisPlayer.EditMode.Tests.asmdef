@@ -4,7 +4,8 @@
     "references": [
         "OasisPlayer.RuntimeBuild",
         "OasisPlayer.Loading",
-        "OasisPlayer.Settings"
+        "OasisPlayer.Settings",
+        "Oasis.Scripting"
     ],
     "includePlatforms": [
         "Editor"

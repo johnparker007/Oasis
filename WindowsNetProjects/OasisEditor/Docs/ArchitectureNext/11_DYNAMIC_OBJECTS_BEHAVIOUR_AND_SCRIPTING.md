@@ -22,9 +22,10 @@ Viewport camera, selection, derived bounds, diagnostics, and Cabinet semantic vi
 
 Scripting is deliberately last. It consumes a stable Oasis runtime object model rather than defining that model.
 
-## Authored behaviour (A8.2)
+## Authored behaviour
 
-A Machine now owns zero or one Oasis Script behaviour. The authored schema 7 manifest
+An Emulation Machine has no behaviour; an Oasis Machine requires one Oasis Script
+behaviour. The authored schema 8 manifest
 contains only `{ "kind": "OasisScript", "source": "behavior.oasis" }`; source is a
 separate canonical file in the Machine package and is never an external or reusable
 Project/Library asset. The Machine Behaviour tab permits temporary syntax/type/reference
@@ -36,8 +37,10 @@ Machine-aware reference validation is an Editor/domain concern layered after suc
 pure-language compilation. It walks the complete validated syntax tree and resolves
 Object3D instances, anchors, Cabinet semantic triggers, Machine inputs, and existing
 numeric lamp/reel/alpha/seven-segment identities through Machine composition. It does not
-treat event bindings as authored references. Player packaging and execution remain A8.3;
-runtime builds currently fail explicitly rather than silently discarding behaviour.
+treat event bindings as authored references. Builds revalidate persisted source and
+package it at behavior/behavior.oasis under Machine runtime schema 9. Player compiles
+it through canonical Oasis.Scripting and retains a session-ready program; A7 host/event
+integration remains A8.4. Oasis preview fails explicitly at that adapter boundary.
 
 The composition reference index resolves Project/Library Cabinet references with the
 normal `AssetReferenceResolver`, reads the Cabinet package GLB, and uses the shared
@@ -305,7 +308,7 @@ Repeated Machine instances referencing one Object3D asset should not require dup
 
 The Machine runtime manifest contains instance declarations because placement and instance identity belong to Machine, not to the reusable Object3D GLB.
 
-Generated instance (Machine runtime schema 8) preserves authoring coordinates without conversion; rotation remains XYZ Euler degrees for the documented Unity conversion in A4:
+Generated instance (Machine runtime schema 9) preserves authoring coordinates without conversion; rotation remains XYZ Euler degrees for the documented Unity conversion in A4:
 
 ```json
 {
@@ -320,7 +323,7 @@ Generated instance (Machine runtime schema 8) preserves authoring coordinates wi
 }
 ```
 
-Definitions use `oasis.object3d.runtime` schema version 1 and contain the generated model filename, intrinsic model scale/up-axis, shape-specific collider values, and enabled/mass/useGravity Rigidbody values. The Player reader supports only Machine runtime schema 8 and retains the resolved definitions for A4.
+Definitions use `oasis.object3d.runtime` schema version 1 and contain the generated model filename, intrinsic model scale/up-axis, shape-specific collider values, and enabled/mass/useGravity Rigidbody values. The Player reader supports only Machine runtime schema 9 and retains the resolved definitions for A4.
 
 ## Player runtime model
 
@@ -360,7 +363,9 @@ Machine build loaded
   -> behaviour starts
 ```
 
-The exact order can follow current Player requirements as long as behaviour starts only after referenced objects/triggers/inputs are available.
+This is the target host-adapted flow. In A8.3 Oasis source is compiled at package load,
+and normal Oasis preview stops before creating RuntimeMachine; starting behaviour
+belongs to A8.4 after referenced objects/triggers/inputs are available.
 
 ## Physics policy
 
@@ -537,19 +542,12 @@ If Whac-A-Mole requires a motion primitive not covered by pool, add the smallest
 
 ## Scripting language boundary
 
-Do not choose or implement a scripting syntax before the runtime object/event/command API exists.
-
-Potential scripting implementations can be evaluated later against these requirements:
-
-- sandboxed;
-- deterministic enough for arcade-machine behaviour;
-- clear errors with Machine object IDs;
-- easy Editor integration;
-- serializable source/assets;
-- able to subscribe to Oasis events and call only approved Oasis commands;
-- no arbitrary Unity/.NET access by default.
-
-The first script implementation should be deliberately small and prove pool + Whac-A-Mole workflows before broader language features are added.
+The A7 object/event/command boundary is implemented. Oasis Script is the chosen
+small, deterministic language, with authored schema 8, runtime schema 9 and a pure
+interpreter. Its implementation and runtime semantics are documented in
+`12_OASIS_SCRIPT.md`. Pure tests prove Pool pocket and timer-driven Whac-A-Mole
+behaviour through a recording host. Subscribing those sessions to A7 events and
+adapting the approved commands remains A8.4; no arbitrary Unity/.NET access exists.
 
 ## Explicit non-goals for the initial track
 
@@ -581,3 +579,19 @@ Implement in separate reviewable PRs:
 9. Pool behaviour vertical slice and Whac-A-Mole validation as separate follow-ups where useful.
 
 Each PR should remove superseded code rather than preserving transitional formats.
+
+## Pure execution boundary
+
+`OasisRuntimeDefinition` has only kind Oasis. Authored Behaviour is separate and
+canonical; Emulation + OasisScript is unsupported. Choosing Oasis/Add Behaviour is
+one undoable Machine operation; switching to Emulation confirms destructive removal.
+
+The single pure implementation resides in Oasis.Scripting/Package/Runtime, consumed
+by the existing .NET project and Player's local Unity package without copied source.
+`OasisScriptSession` initializes immutable constants and mutable state once, then
+accepts typed `OasisScriptEvent` values. Its `IOasisScriptHost` delegates the current
+object/timer commands without knowledge of A7, Unity or Editor types. Budgets and
+structured OSR runtime faults stop the session after its first failure. See
+`12_OASIS_SCRIPT.md` for exact semantics and `09_RUNTIME_BUILD_AND_PLAYER_CONTRACT.md`
+for loading/sharing and manual verification. A8.4 owns host commands, event mapping,
+MachineStarted delivery, timers and session detach/unload.
