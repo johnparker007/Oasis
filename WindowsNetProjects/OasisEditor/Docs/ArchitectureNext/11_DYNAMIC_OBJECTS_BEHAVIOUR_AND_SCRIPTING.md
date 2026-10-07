@@ -39,8 +39,9 @@ Object3D instances, anchors, Cabinet semantic triggers, Machine inputs, and exis
 numeric lamp/reel/alpha/seven-segment identities through Machine composition. It does not
 treat event bindings as authored references. Builds revalidate persisted source and
 package it at behavior/behavior.oasis under Machine runtime schema 9. Player compiles
-it through canonical Oasis.Scripting and retains a session-ready program; A7 host/event
-integration remains A8.4. Oasis preview fails explicitly at that adapter boundary.
+it through canonical Oasis.Scripting and retains a session-ready program. A8.4
+executes that program through a Player-side A7 host/event adapter during normal
+Machine preview loading; Emulation creates no script session.
 
 The composition reference index resolves Project/Library Cabinet references with the
 normal `AssetReferenceResolver`, reads the Cabinet package GLB, and uses the shared
@@ -363,9 +364,11 @@ Machine build loaded
   -> behaviour starts
 ```
 
-This is the target host-adapted flow. In A8.3 Oasis source is compiled at package load,
-and normal Oasis preview stops before creating RuntimeMachine; starting behaviour
-belongs to A8.4 after referenced objects/triggers/inputs are available.
+This flow is implemented through A8.4. Oasis source is compiled at package load.
+After content/registries/drivers are ready, RuntimeOasisScriptBehavior initializes
+one session and subscribes before A7 CompleteStartup emits MachineStarted once.
+Initialization failure cleans the partial load; handler failure retains the loaded
+Machine, disables subsequent dispatch and reports one structured fault.
 
 ## Physics policy
 
@@ -439,7 +442,7 @@ Do not expose Unity `Collider`, `Rigidbody` or `GameObject` as the authored scri
 
 ### Settled A7 event contract
 
-The event types are `RuntimeMachineStartedEvent`, `RuntimeInputPressedEvent`, `RuntimeInputReleasedEvent`, `RuntimeTriggerEnteredEvent`, `RuntimeTriggerExitedEvent`, `RuntimeCollisionEnteredEvent`, `RuntimeCollisionExitedEvent`, and `RuntimeTimerElapsedEvent`. `RuntimeMachine.Events` delivers them synchronously in subscription order. Subscriptions can be removed, are cleared at unload, and exceptions propagate to the future behaviour host.
+The event types are `RuntimeMachineStartedEvent`, `RuntimeInputPressedEvent`, `RuntimeInputReleasedEvent`, `RuntimeTriggerEnteredEvent`, `RuntimeTriggerExitedEvent`, `RuntimeCollisionEnteredEvent`, `RuntimeCollisionExitedEvent`, and `RuntimeTimerElapsedEvent`. `RuntimeMachine.Events` delivers them synchronously in subscription order. The A8.4 adapter converts them to canonical typed Oasis Script events and finishes dispatch before the publisher continues. Subscriptions are removed on disposal and cleared at unload. Script host failures become interpreter diagnostics rather than escaping Unity callbacks; unrelated A7 subscriber exceptions still propagate.
 
 `MachineStarted` is emitted once, after Cabinet triggers, Object3D instances, anchors, declared inputs, Faces/devices, renderers, and runtime drivers have been initialized. Trigger payloads contain the raw IDs represented canonically by `trigger:<id>` and `object:<id>`. Classification retains node-name precedence over mesh name, and the semantic name that wins classification supplies the trigger ID.
 
@@ -472,7 +475,9 @@ Teleport targets the authoritative root in Machine space, moves its root Rigidbo
 
 The runtime registers existing Machine input declarations by the ID in `input:<id>`. `SetInputState` emits only actual pressed/released transitions and rejects unknown IDs. Named timers use the same conservative letters/digits/underscore/hyphen ID rule, reject non-finite or negative duration, replace an existing timer on start, are harmless to stop when absent, publish once and remove themselves on elapsed, and are cleared on unload. Timer logic exposes deterministic `Advance(deltaSeconds)`; the play-mode adapter uses scaled `Time.deltaTime`.
 
-No authored behaviour schema, scripting language, arbitrary component/property mutation, or Unity API access is part of A7. Those choices remain deferred to A8.
+The A7 layer itself owns no authored behaviour schema or scripting language. A8.4
+adapts Oasis Script to these services; arbitrary component/property mutation and
+Unity API access remain excluded from the authored contract.
 
 ## Pool vertical slice
 
@@ -546,8 +551,10 @@ The A7 object/event/command boundary is implemented. Oasis Script is the chosen
 small, deterministic language, with authored schema 8, runtime schema 9 and a pure
 interpreter. Its implementation and runtime semantics are documented in
 `12_OASIS_SCRIPT.md`. Pure tests prove Pool pocket and timer-driven Whac-A-Mole
-behaviour through a recording host. Subscribing those sessions to A7 events and
-adapting the approved commands remains A8.4; no arbitrary Unity/.NET access exists.
+behaviour through a recording host. A8.4 adds real A7/Unity integration fixtures for
+both flows: the existing trigger relay moves a live ball and zeros both velocities;
+MachineStarted raises a live mole and an A7 timer lowers it. These are test-only
+scripts, not production game content. No arbitrary Unity/.NET access exists.
 
 ## Explicit non-goals for the initial track
 
@@ -593,5 +600,11 @@ accepts typed `OasisScriptEvent` values. Its `IOasisScriptHost` delegates the cu
 object/timer commands without knowledge of A7, Unity or Editor types. Budgets and
 structured OSR runtime faults stop the session after its first failure. See
 `12_OASIS_SCRIPT.md` for exact semantics and `09_RUNTIME_BUILD_AND_PLAYER_CONTRACT.md`
-for loading/sharing and manual verification. A8.4 owns host commands, event mapping,
-MachineStarted delivery, timers and session detach/unload.
+for loading/sharing and manual verification. A8.4 implements host commands, all event
+mapping, synchronous MachineStarted delivery, A7 timer feedback and session disposal.
+RuntimeMachine owns a generic IDisposable attachment; the adapter unsubscribes and
+drops session/host references before assets are destroyed, including on failed load.
+Reload initializes independent state. Reference domains use value.Type, raw IDs
+resolve through A7 registries, and Vec3/poses retain Machine-space coordinates with
+XYZ Euler degrees; intrinsic modelScale/upAxis stays beneath the live root.
+Schemas remain authored Machine 8/runtime 9, Object3D runtime 1 and Cabinet runtime 5.

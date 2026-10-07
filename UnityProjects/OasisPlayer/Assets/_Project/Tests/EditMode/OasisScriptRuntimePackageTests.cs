@@ -65,14 +65,20 @@ namespace OasisPlayer.Tests
             Assert.True(session.Dispatch(OasisScriptEvent.MachineStarted())); Assert.AreEqual(1, host.Calls);
             session.TryGetState("score", out score); Assert.AreEqual(1, ((OasisScriptNumberValue)score).Value);
         }
-        [Test] public void NormalPreviewStopsBeforeCreatingRuntimeMachineOrRunningHandlers()
+        [Test] public void CompiledOasisProgramDoesNotEmitStartupUntilTheA7MachineStarts()
         {
             Assert.True(RuntimeBuildLoader.TryLoad(_root, out var build, out var error), error);
-            var driversBefore = UnityEngine.Object.FindObjectsByType<RuntimeBehaviorDriver>(FindObjectsSortMode.None).Length;
-            var loader = new MachinePreviewLoader(null, null, null);
-            var exception = Assert.ThrowsAsync<InvalidOperationException>(() => loader.LoadAsync(build));
-            StringAssert.Contains("runtime host adapter is not implemented until A8.4", exception.Message);
-            Assert.AreEqual(driversBefore, UnityEngine.Object.FindObjectsByType<RuntimeBehaviorDriver>(FindObjectsSortMode.None).Length);
+            var machine = new RuntimeMachine(build, null);
+            try
+            {
+                var behavior = RuntimeOasisScriptBehavior.AttachTo(machine);
+                Assert.False(machine.HasStarted);
+                Assert.False(behavior.IsFaulted);
+                machine.CompleteStartup();
+                Assert.True(machine.HasStarted);
+                Assert.False(behavior.IsFaulted);
+            }
+            finally { machine.UnloadAssets(); }
         }
         [Test] public void UnityUsesCanonicalScriptingPackageAndNoCopiedImplementation()
         {

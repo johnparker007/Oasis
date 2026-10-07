@@ -11,8 +11,8 @@ can consume one lexer/parser/type-checker implementation.
 
 Machine authored schema 8 separates Runtime from Behaviour: Oasis requires one
 package-local `behavior.oasis`; Emulation forbids behaviour. A8.3 implements source
-packaging (Machine runtime schema 9) and pure interpretation; the A7 host adapter
-remains A8.4. Canonical source is in `Oasis.Scripting/Package/Runtime/`, compiled by
+packaging (Machine runtime schema 9) and pure interpretation; A8.4 implements the
+Player-side A7 host adapter. Canonical source is in `Oasis.Scripting/Package/Runtime/`, compiled by
 the .NET project and Player's local UPM package without source duplication.
 
 The Editor compiles the current buffer after edits and, only after core success, runs a
@@ -20,7 +20,8 @@ Machine-domain syntax-tree validator for all typed reference literals. Core and 
 diagnostics share one line/column list while retaining distinct `OS...` and `OSM3...`
 codes. Temporary invalid text is retained and marks the Machine dirty; a saved package
 must compile and resolve. Add/Remove participate in document undo, while normal source
-typing uses local text undo. Player compiles packaged source once at load; normal preview stops at the missing A8.4 adapter.
+typing uses local text undo. Player compiles packaged source once at load; normal
+preview creates the Oasis behaviour session after runtime content is ready.
 Machine reference discovery follows assembled composition: authored Object3D/anchor/input
 and reel identities, semantic triggers from the resolved Cabinet GLB, and linked
 lamp/alpha/seven-segment references from assigned Faces. Missing composition assets and a
@@ -64,8 +65,8 @@ sevenSegment:12
 ```
 
 Text IDs use the existing conservative ASCII letter/digit/underscore/hyphen rule.
-Device IDs are non-negative decimal integers. A8.1 validates syntax and type only;
-existence in a Machine is deliberately deferred to A8.2.
+Device IDs are non-negative decimal integers. Core compilation validates syntax
+and type; the Editor/build Machine validator checks composition-aware existence.
 
 `vec3(x, y, z)` requires three Numbers and returns `Vec3`. V1 defines no vector
 operators. Arithmetic and ordered comparisons require Number, equality requires
@@ -205,9 +206,55 @@ The first initialization/dispatch failure sets `IsFaulted` and
 `LastRuntimeDiagnostic`. `Dispatch` returns false; every later attempt executes
 nothing and retains the original error, avoiding repeat reports. State and completed
 host effects before the fault are retained for diagnostics; execution is not a
-transaction and effects are not rolled back. No A7 subscriptions, commands, timer
-adapter or startup event emission are implemented here. A8.4 supplies those adapters
-and consumes the fault policy. Random remains deferred.
+transaction and effects are not rolled back. The pure scripting package owns no A7
+subscriptions, command implementation, timers or startup emission. The implemented
+A8.4 Player adapter supplies that wiring and consumes the fault policy. Random
+remains deferred.
+
+## Player host and lifecycle (A8.4 implemented)
+
+`RuntimeMachineOasisScriptHost` maps each IOasisScriptHost method to the existing
+RuntimeMachine.Commands method (TeleportPose uses the RuntimePose overload).
+ObjectRef/AnchorRef arguments are checked by their OasisScriptType and yield raw
+domain IDs; no string prefix parsing is used. Vec3 doubles must fit finite A7
+floats. Positions/XYZ Euler degrees remain in Machine space; the adapter applies
+no intrinsic modelScale/upAxis correction and performs no direct Unity mutation.
+Missing live objects/anchors, absent Rigidbody and other normal command failures
+return HostResult.Fail and become OSR1005. Unexpected command exceptions retain
+command/type/message context in that result. Machine-aware authoring validation
+stays in Editor/build; live registry availability belongs to A7.
+
+`RuntimeOasisScriptBehavior` owns one host/session and translates A7 events:
+
+| A7 event | Oasis Script event and values |
+| --- | --- |
+| RuntimeMachineStartedEvent | machine.started() |
+| RuntimeInputPressedEvent / RuntimeInputReleasedEvent | input.pressed/released(InputRef) |
+| RuntimeTriggerEnteredEvent / RuntimeTriggerExitedEvent | trigger.entered/exited(TriggerRef, ObjectRef) |
+| RuntimeCollisionEnteredEvent / RuntimeCollisionExitedEvent | collision.entered/exited(ObjectRef, ObjectRef), directional A7 order |
+| RuntimeTimerElapsedEvent | timer.elapsed(String timer ID) |
+
+Delivery is synchronous and source ordered, with no tasks, frame queues or
+coroutines. Cabinet/Object3Ds, anchors, inputs, semantic triggers, Faces/devices and
+drivers are ready before session initialization/subscription. Only then does A7
+CompleteStartup emit machine.started exactly once. Emulation has no script session.
+
+An initialization fault logs its diagnostic once, fails load and cleans partial
+scene/resources without CompleteStartup. Any event handler fault, including
+machine.started, leaves the Machine loaded for inspection and disables further
+script dispatch. The first error includes Machine display name/ID fallback,
+behavior/behavior.oasis, code, line, column, event and message. Player exposes only
+read-only fault/attachment state, not a mutable interpreter session.
+
+timer.start/stop delegate to A7; RuntimeBehaviorDriver advances the same timers with
+scaled Time.deltaTime and TimerElapsed feeds back into script dispatch. Existing
+logical input and trigger/collision bridges remain the sources of events.
+RuntimeMachine's generic disposable attachment is disposed on unload before
+clearing events/timers and destroying objects; the adapter unsubscribes and drops
+host/session references. Every reload gets fresh state. Canonical package ownership
+and schemas (Machine authored 8/runtime 9, Object3D 1, Cabinet 5) are unchanged.
+Pool and Whac-A-Mole scripts in integration tests are fixtures only; A8.5 owns the
+first real Pool behaviour.
 
 ## Representative program
 

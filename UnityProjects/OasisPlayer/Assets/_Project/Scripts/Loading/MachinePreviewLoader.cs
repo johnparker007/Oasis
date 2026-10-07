@@ -11,9 +11,14 @@ namespace OasisPlayer.Loading
         private readonly ICabinetModelLoader _modelLoader;
         private readonly RuntimeFaceLoader _faceLoader;
         private readonly RuntimeFaceRenderer _faceRenderer;
+        private readonly IObject3DModelLoader _objectModelLoader;
         private GameObject _current;
         private RuntimeMachine _runtimeMachine;
         private Object3DRuntimeLoader _objectLoader;
+        private RuntimeOasisScriptBehavior _oasisBehavior;
+
+        public bool HasOasisBehavior { get { return _oasisBehavior != null && !_oasisBehavior.IsDisposed; } }
+        public Oasis.Scripting.OasisScriptRuntimeDiagnostic OasisBehaviorFault { get { return _oasisBehavior != null ? _oasisBehavior.LastRuntimeDiagnostic : null; } }
 
         public MachinePreviewLoader(ICabinetModelLoader modelLoader)
             : this(modelLoader, new RuntimeFaceLoader(new PngRuntimeTextureAssetLoader()), new RuntimeFaceRenderer(new RuntimeFaceMaterialFactory()))
@@ -26,16 +31,20 @@ namespace OasisPlayer.Loading
         }
 
         public MachinePreviewLoader(ICabinetModelLoader modelLoader, RuntimeFaceLoader faceLoader, RuntimeFaceRenderer faceRenderer)
+            : this(modelLoader, faceLoader, faceRenderer, new GltfFastObject3DModelLoader())
+        {
+        }
+
+        public MachinePreviewLoader(ICabinetModelLoader modelLoader, RuntimeFaceLoader faceLoader, RuntimeFaceRenderer faceRenderer, IObject3DModelLoader objectModelLoader)
         {
             _modelLoader = modelLoader;
             _faceLoader = faceLoader;
             _faceRenderer = faceRenderer;
+            _objectModelLoader = objectModelLoader;
         }
 
         public async Task<RuntimeMachine> LoadAsync(ResolvedRuntimeBuild build)
         {
-            if (build.Machine.runtime.kind == "Oasis")
-                throw new InvalidOperationException("Oasis Script runtime package loaded successfully; runtime host adapter is not implemented until A8.4.");
             Unload();
             var spawns = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsSortMode.None)
                 .Where(t => t.parent == null && t.name == "MachineSpawn")
@@ -60,7 +69,7 @@ namespace OasisPlayer.Loading
                 var machine = new RuntimeMachine(build, cabinet);
                 _runtimeMachine = machine;
                 CabinetSemanticGeometrySetup.RegisterTriggers(cabinet, machine);
-                _objectLoader = new Object3DRuntimeLoader(new GltfFastObject3DModelLoader());
+                _objectLoader = new Object3DRuntimeLoader(_objectModelLoader);
                 await _objectLoader.LoadAsync(machine, sessionRoot.transform);
                 _faceLoader.LoadFaces(machine);
                 _faceRenderer.RenderFaces(machine);
@@ -80,6 +89,7 @@ namespace OasisPlayer.Loading
                 reelControls.Initialize(machine);
 #endif
                 foreach (var warning in machine.Warnings) Debug.LogWarning(warning);
+                _oasisBehavior = RuntimeOasisScriptBehavior.AttachTo(machine);
                 machine.CompleteStartup();
                 return machine;
             }
@@ -97,6 +107,7 @@ namespace OasisPlayer.Loading
                 _runtimeMachine.UnloadAssets();
                 _runtimeMachine = null;
             }
+            _oasisBehavior = null;
             if (_objectLoader != null)
             {
                 _objectLoader.Dispose();

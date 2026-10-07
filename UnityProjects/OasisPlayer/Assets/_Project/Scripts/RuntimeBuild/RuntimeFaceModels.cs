@@ -15,6 +15,7 @@ namespace OasisPlayer.RuntimeBuild
         private readonly List<string> _warnings = new List<string>();
         private RuntimeLampStateTexture _lampStateTexture;
         private RuntimeSegmentDisplayRenderer _segmentDisplayRenderer;
+        private IDisposable _behaviorRuntime;
         private readonly List<RuntimeCabinetReflectionBinding> _cabinetReflectionBindings = new List<RuntimeCabinetReflectionBinding>();
         private readonly List<RuntimeTextureAsset> _cabinetReflectionTextures = new List<RuntimeTextureAsset>();
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -169,6 +170,14 @@ namespace OasisPlayer.RuntimeBuild
             Events.Publish(new RuntimeMachineStartedEvent());
         }
 
+        internal void AttachBehaviorRuntime(IDisposable behaviorRuntime)
+        {
+            if (behaviorRuntime == null) throw new ArgumentNullException(nameof(behaviorRuntime));
+            if (!IsActive || HasStarted || _behaviorRuntime != null)
+                throw new InvalidOperationException("Machine behaviour must attach once, before startup and unload.");
+            _behaviorRuntime = behaviorRuntime;
+        }
+
         internal bool TryGetObjectIdentity(RuntimeObjectIdentity identity, out string objectId)
         {
             objectId = null;
@@ -195,6 +204,11 @@ namespace OasisPlayer.RuntimeBuild
         public void UnloadAssets()
         {
             IsActive = false;
+            if (_behaviorRuntime != null)
+            {
+                _behaviorRuntime.Dispose();
+                _behaviorRuntime = null;
+            }
             Timers.Clear();
             Events.Clear();
             for (var i = 0; i < _cabinetReflectionBindings.Count; i++) _cabinetReflectionBindings[i].Dispose();
