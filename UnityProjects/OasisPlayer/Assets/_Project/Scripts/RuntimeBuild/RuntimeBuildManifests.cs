@@ -67,6 +67,7 @@ namespace OasisPlayer.RuntimeBuild
     {
         public string id = string.Empty;
         public string name = string.Empty;
+        public string keyboardShortcut = string.Empty;
     }
 
     [Serializable]

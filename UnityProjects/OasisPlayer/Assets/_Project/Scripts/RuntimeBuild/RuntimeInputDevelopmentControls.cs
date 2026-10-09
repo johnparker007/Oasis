@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace OasisPlayer.RuntimeBuild
 {
-    /// <summary>Inspector-configured development keys; logical transitions still belong to A7.</summary>
+    /// <summary>Authored development keys with session Inspector overrides; logical transitions belong to A7.</summary>
     public sealed class RuntimeInputDevelopmentControls : MonoBehaviour
     {
         [Serializable]
@@ -17,14 +17,21 @@ namespace OasisPlayer.RuntimeBuild
 
         [SerializeField] private Binding[] bindings = Array.Empty<Binding>();
         private RuntimeMachine _machine;
-        private readonly HashSet<string> _pressed = new HashSet<string>(StringComparer.Ordinal);
+        private readonly SortedSet<string> _pressed = new SortedSet<string>(StringComparer.Ordinal);
         private bool _hasFocus = true;
 
         public void Initialize(RuntimeMachine machine)
         {
             ReleaseInputs();
             _machine = machine;
+            // Each load/replacement restores authored data once, never during polling.
+            Configure(machine != null && machine.Build.Machine.runtime.kind == "Oasis"
+                ? RuntimeInputShortcutMapper.CreateBindings(machine.Build.Machine.inputs,
+                    warning => Debug.LogWarning(warning, this))
+                : Array.Empty<Binding>());
         }
+
+        public IReadOnlyList<Binding> Bindings { get { return Array.AsReadOnly(bindings ?? Array.Empty<Binding>()); } }
 
         public void Configure(Binding[] values)
         {
@@ -40,7 +47,7 @@ namespace OasisPlayer.RuntimeBuild
             if (_machine == null || !_machine.IsActive) { _pressed.Clear(); _machine = null; return; }
             if (!isActiveAndEnabled || !_hasFocus) { ReleaseInputs(); return; }
             if (isHeld == null) throw new ArgumentNullException(nameof(isHeld));
-            var held = new HashSet<string>(StringComparer.Ordinal);
+            var held = new SortedSet<string>(StringComparer.Ordinal);
             foreach (var binding in bindings ?? Array.Empty<Binding>())
             {
                 // Inspector edits may contain incomplete entries or IDs from another Machine.
@@ -48,7 +55,8 @@ namespace OasisPlayer.RuntimeBuild
                     || !_machine.Inputs.ContainsKey(binding.inputId)) continue;
                 if (isHeld(binding.key)) held.Add(binding.inputId);
             }
-            // Aggregate keys mapped to one input, so releasing one key cannot release another.
+            // Aggregate keys per input; shared keys fan out and duplicates collapse.
+            // Ordinal ID ordering makes callback order deterministic; release before press.
             foreach (var id in new List<string>(_pressed))
             {
                 if (!HasActiveMachine()) return;
