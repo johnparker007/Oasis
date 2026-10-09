@@ -149,10 +149,12 @@ namespace OasisPlayer.Tests
             At("ball01", Rack); Pocket(); At("ball01", Tray);
         }
 
-        [TestCase("rerack")] [TestCase("newGame")]
-        public void BothLogicalResetInputsRestoreBallAndPermitRecollection(string input)
+        [TestCase("rerack", false)] [TestCase("rerack", true)]
+        [TestCase("newGame", false)] [TestCase("newGame", true)]
+        public void BothLogicalResetInputsRestoreBallAndPermitRecollection(string input, bool collectFirst)
         {
-            Load(); Pocket(); At("ball01", Tray);
+            Load();
+            if (collectFirst) { Pocket(); At("ball01", Tray); }
             var ball = _machine.GetObject("ball01"); Dirty(ball); ball.Root.SetActive(false);
             Input(input); At("ball01", Rack);
             Pocket(index: 5); At("ball01", Tray);

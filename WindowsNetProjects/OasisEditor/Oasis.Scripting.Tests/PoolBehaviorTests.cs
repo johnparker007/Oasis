@@ -83,12 +83,14 @@ public sealed class PoolBehaviorTests
         Dispatch(session, Pocket()); Placement(host, "traySlot01", false); Assert.True(Collected(session));
     }
 
-    [Theory] [InlineData("rerack")] [InlineData("newGame")]
-    public void BothResetInputsClearStateRestoreBallAndPermitRecollection(string input)
+    [Theory] [InlineData("rerack", false)] [InlineData("rerack", true)]
+    [InlineData("newGame", false)] [InlineData("newGame", true)]
+    public void BothResetInputsClearStateRestoreBallAndPermitRecollection(string input, bool collectFirst)
     {
         var host = new Host(); var session = Create(host);
-        Dispatch(session, OasisScriptEvent.MachineStarted()); Dispatch(session, Pocket());
-        Assert.True(Collected(session)); host.Calls.Clear();
+        Dispatch(session, OasisScriptEvent.MachineStarted());
+        if (collectFirst) Dispatch(session, Pocket());
+        Assert.Equal(collectFirst, Collected(session)); host.Calls.Clear();
         Dispatch(session, OasisScriptEvent.InputPressed(OasisScriptReferenceValue.Input(input)));
         Placement(host, "rackBall01", true); Assert.False(Collected(session));
         host.Calls.Clear();
