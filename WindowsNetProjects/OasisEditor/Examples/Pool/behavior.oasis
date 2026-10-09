@@ -26,9 +26,9 @@ on input.pressed(input:newGame) {
 }
 
 on trigger.entered(pocket, ball) {
-    if pocket == trigger:PocketLeftCorner or pocket == trigger:PocketLeftMiddle
-        or pocket == trigger:PocketLeftFarCorner or pocket == trigger:PocketRightCorner
-        or pocket == trigger:PocketRightMiddle or pocket == trigger:PocketRightFarCorner {
+    if pocket == trigger:Pocket_XNeg_Middle or pocket == trigger:Pocket_XNeg_YNeg
+        or pocket == trigger:Pocket_XNeg_YPos or pocket == trigger:Pocket_XPos_Middle
+        or pocket == trigger:Pocket_XPos_YNeg or pocket == trigger:Pocket_XPos_YPos {
         if ball == object:ball01 and not collected {
             object.teleport(object:ball01, anchor:traySlot01);
             object.set_velocity(object:ball01, vec3(0, 0, 0));

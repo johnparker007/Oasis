@@ -11,7 +11,7 @@ namespace OasisPlayer.Tests
 {
     public sealed class PoolBehaviorIntegrationTests
     {
-        private static readonly string[] Pockets = { "PocketLeftCorner", "PocketLeftMiddle", "PocketLeftFarCorner", "PocketRightCorner", "PocketRightMiddle", "PocketRightFarCorner" };
+        private static readonly string[] Pockets = { "Pocket_XNeg_Middle", "Pocket_XNeg_YNeg", "Pocket_XNeg_YPos", "Pocket_XPos_Middle", "Pocket_XPos_YNeg", "Pocket_XPos_YPos" };
         private static readonly Vector3 Rack = new Vector3(1, 2, 3);
         private static readonly Vector3 Tray = new Vector3(1, 4, 5);
         private readonly List<GameObject> _roots = new List<GameObject>();

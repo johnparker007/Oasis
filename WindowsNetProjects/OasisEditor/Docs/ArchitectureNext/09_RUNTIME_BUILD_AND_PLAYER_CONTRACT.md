@@ -206,8 +206,12 @@ path, assembly identity, and absence of copied compiler/session source under Ass
 
 See [Pool setup/manual checklist](../../Examples/Pool/README.md) for exact sample
 single-ball/pocket/anchor/input mappings and authored versus generated source placement.
-Only ball01, rackBall01 and traySlot01 are required alongside the retained six
-pockets and rerack/newGame inputs. Full multi-ball collection and cue-ball handling
+Only ball01, rackBall01 and traySlot01 are required alongside six
+coordinate-based pockets (`Pocket_XNeg_Middle`, `Pocket_XNeg_YNeg`, `Pocket_XNeg_YPos`,
+`Pocket_XPos_Middle`, `Pocket_XPos_YNeg`, `Pocket_XPos_YPos`) and rerack/newGame inputs.
+They match the supplied Blender screenshot names, with `OasisTrigger_` removed and
+`trigger:` added in script; verify the actual exported GLB before building.
+Full multi-ball collection and cue-ball handling
 remain follow-up work.
 No actual Pool asset package was available or modified. The canonical script is
 linked into .NET test output and read directly from the repository by Unity tests.

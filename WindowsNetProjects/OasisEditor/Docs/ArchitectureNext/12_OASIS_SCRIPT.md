@@ -73,7 +73,7 @@ Typed references are literals rather than strings:
 ```oasis
 object:ball08
 anchor:traySlot01
-trigger:PocketLeftCorner
+trigger:Pocket_XNeg_Middle
 input:rerack
 lamp:17
 reel:2
@@ -134,7 +134,7 @@ The fixed V1 signatures are `machine.started()`, `input.pressed(InputRef)`,
 `collision.exited(ObjectRef, ObjectRef)`, and `timer.elapsed(String)`.
 
 ```oasis
-on trigger.entered(trigger:PocketLeftCorner, ball) {
+on trigger.entered(trigger:Pocket_XNeg_Middle, ball) {
     object.reset(ball);
 }
 
@@ -272,8 +272,10 @@ host/session references. Every reload gets fresh state. Canonical package owners
 and schemas (Machine authored 8/runtime 9, Object3D 1, Cabinet 5) are unchanged.
 A8.4 inline Pool/Whac-A-Mole examples remain fixtures. A8.5 delivers the canonical
 single-ball `Examples/Pool/behavior.oasis` consumed by pure and live A7 tests. It uses
-one mutable Bool flag, explicit reset handlers and typed six-pocket/object checks,
-with no lists, loops, allocation or cue-ball handling in the proving script.
+one mutable Bool flag, explicit reset handlers and typed six-pocket/object checks.
+Its six case-sensitive `Pocket_XNeg_*`/`Pocket_XPos_*` IDs match the supplied Blender
+screenshot after removing `OasisTrigger_`; exported GLB contents still need verification.
+The proving script uses no lists, loops, allocation or cue-ball handling.
 Compiler/interpreter and runtime contracts remain unchanged. Full multi-ball
 collection and cue-ball handling are follow-up work. Actual asset wiring and local
 verification remain outstanding; see the [Pool guide](../../Examples/Pool/README.md).

@@ -1,7 +1,7 @@
 # Single-ball Pool runtime proving case — A8.5
 
 Canonical gameplay: [behavior.oasis](behavior.oasis). This initial proving case uses
-one ball, two Machine-space anchors, six existing pocket trigger IDs and two logical
+one ball, two Machine-space anchors, six coordinate-based pocket trigger IDs and two logical
 inputs. There are no lists, loops, tray counters, multi-ball allocation or cue-ball
 rules in the script; its only mutable state is `collected`, a Bool.
 
@@ -19,20 +19,36 @@ IDs are case-sensitive Machine identities, not GameObject display names.
 | Object3D instance | `object:ball01` | One Machine instance referencing your actual ball Object3D asset |
 | Start anchor | `anchor:rackBall01` | Machine anchor; position and XYZ Euler degrees in Machine space |
 | Collection anchor | `anchor:traySlot01` | Machine anchor on a physically supported collection area |
-| Pocket triggers | `trigger:PocketLeftCorner`, `trigger:PocketLeftMiddle`, `trigger:PocketLeftFarCorner`, `trigger:PocketRightCorner`, `trigger:PocketRightMiddle`, `trigger:PocketRightFarCorner` | Existing Cabinet GLB semantic nodes/meshes `OasisTrigger_<id>`; winning node name takes precedence over mesh name |
+| Pocket triggers | `trigger:Pocket_XNeg_Middle`, `trigger:Pocket_XNeg_YNeg`, `trigger:Pocket_XNeg_YPos`, `trigger:Pocket_XPos_Middle`, `trigger:Pocket_XPos_YNeg`, `trigger:Pocket_XPos_YPos` | Existing Cabinet GLB semantic nodes/meshes `OasisTrigger_<id>`; winning node name takes precedence over mesh name |
 | Logical inputs | `input:rerack`, `input:newGame` | Machine input declarations |
 
-The pocket IDs are the retained example contract, not names observed in an available
-authored asset. Match them to your actual Cabinet semantics using typed literals.
+The canonical pocket IDs match the six Blender object names supplied in the screenshot.
+The exported GLB has not been inspected; confirm it actually contains all six meshes.
+`OasisTrigger_` is removed when deriving the logical ID, so
+`OasisTrigger_Pocket_XNeg_Middle` becomes `trigger:Pocket_XNeg_Middle`. Preserve
+spelling and case. A semantic node name takes precedence over a semantic mesh name;
+the mesh name is used only if the node name is not semantic. All six pockets perform
+the same collection action, so no left/right/far coordinate mapping is required.
 No other ball, cue-ball, rack or tray IDs are required.
 
 Use the existing Project/Library reference picker for the real Cabinet and ball
 asset manifests. Authored assets belong under `Assets/`; keep intrinsic model
 scale/up-axis in the Object3D definition. The ball needs a working collider and an
-enabled dynamic Rigidbody on its authoritative live root. Position the start and
-collection anchors above supporting collision geometry and outside pocket volumes.
+enabled dynamic Rigidbody on its authoritative live root. Position rackBall01 and
+traySlot01 at distinct Machine-space locations, above suitable supporting collision
+geometry and outside all pocket volumes.
 Collection zeros motion once but leaves the ball active and dynamic: provide
 physical support/containment rather than assuming the script freezes it.
+
+## Confirm trigger names before building
+
+Export all six actual Blender trigger meshes into the referenced Cabinet GLB, then
+reload the Cabinet in Editor. Inspect discovered IDs where the named trigger inventory
+is available, and confirm the six `trigger:` references in the composition table above.
+If a mesh was renamed or excluded during export, re-export and reload/refresh discovery
+before validating the Machine-owned `behavior.oasis`. Clear Machine reference diagnostics,
+save/build and reload Player; an existing generated build does not update automatically.
+Do not edit generated output. Asset paths and actual GLB contents remain local verification.
 
 ## Behaviour
 
