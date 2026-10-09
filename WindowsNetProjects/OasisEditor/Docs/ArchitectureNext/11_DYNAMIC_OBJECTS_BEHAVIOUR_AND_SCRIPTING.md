@@ -30,7 +30,15 @@ contains only `{ "kind": "OasisScript", "source": "behavior.oasis" }`; source is
 separate canonical file in the Machine package and is never an external or reusable
 Project/Library asset. The Machine Behaviour tab permits temporary syntax/type/reference
 errors, reports their source line and column, and folds source changes into the Machine's
-normal dirty/save/close lifecycle. Add and Remove are document commands; ordinary typing
+normal dirty/save/close lifecycle. Save/Save As persist even invalid authored source;
+compile/reference diagnostics remain visible and are restored on reopen. A declared
+missing source is still protected from silent empty-file replacement. Runtime builds
+remain strict and validate persisted source before replacing generated output.
+Window > Input Map > Add Input authors raw logical IDs with optional display names,
+without MFME metadata. Additions are Machine document commands and refresh script
+reference diagnostics on add/undo/redo. The Key column is not a production Player
+binding system; the broader named-input redesign remains deferred.
+Add and Remove are document commands; ordinary typing
 uses the text control's local undo rather than flooding global history.
 
 Machine-aware reference validation is an Editor/domain concern layered after successful

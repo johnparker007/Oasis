@@ -91,6 +91,73 @@ public sealed class MachineBehaviorAuthoringTests
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
 
+    [Theory]
+    [InlineData("on machine.started() {", "OS1")]
+    [InlineData("on machine.started() { object.reset(1); }", "OS2303")]
+    [InlineData("on machine.started() { object.reset(object:ball01); }", "OSM3001")]
+    public void InvalidAuthoredSource_SaveAndSaveAsPreserveDiagnosticsAndReopen(string source, string code)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "oasis-invalid-save-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var original = Path.Combine(root, "Original", "asset.machine");
+            var copy = Path.Combine(root, "Copy", "asset.machine");
+            var tab = new DocumentTabViewModel(EditorDocument.CreateMachineStub("Machine"));
+            tab.AddMachineBehaviorCommand.Execute(null);
+            var service = new DocumentSaveService();
+            service.SaveDocument(tab, original).ApplyTo(tab);
+            tab.MachineBehaviorSource = source;
+            Assert.True(tab.IsDirty);
+            var diagnostics = tab.MachineBehaviorDiagnostics.ToArray();
+            Assert.Contains(diagnostics, d => d.Code.StartsWith(code, StringComparison.Ordinal));
+
+            // Save an existing package, then Save As into a new package with a changed buffer.
+            foreach (var destination in new[] { original, copy })
+            {
+                if (destination == copy) tab.MachineBehaviorSource += "\n";
+                var beforeSave = tab.MachineBehaviorDiagnostics.ToArray();
+                service.SaveDocument(tab, destination).ApplyTo(tab);
+                Assert.False(tab.IsDirty);
+                Assert.Equal(destination, tab.FilePath);
+                Assert.Equal(beforeSave, tab.MachineBehaviorDiagnostics.ToArray());
+                Assert.Equal(tab.MachineBehaviorSource, File.ReadAllText(Path.Combine(Path.GetDirectoryName(destination)!, "behavior.oasis")));
+                var reopened = new DocumentTabViewModel(EditorDocument.CreateFromFile(destination, "Machine"),
+                    machineDocumentJson: File.ReadAllText(destination));
+                Assert.Equal(tab.MachineBehaviorSource, reopened.MachineBehaviorSource);
+                Assert.Equal(beforeSave, reopened.MachineBehaviorDiagnostics.ToArray());
+                Assert.False(reopened.IsDirty);
+                Assert.NotNull(reopened.GetMachineDocument().Behavior);
+            }
+            Assert.Equal(source, File.ReadAllText(Path.Combine(root, "Original", "behavior.oasis")));
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public void SourceStorageFailureStillFailsSaveAndKeepsDirtyState()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "oasis-source-storage-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var path = Path.Combine(root, "asset.machine");
+            var tab = new DocumentTabViewModel(EditorDocument.CreateMachineStub("Machine"));
+            tab.AddMachineBehaviorCommand.Execute(null);
+            var service = new DocumentSaveService();
+            service.SaveDocument(tab, path).ApplyTo(tab);
+            var manifest = File.ReadAllText(path);
+            File.Delete(Path.Combine(root, "behavior.oasis"));
+            Directory.CreateDirectory(Path.Combine(root, "behavior.oasis"));
+            tab.MachineBehaviorSource = "on machine.started() { object.reset(1); }";
+            var error = Record.Exception(() => service.SaveDocument(tab, path).ApplyTo(tab));
+            Assert.True(error is IOException or UnauthorizedAccessException);
+            Assert.True(tab.IsDirty);
+            Assert.Equal(path, tab.FilePath);
+            Assert.Equal(manifest, File.ReadAllText(path));
+            Assert.Equal("OS2303", Assert.Single(tab.MachineBehaviorDiagnostics).Code);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
     [Fact]
     public void InvalidSourceRemainsInBufferAndReportsExactLocation()
     {
@@ -122,6 +189,12 @@ public sealed class MachineBehaviorAuthoringTests
             Assert.True(tab.IsMachineBehaviorSourceMissing);
             Assert.Throws<InvalidOperationException>(() => new DocumentSaveService().SaveDocument(tab, manifest));
             Assert.False(File.Exists(Path.Combine(root, "behavior.oasis")));
+            var copy = Path.Combine(root, "Copy", "asset.machine");
+            Assert.Throws<InvalidOperationException>(() => new DocumentSaveService().SaveDocument(tab, copy));
+            Assert.False(File.Exists(Path.Combine(root, "Copy", "behavior.oasis")));
+            Assert.False(File.Exists(copy));
+            Assert.Equal(manifest, tab.FilePath);
+            Assert.Equal("OSM3100", Assert.Single(tab.MachineBehaviorDiagnostics).Code);
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }

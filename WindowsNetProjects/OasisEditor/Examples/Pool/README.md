@@ -56,9 +56,20 @@ The compiler, interpreter, A7 API, runtime adapter and schemas are unchanged.
 1. Open your actual Machine in Editor, select Runtime **Oasis**, add Oasis Script
    Behaviour and replace its source with this file. The authored package stores
    `behavior.oasis` beside its Machine manifest. Assign the actual Cabinet and one
-   ball asset; declare the exact instance, anchors and inputs above. Match all six
+   ball asset; declare the exact instance and anchors above. In **Window > Input Map**,
+   choose **Add Input**, enter logical ID `rerack` and an optional display name, then
+   **Create**. Repeat for `newGame`. Use raw IDs without `input:`; the read-only
+   **Logical ID** column is authoritative for script references, not Name. No MFME
+   button number, coin channel, linked visual or imported metadata is required.
+   IDs are case-sensitive; blank/invalid/duplicate IDs show feedback without edits.
+   Cancel leaves the Machine unchanged; additions participate in Machine undo/redo.
+   Match all six
    Cabinet trigger semantics. Keep unrelated authored data intact.
-2. Confirm core and Machine-aware script diagnostics both pass, save, then build.
+2. Save work in progress at any point, including while syntax/type errors or unresolved
+   references remain. Save/Save As preserve the manifest and `behavior.oasis`; errors
+   remain visible after saving and reopening. A successful save clears dirty state.
+   A declared but missing source still requires explicit replacement before saving.
+   Once core and Machine-aware script diagnostics both pass, save, then build.
    Build revalidates persisted source and exports `behavior/behavior.oasis` under
    Machine runtime schema 9. Do not edit/commit disposable generated Player builds.
 3. **Startup:** load in Player; check ball01 is active at rackBall01 with both
@@ -79,12 +90,38 @@ session root beside the existing development controls. In the Unity Inspector,
 expand **Bindings** and add `R → rerack` and `N → newGame`; focus the Game view.
 These runtime Inspector settings must be reapplied after reload. Bindings default
 empty, incomplete/undeclared IDs are ignored, and the bridge is excluded from release
-builds. There is no new serialized Machine format or input-authoring UI.
+builds. Input Map now authors logical declarations; its Key column does not supply
+production Player bindings. The broader named-input/binding redesign remains deferred,
+and there is no new serialized Machine format.
 
 The retained generic bridge calls `RuntimeMachine.SetInputState` on held-key
 transitions, aggregates multiple keys for one input, releases on disable/focus loss/
 reconfiguration, and detaches from an unloaded Machine. Use it as the sole
 development keyboard owner of its bound logical inputs.
+
+## Editor authoring regression checklist
+
+On Windows/.NET 9, also verify these authoring fixes before the gameplay checklist:
+
+1. Paste this script into an incomplete Oasis Machine, Save and Save As, then reopen
+   each package. Confirm exact source preservation, clean dirty state/path updates,
+   and unchanged diagnostic codes/locations. Repeat with a syntax error and a type
+   error, such as `object.reset(1);`. Storage/package failures must still report errors.
+2. In an empty Input Map, add `rerack` and `newGame` with explicit IDs; confirm their
+   OSM3004 errors clear. Undo each addition and confirm its error returns, then redo
+   and confirm it clears. Save/reopen and inspect the IDs and display names.
+3. Try blank, `input:rerack`, whitespace/invalid and duplicate IDs, then Cancel.
+   Confirm no dirty change or undo entry. Switch Machines during creation, and close
+   the active Machine: no pending form may add to either the old or wrong Machine;
+   Add Input is disabled with no Machine context. Confirm imported rows still edit
+   and delete normally. Check System, Light and Dark themes.
+4. Complete the actual composition, save and build successfully. Inspect exported
+   input IDs. Save an invalid script, then build again: rejection must preserve every
+   file in the previous runtime package. Restore valid source and rebuild. Separately
+   remove a declared sidecar: Save/Save As must not silently create an empty source.
+5. Load the valid build, configure **R → rerack** and **N → newGame** on its development
+   session root, and follow startup → pocket → reset → recollection above. Reapply
+   bindings after reload and confirm normal Emulation compatibility.
 
 ## Automated coverage and validation status
 
@@ -94,6 +131,12 @@ repository path for Unity). They cover startup, each pocket, same/different-pock
 duplicates, unrelated payloads, both reset inputs, recollection and fresh reload
 state. Live A7 tests use registered roots/Rigidbodies and existing trigger relays;
 development keyboard transition/lifecycle coverage is retained.
+
+Focused Editor coverage is in `MachineBehaviorAuthoringTests`,
+`InputCreationViewModelTests` and `MachineRuntimeBuildServiceTests`: permissive
+Save/Save As and reopen, unchanged diagnostics/dirty state, missing-source protection,
+strict rejection preserving every runtime package file, explicit input IDs and export,
+validation/cancellation/context targeting, and diagnostic updates through undo/redo.
 
 Run the full Oasis.Scripting.Tests and OasisEditor.Tests locally on Windows/.NET 9,
 and Player EditMode tests in Unity 6000.0.47f1. These suites and the actual asset
