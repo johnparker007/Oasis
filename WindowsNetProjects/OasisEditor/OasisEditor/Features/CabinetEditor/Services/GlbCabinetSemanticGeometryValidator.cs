@@ -30,6 +30,9 @@ public sealed class GlbCabinetSemanticGeometryValidator
 
         var scene = model.DefaultScene ?? model.LogicalScenes.FirstOrDefault();
         if (scene is null) return;
+        var inventory = CabinetTriggerInventory.Discover(scene);
+        var invalid = inventory.Triggers.FirstOrDefault(trigger => !trigger.IsValid);
+        if (invalid is not null) throw new InvalidDataException($"Cabinet asset '{cabinetAssetPath}', semantic Trigger '{invalid.SourceName}': {invalid.Diagnostic}");
         Validate(scene, cabinetAssetPath, cancellationToken);
     }
 

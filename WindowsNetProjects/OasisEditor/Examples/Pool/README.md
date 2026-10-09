@@ -40,6 +40,50 @@ geometry and outside all pocket volumes.
 Collection zeros motion once but leaves the ball active and dynamic: provide
 physical support/containment rather than assuming the script freezes it.
 
+## Inspect the actual Cabinet triggers
+
+Export the actual Blender mesh objects into the referenced Cabinet GLB, then open
+that Cabinet in Editor and choose **Reload**. Inspect **Named Triggers (read-only)**:
+select/copy cells for the logical ID, full script reference and winning semantic name.
+**Geometry visibility** exposes the existing Collision meshes, Colliders and Triggers
+filters; enable Collision meshes and Triggers to inspect pocket volumes.
+A trigger-only Cabinet can have no Face targets and still list named triggers.
+No geometry discovered, an unavailable/unresolved model, and invalid/ambiguous
+identities have separate feedback. Fix empty/invalid/duplicate IDs in the source asset.
+
+From the assembled Machine, open **Behaviour** and inspect its named trigger inventory.
+**Refresh Cabinet triggers and references** rereads the referenced Cabinet package and
+GLB and revalidates the current script. Cabinet Reload also refreshes open Machines'
+reference diagnostics. Source edits and Cabinet-reference/Project/Library changes
+refresh discovery. Re-export after Blender changes, reload/refresh in Editor, save the
+Machine and rebuild, then reload Player; generated builds do not update themselves.
+There are no manual Machine trigger declarations or persisted trigger maps.
+
+`OasisTrigger_<id>` yields `trigger:<id>` exactly, with case-sensitive IDs. A semantic
+node name wins over a semantic mesh name, even if the node declares a different kind
+such as `OasisCollider_`; the mesh semantic name is used only when the node name is
+not semantic. Nested nodes in the selected/default scene are included.
+
+The screenshot names are an illustrative alternative, not verified GLB contents:
+
+| Blender semantic name | Machine-owned script reference |
+| --- | --- |
+| `OasisTrigger_Pocket_XNeg_Middle` | `trigger:Pocket_XNeg_Middle` |
+| `OasisTrigger_Pocket_XNeg_YNeg` | `trigger:Pocket_XNeg_YNeg` |
+| `OasisTrigger_Pocket_XNeg_YPos` | `trigger:Pocket_XNeg_YPos` |
+| `OasisTrigger_Pocket_XPos_Middle` | `trigger:Pocket_XPos_Middle` |
+| `OasisTrigger_Pocket_XPos_YNeg` | `trigger:Pocket_XPos_YNeg` |
+| `OasisTrigger_Pocket_XPos_YPos` | `trigger:Pocket_XPos_YPos` |
+
+Confirm all six appear after exporting your actual GLB. Adapt the six pocket literals
+in your Machine-owned `behavior.oasis` to the discovered identities and clear reference
+diagnostics. Do not infer a left/right/far mapping from coordinate-based names. The
+committed canonical script and its fixtures retain their existing example names.
+
+Place `rackBall01` and `traySlot01` at **distinct Machine-space locations**, both outside
+all pocket volumes and above suitable solid support with clearance for the ball collider.
+Inspect geometry visibility and confirm these placements in Player: collection leaves
+the ball dynamic, so a tray needs physical support and containment.
 ## Confirm trigger names before building
 
 Export all six actual Blender trigger meshes into the referenced Cabinet GLB, then
@@ -186,3 +230,24 @@ and Player EditMode tests in Unity 6000.0.47f1. These suites and the actual asse
 manual checklist have not been executed in Codex: AGENTS.md prohibits builds and
 test execution here. Static checks do not establish a passing .NET or Unity suite.
 A8.6 fruit-device commands and A8.7 Whac-A-Mole validation remain separate work.
+
+
+## Trigger discovery local regression checks
+
+On Windows/.NET 9, run `dotnet test OasisEditor.Tests/OasisEditor.Tests.csproj`
+from `WindowsNetProjects/OasisEditor`, including `CabinetSemanticGeometryTests`,
+`MachineBehaviorAuthoringTests`, `CabinetViewerLifecycleTests` and
+`MachineRuntimeBuildServiceTests`. Run `dotnet test Oasis.Scripting.Tests/Oasis.Scripting.Tests.csproj`
+as well. In Unity 6000.0.47f1 run Player EditMode coverage including
+`CabinetSemanticGeometrySetupTests` and `PoolBehaviorIntegrationTests`.
+These tests were added/reviewed statically and have not been run in Codex.
+
+Check System, Light and Dark themes; copy inventory references, toggle geometry filters,
+reload after renaming a GLB trigger and verify old unknown-trigger errors return and
+new references clear. Switch Cabinet references and Project/Library contexts; check
+empty, unavailable and duplicate/invalid identity feedback and unchanged dirty state
+for discovery/refresh. Save/build the completed Machine, load in Player and move
+`ball01` into each of the six actual pockets, resetting between each and confirming
+collection at `traySlot01`. Repeat after rerack and newGame, reload/reapply development
+bindings, and verify existing Emulation loading. Actual authored asset export, pocket
+volumes/support and runtime behaviour still require this local verification.

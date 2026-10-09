@@ -19,7 +19,7 @@
                 <TextBlock Margin="0,3,0,0" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding CabinetViewer.LoadStatus}" />
             </StackPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                <ToggleButton x:Name="PreviewButton" Padding="10,4" Margin="0,0,8,0" Content="Preview" />
+                <ToggleButton x:Name="PreviewButton" Padding="10,4" Margin="0,0,8,0" Content="Geometry visibility" />
                 <Popup DataContext="{Binding DataContext, ElementName=PreviewButton}" PlacementTarget="{Binding ElementName=PreviewButton}" Placement="Bottom" StaysOpen="False" IsOpen="{Binding IsChecked, ElementName=PreviewButton, Mode=TwoWay}">
                     <Border Margin="0,4,0,0" Padding="10" Background="{DynamicResource ToolBarBackgroundBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="4">
                         <StackPanel MinWidth="170">
@@ -116,7 +116,19 @@
                         </ScrollViewer>
                     </Expander>
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                        <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Surface Targets" />
+                        <StackPanel Margin="0,8,0,8">
+    <TextBlock Text="Named Triggers (read-only)" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+    <TextBlock Text="{Binding CabinetViewer.TriggerInventory.Status}" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,4"/>
+    <DataGrid ItemsSource="{Binding CabinetViewer.TriggerInventory.Triggers}" MaxHeight="160" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" ClipboardCopyMode="IncludeHeader">
+        <DataGrid.Columns>
+            <DataGridTextColumn Header="Logical ID" Binding="{Binding Id}"/>
+            <DataGridTextColumn Header="Script reference" Binding="{Binding ScriptReference}"/>
+            <DataGridTextColumn Header="Semantic name" Binding="{Binding SourceName}"/>
+            <DataGridTextColumn Header="Diagnostic" Binding="{Binding Diagnostic}"/>
+        </DataGrid.Columns>
+    </DataGrid>
+</StackPanel>
+<TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="Surface Targets" />
                         <TextBlock Margin="0,8,0,3" Foreground="{DynamicResource TextSecondaryBrush}" Text="Lamp Preview" />
                         <TextBlock Margin="0,0,0,4" Text="{Binding CabinetViewer.PreviewingMachine}" />
                         <ComboBox ItemsSource="{Binding CabinetViewer.LampPreviewModeOptions}" SelectedItem="{Binding CabinetViewer.SelectedLampPreviewMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />

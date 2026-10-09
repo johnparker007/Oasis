@@ -80,6 +80,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         if (ReferenceEquals(_machineCompositionContext, machineDocument)) return;
         _machineCompositionContext = machineDocument;
         OnPropertyChanged(nameof(PreviewingMachine));
+        RefreshTriggerInventory();
         RefreshFacePreviews();
     }
 
@@ -88,7 +89,15 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
     public CabinetViewportViewModel Viewport { get; }
     public ObservableCollection<CabinetFaceTargetViewModel> FaceTargets { get; } = new();
     public CabinetReflectionEditorViewModel ReflectionEditor { get; }
-    public string ModelPath { get; }
+    public string ModelPath { get; private set; }
+    public CabinetTriggerInventory TriggerInventory { get; private set; } = CabinetTriggerInventory.Unavailable("Model not loaded.");
+    private void RefreshTriggerInventory()
+    {
+        TriggerInventory = CabinetTriggerInventory.Read(ModelPath);
+        OnPropertyChanged(nameof(TriggerInventory));
+        foreach (var tab in _openDocumentsAccessor?.Invoke() ?? Array.Empty<DocumentTabViewModel>())
+            if (tab.Document.DocumentType == EditorDocumentType.Machine) tab.RefreshMachineReferencesForCabinet(_document.FilePath);
+    }
     public string DisplayName => string.IsNullOrWhiteSpace(ModelPath) ? "Cabinet Model Viewer" : Path.GetFileName(ModelPath);
     public string LoadStatus { get => _loadStatus; private set { _loadStatus = value; OnPropertyChanged(); } }
     public string? ErrorMessage { get => _errorMessage; private set { _errorMessage = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasError)); } }
@@ -170,6 +179,16 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
 
     public void RefreshFromDocument(CabinetDocument document)
     {
+        var path = Path.IsPathFullyQualified(document.Model.Path) ? document.Model.Path
+            : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(_document.FilePath) ?? string.Empty, document.Model.Path));
+        if (!string.Equals(ModelPath, path, StringComparison.OrdinalIgnoreCase))
+        {
+            ModelPath = path;
+            OnPropertyChanged(nameof(ModelPath));
+            OnPropertyChanged(nameof(DisplayName));
+            _ = LoadAsync();
+        }
+        RefreshTriggerInventory();
         OnPropertyChanged(nameof(SelectedFrontSide));
         OnPropertyChanged(nameof(SelectedFaceRotation));
         OnPropertyChanged(nameof(IsSelectedFaceFlippedHorizontally));
@@ -185,11 +204,13 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetimeCancellation.Token);
         IsLoading = true;
         ErrorMessage = null;
+        RefreshTriggerInventory();
+        var loadingPath = ModelPath;
         LoadStatus = $"Loading {DisplayName}...";
         try
         {
-            var result = await _modelLoader.LoadAsync(ModelPath, linkedCancellation.Token);
-            if (_disposed) return;
+            var result = await _modelLoader.LoadAsync(loadingPath, linkedCancellation.Token);
+            if (_disposed || !string.Equals(loadingPath, ModelPath, StringComparison.OrdinalIgnoreCase)) return;
             if (!result.Succeeded || result.Model is null)
             {
                 ClearLoadedModelDiscovery();
@@ -209,9 +230,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
             SelectedFaceTarget = FaceTargets.FirstOrDefault();
             ReflectionEditor.SetDiscovery(result.ReflectionTargets, result.FaceTargets);
             RefreshFacePreviews();
-            LoadStatus = FaceTargets.Count == 0
-                ? $"Loaded {DisplayName}; no Oasis face targets found"
-                : $"Loaded {DisplayName}; detected {FaceTargets.Count} Oasis face target{(FaceTargets.Count == 1 ? string.Empty : "s")}";
+            LoadStatus = $"Loaded {DisplayName}; {FaceTargetStatus} {TriggerInventory.Status}";
         }
         catch (OperationCanceledException)
         {
@@ -219,7 +238,11 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
         }
         finally
         {
-            if (!_disposed) IsLoading = false;
+            if (!_disposed)
+            {
+                IsLoading = false;
+                if (!string.Equals(loadingPath, ModelPath, StringComparison.OrdinalIgnoreCase)) _ = LoadAsync();
+            }
         }
     }
 

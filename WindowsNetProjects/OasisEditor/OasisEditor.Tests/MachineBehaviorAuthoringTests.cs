@@ -1,6 +1,8 @@
 using Oasis.Scripting;
 using OasisEditor.Automation;
 using OasisEditor.Features.CabinetEditor.Models;
+using OasisEditor.Features.CabinetEditor.Services;
+using OasisEditor.Features.CabinetEditor.ViewModels;
 using System.Text;
 using Xunit;
 
@@ -326,6 +328,68 @@ public sealed class MachineBehaviorAuthoringTests
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
 
+    [Theory]
+    [InlineData("", "MeshWins")]
+    [InlineData("bad id", "MeshWins")]
+    [InlineData("Same", "Same")]
+    public void TriggerInventoryReportsInvalidAndAmbiguousIds(string nodeId, string meshId)
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".glb");
+        try
+        {
+            WriteTriggerGlb(path, nodeId, meshId);
+            var inventory = CabinetTriggerInventory.Read(path);
+            Assert.True(inventory.IsAvailable, inventory.Error);
+            Assert.Contains(inventory.Triggers, trigger => !trigger.IsValid);
+            Assert.Contains("invalid or ambiguous", inventory.Status);
+            Assert.Throws<InvalidDataException>(() => new GlbCabinetSemanticGeometryValidator().Validate(path, "test Cabinet"));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task ReloadAndSourceEditRefreshMachineReferencesWithoutDirtyingDiscovery()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "oasis-trigger-refresh-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var project = Project(root);
+            var manifest = Path.Combine(root, "Assets", "asset.cabinet3d");
+            var glb = Path.Combine(root, "Assets", "cabinet.glb");
+            File.WriteAllText(manifest, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb")));
+            WriteTriggerGlb(glb);
+            var machine = MachineDocument.Create("Pool") with { CabinetAsset = AssetReference.Project("Assets/asset.cabinet3d") };
+            using var tab = new DocumentTabViewModel(EditorDocument.CreateMachineStub("Pool"), machineDocumentJson: MachineDocumentStorage.Serialize(machine));
+            tab.SetProjectAccessor(() => project);
+            tab.AddMachineBehaviorCommand.Execute(null);
+            tab.MachineBehaviorSource = "on trigger.entered(trigger:NodeWins, ball) { }";
+            Assert.DoesNotContain(tab.MachineBehaviorDiagnostics, value => value.Code == "OSM3003");
+            using var cabinetTab = new DocumentTabViewModel(EditorDocument.CreateFromFile(manifest, "Cabinet", "Cabinet"),
+                cabinetDocumentJson: File.ReadAllText(manifest));
+            using var viewer = new CabinetModelDocumentViewModel(new SharpGltfWpfModelLoader(), cabinetTab, () => new[] { tab, cabinetTab });
+            await viewer.LoadAsync();
+            Assert.Contains(viewer.TriggerInventory.Triggers, value => value.Id == "NodeWins");
+            WriteTriggerGlb(glb, "Replacement", "MeshWins");
+            var dirty = tab.IsDirty;
+            await viewer.LoadAsync();
+            Assert.Contains(viewer.TriggerInventory.Triggers, value => value.Id == "Replacement");
+            Assert.Equal(dirty, tab.IsDirty);
+            Assert.Contains(tab.MachineBehaviorDiagnostics, value => value.Code == "OSM3003");
+            Assert.DoesNotContain(tab.MachineTriggerInventory.Triggers, value => value.Id == "NodeWins");
+            tab.MachineBehaviorSource = "on trigger.entered(trigger:Replacement, ball) { }";
+            Assert.DoesNotContain(tab.MachineBehaviorDiagnostics, value => value.Code == "OSM3003");
+            tab.MachineBehaviorSource = "on trigger.entered(trigger:replacement, ball) { }";
+            Assert.Contains(tab.MachineBehaviorDiagnostics, value => value.Code == "OSM3003");
+            File.Delete(glb);
+            tab.RefreshMachineTriggerInventory();
+            Assert.False(tab.MachineTriggerInventory.IsAvailable);
+            Assert.Contains(tab.MachineBehaviorDiagnostics, value => value.Code == "OSM3101");
+            tab.MachineCabinetAssetPath = string.Empty;
+            Assert.Empty(tab.MachineTriggerInventory.Triggers);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
     private static EditorProject Project(string root)
     {
         Directory.CreateDirectory(Path.Combine(root, "Assets"));
@@ -346,16 +410,16 @@ public sealed class MachineBehaviorAuthoringTests
         File.WriteAllText(path, FaceDocumentStorage.Serialize(new FaceDocumentModel { Id = name, Title = name, Elements = elements }));
     }
 
-    private static void WriteTriggerGlb(string path)
+    private static void WriteTriggerGlb(string path, string nodeId = "NodeWins", string meshId = "MeshWins")
     {
         var binary = new byte[44];
         Buffer.BlockCopy(new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0 }, 0, binary, 0, 36);
         Buffer.BlockCopy(new ushort[] { 0, 1, 2 }, 0, binary, 36, 6);
         const string primitive = "{\"primitives\":[{\"attributes\":{\"POSITION\":0},\"indices\":1}]}";
         static string Mesh(string name, string body) => "{\"name\":\"" + name + "\"," + body[1..];
-        var json = "{\"asset\":{\"version\":\"2.0\"},\"scene\":0,\"scenes\":[{\"nodes\":[0,1,2]}]," +
-                   "\"nodes\":[{\"name\":\"OasisTrigger_NodeWins\",\"mesh\":0},{\"name\":\"Ordinary\",\"mesh\":1},{\"name\":\"OasisCollider_Node\",\"mesh\":2}]," +
-                   "\"meshes\":[" + Mesh("OasisTrigger_MeshLoses", primitive) + "," + Mesh("OasisTrigger_MeshWins", primitive) + "," + Mesh("OasisTrigger_MeshLoses", primitive) + "]," +
+        var json = "{\"asset\":{\"version\":\"2.0\"},\"scene\":0,\"scenes\":[{\"nodes\":[3]}]," +
+                   "\"nodes\":[{\"name\":\"OasisTrigger_" + nodeId + "\",\"mesh\":0},{\"name\":\"Ordinary\",\"mesh\":1},{\"name\":\"OasisCollider_Node\",\"mesh\":2},{\"name\":\"Parent\",\"children\":[0,1,2]}]," +
+                   "\"meshes\":[" + Mesh("OasisTrigger_MeshLoses", primitive) + "," + Mesh("OasisTrigger_" + meshId, primitive) + "," + Mesh("OasisTrigger_MeshLoses", primitive) + "]," +
                    "\"buffers\":[{\"byteLength\":44}],\"bufferViews\":[{\"buffer\":0,\"byteOffset\":0,\"byteLength\":36},{\"buffer\":0,\"byteOffset\":36,\"byteLength\":6}]," +
                    "\"accessors\":[{\"bufferView\":0,\"componentType\":5126,\"count\":3,\"type\":\"VEC3\"},{\"bufferView\":1,\"componentType\":5123,\"count\":3,\"type\":\"SCALAR\"}]}";
         var jsonBytes = Encoding.UTF8.GetBytes(json);
