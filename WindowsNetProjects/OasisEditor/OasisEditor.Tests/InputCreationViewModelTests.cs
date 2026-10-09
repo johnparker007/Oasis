@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json;
 using OasisEditor.Automation;
 using Xunit;
 
@@ -64,6 +65,10 @@ public sealed class InputCreationViewModelTests
     {
         var imported = new InputDefinitionModel { Id = "rerack", Name = "Imported", ButtonNumber = "17", RawMfmeShortcut = "A", Kind = InputDefinitionKind.Switch };
         var tab = Machine([imported]);
+        // Machine() serializes and reloads the fixture, producing new input instances.
+        var loadedInput = Assert.Single(tab.GetMachineDocument().InputDefinitions);
+        var importedData = JsonSerializer.Serialize(imported);
+        Assert.Equal(importedData, JsonSerializer.Serialize(loadedInput));
         var before = tab.GetMachineDocument();
         var form = new InputCreationViewModel(tab, () => tab, () => throw new Exception("Must remain open")) { Id = id };
         Assert.False(form.TryCreate());
@@ -71,7 +76,8 @@ public sealed class InputCreationViewModelTests
         Assert.Same(before, tab.GetMachineDocument());
         Assert.False(tab.IsDirty);
         Assert.False(tab.CommandService.TryUndo());
-        Assert.Same(imported, Assert.Single(tab.GetMachineDocument().InputDefinitions));
+        Assert.Same(loadedInput, Assert.Single(tab.GetMachineDocument().InputDefinitions));
+        Assert.Equal(importedData, JsonSerializer.Serialize(loadedInput));
     }
 
     [Fact]
@@ -79,15 +85,21 @@ public sealed class InputCreationViewModelTests
     {
         var imported = new InputDefinitionModel { Id = "rerack", Name = "Imported", ButtonNumber = "17", CoinChannel = 2, CoinValue = 3, LinkedVisualElementId = Guid.NewGuid(), RawMfmeShortcut = "A" };
         var tab = Machine([imported]);
+        // Machine() serializes and reloads the fixture, producing new input instances.
+        var loadedInput = Assert.Single(tab.GetMachineDocument().InputDefinitions);
+        var importedData = JsonSerializer.Serialize(imported);
+        Assert.Equal(importedData, JsonSerializer.Serialize(loadedInput));
         Assert.True(new InputCreationViewModel(tab, () => tab, () => { }) { Id = "Rerack_2-1" }.TryCreate());
         Assert.True(new InputCreationViewModel(tab, () => tab, () => { }) { Id = "Rerack" }.TryCreate());
-        Assert.Same(imported, tab.GetMachineDocument().InputDefinitions[0]);
+        Assert.Same(loadedInput, tab.GetMachineDocument().InputDefinitions[0]);
+        Assert.Equal(importedData, JsonSerializer.Serialize(loadedInput));
         Assert.Equal("Rerack", tab.GetMachineDocument().InputDefinitions[2].Name);
-        Assert.Equal("17", imported.ButtonNumber);
+        Assert.Equal("17", loadedInput.ButtonNumber);
         Assert.True(tab.CommandService.TryUndo());
         Assert.Equal(2, tab.GetMachineDocument().InputDefinitions.Count);
         Assert.True(tab.CommandService.TryUndo());
-        Assert.Same(imported, Assert.Single(tab.GetMachineDocument().InputDefinitions));
+        Assert.Same(loadedInput, Assert.Single(tab.GetMachineDocument().InputDefinitions));
+        Assert.Equal(importedData, JsonSerializer.Serialize(loadedInput));
     }
 
     [Fact]
