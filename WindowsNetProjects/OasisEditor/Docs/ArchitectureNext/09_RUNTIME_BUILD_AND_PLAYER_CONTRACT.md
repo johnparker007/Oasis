@@ -137,7 +137,8 @@ order. Existing trigger/collision relays are reused without duplicate components
 them with scaled `Time.deltaTime`; `RuntimeTimerElapsedEvent` flows back through
 the adapter into `timer.elapsed`. There is no second timer service or event queue.
 Logical `RuntimeMachine.SetInputState` drives pressed/released handlers directly;
-A8.5 adds configurable development keyboard bindings; production input authoring remains deferred.
+A8.5 adds configurable development keyboard bindings; production key/device bindings
+remain deferred. Input Map authors logical declarations only.
 
 Global initialization faults abort startup before CompleteStartup, report once,
 and enter the loader's normal cleanup path. A handler fault, including a fault in
@@ -178,8 +179,9 @@ path, assembly identity, and absence of copied compiler/session source under Ass
 3. Build the saved Oasis Machine. Inspect `machine.runtime.json`: schema 9, kind
    Oasis, source `behavior/behavior.oasis`, no absolute Project path. Confirm exactly
    one script file and unchanged Cabinet/Object3D/Face packages.
-4. Save invalid script or an unresolved Machine reference externally in the package;
-   confirm a build fails with source diagnostics and preserves the last good output.
+4. Save invalid script or an unresolved Machine reference through Editor Save/Save As;
+   reopen and confirm source/diagnostics persist and successful save clears dirty state.
+   Confirm a build fails with source diagnostics and preserves the last good output.
    Remove the sidecar and confirm the explicit missing-source error.
 5. Build an ordinary Emulation Machine and confirm existing settings, schema 9,
    and no behaviour source. Rebuild a previously scripted package as Emulation and
@@ -216,5 +218,8 @@ empty Inspector bindings. Set R/rerack and N/newGame on the loaded session root.
 Held-key transitions use A7 SetInputState; multiple keys aggregate per input.
 Disable, focus loss and binding replacement release held inputs; inactive/unloaded
 Machines are detached without dispatch. Reload destroys session settings, so reapply
-bindings. No serialized Machine format, production input UI or hard-coded game IDs
-are introduced. Existing A8.4 adapter and fault/unload semantics are unchanged.
+bindings. Window > Input Map > Add Input authors the `rerack`/`newGame`
+logical declarations with explicit raw IDs; this does not supply Player key bindings.
+The Key column is not a production Player binding contract. No serialized Machine
+format or hard-coded game IDs are introduced; broader production bindings remain
+deferred. Existing A8.4 adapter and fault/unload semantics are unchanged.

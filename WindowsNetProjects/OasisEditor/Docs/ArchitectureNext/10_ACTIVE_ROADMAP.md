@@ -162,7 +162,10 @@ Do not expose arbitrary Unity APIs.
 - **A8.2 Machine authoring (implemented):** one optional Machine-owned Oasis Script
   behaviour, stored as package-local `behavior.oasis`, with plain-text editing,
   unified diagnostics, Machine-reference validation, dirty/save/Save-As, and
-  structural undo/redo. Invalid source may remain in the editor while typing.
+  structural undo/redo. Save/Save As preserve invalid authored source with diagnostics;
+  runtime builds remain strict. Input Map supports explicit logical input declaration
+  creation through Machine commands, including reference revalidation on undo/redo.
+  Production Player bindings and the broader named-input redesign remain deferred.
 - **A8.3 Runtime packaging/interpreter (implemented):** native Oasis runtime kind,
   authored schema 8/runtime schema 9, validated package-local source, canonical UPM
   sharing with Unity, and pure typed sessions with deterministic budgets and faults.

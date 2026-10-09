@@ -4,7 +4,6 @@ using OasisEditor.Features.FmlImport;
 using OasisEditor.Progress;
 using OasisEditor.Features.CabinetEditor.Models;
 using SkiaSharp;
-using Oasis.Scripting;
 
 namespace OasisEditor.Automation;
 
@@ -138,13 +137,8 @@ public sealed class DocumentSaveService : IDocumentSaveService
         if (current.IsMachineBehaviorSourceMissing)
             throw new InvalidOperationException($"{MachineBehaviorDefinition.CanonicalSourcePath} is missing from the Machine package. Edit or replace the source before saving.");
 
-        var compilation = OasisScriptCompiler.Compile(current.MachineBehaviorSource, MachineBehaviorDefinition.CanonicalSourcePath);
-        if (!compilation.Success)
-            throw new InvalidOperationException("Machine Oasis Script does not compile: " + compilation.Diagnostics.First().ToString());
-        var index = current.GetMachineBehaviorReferenceIndex();
-        var referenceDiagnostics = index.Diagnostics.Concat(OasisScriptMachineValidator.Validate(compilation.Program!, index.References)).ToArray();
-        if (referenceDiagnostics.Length > 0)
-            throw new InvalidOperationException("Machine Oasis Script has unresolved references: " + referenceDiagnostics[0]);
+        // Authored saves preserve work in progress. Behaviour diagnostics validate the buffer;
+        // MachineRuntimeBuildService independently validates persisted source before publishing.
         File.WriteAllText(destination, current.MachineBehaviorSource);
     }
 

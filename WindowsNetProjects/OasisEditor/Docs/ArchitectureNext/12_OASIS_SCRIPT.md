@@ -18,8 +18,14 @@ the .NET project and Player's local UPM package without source duplication.
 The Editor compiles the current buffer after edits and, only after core success, runs a
 Machine-domain syntax-tree validator for all typed reference literals. Core and Machine
 diagnostics share one line/column list while retaining distinct `OS...` and `OSM3...`
-codes. Temporary invalid text is retained and marks the Machine dirty; a saved package
-must compile and resolve. Add/Remove participate in document undo, while normal source
+codes. Save and Save As preserve authored work in progress, including syntax/type
+errors and unresolved Machine references, in the manifest and package-local source.
+Diagnostics remain visible after saving and are restored on reopen; a successful save
+updates the path and clears dirty state. A declared missing sidecar still blocks saving
+until its source is explicitly replaced. Structural/package and storage errors remain
+save failures. Runtime builds independently compile and resolve persisted source before
+replacing generated output; authored saving is not runtime validation.
+Add/Remove participate in document undo, while normal source
 typing uses local text undo. Player compiles packaged source once at load; normal
 preview creates the Oasis behaviour session after runtime content is ready.
 Machine reference discovery follows assembled composition: authored Object3D/anchor/input
@@ -27,6 +33,17 @@ and reel identities, semantic triggers from the resolved Cabinet GLB, and linked
 lamp/alpha/seven-segment references from assigned Faces. Missing composition assets and a
 missing declared `behavior.oasis` are explicit authoring diagnostics, not empty domains or
 implicitly valid empty programs.
+
+Window > Input Map > Add Input creates a Machine-owned declaration with an explicit
+raw logical ID (for example `rerack` or `newGame`, without `input:`) and optional display
+name. The read-only Logical ID column shows what script references resolve; Name is
+only presentation. IDs use ASCII letters/digits/underscore/hyphen and are unique within
+the active Machine under ordinal case-sensitive comparison. Creation uses document
+commands, so undo/redo refresh reference diagnostics and dirty state. Logical Button
+declarations need no MFME number, coin channel, visual link or imported metadata.
+The Key column does not configure production Player bindings. The broader named-input
+and production binding redesign remains deferred; Pool development bindings still
+belong on the loaded Unity session root.
 
 ## Lexical syntax and diagnostics
 

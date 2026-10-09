@@ -167,6 +167,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         OpenPreferencesCommand = new RelayCommand(OpenPreferences);
         OpenProjectSettingsCommand = new RelayCommand(OpenProjectSettings);
         OpenInputMapCommand = new RelayCommand(OpenInputMap);
+        AddInputCommand = new RelayCommand(BeginInputCreation, () => HasActiveMachine && InputCreation is null);
         OpenPlayViewCommand = new RelayCommand(OpenPlayView);
         ClosePreferencesCommand = new RelayCommand(ClosePreferences);
         BrowseOasisPlayerExecutableCommand = new RelayCommand(BrowseOasisPlayerExecutable);
@@ -417,6 +418,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand OpenPreferencesCommand { get; }
     public ICommand OpenProjectSettingsCommand { get; }
     public ICommand OpenInputMapCommand { get; }
+    public ICommand AddInputCommand { get; }
+    private InputCreationViewModel? _inputCreation;
+    public InputCreationViewModel? InputCreation
+    {
+        get => _inputCreation;
+        private set
+        {
+            if (!SetProperty(ref _inputCreation, value)) return;
+            OnPropertyChanged(nameof(HasInputCreation));
+            ((RelayCommand)AddInputCommand).RaiseCanExecuteChanged();
+        }
+    }
+    public bool HasInputCreation => InputCreation is not null;
+
+    private void BeginInputCreation()
+    {
+        if (_activeMachineDocument is null || InputCreation is not null) return;
+        InputCreation = new InputCreationViewModel(_activeMachineDocument, () => _activeMachineDocument,
+            () => InputCreation = null);
+    }
+
     public ICommand OpenPlayViewCommand { get; }
     public ICommand ClosePreferencesCommand { get; }
     public ICommand BrowseOasisPlayerExecutableCommand { get; }
@@ -723,7 +745,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         if (document.Document.DocumentType != EditorDocumentType.Machine) throw new ArgumentException("Active Machine context requires a Machine document.", nameof(document));
         if (ReferenceEquals(_activeMachineDocument, document)) return;
         if (_activeMachineDocument is not null) _activeMachineDocument.PropertyChanged -= OnActiveMachineDocumentPropertyChanged;
+        InputCreation?.Cancel();
         _activeMachineDocument = document;
+        ((RelayCommand)AddInputCommand).RaiseCanExecuteChanged();
         _activeMachineDocument.PropertyChanged += OnActiveMachineDocumentPropertyChanged;
         _playViewInputDispatcher = null;
         RebindActiveMachineSettings();
@@ -736,7 +760,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void ClearActiveMachine()
     {
         if (_activeMachineDocument is not null) _activeMachineDocument.PropertyChanged -= OnActiveMachineDocumentPropertyChanged;
+        InputCreation?.Cancel();
         _activeMachineDocument = null;
+        ((RelayCommand)AddInputCommand).RaiseCanExecuteChanged();
         _playViewInputDispatcher = null;
         foreach (var cabinet in OpenDocuments.Where(item => item.Document.DocumentType == EditorDocumentType.Cabinet3D)) cabinet.SetMachineCompositionContext(null);
         RebindActiveMachineSettings();

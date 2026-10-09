@@ -8,12 +8,47 @@
              d:DesignWidth="700">
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button Content="Add Input" Command="{Binding AddInputCommand}" Padding="10,4" />
+            <TextBlock Margin="12,0,0,0" VerticalAlignment="Center"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       Text="Logical declarations; Player development bindings are configured in Unity." />
+        </StackPanel>
+        <Border Grid.Row="1" Padding="8" Margin="0,0,0,8"
+                Background="{DynamicResource SurfaceRaisedBrush}"
+                BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasInputCreation}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <StackPanel DataContext="{Binding InputCreation}">
+                <TextBlock Text="{Binding MachineName, StringFormat='Add input to {0}'}" FontWeight="SemiBold" />
+                <TextBlock Margin="0,6,0,2" Text="Logical ID (raw ID, e.g. rerack or newGame)" />
+                <TextBox Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Margin="0,6,0,2" Text="Display name (optional)" />
+                <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Margin="0,6,0,0" Text="{Binding Error}" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Content="Create" Command="{Binding CreateCommand}" Padding="10,4" />
+                    <Button Content="Cancel" Command="{Binding CancelCommand}" Margin="8,0,0,0" Padding="10,4" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
         <DataGrid x:Name="InputMapGrid"
-                  Grid.Row="0"
+                  Grid.Row="2"
                   ItemsSource="{Binding InputDefinitions}"
                   AutoGenerateColumns="False"
                   IsReadOnly="False"
@@ -36,6 +71,7 @@
                 </ContextMenu>
             </DataGrid.ContextMenu>
             <DataGrid.Columns>
+                <DataGridTextColumn Header="Logical ID" Binding="{Binding Id, Mode=OneWay}" IsReadOnly="True" Width="1.1*" />
                 <DataGridTextColumn Header="Name" Binding="{Binding Name, UpdateSourceTrigger=LostFocus}" Width="1.2*" />
                 <DataGridTextColumn Header="Kind" Binding="{Binding Kind, UpdateSourceTrigger=LostFocus}" Width="0.7*" />
                 <DataGridTextColumn Header="Button No" Binding="{Binding ButtonNumber, UpdateSourceTrigger=LostFocus}" Width="0.8*" />
@@ -50,7 +86,7 @@
             </DataGrid.Columns>
         </DataGrid>
 
-        <Border Grid.Row="1"
+        <Border Grid.Row="3"
                 Margin="0,8,0,0"
                 Padding="8"
                 BorderBrush="{DynamicResource DividerBrush}"

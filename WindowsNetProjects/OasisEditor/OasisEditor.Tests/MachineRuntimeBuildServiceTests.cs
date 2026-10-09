@@ -515,6 +515,70 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
     }
 
     [Theory]
+    [InlineData("on machine.started() {", "OS1")]
+    [InlineData("on machine.started() { object.reset(1); }", "OS2303")]
+    [InlineData("on machine.started() { object.reset(object:missing); }", "OSM3001")]
+    [InlineData("on input.pressed(input:missing) { }", "OSM3004")]
+    public void InvalidAuthoredSaveCannotReplaceExistingRuntimePackage(string source, string code)
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var machine = setup.Machine with { Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript() };
+        var path = WriteMachine(setup.Project, machine);
+        var tab = new DocumentTabViewModel(EditorDocument.CreateMachineStub("Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(machine));
+        tab.SetProjectAccessor(() => setup.Project);
+        tab.MachineBehaviorSource = "on machine.started() { }";
+        new OasisEditor.Automation.DocumentSaveService().SaveDocument(tab, path).ApplyTo(tab);
+        var service = new MachineRuntimeBuildService();
+        var good = service.BuildFromMachineDocument(setup.Project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.True(good.Success, good.ErrorMessage);
+        var before = Directory.GetFiles(good.BuildRoot!, "*", SearchOption.AllDirectories)
+            .ToDictionary(file => Path.GetRelativePath(good.BuildRoot!, file), file => Convert.ToBase64String(File.ReadAllBytes(file)));
+
+        tab.MachineBehaviorSource = source;
+        new OasisEditor.Automation.DocumentSaveService().SaveDocument(tab, path).ApplyTo(tab);
+        Assert.False(tab.IsDirty);
+        Assert.NotEmpty(tab.MachineBehaviorDiagnostics);
+        var rejected = service.BuildFromMachineDocument(setup.Project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(rejected.Success);
+        Assert.Contains(code, rejected.ErrorMessage);
+        Assert.Contains("behavior.oasis:1:", rejected.ErrorMessage);
+        var after = Directory.GetFiles(good.BuildRoot!, "*", SearchOption.AllDirectories)
+            .ToDictionary(file => Path.GetRelativePath(good.BuildRoot!, file), file => Convert.ToBase64String(File.ReadAllBytes(file)));
+        Assert.Equal(before.Keys.Order(), after.Keys.Order());
+        foreach (var file in before.Keys) Assert.Equal(before[file], after[file]);
+        Assert.False(Directory.Exists(good.BuildRoot + ".staging"));
+    }
+
+    [Fact]
+    public void ManuallyCreatedInputsExportWithoutImportedMetadata()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var machine = setup.Machine with { Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript() };
+        var path = WriteMachine(setup.Project, machine);
+        var tab = new DocumentTabViewModel(EditorDocument.CreateMachineStub("Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(machine));
+        tab.SetProjectAccessor(() => setup.Project);
+        tab.MachineBehaviorSource = "on input.pressed(input:rerack) { } on input.pressed(input:newGame) { }";
+        foreach (var id in new[] { "rerack", "newGame" })
+            Assert.True(new InputCreationViewModel(tab, () => tab, () => { }) { Id = id, DisplayName = id + " display" }.TryCreate());
+        Assert.Empty(tab.MachineBehaviorDiagnostics);
+        new OasisEditor.Automation.DocumentSaveService().SaveDocument(tab, path).ApplyTo(tab);
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(setup.Project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.True(result.Success, result.ErrorMessage);
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
+        var inputs = manifest.RootElement.GetProperty("inputs").EnumerateArray().ToArray();
+        Assert.Equal(new[] { "rerack", "newGame" }, inputs.Select(input => input.GetProperty("id").GetString()));
+        Assert.All(inputs, input =>
+        {
+            Assert.Equal(string.Empty, input.GetProperty("buttonNumber").GetString());
+            Assert.False(input.GetProperty("coinInput").GetBoolean());
+            Assert.False(input.TryGetProperty("coinChannel", out _));
+            Assert.False(input.TryGetProperty("linkedVisualElementId", out _));
+        });
+    }
+
+    [Theory]
     [InlineData(null, "missing")]
     [InlineData("on machine.started() { object.reset(1); }", "OS2303")]
     [InlineData("on machine.started() { object.reset(object:missing); }", "OSM3001")]
