@@ -87,6 +87,8 @@ namespace OasisPlayer.Loading
                 controls.Initialize(machine);
                 var reelControls = sessionRoot.AddComponent<RuntimeReelDevelopmentControls>();
                 reelControls.Initialize(machine);
+                var inputControls = sessionRoot.AddComponent<RuntimeInputDevelopmentControls>();
+                inputControls.Initialize(machine);
 #endif
                 foreach (var warning in machine.Warnings) Debug.LogWarning(warning);
                 _oasisBehavior = RuntimeOasisScriptBehavior.AttachTo(machine);

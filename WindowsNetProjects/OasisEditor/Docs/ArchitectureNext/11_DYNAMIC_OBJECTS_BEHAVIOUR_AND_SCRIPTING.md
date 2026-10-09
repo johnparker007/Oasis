@@ -479,55 +479,39 @@ The A7 layer itself owns no authored behaviour schema or scripting language. A8.
 adapts Oasis Script to these services; arbitrary component/property mutation and
 Unity API access remain excluded from the authored contract.
 
-## Pool vertical slice
+## Pool runtime proving case (A8.5 single-ball implementation)
 
-### Composition
+Canonical gameplay is `Examples/Pool/behavior.oasis`; the exact setup and manual
+checklist are in [the Pool guide](../../Examples/Pool/README.md). No authored Pool
+Machine, Cabinet or Object3D packages were available, so no actual asset wiring,
+user-local Machine modification or playable-asset verification is claimed.
 
-```text
-Cabinet:
-  PoolTable
+Required composition is only `object:ball01`, `anchor:rackBall01`,
+`anchor:traySlot01`, logical `input:rerack` and `input:newGame`, and six Cabinet
+triggers: `PocketLeftCorner`, `PocketLeftMiddle`, `PocketLeftFarCorner`,
+`PocketRightCorner`, `PocketRightMiddle`, `PocketRightFarCorner`.
+These are the retained reference IDs, not observed local asset identities.
+Anchors are implemented Machine-space data, not future spatial work.
 
-Objects:
-  cueBall
-  ball01..ball15
+machine.started, rerack and newGame clear one collected Bool flag, activate ball01,
+place it at rackBall01 and zero both velocities. NewGame shares rerack's outcome.
+One bound handler admits only the six pockets and ball01. The first entry moves
+the ball to traySlot01, clears both velocities and sets the flag. Same/different
+pocket duplicates do nothing until reset; unrelated payloads are ignored. The ball
+remains active and visible and needs physical support at collection. Reload creates
+fresh state. No lists, loops, tray counters, allocation or special cue handling are
+required by this initial script.
 
-Cabinet triggers:
-  six pocket triggers
+Tests consume the committed script through the interpreter, Machine-aware validator
+and live A7 Unity roots/Rigidbodies/trigger relays. They cover startup, all pockets,
+duplicates, unrelated payloads, both resets, recollection and fresh reload state.
+Suites are added, not executed here; actual Machine manual verification remains
+required. The generic development key bridge and transition/lifecycle coverage are
+retained. R/rerack and N/newGame Inspector bindings drive SetInputState.
 
-Machine inputs:
-  rerack
-  newGame
-```
-
-### Initial state
-
-Machine-authored positions can initially be the rack/start positions.
-
-Later anchors allow alternate rack/tray/spawn positions without embedding coordinates in script.
-
-### Pocket behaviour
-
-Conceptually:
-
-```text
-TriggerEntered(pocket, ball)
-  -> choose next tray slot
-  -> Teleport(ball, traySlot)
-  -> clear velocity/angular velocity
-```
-
-### Rerack
-
-Conceptually:
-
-```text
-InputPressed(rerack)
-  -> Teleport each ball to rack anchor
-  -> reset velocity/angular velocity
-  -> activate all balls
-```
-
-The runtime should not contain pool-specific APIs. Pool is authored behaviour using generic object/trigger/input/anchor capabilities.
+Compiler, interpreter, A7 API, runtime adapter and schemas are unchanged.
+Full multi-ball collection and cue-ball handling remain follow-up work. Scoring,
+full rules, aiming, cue animation, shot controls and multiplayer are deferred.
 
 ## Whac-A-Mole validation
 

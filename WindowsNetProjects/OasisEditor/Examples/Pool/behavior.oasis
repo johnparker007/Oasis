@@ -1,0 +1,39 @@
+// Initial single-ball Pool runtime proving case.
+state collected = false;
+
+on machine.started() {
+    collected = false;
+    object.set_active(object:ball01, true);
+    object.teleport(object:ball01, anchor:rackBall01);
+    object.set_velocity(object:ball01, vec3(0, 0, 0));
+    object.set_angular_velocity(object:ball01, vec3(0, 0, 0));
+}
+
+on input.pressed(input:rerack) {
+    collected = false;
+    object.set_active(object:ball01, true);
+    object.teleport(object:ball01, anchor:rackBall01);
+    object.set_velocity(object:ball01, vec3(0, 0, 0));
+    object.set_angular_velocity(object:ball01, vec3(0, 0, 0));
+}
+
+on input.pressed(input:newGame) {
+    collected = false;
+    object.set_active(object:ball01, true);
+    object.teleport(object:ball01, anchor:rackBall01);
+    object.set_velocity(object:ball01, vec3(0, 0, 0));
+    object.set_angular_velocity(object:ball01, vec3(0, 0, 0));
+}
+
+on trigger.entered(pocket, ball) {
+    if pocket == trigger:PocketLeftCorner or pocket == trigger:PocketLeftMiddle
+        or pocket == trigger:PocketLeftFarCorner or pocket == trigger:PocketRightCorner
+        or pocket == trigger:PocketRightMiddle or pocket == trigger:PocketRightFarCorner {
+        if ball == object:ball01 and not collected {
+            object.teleport(object:ball01, anchor:traySlot01);
+            object.set_velocity(object:ball01, vec3(0, 0, 0));
+            object.set_angular_velocity(object:ball01, vec3(0, 0, 0));
+            collected = true;
+        }
+    }
+}

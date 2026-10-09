@@ -1,50 +1,18 @@
 # Current Priority for Codex
 
-## Read First
+The active workstream is ArchitectureNext track A (Object3D and Oasis Script).
+A1–A7 and A8.1–A8.4 are implemented; merged PR #733 is the A8.4 baseline.
+A8.5 delivers the initial single-ball Pool runtime proving case with collection/reset.
+Full multi-ball collection and cue-ball handling remain follow-up work.
+Actual Pool asset wiring and local toolchain/manual verification remain necessary.
 
-Read only:
+Read AGENTS.md, then Docs/ArchitectureNext/00_OVERVIEW.md,
+10_ACTIVE_ROADMAP.md, the Pool/runtime boundary sections of
+11_DYNAMIC_OBJECTS_BEHAVIOUR_AND_SCRIPTING.md, 12_OASIS_SCRIPT.md and the relevant
+loading/build sections of 09_RUNTIME_BUILD_AND_PLAYER_CONTRACT.md.
 
-1. `AGENTS.md`
-2. `00_CURRENT_PRIORITY.md`
-3. `Docs/OasisPlayerPhase3/CODEX_START_PROMPT.md`
-
-Open additional Phase 3 task documents only as directed by `Docs/OasisPlayerPhase3/CODEX_START_PROMPT.md` or when directly relevant to the requested work.
-
-## Current Focus
-
-Priority workstream:
-
-- Oasis Player Phase 3: Dynamic Face Lamps
-- Next checkpoint: `Docs/OasisPlayerPhase3/TASK_02_EMULATION_LAMP_BRIDGE.md`
-
-Primary implementation project:
-
-```text
-UnityProjects/OasisPlayer
-```
-
-Related contract producer:
-
-```text
-WindowsNetProjects/OasisEditor
-```
-
-## Completed Checkpoints
-
-- Phase 2 is complete and should not be expanded for new lamp planning.
-- Phase 3 Task 01 (`Docs/OasisPlayerPhase3/TASK_01_RUNTIME_LAMP_STATE_AND_SHADER_DECODING.md`) is complete.
-
-## Explicit Non-Goals Until Requested
-
-Do not implement:
-
-- reel rendering
-- buttons
-- segment displays
-- VFD
-- dot matrix
-- sound
-- cabinet input
-- Player scene redesign
-- new Face export schemas
-- Blender changes
+Gameplay belongs in Machine-owned behavior.oasis; commands and timers use A7.
+Anchors are Machine-space data and live Object3D roots/Rigidbodies are authoritative.
+Do not attach scripts to Emulation Machines. Preserve A8.4 fault/unload semantics.
+Do not execute builds/tests in Codex; use supported local .NET/Windows and Unity tools.
+Fruit-device commands are A8.6; Whac-A-Mole gameplay validation is A8.7.
