@@ -160,7 +160,7 @@ Machine behaviour owns game rules and state transitions.
 It refers only to stable Oasis identities such as:
 
 - `object:ball08`;
-- `trigger:PocketLeftMiddle`;
+- `trigger:Pocket_XNeg_YNeg`;
 - `input:rerack`;
 - `anchor:traySlot03`.
 
@@ -288,8 +288,8 @@ At runtime these should be registered under a stable Oasis trigger identity deri
 Example:
 
 ```text
-OasisTrigger_PocketLeftMiddle
-    -> trigger:PocketLeftMiddle
+OasisTrigger_Pocket_XNeg_YNeg
+    -> trigger:Pocket_XNeg_YNeg
 ```
 
 The Cabinet loader still owns the Unity Collider. The runtime registry supplies the logical identity used by behaviour.
@@ -499,9 +499,12 @@ user-local Machine modification or playable-asset verification is claimed.
 
 Required composition is only `object:ball01`, `anchor:rackBall01`,
 `anchor:traySlot01`, logical `input:rerack` and `input:newGame`, and six Cabinet
-triggers: `PocketLeftCorner`, `PocketLeftMiddle`, `PocketLeftFarCorner`,
-`PocketRightCorner`, `PocketRightMiddle`, `PocketRightFarCorner`.
-These are the retained reference IDs, not observed local asset identities.
+triggers: `Pocket_XNeg_Middle`, `Pocket_XNeg_YNeg`, `Pocket_XNeg_YPos`,
+`Pocket_XPos_Middle`, `Pocket_XPos_YNeg`, `Pocket_XPos_YPos`.
+These exact, case-sensitive IDs match the supplied Blender screenshot names after
+removing `OasisTrigger_`; the script adds the typed `trigger:` prefix. Actual exported
+GLB contents still require verification. All six share the same collection action,
+without a left/right/far coordinate mapping.
 Anchors are implemented Machine-space data, not future spatial work.
 
 machine.started, rerack and newGame clear one collected Bool flag, activate ball01,
@@ -518,7 +521,11 @@ and live A7 Unity roots/Rigidbodies/trigger relays. They cover startup, all pock
 duplicates, unrelated payloads, both resets, recollection and fresh reload state.
 Suites are added, not executed here; actual Machine manual verification remains
 required. The generic development key bridge and transition/lifecycle coverage are
-retained. R/rerack and N/newGame Inspector bindings drive SetInputState.
+retained. Input Map-authored R/rerack and N/newGame shortcuts populate development
+Inspector bindings automatically from the loaded runtime package and drive
+SetInputState. Unassigned/unsupported shortcuts use None; temporary Inspector
+overrides survive polling until reload restores authored bindings. Emulation and
+release-build routing are unchanged; see the runtime contract and Pool guide.
 
 Compiler, interpreter, A7 API, runtime adapter and schemas are unchanged.
 Full multi-ball collection and cue-ball handling remain follow-up work. Scoring,

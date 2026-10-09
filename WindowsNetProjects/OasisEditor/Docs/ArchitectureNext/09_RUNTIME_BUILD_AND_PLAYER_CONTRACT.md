@@ -206,20 +206,42 @@ path, assembly identity, and absence of copied compiler/session source under Ass
 
 See [Pool setup/manual checklist](../../Examples/Pool/README.md) for exact sample
 single-ball/pocket/anchor/input mappings and authored versus generated source placement.
-Only ball01, rackBall01 and traySlot01 are required alongside the retained six
-pockets and rerack/newGame inputs. Full multi-ball collection and cue-ball handling
+Only ball01, rackBall01 and traySlot01 are required alongside six
+coordinate-based pockets (`Pocket_XNeg_Middle`, `Pocket_XNeg_YNeg`, `Pocket_XNeg_YPos`,
+`Pocket_XPos_Middle`, `Pocket_XPos_YNeg`, `Pocket_XPos_YPos`) and rerack/newGame inputs.
+They match the supplied Blender screenshot names, with `OasisTrigger_` removed and
+`trigger:` added in script; verify the actual exported GLB before building.
+Full multi-ball collection and cue-ball handling
 remain follow-up work.
 No actual Pool asset package was available or modified. The canonical script is
 linked into .NET test output and read directly from the repository by Unity tests.
 Automated coverage has been added but suites/manual verification remain unexecuted.
 
-Editor/development Machine preview creates RuntimeInputDevelopmentControls with
-empty Inspector bindings. Set R/rerack and N/newGame on the loaded session root.
-Held-key transitions use A7 SetInputState; multiple keys aggregate per input.
-Disable, focus loss and binding replacement release held inputs; inactive/unloaded
-Machines are detached without dispatch. Reload destroys session settings, so reapply
-bindings. Window > Input Map > Add Input authors the `rerack`/`newGame`
-logical declarations with explicit raw IDs; this does not supply Player key bindings.
-The Key column is not a production Player binding contract. No serialized Machine
-format or hard-coded game IDs are introduced; broader production bindings remain
-deferred. Existing A8.4 adapter and fault/unload semantics are unchanged.
+Native Oasis Editor/development Machine preview creates RuntimeInputDevelopmentControls
+as the sole logical keyboard dispatcher. Initialize reads the loaded package's
+`inputs[].keyboardShortcut` once and creates Inspector bindings with `inputs[].id`
+as identity. MachineRuntimeBuildService already exports this metadata in schema 9;
+MachineInputDefinition now retains it, so no writer/schema change is needed. Player
+never reads authored Editor project files. Logical registration remains independent
+of keyboard conversion and includes every declaration.
+
+RuntimeInputShortcutMapper is a focused, testable development-only converter for
+Input Map/importer single-key representations (letters, D0–D9/digits, Space, arrows,
+OEM punctuation names, left/right modifiers, function and keypad/navigation keys).
+It mirrors Editor MfmeShortcutKeyMapper conventions without WPF dependencies:
+case-insensitive names, trimmed whitespace and generic SHIFT/CTRL/ALT mapping to
+left modifiers. RawMfmeShortcut is not used. Unsupported/malformed values (including
+chords and numeric enum values) warn with the logical ID/shortcut and use KeyCode.None;
+empty shortcuts also use None. Every input remains visible and available through A7.
+
+Window > Input Map > Add Input declares raw IDs; its Key column supplies development
+bindings after save/build/load. Temporary Inspector edits survive polling; Initialize
+on replacement/reload restores authored values. Multiple keys aggregate per input;
+shared keys activate every distinct input in ordinal ID order, releases before
+presses, and duplicate bindings emit one transition. Focus loss, disable and explicit
+Configure release held inputs; unload detaches without stale dispatch. Emulation
+initializes empty bindings, preserving existing routing. Release builds exclude the
+bridge/converter. Production bindings and the broader named-input redesign remain
+deferred; A8.4 fault/unload semantics are unchanged. See the Pool guide for the local
+R/N authoring, reset, focus-loss, override and reload checklist. Added regression
+suites must be run locally; they have not been executed in Codex.

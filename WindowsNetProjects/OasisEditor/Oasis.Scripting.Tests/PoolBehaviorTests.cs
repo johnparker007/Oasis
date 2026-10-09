@@ -6,7 +6,7 @@ namespace Oasis.Scripting.Tests;
 
 public sealed class PoolBehaviorTests
 {
-    private static readonly string[] Pockets = { "PocketLeftCorner", "PocketLeftMiddle", "PocketLeftFarCorner", "PocketRightCorner", "PocketRightMiddle", "PocketRightFarCorner" };
+    private static readonly string[] Pockets = { "Pocket_XNeg_Middle", "Pocket_XNeg_YNeg", "Pocket_XNeg_YPos", "Pocket_XPos_Middle", "Pocket_XPos_YNeg", "Pocket_XPos_YPos" };
 
     private static OasisScriptSession Create(Host host)
     {

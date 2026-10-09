@@ -181,7 +181,8 @@ Do not expose arbitrary Unity APIs.
   Object3D 1 and Cabinet 5.
 - **A8.5 Pool runtime proving case (single-ball implementation delivered):**
   canonical `Examples/Pool/behavior.oasis` starts/resets ball01 at rackBall01,
-  collects it once at traySlot01 through any of six pockets, and clears both
+  collects it once at traySlot01 through the six coordinate-based
+  `Pocket_XNeg_*`/`Pocket_XPos_*` IDs from the supplied Blender screenshot, and clears both
   velocities. One Bool flag suppresses duplicate callbacks until rerack/newGame.
   Tests read that file through the interpreter, Machine reference validation and
   live A7 roots/Rigidbodies/trigger relays. The generic development keyboard bridge

@@ -11,7 +11,7 @@ namespace OasisPlayer.Tests
 {
     public sealed class PoolBehaviorIntegrationTests
     {
-        private static readonly string[] Pockets = { "PocketLeftCorner", "PocketLeftMiddle", "PocketLeftFarCorner", "PocketRightCorner", "PocketRightMiddle", "PocketRightFarCorner" };
+        private static readonly string[] Pockets = { "Pocket_XNeg_Middle", "Pocket_XNeg_YNeg", "Pocket_XNeg_YPos", "Pocket_XPos_Middle", "Pocket_XPos_YNeg", "Pocket_XPos_YPos" };
         private static readonly Vector3 Rack = new Vector3(1, 2, 3);
         private static readonly Vector3 Tray = new Vector3(1, 4, 5);
         private readonly List<GameObject> _roots = new List<GameObject>();
@@ -43,8 +43,8 @@ namespace OasisPlayer.Tests
                 anchors = new[] { Anchor("rackBall01", Rack), Anchor("traySlot01", Tray) },
                 inputs = new[]
                 {
-                    new MachineInputDefinition { id = "rerack", name = "Rerack" },
-                    new MachineInputDefinition { id = "newGame", name = "New game" }
+                    new MachineInputDefinition { id = "rerack", name = "Return ball to rack", keyboardShortcut = "R" },
+                    new MachineInputDefinition { id = "newGame", name = "Start again", keyboardShortcut = "N" }
                 }
             };
             _machine = new RuntimeMachine(new ResolvedRuntimeBuild("", manifest, "", new CabinetRuntimeManifest(), "",
@@ -172,6 +172,47 @@ namespace OasisPlayer.Tests
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [Test]
+        public void AuthoredResetKeysWorkWithoutManualConfigurationAndReloadRestoresOverrides()
+        {
+            Load(); var controls = Root("InputControls").AddComponent<RuntimeInputDevelopmentControls>();
+            controls.Initialize(_machine);
+            Assert.AreEqual(new[] { "rerack", "newGame" }, controls.Bindings.Select(b => b.inputId));
+            Assert.AreEqual(new[] { KeyCode.R, KeyCode.N }, controls.Bindings.Select(b => b.key));
+            foreach (var key in new[] { KeyCode.R, KeyCode.N })
+            {
+                Pocket(); At("ball01", Tray);
+                controls.Poll(k => k == key); At("ball01", Rack);
+                controls.Poll(k => false);
+            }
+            // Inspector override survives polling; replacement releases the old Machine first.
+            controls.Bindings[0].key = KeyCode.T;
+            controls.Poll(k => k == KeyCode.R); Assert.False(_machine.Inputs["rerack"].IsPressed);
+            controls.Poll(k => k == KeyCode.T); Assert.True(_machine.Inputs["rerack"].IsPressed);
+            var old = _machine; Load(); controls.Initialize(_machine);
+            Assert.False(old.Inputs["rerack"].IsPressed);
+            Assert.AreEqual(KeyCode.R, controls.Bindings[0].key);
+            controls.Poll(k => k == KeyCode.R); Assert.True(_machine.Inputs["rerack"].IsPressed);
+        }
+
+        [Test]
+        public void SharedKeysFanOutInOrdinalIdOrderAndDuplicatesEmitOnlyOneTransition()
+        {
+            Load(); var controls = Root("InputControls").AddComponent<RuntimeInputDevelopmentControls>();
+            controls.Initialize(_machine);
+            controls.Configure(new[]
+            {
+                new RuntimeInputDevelopmentControls.Binding { key = KeyCode.R, inputId = "rerack" },
+                new RuntimeInputDevelopmentControls.Binding { key = KeyCode.R, inputId = "newGame" },
+                new RuntimeInputDevelopmentControls.Binding { key = KeyCode.R, inputId = "rerack" }
+            });
+            var events = new List<string>(); _machine.Events.Subscribe(e =>
+            { if (e is RuntimeInputPressedEvent p) events.Add("+" + p.InputId); if (e is RuntimeInputReleasedEvent r) events.Add("-" + r.InputId); });
+            controls.Poll(k => k == KeyCode.R); controls.Poll(k => k == KeyCode.R);
+            controls.Poll(k => false);
+            Assert.AreEqual(new[] { "+newGame", "+rerack", "-newGame", "-rerack" }, events);
+        }
+
         [Test]
         public void DevelopmentInputCallbackMayUnloadMachineDuringMultipleTransitions()
         {
