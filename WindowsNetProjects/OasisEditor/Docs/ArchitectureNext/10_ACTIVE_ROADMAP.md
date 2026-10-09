@@ -40,7 +40,7 @@ The proving cases are:
    - Machine-owned ball instances;
    - dynamic Rigidbody/SphereCollider runtime objects;
    - Cabinet pocket triggers and table colliders;
-   - reusable A8.5 scripted rerack/pocket/tray behaviour; actual asset wiring remains local.
+   - initial A8.5 single-ball scripted pocket/reset proving case; actual asset wiring remains local.
 2. Whac-A-Mole:
    - reusable Mole Object3D;
    - Machine-owned instances;
@@ -176,21 +176,24 @@ Do not expose arbitrary Unity APIs.
   Small live-object tests cover Pool trigger and Whac-A-Mole timer flows without
   production game content. Schemas remain authored Machine 8, runtime Machine 9,
   Object3D 1 and Cabinet 5.
-- **A8.5 Pool vertical slice (reusable implementation delivered):** canonical
-  `Examples/Pool/behavior.oasis` starts/reracks all balls, collects numbered balls
-  exactly once into fifteen consecutive tray slots, returns cue scratches, and
-  resets state on rerack/newGame. Tests execute that file through the interpreter,
-  Machine reference validation and live A7 roots/Rigidbodies/trigger relays.
-  A configurable generic development key bridge drives A7 logical transitions.
-  No authored Pool assets are in this checkout; asset wiring, full local suites
-  and manual verification remain outstanding. See `../../Examples/Pool/README.md`.
+- **A8.5 Pool runtime proving case (single-ball implementation delivered):**
+  canonical `Examples/Pool/behavior.oasis` starts/resets ball01 at rackBall01,
+  collects it once at traySlot01 through any of six pockets, and clears both
+  velocities. One Bool flag suppresses duplicate callbacks until rerack/newGame.
+  Tests read that file through the interpreter, Machine reference validation and
+  live A7 roots/Rigidbodies/trigger relays. The generic development keyboard bridge
+  and its lifecycle coverage remain available.
+  No authored Pool assets were available or modified; asset wiring, full local
+  suites and manual verification remain outstanding. Full multi-ball collection
+  and cue-ball handling are follow-up work. See `../../Examples/Pool/README.md`.
 - **A8.6 fruit-device scripting boundary:** add only the lamp/reel/display commands
   proven by a real fruit-machine workflow.
 - **A8.7 Whac-A-Mole validation:** validate the generic language/runtime boundary with
   timer-driven mole behaviour.
 
-A8.6 and A8.7 remain planned. A8.5 is ball collection/reset only; scoring, full
-Pool rules, aiming, cue animation, shot controls and multiplayer are deferred.
+A8.6 and A8.7 remain planned. A8.5 initially proves single-ball collection/reset;
+full multi-ball collection and cue-ball handling remain follow-up work. Scoring,
+full Pool rules, aiming, cue animation, shot controls and multiplayer are deferred.
 Script references use stable Oasis IDs, never Unity/GameObject names. Input-binding
 UI, random and device commands are outside A8.5; Emulation has no script session.
 The added suites have not run in Codex, and no inherited suite pass is assumed.

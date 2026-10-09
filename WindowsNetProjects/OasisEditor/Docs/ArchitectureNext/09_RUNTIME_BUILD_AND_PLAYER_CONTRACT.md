@@ -152,7 +152,8 @@ before clearing timers/events and destroying assets. The adapter unsubscribes,
 detaches its host and drops session/host/Machine/reporter references; already
 snapshotted callbacks also skip disposed sessions. Repeated loads create fresh
 state. No schema or serialized shapes change: authored Machine 8, runtime Machine
-9, Object3D 1 and Cabinet 5. A8.5 supplies reusable Pool gameplay in `Examples/Pool/behavior.oasis`; actual asset wiring remains local.
+9, Object3D 1 and Cabinet 5. A8.5 supplies the initial single-ball Pool proving script in
+`Examples/Pool/behavior.oasis`; actual asset wiring remains local.
 
 ## Canonical scripting assembly
 
@@ -199,10 +200,13 @@ path, assembly identity, and absence of copied compiler/session source under Ass
 11. Reload and confirm script state resets; then load an Emulation Machine and
     confirm existing behaviour and absence of a script attachment.
 
-## A8.5 Pool setup and development input
+## A8.5 single-ball Pool setup and development input
 
 See [Pool setup/manual checklist](../../Examples/Pool/README.md) for exact sample
-object/pocket/anchor/input mappings and authored versus generated source placement.
+single-ball/pocket/anchor/input mappings and authored versus generated source placement.
+Only ball01, rackBall01 and traySlot01 are required alongside the retained six
+pockets and rerack/newGame inputs. Full multi-ball collection and cue-ball handling
+remain follow-up work.
 No actual Pool asset package was available or modified. The canonical script is
 linked into .NET test output and read directly from the repository by Unity tests.
 Automated coverage has been added but suites/manual verification remain unexecuted.

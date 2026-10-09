@@ -2,7 +2,8 @@
 
 The active workstream is ArchitectureNext track A (Object3D and Oasis Script).
 A1–A7 and A8.1–A8.4 are implemented; merged PR #733 is the A8.4 baseline.
-A8.5 delivers the first reusable Pool collection, cue-ball return and reset slice.
+A8.5 delivers the initial single-ball Pool runtime proving case with collection/reset.
+Full multi-ball collection and cue-ball handling remain follow-up work.
 Actual Pool asset wiring and local toolchain/manual verification remain necessary.
 
 Read AGENTS.md, then Docs/ArchitectureNext/00_OVERVIEW.md,

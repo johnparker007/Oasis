@@ -6,6 +6,8 @@ namespace Oasis.Scripting.Tests;
 
 public sealed class PoolBehaviorTests
 {
+    private static readonly string[] Pockets = { "PocketLeftCorner", "PocketLeftMiddle", "PocketLeftFarCorner", "PocketRightCorner", "PocketRightMiddle", "PocketRightFarCorner" };
+
     private static OasisScriptSession Create(Host host)
     {
         var source = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Pool/behavior.oasis"));
@@ -13,85 +15,97 @@ public sealed class PoolBehaviorTests
         Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics));
         return new(result.Program!, host);
     }
+
     private static void Dispatch(OasisScriptSession session, OasisScriptEvent value) =>
         Assert.True(session.Dispatch(value), session.LastRuntimeDiagnostic?.ToString());
-    private static OasisScriptEvent Pocket(string ball, int pocket = 0) => OasisScriptEvent.TriggerEntered(
-        OasisScriptReferenceValue.Trigger(Pockets[pocket]), OasisScriptReferenceValue.Object(ball));
-    private static readonly string[] Pockets = { "PocketLeftCorner", "PocketLeftMiddle", "PocketLeftFarCorner", "PocketRightCorner", "PocketRightMiddle", "PocketRightFarCorner" };
-    private static double Count(OasisScriptSession s)
-    { Assert.True(s.TryGetState("trayCount", out var value)); return Assert.IsType<OasisScriptNumberValue>(value).Value; }
-    private static void Placement(Host host, string ball, string anchor, bool activate)
+
+    private static OasisScriptEvent Pocket(string ball = "ball01", int pocket = 0) =>
+        OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger(Pockets[pocket]), OasisScriptReferenceValue.Object(ball));
+
+    private static bool Collected(OasisScriptSession session)
+    {
+        Assert.True(session.TryGetState("collected", out var value));
+        return Assert.IsType<OasisScriptBoolValue>(value).Value;
+    }
+
+    private static void Placement(Host host, string anchor, bool activate)
     {
         Assert.Equal(activate ? 4 : 3, host.Calls.Count);
         var offset = activate ? 1 : 0;
-        if (activate) { Assert.Equal("SetActive", host.Calls[0].Name); Assert.True(Assert.IsType<OasisScriptBoolValue>(host.Calls[0].Values[1]).Value); }
+        Assert.All(host.Calls, call => Assert.Equal("ball01", Assert.IsType<OasisScriptReferenceValue>(call.Values[0]).Id));
+        if (activate)
+        {
+            Assert.Equal("SetActive", host.Calls[0].Name);
+            Assert.True(Assert.IsType<OasisScriptBoolValue>(host.Calls[0].Values[1]).Value);
+        }
         Assert.Equal("Teleport", host.Calls[offset].Name);
-        Assert.Equal(ball, Assert.IsType<OasisScriptReferenceValue>(host.Calls[offset].Values[0]).Id);
         Assert.Equal(anchor, Assert.IsType<OasisScriptReferenceValue>(host.Calls[offset].Values[1]).Id);
         Assert.Equal(new[] { "SetVelocity", "SetAngularVelocity" }, host.Calls.Skip(offset + 1).Select(c => c.Name));
         foreach (var call in host.Calls.Skip(offset + 1))
-        { var v = Assert.IsType<OasisScriptVec3Value>(call.Values[1]); Assert.Equal((0d, 0d, 0d), (v.X, v.Y, v.Z)); }
-    }
-    private static void Reset(OasisScriptSession s, Host host, OasisScriptEvent value)
-    {
-        host.Calls.Clear(); Dispatch(s, value);
-        Assert.Equal(64, host.Calls.Count); Assert.Equal(0, Count(s));
-        var calls = host.Calls.ToArray();
-        for (var i = 0; i < 16; i++)
         {
-            host.Calls.Clear(); host.Calls.AddRange(calls.Skip(i * 4).Take(4));
-            Placement(host, i == 15 ? "cueBall" : $"ball{i + 1:00}", i == 15 ? "rackCueBall" : $"rackBall{i + 1:00}", true);
+            var velocity = Assert.IsType<OasisScriptVec3Value>(call.Values[1]);
+            Assert.Equal((0d, 0d, 0d), (velocity.X, velocity.Y, velocity.Z));
         }
-        Assert.True(s.TryGetState("collected", out var flags));
-        Assert.All(Assert.IsType<OasisScriptListValue>(flags).Values, flag => Assert.False(Assert.IsType<OasisScriptBoolValue>(flag).Value));
+    }
+
+    [Fact]
+    public void StartupActivatesPlacesAndClearsBothVelocities()
+    {
+        var host = new Host(); var session = Create(host);
+        Assert.False(Collected(session));
+        Dispatch(session, OasisScriptEvent.MachineStarted());
+        Placement(host, "rackBall01", true); Assert.False(Collected(session));
+    }
+
+    [Theory]
+    [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)] [InlineData(4)] [InlineData(5)]
+    public void EveryPocketCollectsOnceAndDuplicatesFromAllPocketsHaveNoEffects(int pocket)
+    {
+        var host = new Host(); var session = Create(host);
+        Dispatch(session, OasisScriptEvent.MachineStarted()); host.Calls.Clear();
+        Dispatch(session, Pocket(pocket: pocket));
+        Placement(host, "traySlot01", false); Assert.True(Collected(session));
         host.Calls.Clear();
+        Dispatch(session, Pocket(pocket: pocket));
+        foreach (var other in Enumerable.Range(0, 6)) Dispatch(session, Pocket(pocket: other));
+        Assert.Empty(host.Calls); Assert.True(Collected(session)); Assert.False(session.IsFaulted);
     }
 
-    [Fact] public void StartupAndEveryPocketCollectConsecutivelyWithoutDuplicateEffectsOrOverflow()
+    [Fact]
+    public void UnrelatedTriggersObjectsAndTriggerExitsAreIgnored()
     {
-        var host = new Host(); var s = Create(host); Reset(s, host, OasisScriptEvent.MachineStarted());
-        // Deliberately different from ball-number order.
-        var order = new[] { 8, 1, 15, 2, 14, 3, 13, 4, 12, 5, 11, 6, 10, 7, 9 };
-        for (var i = 0; i < 15; i++)
-        {
-            host.Calls.Clear(); var ball = $"ball{order[i]:00}";
-            Dispatch(s, Pocket(ball, i % 6)); Placement(host, ball, $"traySlot{i + 1:00}", false);
-            Assert.Equal(i + 1, Count(s)); host.Calls.Clear();
-            Dispatch(s, Pocket(ball, i % 6)); Dispatch(s, Pocket(ball, (i + 1) % 6));
-            Assert.Empty(host.Calls); Assert.Equal(i + 1, Count(s));
-        }
-        foreach (var ball in order) Dispatch(s, Pocket($"ball{ball:00}"));
-        Assert.Empty(host.Calls); Assert.Equal(15, Count(s)); Assert.False(s.IsFaulted);
+        var host = new Host(); var session = Create(host);
+        Dispatch(session, OasisScriptEvent.MachineStarted()); host.Calls.Clear();
+        foreach (var pocket in Enumerable.Range(0, 6)) Dispatch(session, Pocket("decoration", pocket));
+        Dispatch(session, OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger("other"), OasisScriptReferenceValue.Object("ball01")));
+        Dispatch(session, OasisScriptEvent.TriggerExited(OasisScriptReferenceValue.Trigger(Pockets[0]), OasisScriptReferenceValue.Object("ball01")));
+        Assert.Empty(host.Calls); Assert.False(Collected(session));
+        Dispatch(session, Pocket()); Placement(host, "traySlot01", false); Assert.True(Collected(session));
     }
 
-    [Fact] public void UnknownPayloadsAndCueScratchesDoNotConsumeSlotsOrChangeFlags()
+    [Theory] [InlineData("rerack")] [InlineData("newGame")]
+    public void BothResetInputsClearStateRestoreBallAndPermitRecollection(string input)
     {
-        var host = new Host(); var s = Create(host); Reset(s, host, OasisScriptEvent.MachineStarted());
-        Dispatch(s, Pocket("ball08")); host.Calls.Clear();
-        Dispatch(s, Pocket("decoration"));
-        Dispatch(s, OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger("other"), OasisScriptReferenceValue.Object("ball01")));
-        Dispatch(s, OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger("other"), OasisScriptReferenceValue.Object("cueBall")));
-        Assert.Empty(host.Calls);
-        Assert.True(s.TryGetState("collected", out var before));
-        for (var i = 0; i < 6; i++)
-        { host.Calls.Clear(); Dispatch(s, Pocket("cueBall", i)); Placement(host, "cueBall", "rackCueBall", true); Assert.Equal(1, Count(s)); }
-        Assert.True(s.TryGetState("collected", out var after)); Assert.Same(before, after);
-        host.Calls.Clear(); Dispatch(s, Pocket("ball01")); Placement(host, "ball01", "traySlot02", false);
+        var host = new Host(); var session = Create(host);
+        Dispatch(session, OasisScriptEvent.MachineStarted()); Dispatch(session, Pocket());
+        Assert.True(Collected(session)); host.Calls.Clear();
+        Dispatch(session, OasisScriptEvent.InputPressed(OasisScriptReferenceValue.Input(input)));
+        Placement(host, "rackBall01", true); Assert.False(Collected(session));
+        host.Calls.Clear();
+        Dispatch(session, OasisScriptEvent.InputReleased(OasisScriptReferenceValue.Input(input))); Assert.Empty(host.Calls);
+        Dispatch(session, Pocket(pocket: 5));
+        Placement(host, "traySlot01", false); Assert.True(Collected(session));
     }
 
-    [Theory] [InlineData("rerack", 3)] [InlineData("rerack", 15)] [InlineData("newGame", 3)] [InlineData("newGame", 15)]
-    public void BothInputsResetPartialAndFullCollectionsAndPermitRecollection(string input, int balls)
+    [Fact]
+    public void ReloadSessionHasFreshFlagIndependentOfCollectedSession()
     {
-        var host = new Host(); var s = Create(host); Reset(s, host, OasisScriptEvent.MachineStarted());
-        for (var i = 1; i <= balls; i++) Dispatch(s, Pocket($"ball{i:00}"));
-        Reset(s, host, OasisScriptEvent.InputPressed(OasisScriptReferenceValue.Input(input)));
-        Dispatch(s, Pocket("ball01")); Placement(host, "ball01", "traySlot01", false); Assert.Equal(1, Count(s));
-    }
-
-    [Fact] public void ReloadSessionHasFreshFlagsAndTrayOccupancy()
-    {
-        var host = new Host(); var old = Create(host); Dispatch(old, Pocket("ball08"));
-        var fresh = Create(host); Assert.Equal(0, Count(fresh)); Reset(fresh, host, OasisScriptEvent.MachineStarted());
-        Dispatch(fresh, Pocket("ball08")); Placement(host, "ball08", "traySlot01", false); Assert.Equal(1, Count(old));
+        var oldHost = new Host(); var old = Create(oldHost);
+        Dispatch(old, OasisScriptEvent.MachineStarted()); Dispatch(old, Pocket()); Assert.True(Collected(old));
+        var host = new Host(); var fresh = Create(host);
+        Assert.False(Collected(fresh)); Dispatch(fresh, OasisScriptEvent.MachineStarted());
+        Placement(host, "rackBall01", true); host.Calls.Clear();
+        Dispatch(fresh, Pocket()); Placement(host, "traySlot01", false);
+        Assert.True(Collected(old)); Assert.True(Collected(fresh));
     }
 }

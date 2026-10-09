@@ -1,106 +1,102 @@
-# Pool collection/reset sample — A8.5
+# Single-ball Pool runtime proving case — A8.5
 
-Canonical reusable gameplay: [behavior.oasis](behavior.oasis). This checkout contains
-no authored Pool Machine, PoolTable Cabinet/GLB or PoolBall Object3D packages.
-No user-local asset was changed. The integration fixture is synthetic test content,
-not a playable Pool asset. Connect the sample to your actual Machine as below.
+Canonical gameplay: [behavior.oasis](behavior.oasis). This initial proving case uses
+one ball, two Machine-space anchors, six existing pocket trigger IDs and two logical
+inputs. There are no lists, loops, tray counters, multi-ball allocation or cue-ball
+rules in the script; its only mutable state is `collected`, a Bool.
 
-## Exact reference composition
+No authored Pool Machine, PoolTable Cabinet/GLB or PoolBall Object3D packages were
+available when this PR was created. No user-local Machine or asset was modified.
+The integration fixture is synthetic test content, not a completed playable asset.
+Connect this file to your actual composition; do not infer asset paths from this guide.
 
-All IDs are case-sensitive raw Machine identities, not GameObject display names.
-The six pocket IDs below are a **reference contract**, not observed asset names.
-Adapt typed literals to your existing semantic IDs where practical.
+## Exact required composition
 
-| Domain | Required IDs | Authoring source |
+IDs are case-sensitive Machine identities, not GameObject display names.
+
+| Domain | Required typed IDs | Authoring source |
 | --- | --- | --- |
-| Object3D instances | `cueBall`, `ball01` … `ball15` (zero padded) | Machine instance rows, each referencing your cue/numbered Object3D asset |
-| Cabinet triggers | `PocketLeftCorner`, `PocketLeftMiddle`, `PocketLeftFarCorner`, `PocketRightCorner`, `PocketRightMiddle`, `PocketRightFarCorner` | Cabinet GLB semantic nodes/meshes `OasisTrigger_<id>`; winning node name takes precedence over mesh name |
-| Rack anchors | `rackBall01` … `rackBall15` | Machine anchor rows; position and XYZ Euler degrees in Machine space |
-| Tray anchors | `traySlot01` … `traySlot15` | Machine anchor rows, spaced for the physical ball size in collection order |
-| Cue start anchor | `rackCueBall` | Machine anchor row |
-| Logical inputs | `rerack`, `newGame` | Machine input declarations |
+| Object3D instance | `object:ball01` | One Machine instance referencing your actual ball Object3D asset |
+| Start anchor | `anchor:rackBall01` | Machine anchor; position and XYZ Euler degrees in Machine space |
+| Collection anchor | `anchor:traySlot01` | Machine anchor on a physically supported collection area |
+| Pocket triggers | `trigger:PocketLeftCorner`, `trigger:PocketLeftMiddle`, `trigger:PocketLeftFarCorner`, `trigger:PocketRightCorner`, `trigger:PocketRightMiddle`, `trigger:PocketRightFarCorner` | Existing Cabinet GLB semantic nodes/meshes `OasisTrigger_<id>`; winning node name takes precedence over mesh name |
+| Logical inputs | `input:rerack`, `input:newGame` | Machine input declarations |
 
-Use the existing Project/Library asset reference picker for Cabinet and Object3D
-references. Authored packages belong under `Assets/`; reference their actual
-manifests, not guessed paths. Instance IDs differ from reusable Object3D asset GUIDs.
-All sixteen ball definitions need working colliders and enabled dynamic root
-Rigidbodies. Keep intrinsic model scale/up-axis in the Object3D definition. The
-Machine owns placement; the live root/Rigidbody owns physical motion.
+The pocket IDs are the retained example contract, not names observed in an available
+authored asset. Match them to your actual Cabinet semantics using typed literals.
+No other ball, cue-ball, rack or tray IDs are required.
 
-Place rack/cue anchors above the table collision surface with non-overlapping ball
-spacing. Keep rack/cue/tray positions outside pocket trigger volumes. The tray must
-support the still-active dynamic balls (e.g. solid shelf or suitable containment),
-with no pocket-trigger overlap: the script clears velocity on collection, but does
-not freeze physics. Collected flags suppress future pocket callbacks until reset.
-This stage does not author coordinates because the real table geometry is absent.
+Use the existing Project/Library reference picker for the real Cabinet and ball
+asset manifests. Authored assets belong under `Assets/`; keep intrinsic model
+scale/up-axis in the Object3D definition. The ball needs a working collider and an
+enabled dynamic Rigidbody on its authoritative live root. Position the start and
+collection anchors above supporting collision geometry and outside pocket volumes.
+Collection zeros motion once but leaves the ball active and dynamic: provide
+physical support/containment rather than assuming the script freezes it.
 
 ## Behaviour
 
-Startup, rerack and newGame activate and place all sixteen balls at authored rack/
-cue anchors and clear both velocities, flags and tray occupancy. For this milestone
-newGame intentionally shares rerack's physical/state outcome: there is no score or
-rules state. Reload creates a fresh A8.4 session.
+Startup, rerack and newGame clear the flag, activate ball01, place it at rackBall01
+and clear linear and angular velocities. NewGame shares rerack's outcome for this
+proving case. Each reset handler is explicit; small duplication keeps the V1 script
+readable without helper infrastructure.
 
-One bound trigger/object handler explicitly admits only the six pockets. Numbered
-balls take consecutive tray slots in collection order. A fixed immutable Bool list
-is replaced as a whole to record each collected ball. Duplicate/overlapping pocket
-callbacks cannot consume slots or move collected balls; the explicit `< 15` guard
-also protects the tray index. A cue scratch only activates/returns/zeros the cue
-ball. Unrelated triggers/objects and trigger exits have no effect.
+One bound trigger/object handler accepts only the six pockets and ball01. The first
+entry teleports to traySlot01, clears both velocities and sets collected to true.
+The ball remains active and visible. Later callbacks from any pocket do nothing,
+including no further teleport or velocity clearing. Unrelated triggers/objects and
+trigger exits do nothing. Reset allows collection again; reload creates fresh state.
 
-No Pool-specific C#, new DSL features, timers, schema changes, scoring, full rules,
-aiming, cue animation, shot controls or multiplayer are introduced. Commands use A7;
-Emulation and A8.4 fault policy retain their established behaviour.
+Full multi-ball collection and cue-ball handling remain follow-up work. Scoring,
+full Pool rules, aiming, cue animation, shot controls and multiplayer are deferred.
+The compiler, interpreter, A7 API, runtime adapter and schemas are unchanged.
 
-## Connect, save and build
+## Connect and verify manually
 
-1. Open your actual Pool Machine in Editor. Select Runtime **Oasis**, add Oasis
-   Script Behaviour, and replace its source with this canonical file. The authored
-   package stores `behavior.oasis` next to its Machine manifest; do not put it in
-   the generated `behavior/` directory. Keep unrelated authored data intact.
-2. Assign the actual Cabinet and sixteen Object3D references; declare/match the IDs
-   above and all 31 anchors and two inputs. If you retain different IDs, edit the
-   typed literals, not runtime code. Do not construct references from strings.
-3. Check the script diagnostics. Core compilation and Machine-aware validation must
-   both succeed, including Cabinet GLB trigger discovery. Save, then build the
-   Machine. Build revalidates persisted source and exports it to generated
-   `behavior/behavior.oasis` with Machine runtime schema 9. Do not commit that build.
+1. Open your actual Machine in Editor, select Runtime **Oasis**, add Oasis Script
+   Behaviour and replace its source with this file. The authored package stores
+   `behavior.oasis` beside its Machine manifest. Assign the actual Cabinet and one
+   ball asset; declare the exact instance, anchors and inputs above. Match all six
+   Cabinet trigger semantics. Keep unrelated authored data intact.
+2. Confirm core and Machine-aware script diagnostics both pass, save, then build.
+   Build revalidates persisted source and exports `behavior/behavior.oasis` under
+   Machine runtime schema 9. Do not edit/commit disposable generated Player builds.
+3. **Startup:** load in Player; check ball01 is active at rackBall01 with both
+   Rigidbody velocities zero and no script fault.
+4. **Pocket collection:** roll/drop it into a declared pocket; check it reaches
+   traySlot01, stays visible/active and has both velocities cleared. Repeated or
+   overlapping callbacks must not move it again.
+5. **Reset:** press/release R (rerack), then repeat with N (newGame). Each should
+   restore the ball to rackBall01 and clear both velocities.
+6. **Recollection:** after each reset, enter a pocket again and confirm collection.
+   Exercise all six pockets, resetting between them. Reload and repeat; also load
+   an Emulation Machine to confirm normal loading without a script session.
 
-## Development keys in Player
+## Development keyboard controls
 
-Editor/development preview adds `RuntimeInputDevelopmentControls` to its session
-root beside the existing development controls. After loading, select that root in
-the Unity hierarchy and expand **Bindings** in the Inspector. Add `R → rerack` and
-`N → newGame`. Focus Player's Game view. These are manual runtime Inspector settings
-and must be reapplied after reload; this aid deliberately adds no serialized Machine
-format or input-authoring UI. Empty bindings do nothing. Incomplete/undeclared IDs
-are ignored. The component is excluded from release builds.
+Editor/development preview adds `RuntimeInputDevelopmentControls` to its loaded
+session root beside the existing development controls. In the Unity Inspector,
+expand **Bindings** and add `R → rerack` and `N → newGame`; focus the Game view.
+These runtime Inspector settings must be reapplied after reload. Bindings default
+empty, incomplete/undeclared IDs are ignored, and the bridge is excluded from release
+builds. There is no new serialized Machine format or input-authoring UI.
 
-The bridge polls held keys and calls `RuntimeMachine.SetInputState` only on actual
-transitions. Multiple keys for one input are aggregated; disable, focus loss and
-reconfiguration release held inputs, while unloading drops the old Machine. Use
-this bridge as the sole development keyboard owner of its bound logical inputs.
+The retained generic bridge calls `RuntimeMachine.SetInputState` on held-key
+transitions, aggregates multiple keys for one input, releases on disable/focus loss/
+reconfiguration, and detaches from an unloaded Machine. Use it as the sole
+development keyboard owner of its bound logical inputs.
 
-## Local validation checklist
+## Automated coverage and validation status
 
-- Run all `Oasis.Scripting.Tests` and `OasisEditor.Tests` using Windows/.NET 9;
-  run all Player EditMode tests using Unity 6000.0.47f1. New Pool tests read the
-  committed script (the .NET projects copy it as linked test content; Unity reads
-  it from the repository). No alternate Pool program is maintained in tests.
-- Connect/validate/save/build the actual Machine as above, load in Player and
-  confirm all balls rack with no residual linear/angular motion or script error.
-- Roll/drop numbered balls into each pocket. Check consecutive visible tray order,
-  overlapping callbacks and all fifteen balls. Scratch the cue repeatedly; check
-  its return with the numbered tray untouched.
-- Press/release R and N after partial and full collection. Check all sixteen balls
-  reset, and an already collected ball can now take the first tray slot.
-- Reload, reconfigure development keys, and repeat collection to verify fresh state.
-- Load an Emulation Machine and confirm normal loading with no script session.
+PoolBehaviorTests, PoolBehaviorReferenceTests and PoolBehaviorIntegrationTests
+continue reading the canonical committed file (linked test output for .NET; direct
+repository path for Unity). They cover startup, each pocket, same/different-pocket
+duplicates, unrelated payloads, both reset inputs, recollection and fresh reload
+state. Live A7 tests use registered roots/Rigidbodies and existing trigger relays;
+development keyboard transition/lifecycle coverage is retained.
 
-Added automated coverage includes compiler/reference validation, pure interpreter
-outcomes and live A7 roots/Rigidbodies/trigger relays, logical reset transitions,
-unload/reload and development bridge transitions/lifecycle. These suites and the
-actual asset/manual checklist have **not been executed in Codex**: repository
-AGENTS.md forbids builds and test execution here. Static review and diff checks do
-not establish a passing .NET or Unity suite. A8.6 fruit-device commands and A8.7
-Whac-A-Mole validation remain separate work.
+Run the full Oasis.Scripting.Tests and OasisEditor.Tests locally on Windows/.NET 9,
+and Player EditMode tests in Unity 6000.0.47f1. These suites and the actual asset
+manual checklist have not been executed in Codex: AGENTS.md prohibits builds and
+test execution here. Static checks do not establish a passing .NET or Unity suite.
+A8.6 fruit-device commands and A8.7 Whac-A-Mole validation remain separate work.
