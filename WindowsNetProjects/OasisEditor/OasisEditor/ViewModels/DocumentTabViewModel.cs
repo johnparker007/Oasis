@@ -339,7 +339,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
             _machineBehaviorSourceMissing = false;
             MarkDirty();
             PropertyChanged?.Invoke(this, new(nameof(MachineBehaviorSource)));
+            _machineBehaviorReferenceIndex = null;
             ValidateMachineBehaviorSource();
+            PropertyChanged?.Invoke(this, new(nameof(MachineTriggerInventory)));
         }
     }
     public ObservableCollection<OasisScriptEditorDiagnostic> MachineBehaviorDiagnostics { get; } = [];
@@ -373,10 +375,21 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     internal bool IsMachineBehaviorSourceMissing => _machineBehaviorSourceMissing;
     internal OasisScriptMachineReferenceIndexBuildResult GetMachineBehaviorReferenceIndex() =>
         _machineBehaviorReferenceIndex ??= new OasisScriptMachineReferenceIndexBuilder().Build(_projectAccessor?.Invoke(), LibraryRoot(), _machineDocumentModel);
+    internal void RefreshMachineReferencesForCabinet(string manifestPath)
+    {
+        if (_projectAccessor?.Invoke() is { } project && _machineDocumentModel.CabinetAsset is { } reference
+            && CabinetModelDocumentViewModel.IsSelectedCabinet(project, LibraryRoot(), reference, manifestPath))
+            RefreshMachineTriggerInventory();
+    }
+    public void RefreshMachineTriggerInventory() => InvalidateMachineBehaviorReferenceIndex();
+    public System.Windows.Input.ICommand RefreshMachineTriggersCommand => new RelayCommand(RefreshMachineTriggerInventory);
+    public CabinetTriggerInventory MachineTriggerInventory => GetMachineBehaviorReferenceIndex().TriggerInventory
+        ?? CabinetTriggerInventory.Unavailable("No Cabinet reference selected.");
     private void InvalidateMachineBehaviorReferenceIndex()
     {
         _machineBehaviorReferenceIndex = null;
         ValidateMachineBehaviorSource();
+        PropertyChanged?.Invoke(this, new(nameof(MachineTriggerInventory)));
     }
     public ReelDocument GetReelDocument() => _reelDocumentModel;
     public Object3DDocument GetObject3DDocument() => _object3DDocumentModel;
@@ -537,7 +550,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         ValidateMachineBehaviorSource();
         _machineRuntimeSettings?.Refresh();
         MarkDirty();
-        foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachineRuntimeKind), nameof(IsMachineEmulationRuntime), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineObjectInstances), nameof(MachineAnchors), nameof(MachineInputs), nameof(HasMachineBehavior), nameof(MachineBehaviorSource) })
+        foreach (var property in new[] { "MachineDocument", nameof(MachineDisplayName), nameof(MachineCabinetAssetPath), nameof(MachineTriggerInventory), nameof(MachineRuntimeKind), nameof(IsMachineEmulationRuntime), nameof(MachinePlatform), nameof(MachineSurfaceAssignments), nameof(MachineReelAssignments), nameof(MachineObjectInstances), nameof(MachineAnchors), nameof(MachineInputs), nameof(HasMachineBehavior), nameof(MachineBehaviorSource) })
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(property));
         if (AddMachineBehaviorCommand is RelayCommand addBehavior) addBehavior.RaiseCanExecuteChanged();
         if (RemoveMachineBehaviorCommand is RelayCommand removeBehavior) removeBehavior.RaiseCanExecuteChanged();
@@ -562,8 +575,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     internal void RefreshMachineCompositionChoices()
     {
         if (Document.DocumentType != EditorDocumentType.Machine || _projectAccessor?.Invoke() is not { } project) return;
-        _machineBehaviorReferenceIndex = null;
-        ValidateMachineBehaviorSource();
+        InvalidateMachineBehaviorReferenceIndex();
         var cabinetChoices = DiscoverAssetChoices(project, EditorAssetType.Cabinet3D);
         var faceChoices = DiscoverProjectAssetChoices(project, EditorAssetType.Face);
         var reelChoices = DiscoverAssetChoices(project, EditorAssetType.Reel);

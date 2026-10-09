@@ -86,6 +86,19 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                     <StackPanel>
                       <TextBlock Text="Behaviour" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,12"/>
+<StackPanel Margin="0,8,0,8">
+    <TextBlock Text="Named Triggers (read-only)" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+    <TextBlock Text="{Binding MachineTriggerInventory.Status}" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,4"/>
+    <DataGrid ItemsSource="{Binding MachineTriggerInventory.Triggers}" MaxHeight="160" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" ClipboardCopyMode="IncludeHeader">
+        <DataGrid.Columns>
+            <DataGridTextColumn Header="Logical ID" Binding="{Binding Id}"/>
+            <DataGridTextColumn Header="Script reference" Binding="{Binding ScriptReference}"/>
+            <DataGridTextColumn Header="Semantic name" Binding="{Binding SourceName}"/>
+            <DataGridTextColumn Header="Diagnostic" Binding="{Binding Diagnostic}"/>
+        </DataGrid.Columns>
+    </DataGrid>
+</StackPanel>
+<Button Content="Refresh Cabinet triggers and references" Command="{Binding RefreshMachineTriggersCommand}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
                       <Button Content="Add Oasis Script Behaviour" Command="{Binding AddMachineBehaviorCommand}" HorizontalAlignment="Left" Padding="10,4">
                         <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasMachineBehavior}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Button.Style>
                       </Button>

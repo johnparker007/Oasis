@@ -57,6 +57,33 @@ public sealed class CabinetSemanticGeometryTests : IDisposable
         Assert.Single(result.FaceTargets);
     }
 
+    [Fact]
+    public async Task TriggerOnlyCabinetHasNamedInventoryAndNoFaceTargets()
+    {
+        var path = WriteGlb(("OasisTrigger_Pocket_XNeg_Middle", "OasisTrigger_Ignored"), true, true);
+        var result = await new SharpGltfWpfModelLoader().LoadAsync(path);
+        Assert.True(result.Succeeded, result.ErrorMessage);
+        Assert.Empty(result.FaceTargets);
+        var inventory = CabinetTriggerInventory.Read(path);
+        Assert.True(inventory.IsAvailable);
+        var trigger = Assert.Single(inventory.Triggers);
+        Assert.Equal("Pocket_XNeg_Middle", trigger.Id);
+        Assert.Equal("trigger:Pocket_XNeg_Middle", trigger.ScriptReference);
+        Assert.True(trigger.IsValid);
+    }
+
+    [Fact]
+    public void EmptyInventoryDiffersFromUnavailableModel()
+    {
+        var path = WriteGlb(("Cabinet", "Visual"), true, true);
+        Assert.Equal("No trigger geometry discovered.", CabinetTriggerInventory.Read(path).Status);
+        File.Delete(path);
+        var unavailable = CabinetTriggerInventory.Read(path);
+        Assert.False(unavailable.IsAvailable);
+        Assert.Contains("unavailable", unavailable.Status);
+        Assert.Empty(unavailable.Triggers);
+    }
+
     private string WriteGlb((string Node, string Mesh) name, bool includeUv, bool includeMaterial)
         => WriteGlb([name], includeUv, includeMaterial);
 

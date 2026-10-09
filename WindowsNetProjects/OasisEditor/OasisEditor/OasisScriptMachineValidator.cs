@@ -42,7 +42,8 @@ public sealed record OasisScriptMachineReferenceIndex(
 
 public sealed record OasisScriptMachineReferenceIndexBuildResult(
     OasisScriptMachineReferenceIndex References,
-    IReadOnlyList<OasisScriptMachineDiagnostic> Diagnostics);
+    IReadOnlyList<OasisScriptMachineDiagnostic> Diagnostics,
+    CabinetTriggerInventory? TriggerInventory = null);
 
 /// <summary>Resolves the logical reference domains of the assembled authored Machine.</summary>
 public sealed class OasisScriptMachineReferenceIndexBuilder
@@ -59,10 +60,15 @@ public sealed class OasisScriptMachineReferenceIndexBuilder
         var sevenSegments = new HashSet<string>(StringComparer.Ordinal);
         var diagnostics = new List<OasisScriptMachineDiagnostic>();
 
+        var inventory = CabinetTriggerInventory.Unavailable("No Cabinet reference selected.");
         if (machine.CabinetAsset is not null)
         {
-            if (project is null) AddResolutionDiagnostic(diagnostics, "OSM3101", "Cabinet references cannot be resolved because no Project is open.");
-            else ResolveCabinet(project, libraryRoot, machine.CabinetAsset, triggers, diagnostics);
+            if (project is null)
+            {
+                inventory = CabinetTriggerInventory.Unavailable("No Project is open.");
+                AddResolutionDiagnostic(diagnostics, "OSM3101", inventory.Status);
+            }
+            else inventory = ResolveCabinet(project, libraryRoot, machine.CabinetAsset, triggers, diagnostics);
         }
         foreach (var assignment in machine.SurfaceAssignments)
         {
@@ -71,33 +77,32 @@ public sealed class OasisScriptMachineReferenceIndexBuilder
         }
 
         return new(new(baseline.Objects, baseline.Anchors, triggers, baseline.Inputs, lamps,
-            baseline.Reels, alphas, sevenSegments), diagnostics);
+            baseline.Reels, alphas, sevenSegments), diagnostics, inventory);
     }
 
-    private void ResolveCabinet(EditorProject project, string libraryRoot, AssetReference reference, ISet<string> triggers, ICollection<OasisScriptMachineDiagnostic> diagnostics)
+    private CabinetTriggerInventory ResolveCabinet(EditorProject project, string libraryRoot, AssetReference reference, ISet<string> triggers, ICollection<OasisScriptMachineDiagnostic> diagnostics)
     {
         try
         {
             var manifest = _assetResolver.Resolve(project, libraryRoot, reference);
-            if (!File.Exists(manifest)) { AddResolutionDiagnostic(diagnostics, "OSM3101", $"Cabinet asset could not be resolved: '{reference.Path}'."); return; }
+            if (!File.Exists(manifest)) { AddResolutionDiagnostic(diagnostics, "OSM3101", $"Cabinet asset could not be resolved: '{reference.Path}'."); return CabinetTriggerInventory.Unavailable("Cabinet reference could not be resolved."); }
             if (!CabinetDocumentStorage.TryRead(File.ReadAllText(manifest), out CabinetDocument cabinet))
-            { AddResolutionDiagnostic(diagnostics, "OSM3101", $"Cabinet asset is invalid: '{reference.Path}'."); return; }
+            { AddResolutionDiagnostic(diagnostics, "OSM3101", $"Cabinet asset is invalid: '{reference.Path}'."); return CabinetTriggerInventory.Unavailable("Invalid Cabinet manifest."); }
             var modelPath = Path.IsPathFullyQualified(cabinet.Model.Path) ? cabinet.Model.Path : Path.Combine(Path.GetDirectoryName(manifest)!, cabinet.Model.Path);
-            if (!File.Exists(modelPath)) { AddResolutionDiagnostic(diagnostics, "OSM3101", $"Cabinet GLB could not be resolved: '{cabinet.Model.Path}'."); return; }
-            var model = ModelRoot.Load(modelPath);
-            var scene = model.DefaultScene ?? model.LogicalScenes.FirstOrDefault();
-            if (scene is null) return;
-            foreach (var node in scene.VisualChildren) CollectTriggers(node, triggers);
+            var inventory = CabinetTriggerInventory.Read(modelPath);
+            if (!inventory.IsAvailable) AddResolutionDiagnostic(diagnostics, "OSM3101", inventory.Status);
+            foreach (var trigger in inventory.Triggers)
+            {
+                if (trigger.IsValid) triggers.Add(trigger.Id);
+                else AddResolutionDiagnostic(diagnostics, "OSM3101", $"{trigger.SourceName}: {trigger.Diagnostic}");
+            }
+            return inventory;
         }
         catch (Exception exception)
-        { AddResolutionDiagnostic(diagnostics, "OSM3101", $"Cabinet asset could not be resolved: {exception.Message}"); }
-    }
-
-    private static void CollectTriggers(Node node, ISet<string> triggers)
-    {
-        var id = CabinetSemanticGeometry.GetSemanticId(node.Name, node.Mesh?.Name, CabinetSemanticGeometryKind.Trigger);
-        if (!string.IsNullOrWhiteSpace(id)) triggers.Add(id);
-        foreach (var child in node.VisualChildren) CollectTriggers(child, triggers);
+        {
+            AddResolutionDiagnostic(diagnostics, "OSM3101", $"Cabinet asset could not be resolved: {exception.Message}");
+            return CabinetTriggerInventory.Unavailable(exception.Message);
+        }
     }
 
     private static void ResolveFace(EditorProject project, MachineSurfaceAssignment assignment, ISet<string> lamps, ISet<string> alphas, ISet<string> sevenSegments, ICollection<OasisScriptMachineDiagnostic> diagnostics)

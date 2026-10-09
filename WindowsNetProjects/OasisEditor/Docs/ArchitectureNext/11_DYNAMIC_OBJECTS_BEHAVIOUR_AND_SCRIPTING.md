@@ -56,8 +56,11 @@ normal `AssetReferenceResolver`, reads the Cabinet package GLB, and uses the sha
 `CabinetSemanticGeometry` node-before-mesh classification to obtain trigger IDs. Assigned
 Face documents contribute only their canonical linked lamp/alpha/seven-segment references;
 logical reels continue to come from Machine reel assignments. Resolution failures are
-reported separately from unknown-reference diagnostics. The Editor caches this index and
-invalidates it for Machine composition mutations and Project/Library context refreshes.
+reported separately from unknown-reference diagnostics. The transient reference index refreshes for source edits, Machine composition mutations,
+Project/Library context changes, Cabinet model reload and the explicit Behaviour-tab
+refresh control. Cabinet and Machine Behaviour expose read-only named trigger inventories
+with exact script references and separate unavailable/empty/invalid identity feedback.
+Invalid and duplicate trigger IDs are rejected before export, matching Player registration.
 A declared behaviour whose sidecar is absent remains declared and receives an explicit
 missing-source diagnostic; Save cannot silently manufacture an empty replacement.
 
