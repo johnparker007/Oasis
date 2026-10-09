@@ -79,6 +79,7 @@ The compiler, interpreter, A7 API, runtime adapter and schemas are unchanged.
    button number, coin channel, linked visual or imported metadata is required.
    IDs are case-sensitive; blank/invalid/duplicate IDs show feedback without edits.
    Cancel leaves the Machine unchanged; additions participate in Machine undo/redo.
+   Set the **Key** column to `R` for `rerack` and `N` for `newGame`.
    Match all six
    Cabinet trigger semantics. Keep unrelated authored data intact.
 2. Save work in progress at any point, including while syntax/type errors or unresolved
@@ -88,8 +89,10 @@ The compiler, interpreter, A7 API, runtime adapter and schemas are unchanged.
    Once core and Machine-aware script diagnostics both pass, save, then build.
    Build revalidates persisted source and exports `behavior/behavior.oasis` under
    Machine runtime schema 9. Do not edit/commit disposable generated Player builds.
-3. **Startup:** load in Player; check ball01 is active at rackBall01 with both
-   Rigidbody velocities zero and no script fault.
+3. **Startup:** load in Unity Editor/development preview; inspect the RuntimeMachine
+   root: **Bindings** automatically contains `R → rerack` and `N → newGame`.
+   Focus the Game view; check ball01 is active at rackBall01 with both Rigidbody
+   velocities zero and no script fault.
 4. **Pocket collection:** roll/drop it into a declared pocket; check it reaches
    traySlot01, stays visible/active and has both velocities cleared. Repeated or
    overlapping callbacks must not move it again.
@@ -101,19 +104,39 @@ The compiler, interpreter, A7 API, runtime adapter and schemas are unchanged.
 
 ## Development keyboard controls
 
-Editor/development preview adds `RuntimeInputDevelopmentControls` to its loaded
-session root beside the existing development controls. In the Unity Inspector,
-expand **Bindings** and add `R → rerack` and `N → newGame`; focus the Game view.
-These runtime Inspector settings must be reapplied after reload. Bindings default
-empty, incomplete/undeclared IDs are ignored, and the bridge is excluded from release
-builds. Input Map now authors logical declarations; its Key column does not supply
-production Player bindings. The broader named-input/binding redesign remains deferred,
-and there is no new serialized Machine format.
+Native Oasis Editor/development preview adds `RuntimeInputDevelopmentControls`
+to the loaded session root. It is the sole development logical keyboard dispatcher.
+Machine Input Map's **Key** (`KeyboardShortcut`) is already exported in runtime schema
+9; the Player now retains it and populates **Bindings** once during initialization,
+using logical IDs rather than display names. Save/build in Oasis Editor, load the
+package, inspect `R → rerack` and `N → newGame`, then focus the Game view. Reload
+restores authored bindings without manual re-entry. Player reads only the runtime
+package; there is no contract/schema change or production rebinding UI.
 
-The retained generic bridge calls `RuntimeMachine.SetInputState` on held-key
-transitions, aggregates multiple keys for one input, releases on disable/focus loss/
-reconfiguration, and detaches from an unloaded Machine. Use it as the sole
-development keyboard owner of its bound logical inputs.
+All declared inputs are shown. Empty shortcuts appear as `None`. Unsupported or
+malformed shortcuts also appear as `None` and log a warning with the logical ID and
+shortcut; the input stays registered for other mechanisms. No default key is invented
+and Raw MFME Key is never used as a fallback. Supported single-key values include
+letters, digits (`D1`/`1`/`Alpha1`), importer/WPF names such as `Space`, `Left`,
+`OemMinus`, punctuation, modifier keys, F1–F15, and keypad/navigation keys. Names
+are case-insensitive and surrounding whitespace is ignored. Generic SHIFT/CTRL/ALT
+select the left key, following Editor conventions; chords such as `Ctrl+R` are
+unsupported. Correct unsupported values in Input Map and save/build/reload.
+
+Temporary Inspector edits, including assigning a key to `None`, remain usable for
+that loaded session and are never overwritten during polling. Reload/replacement
+recreates the list from authored data. Multiple keys aggregate per logical input;
+shared keys activate every distinct bound input in ordinal ID order, with releases
+before presses. Duplicate key/ID entries produce one logical transition. The bridge
+releases on disable, focus loss and explicit reconfiguration, and detaches from an
+unloaded Machine without stale dispatch. It remains excluded from release builds;
+Emulation previews retain empty development bindings and existing input routing.
+
+After moving ball01 away from its rack, press/release R and N separately and verify
+each resets it. Hold a reset key while losing focus; verify the input releases and
+Game view refocus allows another press. Repeat after reload with no manual binding
+setup. Try a temporary Inspector key, confirm it works, then reload and confirm the
+authored R/N mappings return.
 
 ## Editor authoring regression checklist
 
@@ -135,9 +158,10 @@ On Windows/.NET 9, also verify these authoring fixes before the gameplay checkli
    input IDs. Save an invalid script, then build again: rejection must preserve every
    file in the previous runtime package. Restore valid source and rebuild. Separately
    remove a declared sidecar: Save/Save As must not silently create an empty source.
-5. Load the valid build, configure **R → rerack** and **N → newGame** on its development
-   session root, and follow startup → pocket → reset → recollection above. Reapply
-   bindings after reload and confirm normal Emulation compatibility.
+5. Load the valid build, inspect automatically populated **R → rerack** and
+   **N → newGame** on its development session root, and follow startup → pocket →
+   reset → recollection above. Test focus loss, temporary Inspector overrides and
+   reload restoring authored bindings; confirm normal Emulation compatibility.
 
 ## Automated coverage and validation status
 
@@ -146,7 +170,10 @@ continue reading the canonical committed file (linked test output for .NET; dire
 repository path for Unity). They cover startup, each pocket, same/different-pocket
 duplicates, unrelated payloads, both reset inputs, recollection and fresh reload
 state. Live A7 tests use registered roots/Rigidbodies and existing trigger relays;
-development keyboard transition/lifecycle coverage is retained.
+development keyboard transition/lifecycle coverage is retained. Shortcut conversion,
+loaded metadata, shared/duplicate bindings and automatic configuration/reload are
+covered by `RuntimeInputShortcutMapperTests`, `OasisScriptRuntimePackageTests`,
+`OasisScriptMachinePreviewTests` and `PoolBehaviorIntegrationTests`.
 
 Focused Editor coverage is in `MachineBehaviorAuthoringTests`,
 `InputCreationViewModelTests` and `MachineRuntimeBuildServiceTests`: permissive

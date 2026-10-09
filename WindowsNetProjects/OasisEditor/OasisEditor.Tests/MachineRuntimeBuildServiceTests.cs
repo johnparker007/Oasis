@@ -560,15 +560,20 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         var tab = new DocumentTabViewModel(EditorDocument.CreateMachineStub("Machine"), machineDocumentJson: MachineDocumentStorage.Serialize(machine));
         tab.SetProjectAccessor(() => setup.Project);
         tab.MachineBehaviorSource = "on input.pressed(input:rerack) { } on input.pressed(input:newGame) { }";
-        foreach (var id in new[] { "rerack", "newGame" })
+        foreach (var id in new[] { "rerack", "newGame", "unassigned", "unsupported" })
             Assert.True(new InputCreationViewModel(tab, () => tab, () => { }) { Id = id, DisplayName = id + " display" }.TryCreate());
         Assert.Empty(tab.MachineBehaviorDiagnostics);
+        tab.GetMachineDocument().InputDefinitions.Single(input => input.Id == "rerack").KeyboardShortcut = "R";
+        tab.GetMachineDocument().InputDefinitions.Single(input => input.Id == "newGame").KeyboardShortcut = "N";
+        tab.GetMachineDocument().InputDefinitions.Single(input => input.Id == "unsupported").KeyboardShortcut = "Ctrl+R";
         new OasisEditor.Automation.DocumentSaveService().SaveDocument(tab, path).ApplyTo(tab);
         var result = new MachineRuntimeBuildService().BuildFromMachineDocument(setup.Project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None);
         Assert.True(result.Success, result.ErrorMessage);
         using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
         var inputs = manifest.RootElement.GetProperty("inputs").EnumerateArray().ToArray();
-        Assert.Equal(new[] { "rerack", "newGame" }, inputs.Select(input => input.GetProperty("id").GetString()));
+        Assert.Equal(new[] { "rerack", "newGame", "unassigned", "unsupported" }, inputs.Select(input => input.GetProperty("id").GetString()));
+        Assert.Equal(new[] { "R", "N", "", "Ctrl+R" }, inputs.Select(input => input.GetProperty("keyboardShortcut").GetString()));
+        Assert.Equal(new[] { "rerack display", "newGame display", "unassigned display", "unsupported display" }, inputs.Select(input => input.GetProperty("name").GetString()));
         Assert.All(inputs, input =>
         {
             Assert.Equal(string.Empty, input.GetProperty("buttonNumber").GetString());

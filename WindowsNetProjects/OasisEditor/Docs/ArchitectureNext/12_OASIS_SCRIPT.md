@@ -41,9 +41,12 @@ only presentation. IDs use ASCII letters/digits/underscore/hyphen and are unique
 the active Machine under ordinal case-sensitive comparison. Creation uses document
 commands, so undo/redo refresh reference diagnostics and dirty state. Logical Button
 declarations need no MFME number, coin channel, visual link or imported metadata.
-The Key column does not configure production Player bindings. The broader named-input
-and production binding redesign remains deferred; Pool development bindings still
-belong on the loaded Unity session root.
+The Key column supplies authored shortcuts for native Oasis Editor/development
+preview after save/build/load. The existing session-root keyboard bridge initializes
+once from runtime package metadata using logical IDs; empty/unsupported shortcuts
+remain visible as None, with diagnostics for unsupported values. Inspector overrides
+last until reload. Production bindings and the broader named-input redesign remain
+deferred; see the runtime contract and Pool guide for lifecycle and verification.
 
 ## Lexical syntax and diagnostics
 

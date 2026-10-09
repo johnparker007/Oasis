@@ -188,6 +188,72 @@ namespace OasisPlayer.Tests
             Assert.AreEqual(0, _spawn.transform.childCount);
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [Test]
+        public async Task PreviewCreatesOneKeyboardOwnerAndRestoresAuthoredBindingsAfterReload()
+        {
+            var build = Build("on input.pressed(input:reset) { object.teleport(object:foo, anchor:target); }");
+            build.Machine.inputs[0].keyboardShortcut = "R";
+            var first = await _loader.LoadAsync(build);
+            var owners = _spawn.GetComponentsInChildren<RuntimeInputDevelopmentControls>();
+            Assert.AreEqual(1, owners.Length);
+            var controls = owners[0];
+            Assert.AreEqual(KeyCode.R, controls.Bindings.Single().key);
+            controls.Poll(k => k == KeyCode.R);
+            Assert.AreEqual(new Vector3(1, 2, 3), first.GetObject("foo").Root.transform.localPosition);
+            controls.Bindings.Single().key = KeyCode.T;
+            controls.Poll(k => false); controls.Poll(k => k == KeyCode.T);
+            Assert.True(first.Inputs["reset"].IsPressed);
+            var second = await _loader.LoadAsync(build);
+            Assert.False(first.IsActive);
+            Assert.True(controls == null);
+            owners = _spawn.GetComponentsInChildren<RuntimeInputDevelopmentControls>();
+            Assert.AreEqual(1, owners.Length);
+            Assert.AreEqual(KeyCode.R, owners[0].Bindings.Single().key);
+            Assert.False(second.Inputs["reset"].IsPressed);
+            _loader.Unload();
+            Assert.IsEmpty(_spawn.GetComponentsInChildren<RuntimeInputDevelopmentControls>());
+        }
+
+        [Test]
+        public async Task UnassignedAndUnsupportedInputsLoadAsNoneAndRemainUsable()
+        {
+            var build = Build("");
+            build.Machine.inputs = new[]
+            {
+                new MachineInputDefinition { id = "unassigned", name = "No key" },
+                new MachineInputDefinition { id = "unsupported", name = "Bad shortcut", keyboardShortcut = "Ctrl+R" }
+            };
+            LogAssert.Expect(LogType.Warning, new Regex("Machine input 'unsupported' has unsupported keyboard shortcut 'Ctrl\\+R'"));
+            var machine = await _loader.LoadAsync(build);
+            var controls = _spawn.GetComponentInChildren<RuntimeInputDevelopmentControls>();
+            Assert.AreEqual(new[] { "unassigned", "unsupported" }, controls.Bindings.Select(b => b.inputId));
+            Assert.True(controls.Bindings.All(b => b.key == KeyCode.None));
+            controls.Poll(k => true);
+            Assert.True(machine.Inputs.Values.All(i => !i.IsPressed));
+            machine.SetInputState("unsupported", true); Assert.True(machine.Inputs["unsupported"].IsPressed);
+            machine.SetInputState("unsupported", false);
+            controls.Bindings[0].key = KeyCode.T;
+            controls.Poll(k => k == KeyCode.T); Assert.True(machine.Inputs["unassigned"].IsPressed);
+            controls.Configure(Array.Empty<RuntimeInputDevelopmentControls.Binding>());
+            Assert.False(machine.Inputs["unassigned"].IsPressed);
+            Assert.True(machine.IsActive); Assert.IsNull(_loader.OasisBehaviorFault);
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public async Task EmulationAuthoredShortcutsDoNotEnableDevelopmentKeyboardDispatch()
+        {
+            var build = Build("", "Emulation"); build.Machine.inputs[0].keyboardShortcut = "R";
+            var machine = await _loader.LoadAsync(build);
+            var controls = _spawn.GetComponentInChildren<RuntimeInputDevelopmentControls>();
+            Assert.IsEmpty(controls.Bindings);
+            controls.Poll(k => true);
+            Assert.False(machine.Inputs["reset"].IsPressed);
+            Assert.False(_loader.HasOasisBehavior);
+        }
+#endif
+
         private static ResolvedRuntimeBuild Build(string source, string kind = "Oasis")
         {
             var compiled = OasisScriptCompiler.Compile(source, "behavior/behavior.oasis");

@@ -23,13 +23,13 @@ namespace OasisPlayer.Tests
             File.WriteAllText(Path.Combine(_root, "behavior", "behavior.oasis"), "state score = 0; on machine.started() { timer.stop(\"host-call\"); score = score + 1; }");
         }
         [TearDown] public void TearDown() { if (Directory.Exists(_root)) Directory.Delete(_root, true); }
-        private void WriteMachine(int version = 9, string kind = "Oasis", string source = "behavior/behavior.oasis")
+        private void WriteMachine(int version = 9, string kind = "Oasis", string source = "behavior/behavior.oasis", MachineInputDefinition[] inputs = null)
         {
             // JsonUtility escaping keeps path test cases valid JSON on Windows too.
             var runtime = new MachineRuntimeManifestDefinition { kind = kind };
             if (kind == "Emulation") { runtime.platform = "None"; runtime.platformSettingsJson = "{}"; }
             else runtime.behavior = new MachineRuntimeBehavior { kind = "OasisScript", source = source };
-            var manifest = new MachineRuntimeManifest { schema = RuntimeBuildLoader.MachineSchema, schemaVersion = version, machineId = "machine", displayName = "Pool", cabinetManifest = "cabinet/cabinet.runtime.json", anchors = Array.Empty<MachineRuntimeAnchor>(), runtime = runtime };
+            var manifest = new MachineRuntimeManifest { schema = RuntimeBuildLoader.MachineSchema, schemaVersion = version, machineId = "machine", displayName = "Pool", cabinetManifest = "cabinet/cabinet.runtime.json", anchors = Array.Empty<MachineRuntimeAnchor>(), runtime = runtime, inputs = inputs ?? Array.Empty<MachineInputDefinition>() };
             File.WriteAllText(Path.Combine(_root, "machine.runtime.json"), JsonUtility.ToJson(manifest));
         }
         [TestCase("Emulation")] [TestCase("Oasis")]
@@ -41,6 +41,32 @@ namespace OasisPlayer.Tests
             if (kind == "Oasis") Assert.IsInstanceOf<OasisScriptProgram>(build.ScriptProgram);
             else Assert.IsNull(build.ScriptProgram);
         }
+        [Test]
+        public void LoadedPackagePreservesAuthoredShortcutsAndRegistersEveryLogicalId()
+        {
+            WriteMachine(inputs: new[]
+            {
+                new MachineInputDefinition { id = "rerack", name = "Return to rack", keyboardShortcut = "R" },
+                new MachineInputDefinition { id = "newGame", name = "Start again", keyboardShortcut = "N" },
+                new MachineInputDefinition { id = "unassigned", keyboardShortcut = "" },
+                new MachineInputDefinition { id = "unsupported", keyboardShortcut = "Ctrl+R" }
+            });
+            Assert.True(RuntimeBuildLoader.TryLoad(_root, out var build, out var error), error);
+            Assert.AreEqual(new[] { "R", "N", "", "Ctrl+R" }, build.Machine.inputs.Select(i => i.keyboardShortcut));
+            var machine = new RuntimeMachine(build, null);
+            try
+            {
+                Assert.AreEqual(4, machine.Inputs.Count);
+                Assert.AreEqual("Return to rack", machine.Inputs["rerack"].Name);
+                foreach (var id in new[] { "unassigned", "unsupported" })
+                {
+                    machine.SetInputState(id, true); Assert.True(machine.Inputs[id].IsPressed);
+                    machine.SetInputState(id, false); Assert.False(machine.Inputs[id].IsPressed);
+                }
+            }
+            finally { machine.UnloadAssets(); }
+        }
+
         [Test] public void PreviousSchemaRejected()
         { WriteMachine(version: 8); Assert.False(RuntimeBuildLoader.TryLoad(_root, out _, out var error)); StringAssert.Contains("schema/version", error); }
         [Test] public void UnknownRuntimeRejected()

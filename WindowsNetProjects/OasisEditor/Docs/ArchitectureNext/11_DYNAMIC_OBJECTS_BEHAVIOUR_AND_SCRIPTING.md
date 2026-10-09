@@ -518,7 +518,11 @@ and live A7 Unity roots/Rigidbodies/trigger relays. They cover startup, all pock
 duplicates, unrelated payloads, both resets, recollection and fresh reload state.
 Suites are added, not executed here; actual Machine manual verification remains
 required. The generic development key bridge and transition/lifecycle coverage are
-retained. R/rerack and N/newGame Inspector bindings drive SetInputState.
+retained. Input Map-authored R/rerack and N/newGame shortcuts populate development
+Inspector bindings automatically from the loaded runtime package and drive
+SetInputState. Unassigned/unsupported shortcuts use None; temporary Inspector
+overrides survive polling until reload restores authored bindings. Emulation and
+release-build routing are unchanged; see the runtime contract and Pool guide.
 
 Compiler, interpreter, A7 API, runtime adapter and schemas are unchanged.
 Full multi-ball collection and cue-ball handling remain follow-up work. Scoring,
