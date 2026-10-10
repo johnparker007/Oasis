@@ -1,5 +1,7 @@
 # Oasis Script language design
 
+> Delivered Object3D/A8 baseline and existing contracts below remain current. The proposed evolution is in [Prefab/OasisObject architecture](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md) and [delivery plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md); none of P1–P8 is implemented. Proposed variants/functions/spawning are later milestones, not current functionality.
+
 ## Purpose and placement
 
 Oasis Script is the small, event-oriented language for deterministic arcade-machine

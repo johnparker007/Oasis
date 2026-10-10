@@ -29,7 +29,7 @@ Do not recreate transitional Cabinet/Project ownership removed by those implemen
 
 ## Active track A — Dynamic Object3D composition
 
-The immediate next architecture track is described in:
+The delivered baseline and remaining A8 context are described in:
 
 - `11_DYNAMIC_OBJECTS_BEHAVIOUR_AND_SCRIPTING.md`
 
@@ -202,6 +202,30 @@ Script references use stable Oasis IDs, never Unity/GameObject names. Input-bind
 UI, random and device commands are outside A8.5; Emulation has no script session.
 The added suites have not run in Codex, and no inherited suite pass is assumed.
 
+## Proposed next track P — Prefabs, OasisObjects and algorithmic Pool
+
+Planning only; no P phase has started. Evolve the existing Object3D pipeline rather
+than adding a parallel Prefab system. Contracts and inspected merged baseline:
+[13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md).
+Detailed scope, dependencies, coverage, local checks and first-phase prompt:
+[14_PREFAB_AND_POOL_DELIVERY_PLAN.md](14_PREFAB_AND_POOL_DELIVERY_PLAN.md).
+
+1. P1 ordinary Prefab/component authoring foundation.
+2. P2 authored OasisObjects and runtime component integration.
+3. P3 unchanged single-ball Pool migration/verification checkpoint.
+4. P4 typed refs/dependencies, spawning/lifecycle, bounded functions/collections,
+   focused geometry/frame math and kinematic movement (separate ordered PRs).
+5. P5 algorithmic fifteen-ball rack plus separate cue, collection/reset.
+6. P6 constrained direct-base variants; no Pool dependency.
+7. P7 reusable mole motion/hit/timers proving case.
+8. P8 kinematic shelf/dynamic-coin proving case with measured limits.
+
+Proposed reprioritisation: defer A8.6 fruit-device commands behind P; expand A8.7
+into P7. A8.5 single-ball implementation is delivered, not replaced or undone;
+actual asset wiring/local verification remains a P3 prerequisite. Keep useful A1–A8
+history above as baseline, not instructions to recreate it. New syntax in document
+13 is illustrative only. No generic emulation-device migration in this track.
+
 ## Active track B — Installation assets
 
 Installation remains a future composition layer above independently playable Machines:
@@ -223,7 +247,7 @@ Do not generalize Face from theory alone.
 
 Do not implement until a real workflow requires them:
 
-- generic asset inheritance/variants;
+- generic asset inheritance, variant chains and nested Prefab composition (constrained direct-base Prefab variants are separately proposed at P6);
 - online package marketplace;
 - universal Device schema;
 - arbitrary graph rewiring;

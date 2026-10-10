@@ -1,5 +1,7 @@
 # Oasis Architecture Next — Overview
 
+> Delivered Object3D/A8 baseline and existing contracts below remain current. The proposed evolution is in [Prefab/OasisObject architecture](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md) and [delivery plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md); none of P1–P8 is implemented. Proposed variants/functions/spawning are later milestones, not current functionality.
+
 ## Purpose
 
 This document set defines the durable target architecture for Oasis Editor and Oasis Player. It intentionally extends beyond fruit-machine emulation to support video arcade machines, linked installations, scripted physical games, and physics-heavy machines such as pool tables and coin pushers.
