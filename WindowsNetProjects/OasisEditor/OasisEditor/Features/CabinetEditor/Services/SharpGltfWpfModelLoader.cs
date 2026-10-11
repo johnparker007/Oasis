@@ -16,6 +16,9 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
     private static readonly DiffuseMaterial DefaultMaterial = CreateDefaultMaterial();
     private static readonly ICabinetFaceTargetDetector FaceTargetDetector = new GlbCabinetFaceTargetDetector();
 
+    private readonly bool _interpretCabinetSemantics;
+    public SharpGltfWpfModelLoader(bool interpretCabinetSemantics = true) => _interpretCabinetSemantics = interpretCabinetSemantics;
+
     public Task<CabinetModelLoadResult> LoadAsync(string modelPath, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(modelPath))
@@ -33,10 +36,10 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
             return Task.FromResult(CabinetModelLoadResult.Failure("Cabinet Model Viewer currently supports .glb files only."));
         }
 
-        return Task.Run(() => LoadModel(modelPath, cancellationToken), cancellationToken);
+        return Task.Run(() => LoadModel(modelPath, cancellationToken, _interpretCabinetSemantics), cancellationToken);
     }
 
-    private static CabinetModelLoadResult LoadModel(string modelPath, CancellationToken cancellationToken)
+    private static CabinetModelLoadResult LoadModel(string modelPath, CancellationToken cancellationToken, bool interpretCabinetSemantics)
     {
         try
         {
@@ -50,17 +53,17 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
                 return CabinetModelLoadResult.Failure("The .glb loaded, but it did not contain a scene to display.");
             }
 
-            GlbCabinetSemanticGeometryValidator.Validate(scene, modelPath, cancellationToken);
+            if (interpretCabinetSemantics) GlbCabinetSemanticGeometryValidator.Validate(scene, modelPath, cancellationToken);
 
-            var faceTargets = FaceTargetDetector.DetectTargets(modelPath, cancellationToken);
-            var reflectionTargets = GlbCabinetReflectionReceiverDiscovery.Discover(modelPath);
+            IReadOnlyList<Models.CabinetFaceTarget> faceTargets = interpretCabinetSemantics ? FaceTargetDetector.DetectTargets(modelPath, cancellationToken) : [];
+            IReadOnlyList<Models.CabinetReflectionReceiverTarget> reflectionTargets = interpretCabinetSemantics ? GlbCabinetReflectionReceiverDiscovery.Discover(modelPath) : [];
             var visualMeshes = new Dictionary<int, MeshGeometry3D>();
             var colliderMesh = new MeshGeometry3D();
             var triggerMesh = new MeshGeometry3D();
             var triangleCount = 0;
             foreach (var node in scene.VisualChildren)
             {
-                AddNodeGeometry(node, visualMeshes, colliderMesh, triggerMesh, ref triangleCount, cancellationToken);
+                AddNodeGeometry(node, visualMeshes, colliderMesh, triggerMesh, ref triangleCount, cancellationToken, interpretCabinetSemantics);
             }
 
             if (triangleCount == 0)
@@ -100,11 +103,11 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
         }
     }
 
-    private static void AddNodeGeometry(Node node, Dictionary<int, MeshGeometry3D> visualMeshes, MeshGeometry3D colliderMesh, MeshGeometry3D triggerMesh, ref int triangleCount, CancellationToken cancellationToken)
+    private static void AddNodeGeometry(Node node, Dictionary<int, MeshGeometry3D> visualMeshes, MeshGeometry3D colliderMesh, MeshGeometry3D triggerMesh, ref int triangleCount, CancellationToken cancellationToken, bool interpretCabinetSemantics)
     {
         if (node.Mesh is not null)
         {
-            var kind = CabinetSemanticGeometry.Classify(node.Name, node.Mesh.Name);
+            var kind = interpretCabinetSemantics ? CabinetSemanticGeometry.Classify(node.Name, node.Mesh.Name) : CabinetSemanticGeometryKind.Visual;
             if (kind != CabinetSemanticGeometryKind.FaceTarget)
             {
                 foreach (var primitive in node.Mesh.Primitives)
@@ -137,7 +140,7 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
                 }
             }
         }
-        foreach (var child in node.VisualChildren) AddNodeGeometry(child, visualMeshes, colliderMesh, triggerMesh, ref triangleCount, cancellationToken);
+        foreach (var child in node.VisualChildren) AddNodeGeometry(child, visualMeshes, colliderMesh, triggerMesh, ref triangleCount, cancellationToken, interpretCabinetSemantics);
     }
 
     private static void ValidateTriangleIndex(int index, int count, Node node)

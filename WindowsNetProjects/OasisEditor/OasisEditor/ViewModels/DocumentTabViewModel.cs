@@ -14,7 +14,7 @@ using Oasis.Scripting;
 
 namespace OasisEditor;
 
-public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
+public sealed partial class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 {
     private readonly CommandService _commandService;
     private EditorDocument _document;
@@ -29,7 +29,6 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private OasisScriptMachineReferenceIndexBuildResult? _machineBehaviorReferenceIndex;
     private ReelDocument _reelDocumentModel;
     private Object3DDocument _object3DDocumentModel;
-    private string? _pendingObject3DModelSourcePath;
     private Panel2DDocumentModel _panelDocumentModel;
     private FaceDocumentModel _faceDocumentModel;
     private Dictionary<string, PanelElementModel> _lampElementsByObjectId = new(StringComparer.Ordinal);
@@ -137,9 +136,12 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         _reelDocumentModel = ReelDocumentStorage.TryRead(reelDocumentJson, out var reelDocument, out _)
             ? reelDocument
             : ReelDocument.Create(document.Title);
-        _object3DDocumentModel = Object3DDocumentStorage.TryRead(object3DDocumentJson, out var object3DDocument, out _)
-            ? object3DDocument
-            : Object3DDocument.Create(document.Title);
+        if (object3DDocumentJson is null) _object3DDocumentModel = Object3DDocument.Create(document.Title);
+        else if (Object3DDocumentStorage.TryRead(object3DDocumentJson, out var object3DDocument, out var prefabError)) _object3DDocumentModel = object3DDocument;
+        else throw new InvalidOperationException(prefabError);
+        _prefabCleanContent = Object3DDocumentStorage.Serialize(_object3DDocumentModel);
+        RefreshPrefabChoices();
+        if (Document.DocumentType == EditorDocumentType.Object3D) SelectionState.Replace(new EditorSelectionItem(EditorSelectionDomain.PrefabNode, _object3DDocumentModel.Root.Id));
         OpenSelectedCabinetAssetCommand = new RelayCommand(OpenSelectedCabinetAsset, () => CanOpenSelectedCabinetAsset);
         AddMachineObjectInstanceCommand = new RelayCommand(AddMachineObjectInstance);
         AddMachineAnchorCommand = new RelayCommand(AddMachineAnchor);
@@ -177,7 +179,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         EditorDocumentType.Machine => "Machine",
         EditorDocumentType.Face => "Face",
         EditorDocumentType.Reel => "Reel",
-        EditorDocumentType.Object3D => "Object3D",
+        EditorDocumentType.Object3D => "Prefab",
         _ => "Document Type"
     };
     public string FilePath => Document.FilePath;
@@ -281,6 +283,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         _document = _document.SaveAs(savePath, _document.ContentSummary).MarkClean();
         NotifyDocumentMetadataChanged();
+        _prefabPreview?.Refresh();
     }
 
     internal void ApplyContentSummary(string summary)
@@ -401,46 +404,79 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         if (next == _reelDocumentModel || string.IsNullOrWhiteSpace(next.DisplayName) || next.DiameterMm <= 0 || next.WidthMm <= 0 || !PanelElementValidation.IsFinite(next.DiameterMm) || !PanelElementValidation.IsFinite(next.WidthMm)) return;
         _commandService.Execute(new SetReelDocumentCommand(this, next, description));
     }
-    public string Object3DDisplayName { get => _object3DDocumentModel.DisplayName; set => SetObject3DValue(_object3DDocumentModel with { DisplayName = value?.Trim() ?? string.Empty }, "Rename Object3D"); }
-    public string Object3DModelPath { get => _object3DDocumentModel.Model.Path; set => SetObject3DValue(_object3DDocumentModel with { Model = _object3DDocumentModel.Model with { Path = value?.Trim() ?? string.Empty } }, "Set Object3D model path"); }
-    public double Object3DModelScale { get => _object3DDocumentModel.Model.Scale; set => SetObject3DValue(_object3DDocumentModel with { Model = _object3DDocumentModel.Model with { Scale = value } }, "Set Object3D model scale"); }
-    public string Object3DUpAxis { get => _object3DDocumentModel.Model.UpAxis; set => SetObject3DValue(_object3DDocumentModel with { Model = _object3DDocumentModel.Model with { UpAxis = value } }, "Set Object3D up-axis"); }
+    public string Object3DDisplayName { get => _object3DDocumentModel.DisplayName; set => SetObject3DValue(_object3DDocumentModel with { DisplayName = value?.Trim() ?? string.Empty }, "Rename Prefab"); }
+    private Object3DModelDefinition SelectedModel => SelectedPrefabNode.Component(PrefabComponentKind.Model)?.Model ?? new("model.glb", 1, "Y");
+    private Object3DColliderDefinition SelectedCollider => SelectedPrefabNode.Component(PrefabComponentKind.Collider)?.Collider ?? Object3DColliderDefinition.None;
+    private Object3DRigidbodyDefinition SelectedBody => SelectedPrefabNode.Component(PrefabComponentKind.Rigidbody)?.Rigidbody ?? new(false);
+    public string Object3DModelPath { get => SelectedModel.Path; set => EditSelectedModel(SelectedModel with { Path = value?.Trim() ?? string.Empty }); }
+    public double Object3DModelScale { get => SelectedModel.Scale; set => EditSelectedModel(SelectedModel with { Scale = value }); }
+    public string Object3DUpAxis { get => SelectedModel.UpAxis; set => EditSelectedModel(SelectedModel with { UpAxis = value }); }
     public IReadOnlyList<string> Object3DUpAxes { get; } = ["X", "Y", "Z"];
     public IReadOnlyList<Object3DColliderKind> Object3DColliderKinds { get; } = Enum.GetValues<Object3DColliderKind>();
     public IReadOnlyList<Object3DCapsuleAxis> Object3DCapsuleAxes { get; } = Enum.GetValues<Object3DCapsuleAxis>();
-    public Object3DColliderKind Object3DColliderKind { get => _object3DDocumentModel.Physics.Collider.Kind; set { var c = value switch { Object3DColliderKind.Sphere => new Object3DColliderDefinition(value, [0,0,0], Radius: .5), Object3DColliderKind.Box => new Object3DColliderDefinition(value, [0,0,0], Size: [1,1,1]), Object3DColliderKind.Capsule => new Object3DColliderDefinition(value, [0,0,0], Radius: .5, Height: 2, Axis: Object3DCapsuleAxis.Y), _ => new Object3DColliderDefinition(value) }; SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Collider = c } }, "Set Object3D collider kind"); } }
-    public double Object3DColliderCenterX { get => ColliderVector(_object3DDocumentModel.Physics.Collider.Center, 0); set => SetColliderCenter(0, value); }
-    public double Object3DColliderCenterY { get => ColliderVector(_object3DDocumentModel.Physics.Collider.Center, 1); set => SetColliderCenter(1, value); }
-    public double Object3DColliderCenterZ { get => ColliderVector(_object3DDocumentModel.Physics.Collider.Center, 2); set => SetColliderCenter(2, value); }
-    public double Object3DColliderRadius { get => _object3DDocumentModel.Physics.Collider.Radius ?? .5; set => SetCollider(_object3DDocumentModel.Physics.Collider with { Radius = value }, "Set collider radius"); }
-    public double Object3DColliderSizeX { get => ColliderVector(_object3DDocumentModel.Physics.Collider.Size, 0, 1); set => SetColliderSize(0, value); }
-    public double Object3DColliderSizeY { get => ColliderVector(_object3DDocumentModel.Physics.Collider.Size, 1, 1); set => SetColliderSize(1, value); }
-    public double Object3DColliderSizeZ { get => ColliderVector(_object3DDocumentModel.Physics.Collider.Size, 2, 1); set => SetColliderSize(2, value); }
-    public double Object3DColliderHeight { get => _object3DDocumentModel.Physics.Collider.Height ?? 2; set => SetCollider(_object3DDocumentModel.Physics.Collider with { Height = value }, "Set collider height"); }
-    public Object3DCapsuleAxis Object3DColliderAxis { get => _object3DDocumentModel.Physics.Collider.Axis ?? Object3DCapsuleAxis.Y; set => SetCollider(_object3DDocumentModel.Physics.Collider with { Axis = value }, "Set collider axis"); }
-    public bool Object3DRigidbodyEnabled { get => _object3DDocumentModel.Physics.Rigidbody.Enabled; set { var body = _object3DDocumentModel.Physics.Rigidbody with { Enabled = value, Mass = value ? _object3DDocumentModel.Physics.Rigidbody.Mass ?? 1 : null, UseGravity = value ? _object3DDocumentModel.Physics.Rigidbody.UseGravity ?? true : null }; SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Rigidbody = body } }, "Toggle Object3D Rigidbody"); } }
-    public double Object3DRigidbodyMass { get => _object3DDocumentModel.Physics.Rigidbody.Mass ?? 1; set { var body = _object3DDocumentModel.Physics.Rigidbody with { Mass = value }; SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Rigidbody = body } }, "Set Rigidbody mass"); } }
-    public bool Object3DUseGravity { get => _object3DDocumentModel.Physics.Rigidbody.UseGravity ?? true; set { var body = _object3DDocumentModel.Physics.Rigidbody with { UseGravity = value }; SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Rigidbody = body } }, "Set Rigidbody gravity"); } }
-    private static double ColliderVector(double[]? values, int index, double fallback = 0) => values is { Length: 3 } ? values[index] : fallback;
-    private void SetColliderCenter(int index, double value) { var v = (_object3DDocumentModel.Physics.Collider.Center ?? [0,0,0]).ToArray(); v[index] = value; SetCollider(_object3DDocumentModel.Physics.Collider with { Center = v }, "Set collider center"); }
-    private void SetColliderSize(int index, double value) { var v = (_object3DDocumentModel.Physics.Collider.Size ?? [1,1,1]).ToArray(); v[index] = value; SetCollider(_object3DDocumentModel.Physics.Collider with { Size = v }, "Set collider size"); }
-    private void SetCollider(Object3DColliderDefinition collider, string description) => SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Collider = collider } }, description);
-    private void SetObject3DValue(Object3DDocument next, string description) { if (next == _object3DDocumentModel) return; try { Object3DValidationService.Validate(next); } catch (InvalidOperationException) { return; } _commandService.Execute(new SetObject3DDocumentCommand(this, next, description)); }
-    internal string? PendingObject3DModelSourcePath => _pendingObject3DModelSourcePath;
+    public Object3DColliderKind Object3DColliderKind
+    {
+        get => SelectedCollider.Kind;
+        set
+        {
+            if (value == SelectedCollider.Kind) return;
+            var collider = value switch
+            {
+                Object3DColliderKind.Sphere => new Object3DColliderDefinition(value, [0,0,0], Radius: .5),
+                Object3DColliderKind.Box => new Object3DColliderDefinition(value, [0,0,0], Size: [1,1,1]),
+                Object3DColliderKind.Capsule => new Object3DColliderDefinition(value, [0,0,0], Radius: .5, Height: 2, Axis: Object3DCapsuleAxis.Y),
+                _ => new Object3DColliderDefinition(value)
+            };
+            SetCollider(collider, "Set Prefab collider kind");
+        }
+    }
+    public double Object3DColliderCenterX { get => ColliderVector(SelectedCollider.Center, 0); set => SetColliderCenter(0, value); }
+    public double Object3DColliderCenterY { get => ColliderVector(SelectedCollider.Center, 1); set => SetColliderCenter(1, value); }
+    public double Object3DColliderCenterZ { get => ColliderVector(SelectedCollider.Center, 2); set => SetColliderCenter(2, value); }
+    public double Object3DColliderRadius { get => SelectedCollider.Radius ?? .5; set => SetCollider(SelectedCollider with { Radius = value }, "Set collider radius"); }
+    public double Object3DColliderSizeX { get => ColliderVector(SelectedCollider.Size, 0, 1); set => SetColliderSize(0, value); }
+    public double Object3DColliderSizeY { get => ColliderVector(SelectedCollider.Size, 1, 1); set => SetColliderSize(1, value); }
+    public double Object3DColliderSizeZ { get => ColliderVector(SelectedCollider.Size, 2, 1); set => SetColliderSize(2, value); }
+    public double Object3DColliderHeight { get => SelectedCollider.Height ?? 2; set => SetCollider(SelectedCollider with { Height = value }, "Set collider height"); }
+    public Object3DCapsuleAxis Object3DColliderAxis { get => SelectedCollider.Axis ?? Object3DCapsuleAxis.Y; set => SetCollider(SelectedCollider with { Axis = value }, "Set collider axis"); }
+    public bool Object3DRigidbodyEnabled { get => SelectedBody.Enabled; set => MutatePrefab(() => PrefabAuthoringService.Edit(_object3DDocumentModel, SelectedPrefabNode.Id, n => n.SetComponent((n.Component(PrefabComponentKind.Rigidbody) ?? PrefabComponent.ForBody(new(false))) with { Mode = value ? global::OasisEditor.PrefabBodyMode.Dynamic : global::OasisEditor.PrefabBodyMode.Static, Rigidbody = value ? new(true, SelectedBody.Mass ?? 1, SelectedBody.UseGravity ?? true) : new(false) })), "Set Prefab body enabled"); }
+    public double Object3DRigidbodyMass { get => SelectedBody.Mass ?? 1; set => EditSelectedBody(SelectedBody with { Mass = value }); }
+    public bool Object3DUseGravity { get => SelectedBody.UseGravity ?? true; set => EditSelectedBody(SelectedBody with { UseGravity = value }); }
+    private static double ColliderVector(double[]? vector, int index, double fallback = 0) => vector is { Length: 3 } ? vector[index] : fallback;
+    private void SetColliderCenter(int index, double value) { var v = (SelectedCollider.Center ?? [0,0,0]).ToArray(); v[index] = value; SetCollider(SelectedCollider with { Center = v }, "Set collider center"); }
+    private void SetColliderSize(int index, double value) { var v = (SelectedCollider.Size ?? [1,1,1]).ToArray(); v[index] = value; SetCollider(SelectedCollider with { Size = v }, "Set collider size"); }
+    private void EditSelectedModel(Object3DModelDefinition model) => MutatePrefab(() => PrefabAuthoringService.Edit(_object3DDocumentModel, SelectedPrefabNode.Id, node => node.SetComponent((node.Component(PrefabComponentKind.Model) ?? PrefabComponent.ForModel(model)) with { Model = model })), "Edit Prefab model");
+    private void EditSelectedBody(Object3DRigidbodyDefinition body) => MutatePrefab(() => PrefabAuthoringService.Edit(_object3DDocumentModel, SelectedPrefabNode.Id, node => node.SetComponent((node.Component(PrefabComponentKind.Rigidbody) ?? PrefabComponent.ForBody(body)) with { Rigidbody = body })), "Edit Prefab body");
+    private void SetCollider(Object3DColliderDefinition collider, string description) => MutatePrefab(() => PrefabAuthoringService.Edit(_object3DDocumentModel, SelectedPrefabNode.Id, node => node.SetComponent((node.Component(PrefabComponentKind.Collider) ?? PrefabComponent.ForCollider(collider, node.Component(PrefabComponentKind.Model) is null ? PrefabColliderSourceFrame.NodeLocalSI : PrefabColliderSourceFrame.ModelLocal)) with { Collider = collider })), description);
+    private void SetObject3DValue(Object3DDocument next, string description)
+    {
+        try
+        {
+            Object3DValidationService.Validate(next);
+            PrefabValidationMessage = string.Empty;
+            if (Object3DDocumentStorage.Serialize(next) == Object3DDocumentStorage.Serialize(_object3DDocumentModel)) { NotifyPrefabProperties(); return; }
+            _commandService.Execute(new SetObject3DDocumentCommand(this, next, description));
+        }
+        catch (InvalidOperationException exception) { PrefabValidationMessage = exception.Message; NotifyPrefabProperties(); }
+    }
+    internal string? PendingObject3DModelSourcePath => _pendingPrefabModelSources.GetValueOrDefault(_object3DDocumentModel.Root.Id);
     internal void SetObject3DModelSource(string sourcePath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
-        var packageRelativePath = Path.GetFileName(sourcePath);
-        var next = _object3DDocumentModel with { Model = _object3DDocumentModel.Model with { Path = packageRelativePath } };
-        Object3DValidationService.Validate(next);
-        _commandService.Execute(new SetObject3DModelSourceCommand(this, next, Path.GetFullPath(sourcePath)));
+        if (!string.Equals(Path.GetExtension(sourcePath), ".glb", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Prefab model must be a GLB file.");
+        var nodeId = SelectedPrefabNode.Id;
+        // Node-local filenames avoid one child's import overwriting another node's model.
+        var path = nodeId == _object3DDocumentModel.Root.Id ? Path.GetFileName(sourcePath) : $"models/{nodeId}/{Path.GetFileName(sourcePath)}";
+        var model = SelectedModel with { Path = path };
+        var next = PrefabAuthoringService.Edit(_object3DDocumentModel, nodeId, n => n.SetComponent(PrefabComponent.ForModel(model)));
+        _commandService.Execute(new SetObject3DModelSourceCommand(this, next, nodeId, Path.GetFullPath(sourcePath)));
     }
     internal void ApplySavedObject3DDocument(Object3DDocument document)
     {
-        _object3DDocumentModel = document;
-        _pendingObject3DModelSourcePath = null;
-        PropertyChanged?.Invoke(this, new(nameof(Object3DModelPath)));
+        foreach (var id in _pendingPrefabModelSources.Keys.Where(id => PrefabAuthoringService.Find(document.Root, id) is not null).ToArray()) _pendingPrefabModelSources.Remove(id);
+        _prefabCleanContent = Object3DDocumentStorage.Serialize(document);
+        ApplyPrefabEdit(document);
     }
+
     public string GetMachineDocumentJson() => MachineDocumentStorage.Serialize(_machineDocumentModel);
     public string MachineDisplayName { get => _machineDocumentModel.DisplayName; set { if (string.IsNullOrWhiteSpace(value) || value == _machineDocumentModel.DisplayName) return; ExecuteMachineMutation(_machineDocumentModel with { DisplayName = value.Trim() }, "Rename Machine"); } }
     public object? MachineCabinetAssetPath { get => _machineDocumentModel.CabinetAsset; set { var reference = value switch { null => null, AssetReference typed => typed, string path when !string.IsNullOrWhiteSpace(path) => AssetReference.Project(path), _ => null }; if (_isRefreshingMachineCompositionChoices || reference == _machineDocumentModel.CabinetAsset) return; ExecuteMachineMutation(_machineDocumentModel with { CabinetAsset = reference, SurfaceAssignments = [], ReelAssignments = [] }, "Select Machine Cabinet"); } }
@@ -842,9 +878,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var ids = _machineDocumentModel.ObjectInstances.Select(instance => instance.Id).ToHashSet(StringComparer.Ordinal);
         while (ids.Contains($"object{number}")) number++;
         var instance = new MachineObject3DInstance($"object{number}", "Object", null, MachineObjectTransform.Identity);
-        ExecuteMachineMutation(machine => machine with { ObjectInstances = [.. machine.ObjectInstances, instance] }, "Add Machine Object3D instance");
+        ExecuteMachineMutation(machine => machine with { ObjectInstances = [.. machine.ObjectInstances, instance] }, "Add Machine Prefab instance");
     }
-    internal void RemoveMachineObjectInstance(string id) => ExecuteMachineMutation(machine => machine with { ObjectInstances = machine.ObjectInstances.Where(instance => !string.Equals(instance.Id, id, StringComparison.Ordinal)).ToArray() }, "Remove Machine Object3D instance");
+    internal void RemoveMachineObjectInstance(string id) => ExecuteMachineMutation(machine => machine with { ObjectInstances = machine.ObjectInstances.Where(instance => !string.Equals(instance.Id, id, StringComparison.Ordinal)).ToArray() }, "Remove Machine Prefab instance");
     internal bool UpdateMachineObjectInstance(string originalId, MachineObject3DInstance replacement, string description)
     {
         if (!MachineObject3DInstanceId.IsValid(replacement.Id) || _machineDocumentModel.ObjectInstances.Any(instance => !string.Equals(instance.Id, originalId, StringComparison.Ordinal) && string.Equals(instance.Id, replacement.Id, StringComparison.Ordinal))) return false;
@@ -901,37 +937,35 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         public Guid DocumentId => _owner.DocumentId; public string Description => _description; public bool WasExecuted { get; private set; }
         public void Execute() { _previous ??= _owner._object3DDocumentModel; if (_owner._object3DDocumentModel == _next) return; Set(_next); WasExecuted = true; }
         public void Undo() { if (_previous is not null) Set(_previous); }
-        private void Set(Object3DDocument value) { _owner._object3DDocumentModel = value; _owner.MarkDirty(); foreach (var property in Object3DPropertyNames) _owner.PropertyChanged?.Invoke(_owner, new(property)); }
-        private static readonly string[] Object3DPropertyNames = [nameof(Object3DDisplayName), nameof(Object3DModelPath), nameof(Object3DModelScale), nameof(Object3DUpAxis), nameof(Object3DColliderKind), nameof(Object3DColliderCenterX), nameof(Object3DColliderCenterY), nameof(Object3DColliderCenterZ), nameof(Object3DColliderRadius), nameof(Object3DColliderSizeX), nameof(Object3DColliderSizeY), nameof(Object3DColliderSizeZ), nameof(Object3DColliderHeight), nameof(Object3DColliderAxis), nameof(Object3DRigidbodyEnabled), nameof(Object3DRigidbodyMass), nameof(Object3DUseGravity)];
+        private void Set(Object3DDocument value) => _owner.ApplyPrefabEdit(value);
+        internal static readonly string[] Object3DPropertyNames = [nameof(Object3DDisplayName), nameof(Object3DModelPath), nameof(Object3DModelScale), nameof(Object3DUpAxis), nameof(Object3DColliderKind), nameof(Object3DColliderCenterX), nameof(Object3DColliderCenterY), nameof(Object3DColliderCenterZ), nameof(Object3DColliderRadius), nameof(Object3DColliderSizeX), nameof(Object3DColliderSizeY), nameof(Object3DColliderSizeZ), nameof(Object3DColliderHeight), nameof(Object3DColliderAxis), nameof(Object3DRigidbodyEnabled), nameof(Object3DRigidbodyMass), nameof(Object3DUseGravity)];
     }
 
     private sealed class SetObject3DModelSourceCommand : Commands.IDocumentCommand, Commands.IExecutionTrackedCommand
     {
         private readonly DocumentTabViewModel _owner;
-        private readonly Object3DDocument _nextDocument;
-        private readonly string _nextSourcePath;
-        private Object3DDocument? _previousDocument;
-        private string? _previousSourcePath;
-        public SetObject3DModelSourceCommand(DocumentTabViewModel owner, Object3DDocument nextDocument, string nextSourcePath)
-        { _owner = owner; _nextDocument = nextDocument; _nextSourcePath = nextSourcePath; }
+        private readonly Object3DDocument _next;
+        private readonly string _nodeId, _source;
+        private Object3DDocument? _previous;
+        private string? _previousSource;
+        public SetObject3DModelSourceCommand(DocumentTabViewModel owner, Object3DDocument next, string nodeId, string source)
+        { _owner = owner; _next = next; _nodeId = nodeId; _source = source; }
         public Guid DocumentId => _owner.DocumentId;
-        public string Description => "Choose Object3D model";
+        public string Description => "Choose Prefab model";
         public bool WasExecuted { get; private set; }
         public void Execute()
         {
-            _previousDocument ??= _owner._object3DDocumentModel;
-            _previousSourcePath ??= _owner._pendingObject3DModelSourcePath;
-            if (_owner._object3DDocumentModel == _nextDocument && string.Equals(_owner._pendingObject3DModelSourcePath, _nextSourcePath, StringComparison.OrdinalIgnoreCase)) return;
-            Apply(_nextDocument, _nextSourcePath);
-            WasExecuted = true;
+            WasExecuted = false;
+            if (Object3DDocumentStorage.Serialize(_owner._object3DDocumentModel) == Object3DDocumentStorage.Serialize(_next) && _owner._pendingPrefabModelSources.GetValueOrDefault(_nodeId) == _source) return;
+            if (_previous is null) { _previous = _owner._object3DDocumentModel; _previousSource = _owner._pendingPrefabModelSources.GetValueOrDefault(_nodeId); }
+            _owner._pendingPrefabModelSources[_nodeId] = _source;
+            _owner.ApplyPrefabEdit(_next); WasExecuted = true;
         }
-        public void Undo() { if (_previousDocument is not null) Apply(_previousDocument, _previousSourcePath); }
-        private void Apply(Object3DDocument document, string? sourcePath)
+        public void Undo()
         {
-            _owner._object3DDocumentModel = document;
-            _owner._pendingObject3DModelSourcePath = sourcePath;
-            _owner.MarkDirty();
-            _owner.PropertyChanged?.Invoke(_owner, new(nameof(Object3DModelPath)));
+            if (_previous is null) return;
+            if (_previousSource is null) _owner._pendingPrefabModelSources.Remove(_nodeId); else _owner._pendingPrefabModelSources[_nodeId] = _previousSource;
+            _owner.ApplyPrefabEdit(_previous);
         }
     }
 
@@ -967,6 +1001,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         DisposeCabinetViewer();
         _machineComposition3D?.Dispose();
         SelectionState.SelectionChanged -= OnSelectionStateChanged;
+        _prefabPreview?.Dispose();
     }
 
     public string? FaceDocumentJson
@@ -1985,6 +2020,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         SelectionState.Reconcile(item => item.Domain switch
         {
+            EditorSelectionDomain.PrefabNode => PrefabAuthoringService.Find(_object3DDocumentModel.Root, item.ObjectId) is not null,
             EditorSelectionDomain.PanelElement => _panelDocumentModel.Elements.Any(element => string.Equals(element.ObjectId, item.ObjectId, StringComparison.Ordinal)),
             EditorSelectionDomain.FaceElement => _faceDocumentModel.Elements.Any(element => string.Equals(element.ObjectId, item.ObjectId, StringComparison.Ordinal)),
             EditorSelectionDomain.PanelFaceSourceShape => _panelDocumentModel.FaceSourceShapes.Any(shape => string.Equals(shape.Id, item.ObjectId, StringComparison.Ordinal)),
@@ -2179,6 +2215,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     private void OnSelectionStateChanged(object? sender, DocumentSelectionChangedEventArgs eventArgs)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HierarchySelectedPanelSelection)));
+        if (Document.DocumentType == EditorDocumentType.Object3D) { NotifyPrefabProperties(); _prefabPreview?.NotifySelection(); }
         SelectionChanged?.Invoke(this, eventArgs);
     }
 
@@ -2397,13 +2434,13 @@ public sealed class MachineObjectInstanceRow : INotifyPropertyChanged
     public System.Windows.Input.ICommand RemoveCommand { get; }
     public System.Windows.Input.ICommand OpenSelectedAssetCommand { get; }
     public bool CanOpenSelectedAsset => _owner.CanOpenMachineAssetReference(_instance.ObjectAsset);
-    public string Id { get => _instance.Id; set => Update(_instance with { Id = value?.Trim() ?? string.Empty }, "Rename Machine Object3D instance", nameof(Id)); }
+    public string Id { get => _instance.Id; set => Update(_instance with { Id = value?.Trim() ?? string.Empty }, "Rename Machine Prefab instance", nameof(Id)); }
     public string DisplayName
     {
         get => _instance.DisplayName;
         set
         {
-            if (!string.IsNullOrWhiteSpace(value)) Update(_instance with { DisplayName = value.Trim() }, "Rename Machine Object3D display name", nameof(DisplayName));
+            if (!string.IsNullOrWhiteSpace(value)) Update(_instance with { DisplayName = value.Trim() }, "Rename Machine Prefab display name", nameof(DisplayName));
             else PropertyChanged?.Invoke(this, new(nameof(DisplayName)));
         }
     }
@@ -2414,7 +2451,7 @@ public sealed class MachineObjectInstanceRow : INotifyPropertyChanged
         {
             if (ReferenceEquals(value, _selectedChoice)) return;
             _selectedChoice = value;
-            Update(_instance with { ObjectAsset = value?.AssetPath as AssetReference }, "Assign Machine Object3D asset", nameof(SelectedChoice));
+            Update(_instance with { ObjectAsset = value?.AssetPath as AssetReference }, "Assign Machine Prefab asset", nameof(SelectedChoice));
             NotifyAssetNavigationChanged();
         }
     }
@@ -2429,17 +2466,17 @@ public sealed class MachineObjectInstanceRow : INotifyPropertyChanged
     public double ScaleZ { get => _instance.Transform.Scale.Z; set => SetScale(_instance.Transform.Scale with { Z = value }); }
     private void SetPosition(MachineVector3 value)
     {
-        if (Finite(value)) Update(_instance with { Transform = _instance.Transform with { Position = value } }, "Edit Machine Object3D position");
+        if (Finite(value)) Update(_instance with { Transform = _instance.Transform with { Position = value } }, "Edit Machine Prefab position");
         else NotifyVector(nameof(PositionX), nameof(PositionY), nameof(PositionZ));
     }
     private void SetRotation(MachineVector3 value)
     {
-        if (Finite(value)) Update(_instance with { Transform = _instance.Transform with { Rotation = value } }, "Edit Machine Object3D rotation");
+        if (Finite(value)) Update(_instance with { Transform = _instance.Transform with { Rotation = value } }, "Edit Machine Prefab rotation");
         else NotifyVector(nameof(RotationX), nameof(RotationY), nameof(RotationZ));
     }
     private void SetScale(MachineVector3 value)
     {
-        if (Finite(value) && value.X > 0 && value.Y > 0 && value.Z > 0) Update(_instance with { Transform = _instance.Transform with { Scale = value } }, "Edit Machine Object3D scale");
+        if (Finite(value) && value.X > 0 && value.Y > 0 && value.Z > 0) Update(_instance with { Transform = _instance.Transform with { Scale = value } }, "Edit Machine Prefab scale");
         else
         {
             NotifyVector(nameof(ScaleX), nameof(ScaleY), nameof(ScaleZ));

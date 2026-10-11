@@ -17,6 +17,8 @@ public static class HierarchySelectionIdentityService
             return null;
         }
 
+        if (value.Kind == "PrefabNode") return new EditorSelectionItem(EditorSelectionDomain.PrefabNode, value.ObjectId);
+
         if (string.Equals(value.Kind, PanelFaceSourceShapeCommands.SelectionKind, StringComparison.Ordinal))
         {
             return new EditorSelectionItem(EditorSelectionDomain.PanelFaceSourceShape, value.ObjectId);
@@ -37,7 +39,7 @@ public static class HierarchySelectionIdentityService
 
     public static bool IsRangeSelectable(EditorSelectionItem item)
     {
-        return item.Domain is EditorSelectionDomain.PanelElement or EditorSelectionDomain.FaceElement;
+        return item.Domain is EditorSelectionDomain.PanelElement or EditorSelectionDomain.FaceElement or EditorSelectionDomain.PrefabNode;
     }
 }
 

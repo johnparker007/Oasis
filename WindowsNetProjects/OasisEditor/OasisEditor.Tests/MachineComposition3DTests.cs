@@ -141,7 +141,7 @@ public sealed class MachineComposition3DTests
         tab.AddMachineObjectInstanceCommand.Execute(null);
         var composition = tab.MachineComposition3D!;
         await composition.WaitForRefreshAsync();
-        Assert.Contains(composition.Diagnostics, message => message.Contains("no Object3D asset", StringComparison.Ordinal));
+        Assert.Contains(composition.Diagnostics, message => message.Contains("no Prefab asset", StringComparison.Ordinal));
 
         var authoredId = composition.Objects.Single().Id;
         composition.Objects.Single().SelectedChoice = composition.Objects.Single().Choices.Single(choice => Equals(choice.AssetPath, valid));

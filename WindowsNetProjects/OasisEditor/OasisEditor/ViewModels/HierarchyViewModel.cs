@@ -46,6 +46,14 @@ public sealed class HierarchyViewModel : INotifyPropertyChanged
         var selectedDocument = _getSelectedDocument();
         var provider = _providers.FirstOrDefault(p => p.CanBuild(selectedDocument));
 
+        if (provider is PrefabHierarchyProvider)
+        {
+            ReconcilePrefabItems(Items, provider.Build(selectedDocument));
+            ApplySelection(selectedDocument?.SelectionState);
+            EmptyStateMessage = string.Empty;
+            NotifyCollectionStateChanged();
+            return;
+        }
         Items.Clear();
 
         if (selectedDocument is null)
@@ -71,6 +79,22 @@ public sealed class HierarchyViewModel : INotifyPropertyChanged
         ApplySelection(selectedDocument?.SelectionState);
         EmptyStateMessage = Items.Count > 0 ? string.Empty : "This document has no hierarchy items yet.";
         NotifyCollectionStateChanged();
+    }
+
+    private static void ReconcilePrefabItems(ObservableCollection<HierarchyItemViewModel> current, IReadOnlyList<HierarchyItemViewModel> desired)
+    {
+        for (var i = current.Count - 1; i >= 0; i--) if (desired.All(n => n.NodeKey != current[i].NodeKey)) current.RemoveAt(i);
+        for (var i = 0; i < desired.Count; i++)
+        {
+            var existing = current.FirstOrDefault(n => n.NodeKey == desired[i].NodeKey);
+            if (existing is null) { existing = desired[i]; existing.IsExpanded = true; current.Insert(i, existing); }
+            else
+            {
+                var index = current.IndexOf(existing); if (index != i) current.Move(index, i);
+                existing.DisplayName = desired[i].DisplayName;
+                ReconcilePrefabItems(existing.Children, desired[i].Children.ToArray());
+            }
+        }
     }
 
     public void SyncSelection(DocumentSelectionState? selectionState)

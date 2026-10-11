@@ -1,6 +1,6 @@
 # Oasis Architecture Next — Overview
 
-> Delivered Object3D/A8 baseline and existing contracts below remain current. The proposed evolution is in [Prefab/OasisObject architecture](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md) and [delivery plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md); none of P1–P8 is implemented. Proposed variants/functions/spawning are later milestones, not current functionality.
+> Delivered Object3D/A8 baseline and existing contracts below remain current. The proposed evolution is in [Prefab/OasisObject architecture](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md) and [delivery plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md); P1 authoring is implemented in the working branch, pending verification/review/merge; P2–P8 remain unstarted. See [P1 checks and format consequences](15_P1_PREFAB_AUTHORING_VERIFICATION.md). Proposed variants/functions/spawning are later milestones, not current functionality.
 
 ## Purpose
 

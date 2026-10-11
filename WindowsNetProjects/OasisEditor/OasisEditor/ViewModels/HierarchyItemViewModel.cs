@@ -25,7 +25,8 @@ public sealed class HierarchyItemViewModel : INotifyPropertyChanged
         PanelSelection = panelSelection;
     }
 
-    public string DisplayName { get; }
+    private string _displayName = string.Empty;
+    public string DisplayName { get => _displayName; internal set { if (_displayName == value) return; _displayName = value; PropertyChanged?.Invoke(this, new(nameof(DisplayName))); } }
     public string NodeKey { get; }
     public bool IsGroup { get; }
     public ObservableCollection<HierarchyItemViewModel> Children { get; }

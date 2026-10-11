@@ -146,7 +146,7 @@ public static class OasisScriptMachineValidator
             if (expression is not OasisScriptReferenceLiteralSyntax literal) return;
             var (set, code, domain) = literal.Type.Kind switch
             {
-                OasisScriptTypeKind.ObjectRef => (references.Objects, "OSM3001", "Object3D instance"),
+                OasisScriptTypeKind.ObjectRef => (references.Objects, "OSM3001", "Prefab instance"),
                 OasisScriptTypeKind.AnchorRef => (references.Anchors, "OSM3002", "anchor"),
                 OasisScriptTypeKind.TriggerRef => (references.Triggers, "OSM3003", "trigger"),
                 OasisScriptTypeKind.InputRef => (references.Inputs, "OSM3004", "input"),

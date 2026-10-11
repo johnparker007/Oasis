@@ -113,6 +113,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
     public IReadOnlyList<InspectorPropertyRowViewModel> InspectorPropertyRows => _propertyRows;
 
+    public DocumentTabViewModel? InspectorPrefabDocument => GetSelectedInspectableAsset() is null && _selectedDocumentAccessor()?.Document.DocumentType == EditorDocumentType.Object3D ? _selectedDocumentAccessor() : null;
+
     public string InspectorTitle
     {
         get

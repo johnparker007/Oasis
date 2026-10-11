@@ -151,7 +151,7 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
     {
         if (!IsCurrent(version, token)) return;
         _cabinetVisual = _cabinetColliders = _cabinetTriggers = null;
-        if (reference is null) { _cabinetDiagnostic = "No Cabinet is assigned; Object3D instances remain available."; RefreshDiagnostics(); NotifyCabinetModels(); return; }
+        if (reference is null) { _cabinetDiagnostic = "No Cabinet is assigned; Prefab instances remain available."; RefreshDiagnostics(); NotifyCabinetModels(); return; }
         try
         {
             var manifest = _resolver.Resolve(project, _document.CurrentLibraryRoot, reference);
@@ -178,6 +178,7 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
             var manifest = _resolver.Resolve(project, _document.CurrentLibraryRoot, reference);
             if (!File.Exists(manifest)) throw new InvalidOperationException($"manifest not found: {reference.Path}");
             if (!Object3DDocumentStorage.TryRead(await File.ReadAllTextAsync(manifest, token), out var definition, out var error)) throw new InvalidOperationException(error);
+            PrefabRuntimeProjection.Validate(definition);
             var modelPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifest)!, definition.Model.Path));
             var result = await _loader.LoadAsync(modelPath, token);
             if (!result.Succeeded || result.Model is null) throw new InvalidOperationException(result.ErrorMessage);
@@ -187,7 +188,7 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
         }
         catch (OperationCanceledException) { return; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or ArgumentException)
-        { if (IsCurrent(version, token)) _definitionDiagnostics[reference] = $"Object3D '{reference.Path}' cannot render: {ex.Message}"; }
+        { if (IsCurrent(version, token)) _definitionDiagnostics[reference] = $"Prefab '{reference.Path}' cannot render: {ex.Message}"; }
         if (IsCurrent(version, token)) RefreshDiagnostics();
     }
 
@@ -201,8 +202,8 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
             _definitionDiagnostics.Remove(staleReference);
         foreach (var instance in instances)
         {
-            if (instance.ObjectAsset is null) { _instanceDiagnostics[instance.Id] = $"{instance.Id}: no Object3D asset assigned."; continue; }
-            if (!_definitionCache.TryGetValue(instance.ObjectAsset, out var loaded)) { _instanceDiagnostics[instance.Id] = $"{instance.Id}: Object3D reference is unresolved ({instance.ObjectAsset.Path})."; continue; }
+            if (instance.ObjectAsset is null) { _instanceDiagnostics[instance.Id] = $"{instance.Id}: no Prefab asset assigned."; continue; }
+            if (!_definitionCache.TryGetValue(instance.ObjectAsset, out var loaded)) { _instanceDiagnostics[instance.Id] = $"{instance.Id}: Prefab reference is unresolved ({instance.ObjectAsset.Path})."; continue; }
             group.Children.Add(new Model3DGroup { Children = { loaded.Model }, Transform = MachineCompositionTransform.Create(instance.Transform, loaded.Definition.Model) });
         }
         // Composition refresh can complete on a worker thread in headless tests, and the

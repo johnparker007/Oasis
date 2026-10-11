@@ -156,27 +156,29 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         foreach (var instance in machine.ObjectInstances)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var reference = instance.ObjectAsset ?? throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' requires an Object3D asset reference.");
+            var reference = instance.ObjectAsset ?? throw new InvalidOperationException($"Machine Prefab instance '{instance.Id}' requires a Prefab asset reference.");
             string manifestPath;
             try { manifestPath = _assetResolver.Resolve(project, _libraryRoot, reference); }
             catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
-            { throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' cannot resolve Object3D asset {reference}: {exception.Message}", exception); }
-            if (!File.Exists(manifestPath)) throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' references missing Object3D asset {reference}.");
+            { throw new InvalidOperationException($"Machine Prefab instance '{instance.Id}' cannot resolve Prefab asset {reference}: {exception.Message}", exception); }
+            if (!File.Exists(manifestPath)) throw new InvalidOperationException($"Machine Prefab instance '{instance.Id}' references missing Prefab asset {reference}.");
             if (!string.Equals(Path.GetFileName(manifestPath), ProjectAssetPathService.Object3DManifestFileName, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' reference {reference} is not an Object3D package manifest.");
+                throw new InvalidOperationException($"Machine Prefab instance '{instance.Id}' reference {reference} is not a Prefab package manifest.");
             if (!Object3DDocumentStorage.TryRead(File.ReadAllText(manifestPath), out var document, out var error))
-                throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' references invalid Object3D asset {reference}: {error}");
+                throw new InvalidOperationException($"Machine Prefab instance '{instance.Id}' references invalid Prefab asset {reference}: {error}");
             try { Object3DValidationService.Validate(document, Path.GetDirectoryName(manifestPath)); }
             catch (InvalidOperationException exception)
-            { throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}', Object3D asset '{document.DisplayName}' is invalid: {exception.Message}", exception); }
+            { throw new InvalidOperationException($"Machine Prefab instance '{instance.Id}', Prefab asset '{document.DisplayName}' is invalid: {exception.Message}", exception); }
 
+            try { PrefabRuntimeProjection.Validate(document); }
+            catch (InvalidOperationException exception) { throw new InvalidOperationException($"Machine instance '{instance.Id}', asset {reference}: {exception.Message}", exception); }
             var definitionId = Guid.Parse(document.Id).ToString("D").ToLowerInvariant();
             var sourceModel = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifestPath)!, document.Model.Path.Replace('/', Path.DirectorySeparatorChar)));
             var fingerprint = Object3DDocumentStorage.Serialize(document) + "\nmodel-sha256:" + Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(sourceModel)));
             if (definitions.TryGetValue(definitionId, out var existingFingerprint))
             {
                 if (!string.Equals(existingFingerprint, fingerprint, StringComparison.Ordinal))
-                    throw new InvalidOperationException($"Object3D stable ID collision '{definitionId}': resolved packages contain conflicting definitions or model content.");
+                    throw new InvalidOperationException($"Prefab stable ID collision '{definitionId}': resolved packages contain conflicting definitions or model content.");
             }
             else
             {
@@ -402,7 +404,11 @@ public sealed record MachineRuntimeAnchor(string Id, string DisplayName, Runtime
 }
 public sealed record Object3DRuntimeManifest(string Schema, int SchemaVersion, string DefinitionId, string DisplayName, string Model, double ModelScale, string UpAxis, Object3DRuntimeCollider Collider, Object3DRuntimeRigidbody Rigidbody)
 {
-    public static Object3DRuntimeManifest From(Object3DDocument document, string definitionId) => new(MachineRuntimeBuildService.ObjectSchema, MachineRuntimeBuildService.ObjectSchemaVersion, definitionId, document.DisplayName, MachineRuntimeBuildService.ObjectGlbFileName, document.Model.Scale, document.Model.UpAxis, Object3DRuntimeCollider.From(document.Physics.Collider), Object3DRuntimeRigidbody.From(document.Physics.Rigidbody));
+    public static Object3DRuntimeManifest From(Object3DDocument document, string definitionId)
+    {
+        PrefabRuntimeProjection.Validate(document);
+        return new(MachineRuntimeBuildService.ObjectSchema, MachineRuntimeBuildService.ObjectSchemaVersion, definitionId, document.DisplayName, MachineRuntimeBuildService.ObjectGlbFileName, document.Model.Scale, document.Model.UpAxis, Object3DRuntimeCollider.From(document.Physics.Collider), Object3DRuntimeRigidbody.From(document.Physics.Rigidbody));
+    }
 }
 public sealed record Object3DRuntimeCollider(string Kind, double[]? Center = null, double? Radius = null, double[]? Size = null, double? Height = null, string? Axis = null)
 {

@@ -521,7 +521,7 @@ public sealed class AssetBrowserViewModel : IDisposable
         }
         if (typeFolder == "Object3D" && !TryValidateObject3DPackage(package, out validationError))
         {
-            _addOutputEntry($"Object3D was not copied to the Oasis Library: {validationError}", OutputLogStatus.Warning);
+            _addOutputEntry($"Prefab was not copied to the Oasis Library: {validationError}", OutputLogStatus.Warning);
             return;
         }
         var libraryRoot = _libraryRootAccessor();

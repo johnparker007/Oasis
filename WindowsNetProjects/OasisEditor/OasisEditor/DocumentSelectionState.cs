@@ -7,7 +7,8 @@ public enum EditorSelectionDomain
     PanelElement,
     FaceElement,
     PanelFaceSourceShape,
-    FaceMaskLayer
+    FaceMaskLayer,
+    PrefabNode
 }
 
 public readonly record struct EditorSelectionItem(EditorSelectionDomain Domain, string ObjectId)

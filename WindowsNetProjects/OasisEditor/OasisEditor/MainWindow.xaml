@@ -60,7 +60,7 @@
                               Command="{Binding OpenMachineStubCommand}" />
                     <MenuItem Header="_Reel"
                               Command="{Binding OpenReelStubCommand}" />
-                    <MenuItem Header="_Object3D"
+                    <MenuItem Header="_Prefab"
                               Command="{Binding OpenObject3DStubCommand}" />
                 </MenuItem>
                 <Separator />

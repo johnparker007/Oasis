@@ -488,10 +488,10 @@ public sealed class DocumentWorkspaceViewModel
     public void OpenObject3DStubDocument()
     {
         if (_getLoadedProject() is null) return;
-        var document = CreateDocumentTab(EditorDocument.CreateObject3DStub("Object3D"));
+        var document = CreateDocumentTab(EditorDocument.CreateObject3DStub("Prefab"));
         ExecuteDocumentMutation(new OpenDocumentTabMutationCommand(this, document));
-        _setStatusMessage($"Opened Object3D document: {document.Title}");
-        _addOutputEntry($"Opened Object3D document: {document.Title}", OutputLogStatus.Info);
+        _setStatusMessage($"Opened Prefab document: {document.Title}");
+        _addOutputEntry($"Opened Prefab document: {document.Title}", OutputLogStatus.Info);
     }
 
     public void CloseSelectedDocument()
@@ -634,10 +634,10 @@ public sealed class DocumentWorkspaceViewModel
         }
         if (string.Equals(Path.GetExtension(path), ".object3d", StringComparison.OrdinalIgnoreCase))
         {
-            if (!Object3DDocumentStorage.TryRead(content, out var object3D, out var error)) return new OpenDocumentData($"Failed to open Object3D document: {error}", null, Path.GetFileName(path));
+            if (!Object3DDocumentStorage.TryRead(content, out var object3D, out var error)) return new OpenDocumentData($"Failed to open Prefab document: {error}", null, Path.GetFileName(path));
             var assetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(path, EditorAssetType.Object3D);
-            if (string.IsNullOrWhiteSpace(assetName)) return new OpenDocumentData("Failed to open Object3D document: manifests must be stored as Assets/Object3D/<Name>/asset.object3d.", null, Path.GetFileName(path));
-            return new OpenDocumentData("Reusable Object3D document opened.", null, assetName, Object3DDocumentJson: Object3DDocumentStorage.Serialize(object3D));
+            if (string.IsNullOrWhiteSpace(assetName)) return new OpenDocumentData("Failed to open Prefab document: manifests must be stored as Assets/Object3D/<Name>/asset.object3d.", null, Path.GetFileName(path));
+            return new OpenDocumentData("Reusable Prefab document opened.", null, assetName, Object3DDocumentJson: Object3DDocumentStorage.Serialize(object3D));
         }
         if (string.Equals(Path.GetExtension(path), ".machine", StringComparison.OrdinalIgnoreCase))
         {

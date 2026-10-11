@@ -1,6 +1,6 @@
 # Prefabs, OasisObjects and Components — proposed architecture
 
-Status: proposal only, 2026-10-10. No implementation has started. Delivery and prerequisites are in [the phased plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md). This extends A1–A8, rather than replacing their delivered runtime boundary.
+Status: P1 authoring implemented in the working branch on 2026-10-11, pending local verification, review and merge; P2–P8 remain proposals. The implemented P1 format and checkpoints are in [P1 verification](15_P1_PREFAB_AUTHORING_VERIFICATION.md). Delivery and prerequisites are in [the phased plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md). This extends A1–A8, rather than replacing their delivered runtime boundary.
 
 ## Evidence and current baseline
 

@@ -229,7 +229,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             GenerateFaceFromSourceShapeCommand);
         _hierarchy = new HierarchyViewModel(
             () => SelectedDocument,
-            [new Panel2DHierarchyProvider(), new FaceHierarchyProvider()]);
+            [new Panel2DHierarchyProvider(), new FaceHierarchyProvider(), new PrefabHierarchyProvider()]);
         _hierarchyPanelCommands = new HierarchyPanelCommandService(
             () => SelectedDocument,
             ExecuteDocumentCanvasCommand,
@@ -916,6 +916,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string SelectedAssetDirectoryLabel => SelectedAssetDirectory?.DisplayPath ?? "Assets";
     public bool HasAssetBrowserItems => AssetBrowserItems.Count > 0;
 
+    public DocumentTabViewModel? InspectorPrefabDocument => _inspector.InspectorPrefabDocument;
+
     public string InspectorTitle => _inspector.InspectorTitle;
 
     public string InspectorType => _inspector.InspectorType;
@@ -962,7 +964,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void SelectHierarchyItem(HierarchyItemViewModel? hierarchyItem, HierarchySelectionModifier modifier = HierarchySelectionModifier.None)
     {
-        if (SelectedDocument is null || SelectedDocument.Document.DocumentType is not (EditorDocumentType.Panel2D or EditorDocumentType.Face))
+        if (SelectedDocument is null || SelectedDocument.Document.DocumentType is not (EditorDocumentType.Panel2D or EditorDocumentType.Face or EditorDocumentType.Object3D))
         {
             return;
         }
@@ -985,7 +987,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void SelectHierarchyItemForContextMenu(HierarchyItemViewModel? hierarchyItem)
     {
-        if (SelectedDocument is null || SelectedDocument.Document.DocumentType is not (EditorDocumentType.Panel2D or EditorDocumentType.Face))
+        if (SelectedDocument is null || SelectedDocument.Document.DocumentType is not (EditorDocumentType.Panel2D or EditorDocumentType.Face or EditorDocumentType.Object3D))
         {
             return;
         }
@@ -1008,16 +1010,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public bool DeleteSelectedHierarchyItem()
     {
+        if (SelectedDocument?.Document.DocumentType == EditorDocumentType.Object3D) return SelectedDocument.MutatePrefab(() => PrefabAuthoringService.Remove(SelectedDocument.GetObject3DDocument(), SelectedDocument.SelectedPrefabNode.Id), "Remove Prefab subtree");
         return _hierarchyPanelCommands.DeleteSelected();
     }
 
     public bool TryGetSelectedHierarchyItemName(out string currentName)
     {
+        if (SelectedDocument?.Document.DocumentType == EditorDocumentType.Object3D) { currentName = SelectedDocument.PrefabNodeName; return true; }
         return _hierarchyPanelCommands.TryGetSelectedName(out currentName);
     }
 
     public bool RenameSelectedHierarchyItem(string newName)
     {
+        if (SelectedDocument?.Document.DocumentType == EditorDocumentType.Object3D) { SelectedDocument.PrefabNodeName = newName; return string.IsNullOrEmpty(SelectedDocument.PrefabValidationMessage); }
         return _hierarchyPanelCommands.RenameSelected(newName);
     }
 
@@ -1061,9 +1066,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private HierarchyItemViewModel? GetSelectedHierarchyEntity() => _hierarchy.GetSelectedEntity();
 
-    private bool CanDeleteHierarchyItem(HierarchyItemViewModel hierarchyItem) => _hierarchyPanelCommands.CanDeleteSelected() || _hierarchyPanelCommands.CanDeleteItem(hierarchyItem);
+    private bool CanDeleteHierarchyItem(HierarchyItemViewModel hierarchyItem) => SelectedDocument?.Document.DocumentType == EditorDocumentType.Object3D ? hierarchyItem.SelectionItem is { Domain: EditorSelectionDomain.PrefabNode } item && item.ObjectId != SelectedDocument.GetObject3DDocument().Root.Id : _hierarchyPanelCommands.CanDeleteSelected() || _hierarchyPanelCommands.CanDeleteItem(hierarchyItem);
 
-    private void DeleteHierarchyItem(HierarchyItemViewModel hierarchyItem) => _hierarchyPanelCommands.DeleteSelected();
+    private void DeleteHierarchyItem(HierarchyItemViewModel hierarchyItem)
+    {
+        if (SelectedDocument?.Document.DocumentType == EditorDocumentType.Object3D) { SelectHierarchyItemForContextMenu(hierarchyItem); DeleteSelectedHierarchyItem(); }
+        else _hierarchyPanelCommands.DeleteSelected();
+    }
 
     private bool CanOpenUntitledDocument()
     {
@@ -1332,9 +1341,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         var activeDocument = SelectedDocument;
         if (activeDocument?.Document.DocumentType is not (EditorDocumentType.Cabinet3D or EditorDocumentType.Object3D))
         {
-            AddOutputEntry("GLB import is supported only when a Cabinet3D or Object3D document is active.", OutputLogStatus.Warning);
+            AddOutputEntry("GLB import is supported only when a Cabinet3D or Prefab document is active.", OutputLogStatus.Warning);
             MessageBox.Show(
-                "GLB import is currently supported only for Cabinet3D and Object3D documents.",
+                "GLB import is currently supported only for Cabinet3D and Prefab documents.",
                 "Import GLB Model",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -3471,6 +3480,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void NotifyInspectorChanged()
     {
+        OnPropertyChanged(nameof(InspectorPrefabDocument));
         _inspector.NotifyContextChanged();
         OnPropertyChanged(nameof(InspectorTitle));
         OnPropertyChanged(nameof(InspectorType));
@@ -3510,6 +3520,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void OnSelectedDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == "PrefabDocument") { RefreshHierarchy(); NotifyInspectorChanged(); NotifyHierarchyCommands(); }
         if (e.PropertyName is nameof(DocumentTabViewModel.Document)
             or nameof(DocumentTabViewModel.Title)
             or nameof(DocumentTabViewModel.IsDirty)

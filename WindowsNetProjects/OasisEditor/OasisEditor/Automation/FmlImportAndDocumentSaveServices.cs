@@ -100,7 +100,7 @@ public sealed class DocumentSaveService : IDocumentSaveService
         }
         else if (current.Document.DocumentType == EditorDocumentType.Object3D)
         {
-            progress.Report(0.15, "Importing Object3D model into its package...");
+            progress.Report(0.15, "Importing Prefab model into its package...");
             savedObject3DDocument = EnsureObject3DPackageModel(current, savePath);
         }
         else if (current.Document.DocumentType == EditorDocumentType.Machine)
@@ -145,30 +145,34 @@ public sealed class DocumentSaveService : IDocumentSaveService
     private static Object3DDocument EnsureObject3DPackageModel(DocumentTabViewModel current, string savePath)
     {
         var document = current.GetObject3DDocument();
-        var package = Path.GetFullPath(Path.GetDirectoryName(savePath) ?? throw new InvalidOperationException("Object3D save path has no package directory."));
+        var package = Path.GetFullPath(Path.GetDirectoryName(savePath) ?? throw new InvalidOperationException("Prefab save path has no package directory."));
         Directory.CreateDirectory(package);
         var currentPackage = !current.Document.IsUntitled && !string.IsNullOrWhiteSpace(current.FilePath) ? Path.GetDirectoryName(current.FilePath) : null;
-        var pendingSource = current.PendingObject3DModelSourcePath;
-        var source = !string.IsNullOrWhiteSpace(pendingSource)
-            ? Path.GetFullPath(pendingSource)
-            : Path.GetFullPath(Path.Combine(currentPackage ?? package, document.Model.Path));
-        if (!File.Exists(source)) throw new InvalidOperationException($"Object3D GLB model was not found: {source}");
-        if (!string.Equals(Path.GetExtension(source), ".glb", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Object3D model must be a GLB file.");
-        var fileName = document.Model.Path;
-        var destination = Path.Combine(package, fileName);
-        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-        if (!string.Equals(source, destination, StringComparison.OrdinalIgnoreCase))
+        Object3DValidationService.Validate(document);
+        var copies = new List<(string Source, string Destination, bool Pending)>();
+        foreach (var node in Object3DValidationService.Descendants(document.Root))
         {
-            if (!string.IsNullOrWhiteSpace(pendingSource)) File.Copy(source, destination, true);
-            else
-            {
-                if (File.Exists(destination) && !File.ReadAllBytes(source).SequenceEqual(File.ReadAllBytes(destination))) throw new InvalidOperationException($"Object3D package already contains a different model named '{fileName}'.");
-                if (!File.Exists(destination)) File.Copy(source, destination, false);
-            }
+            if (node.Component(PrefabComponentKind.Model)?.Model is not { } model) continue;
+            var pending = current.PendingPrefabModelSources.GetValueOrDefault(node.Id);
+            var source = Path.GetFullPath(pending ?? Path.Combine(currentPackage ?? package, model.Path));
+            var destination = Path.GetFullPath(Path.Combine(package, model.Path));
+            if (!File.Exists(source)) throw new InvalidOperationException($"Prefab '{document.Id}', node '{node.Id}', Model.path: GLB was not found: {source}");
+            if (File.Exists(destination) && !string.Equals(source, destination, StringComparison.OrdinalIgnoreCase)
+                && !File.ReadAllBytes(source).SequenceEqual(File.ReadAllBytes(destination)) && pending is null)
+                throw new InvalidOperationException($"Prefab '{document.Id}', node '{node.Id}', Model.path: package already contains different content at '{model.Path}'.");
+            if (copies.Any(c => c.Destination.Equals(destination, StringComparison.OrdinalIgnoreCase) && !File.ReadAllBytes(c.Source).SequenceEqual(File.ReadAllBytes(source))))
+                throw new InvalidOperationException($"Prefab '{document.Id}', node '{node.Id}', Model.path: nodes claim different content for '{model.Path}'.");
+            PrefabModelValidation.ValidateMeshSource(node, source, document.Id);
+            copies.Add((source, destination, pending is not null));
         }
-        var saved = document with { Model = document.Model with { Path = fileName } };
-        Object3DValidationService.Validate(saved, package);
-        return saved;
+        // Admission above checks every node before touching package model files.
+        foreach (var copy in copies)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(copy.Destination)!);
+            if (!string.Equals(copy.Source, copy.Destination, StringComparison.OrdinalIgnoreCase) && (copy.Pending || !File.Exists(copy.Destination))) File.Copy(copy.Source, copy.Destination, copy.Pending);
+        }
+        Object3DValidationService.Validate(document, package);
+        return document;
     }
 
     private static CabinetDocument EnsureCabinetPackageModel(DocumentTabViewModel current, string savePath)

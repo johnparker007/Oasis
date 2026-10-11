@@ -1,0 +1,45 @@
+<UserControl x:Class="OasisEditor.Views.PrefabInspectorView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:local="clr-namespace:OasisEditor">
+ <ScrollViewer Background="{DynamicResource InspectorBackgroundBrush}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+<StackPanel Margin="16" >
+                    <TextBlock Text="Prefab" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,16"/>
+                    <TextBlock Text="Display Name" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding Object3DDisplayName, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,12"/>
+
+                    <TextBlock Text="Selected authored node" FontWeight="SemiBold" Margin="0,8,0,4"/>
+                    <ComboBox ItemsSource="{Binding PrefabNodes}" SelectedItem="{Binding SelectedPrefabChoice}" DisplayMemberPath="Name"/>
+                    <TextBlock Text="{Binding PrefabNodeId}" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,4"/>
+                    <TextBox Text="{Binding PrefabNodeName, UpdateSourceTrigger=LostFocus}"/>
+                    <TextBlock Text="Parent" Margin="0,6,0,2"/>
+                    <ComboBox ItemsSource="{Binding PrefabParentChoices}" SelectedItem="{Binding PrefabParent}" DisplayMemberPath="Name" IsEnabled="{Binding CanRemovePrefabNode}"/>
+                    <WrapPanel Margin="0,6"><Button Content="Add child" Command="{Binding AddPrefabNodeCommand}"/><Button Content="Remove subtree" Command="{Binding RemovePrefabNodeCommand}"/><Button Content="Up" Command="{Binding MovePrefabNodeUpCommand}"/><Button Content="Down" Command="{Binding MovePrefabNodeDownCommand}"/></WrapPanel>
+                    <TextBlock Text="Transform (mandatory)" FontWeight="SemiBold" Margin="0,8,0,4"/>
+                    <TextBlock Text="Position (m)"/><UniformGrid Columns="3" Margin="0,3,0,6"><TextBox Text="{Binding PrefabPositionX, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding PrefabPositionY, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding PrefabPositionZ, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/></UniformGrid>
+                    <TextBlock Text="Rotation XYZ (degrees)"/><UniformGrid Columns="3" Margin="0,3,0,6"><TextBox Text="{Binding PrefabRotationX, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding PrefabRotationY, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding PrefabRotationZ, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/></UniformGrid>
+                    <TextBlock Text="Scale"/><UniformGrid Columns="3" Margin="0,3,0,6"><TextBox Text="{Binding PrefabScaleX, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding PrefabScaleY, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding PrefabScaleZ, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/></UniformGrid>
+                    <TextBlock Text="{Binding PrefabValidationMessage}" TextWrapping="Wrap" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,8"/>
+                    <ItemsControl ItemsSource="{Binding PrefabComponents}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Kind}" Foreground="{DynamicResource TextSecondaryBrush}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                    <CheckBox Content="Model / Rendering component" IsChecked="{Binding HasPrefabModel}" Margin="0,8,0,4"/>
+                    <StackPanel IsEnabled="{Binding HasPrefabModel}">
+                    <TextBlock Text="Package-relative GLB path" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding Object3DModelPath, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,8"/>
+                    <TextBlock Text="Scale" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding Object3DModelScale, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,8"/>
+                    <TextBlock Text="Up axis" Foreground="{DynamicResource TextSecondaryBrush}"/><ComboBox ItemsSource="{Binding Object3DUpAxes}" SelectedItem="{Binding Object3DUpAxis}" Margin="0,3,0,12"/>
+                    </StackPanel>
+                    <CheckBox Content="Collider component" IsChecked="{Binding HasPrefabCollider}" Margin="0,8,0,4"/>
+                    <StackPanel IsEnabled="{Binding HasPrefabCollider}">
+                    <TextBlock Text="Source frame"/><ComboBox ItemsSource="{Binding PrefabColliderFrames}" SelectedItem="{Binding PrefabColliderFrame}"/><CheckBox Content="Trigger" IsChecked="{Binding PrefabColliderIsTrigger}"/>
+                    <TextBlock Text="Collider" Foreground="{DynamicResource TextSecondaryBrush}"/><ComboBox ItemsSource="{Binding Object3DColliderKinds}" SelectedItem="{Binding Object3DColliderKind}" Margin="0,3,0,8"/>
+                    <StackPanel><StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding Object3DColliderKind}" Value="{x:Static local:Object3DColliderKind.None}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding Object3DColliderKind}" Value="{x:Static local:Object3DColliderKind.Mesh}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+                        <TextBlock Text="Center (X, Y, Z)" Foreground="{DynamicResource TextSecondaryBrush}"/><UniformGrid Columns="3" Margin="0,3,0,8"><TextBox Text="{Binding Object3DColliderCenterX, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding Object3DColliderCenterY, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding Object3DColliderCenterZ, UpdateSourceTrigger=LostFocus}"/></UniformGrid>
+                    </StackPanel>
+                    <StackPanel><StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Object3DColliderKind}" Value="{x:Static local:Object3DColliderKind.Sphere}"><Setter Property="Visibility" Value="Visible"/></DataTrigger><DataTrigger Binding="{Binding Object3DColliderKind}" Value="{x:Static local:Object3DColliderKind.Capsule}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style><TextBlock Text="Radius" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding Object3DColliderRadius, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,8"/></StackPanel>
+                    <StackPanel><StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Object3DColliderKind}" Value="{x:Static local:Object3DColliderKind.Box}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style><TextBlock Text="Size (X, Y, Z)" Foreground="{DynamicResource TextSecondaryBrush}"/><UniformGrid Columns="3" Margin="0,3,0,8"><TextBox Text="{Binding Object3DColliderSizeX, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding Object3DColliderSizeY, UpdateSourceTrigger=LostFocus}" Margin="0,0,4,0"/><TextBox Text="{Binding Object3DColliderSizeZ, UpdateSourceTrigger=LostFocus}"/></UniformGrid></StackPanel>
+                    <StackPanel><StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Object3DColliderKind}" Value="{x:Static local:Object3DColliderKind.Capsule}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style><TextBlock Text="Height" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding Object3DColliderHeight, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,8"/><TextBlock Text="Axis" Foreground="{DynamicResource TextSecondaryBrush}"/><ComboBox ItemsSource="{Binding Object3DCapsuleAxes}" SelectedItem="{Binding Object3DColliderAxis}" Margin="0,3,0,8"/></StackPanel>
+                    </StackPanel>
+                    <CheckBox Content="Rigidbody component" IsChecked="{Binding HasPrefabRigidbody}" Margin="0,8,0,4"/>
+                    <StackPanel IsEnabled="{Binding HasPrefabRigidbody}"><TextBlock Text="Mode"/><ComboBox ItemsSource="{Binding PrefabBodyModes}" SelectedItem="{Binding PrefabBodyMode}"/></StackPanel>
+                    <StackPanel IsEnabled="{Binding Object3DRigidbodyEnabled}"><TextBlock Text="Mass (kg)" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBox Text="{Binding Object3DRigidbodyMass, UpdateSourceTrigger=LostFocus}" Margin="0,3,0,8"/><CheckBox Content="Use gravity" IsChecked="{Binding Object3DUseGravity}"/></StackPanel>
+                </StackPanel>
+ </ScrollViewer>
+</UserControl>

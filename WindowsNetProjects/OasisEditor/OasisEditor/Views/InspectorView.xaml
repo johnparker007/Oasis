@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:OasisEditor"
+             xmlns:views="clr-namespace:OasisEditor.Views"
              xmlns:colorPicker="clr-namespace:ColorPicker;assembly=ColorPicker"
              mc:Ignorable="d"
              d:DesignHeight="300"
@@ -178,6 +179,7 @@
                 BorderBrush="{DynamicResource BorderSubtleBrush}"
                 BorderThickness="1"
                 CornerRadius="4">
+            <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding InspectorPrefabDocument}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Border.Style>
             <ScrollViewer VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
@@ -196,5 +198,8 @@
                 </StackPanel>
             </ScrollViewer>
         </Border>
+        <views:PrefabInspectorView DataContext="{Binding InspectorPrefabDocument}">
+            <views:PrefabInspectorView.Style><Style TargetType="views:PrefabInspectorView"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding DataContext.InspectorPrefabDocument, RelativeSource={RelativeSource AncestorType={x:Type views:InspectorView}}}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></views:PrefabInspectorView.Style>
+        </views:PrefabInspectorView>
     </Grid>
 </UserControl>

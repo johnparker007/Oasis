@@ -1,0 +1,21 @@
+<UserControl x:Class="OasisEditor.Views.PrefabEditorView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:h="http://helix-toolkit.org/wpf"
+ xmlns:views="clr-namespace:OasisEditor.Views">
+ <Grid>
+  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="320"/></Grid.ColumnDefinitions>
+  <Grid DataContext="{Binding PrefabPreview}">
+   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+   <StackPanel Orientation="Horizontal" Margin="8"><CheckBox Content="Models" IsChecked="{Binding ShowModels}" Margin="0,0,12,0"/><CheckBox Content="Colliders / triggers" IsChecked="{Binding ShowColliders}" Margin="0,0,12,0"/><Button Content="Reset camera" Command="{Binding ResetCameraCommand}"/></StackPanel>
+   <h:HelixViewport3D Grid.Row="1" x:Name="Viewport" IsHeadLightEnabled="True" ModelUpDirection="0,1,0" CameraRotationMode="Turntable" PreviewMouseLeftButtonDown="OnViewportMouseDown">
+    <h:HelixViewport3D.Camera><PerspectiveCamera Position="{Binding CameraPosition, Mode=TwoWay}" LookDirection="{Binding CameraLookDirection, Mode=TwoWay}" UpDirection="0,1,0" FieldOfView="45"/></h:HelixViewport3D.Camera>
+    <ModelVisual3D Content="{Binding Visual}"/>
+    <h:BoundingBoxVisual3D BoundingBox="{Binding SelectedBounds}" Diameter="0.012"/>
+    <h:GridLinesVisual3D Width="10" Length="10" MinorDistance="0.5" Normal="0,1,0" LengthDirection="1,0,0" Thickness="0.01"/>
+   </h:HelixViewport3D>
+   <ItemsControl Grid.Row="2" ItemsSource="{Binding Diagnostics}" Margin="8"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+  </Grid>
+  <Border Grid.Column="1" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1,0,0,0" Background="{DynamicResource InspectorBackgroundBrush}"><views:PrefabInspectorView/></Border>
+ </Grid>
+</UserControl>

@@ -6,6 +6,15 @@ This file replaces the completed historical refactor phase plan. It lists only a
 
 The durable ownership rules live in the numbered architecture documents in this directory. Historical phase/audit documents are intentionally removed once their implementation is merged so future Codex tasks do not consume obsolete transitional context.
 
+## P1 working-branch checkpoint
+
+Ordinary Prefab authoring is implemented, pending local Windows/.NET and Unity
+verification, review and merge. One existing Object3D family uses authored schema
+2 and canonical asset.object3d packages, with strict admission to unchanged runtime
+schema 1. [P1 verification](15_P1_PREFAB_AUTHORING_VERIFICATION.md) records the
+format consequences and local checks. P2–P8 remain unstarted; single-ball local
+Pool wiring and verification are still outstanding. No later phase is delivered.
+
 ## Current baseline
 
 The following foundations are already implemented and should be treated as current architecture, not future work:

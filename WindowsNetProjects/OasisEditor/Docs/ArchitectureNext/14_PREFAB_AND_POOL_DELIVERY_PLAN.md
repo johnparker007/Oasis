@@ -1,6 +1,6 @@
 # Prefab and algorithmic Pool delivery plan — proposed
 
-Status: planning only, 2026-10-10; none of P1–P8 is started or completed. [Architecture and inspected baseline](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md) defines the contracts. [Active roadmap](10_ACTIVE_ROADMAP.md) owns sequencing.
+Status: P1 authoring implemented in the working branch on 2026-10-11, pending Windows/.NET and Unity checks, review and merge. P2–P8 remain unstarted. [Architecture and inspected baseline](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md) defines the contracts. [Active roadmap](10_ACTIVE_ROADMAP.md) owns sequencing.
 
 ## Sequencing and common gates
 
@@ -14,7 +14,9 @@ Formats are latest-only: each format change updates writer/reader/validators/fix
 
 ## P1 — Evolve Object3D authoring into ordinary Prefabs
 
-**Prerequisite:** approve root/node/component contract and source-frame rules in the architecture. Inspect existing Object3D editor/discovery/storage paths again before implementing.
+**Status:** root/node/component authoring and source-frame rules were authorised for P1 and implemented against the #739 baseline. Local verification, review and merge remain pending; see [format consequences and checks](15_P1_PREFAB_AUTHORING_VERIFICATION.md).
+
+**Prerequisite:** approved root/node/component contract and source-frame rules; existing Object3D source paths were reinspected.
 
 **Scope:** extend the existing asset family/document pipeline with stable root/child node IDs and explicit Transform, Model/Rendering, Collider and Rigidbody capability entries. Rename user-facing asset terminology to Prefab within that workflow; maintain one resolver/package identity. Shared Hierarchy/viewport/Inspector patterns expose component defaults, validation and undoable hierarchy edits. A single ordinary asset supports grouping and render/physics nodes. Validate one body per subtree and backend limitations.
 

@@ -421,8 +421,8 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(objectManifest)!);
         File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(objectManifest)!, "ball.glb"), [1, 2, 3]);
         var id = Guid.NewGuid().ToString("D");
-        var definition = new Object3DDocument(1, id, "Pool Ball", new("ball.glb", 0.5, "Z"),
-            new(new(Object3DColliderKind.Sphere, [1, 2, 3], 0.25), new(true, 0.17, true)));
+        var definition = Object3DDocument.Create("Pool Ball") with
+        { Id = id, Model = new("ball.glb", 0.5, "Z"), Physics = new(new(Object3DColliderKind.Sphere, [1, 2, 3], 0.25), new(true, 0.17, true)) };
         File.WriteAllText(objectManifest, Object3DDocumentStorage.Serialize(definition));
         var reference = AssetReference.Project(paths.ToProjectRelativePath(setup.Project, objectManifest));
         var machine = setup.Machine with { ObjectInstances =
@@ -456,6 +456,45 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.DoesNotContain("Assets/", runtimeText, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData("children")]
+    [InlineData("transform")]
+    [InlineData("sourceFrame")]
+    [InlineData("isTrigger")]
+    [InlineData("mode")]
+    public void UnrepresentablePrefabPreservesLastSuccessfulBuildWithContext(string property)
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var paths = new ProjectAssetPathService();
+        var manifest = paths.GetObject3DManifestPath(setup.Project, "Prop");
+        Directory.CreateDirectory(Path.GetDirectoryName(manifest)!);
+        var definition = Object3DDocument.Create("Prop");
+        File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(manifest)!, "model.glb"), [1,2,3]);
+        File.WriteAllText(manifest, Object3DDocumentStorage.Serialize(definition));
+        var machine = setup.Machine with { ObjectInstances = [new("ball01", "Ball", AssetReference.Project(paths.ToProjectRelativePath(setup.Project, manifest)), MachineObjectTransform.Identity)] };
+        var success = Build(setup.Project, machine);
+        Assert.True(success.Success, success.ErrorMessage);
+        var previous = Directory.EnumerateFiles(success.BuildRoot!, "*", SearchOption.AllDirectories).ToDictionary(path => Path.GetRelativePath(success.BuildRoot!, path), File.ReadAllBytes);
+        definition = property switch
+        {
+            "children" => PrefabAuthoringService.Add(definition, definition.Root.Id, PrefabNode.Create("Group")),
+            "transform" => definition with { Root = definition.Root.SetComponent(definition.Root.Components[0] with { Transform = MachineObjectTransform.Identity with { Rotation = new(0,30,0) } }) },
+            "sourceFrame" => definition with { Root = definition.Root.SetComponent(PrefabComponent.ForCollider(new(Object3DColliderKind.Box, [0,0,0], Size: [1,1,1]), PrefabColliderSourceFrame.NodeLocalSI)) },
+            "isTrigger" => definition with { Root = definition.Root.SetComponent(PrefabComponent.ForCollider(new(Object3DColliderKind.Box, [0,0,0], Size: [1,1,1]), PrefabColliderSourceFrame.ModelLocal) with { IsTrigger = true }) },
+            _ => definition with { Root = definition.Root.SetComponent(PrefabComponent.ForBody(new(true, 1, true)) with { Mode = PrefabBodyMode.Kinematic }) }
+        };
+        File.WriteAllText(manifest, Object3DDocumentStorage.Serialize(definition));
+        var failure = Build(setup.Project, machine);
+        Assert.False(failure.Success);
+        Assert.Contains("ball01", failure.ErrorMessage);
+        Assert.Contains(definition.Id, failure.ErrorMessage);
+        Assert.Contains(definition.Root.Id, failure.ErrorMessage);
+        Assert.Contains(property, failure.ErrorMessage);
+        Assert.Equal(previous.Keys.Order(), Directory.EnumerateFiles(success.BuildRoot!, "*", SearchOption.AllDirectories).Select(path => Path.GetRelativePath(success.BuildRoot!, path)).Order());
+        foreach (var pair in previous) Assert.Equal(pair.Value, File.ReadAllBytes(Path.Combine(success.BuildRoot!, pair.Key)));
+    }
+
     [Fact]
     public void Build_MissingAndWrongTypeObjectDependenciesFailWithInstanceContext()
     {
@@ -465,13 +504,13 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         var missingResult = Build(setup.Project, missing);
         Assert.False(missingResult.Success);
         Assert.Contains("cueBall", missingResult.ErrorMessage);
-        Assert.Contains("missing Object3D", missingResult.ErrorMessage);
+        Assert.Contains("missing Prefab", missingResult.ErrorMessage);
 
         var wrong = setup.Machine with { ObjectInstances = [new("cueBall", "Cue", setup.CabinetReference, MachineObjectTransform.Identity)] };
         var wrongResult = Build(setup.Project, wrong);
         Assert.False(wrongResult.Success);
         Assert.Contains("cueBall", wrongResult.ErrorMessage);
-        Assert.Contains("not an Object3D", wrongResult.ErrorMessage);
+        Assert.Contains("not an Prefab", wrongResult.ErrorMessage);
     }
 
     [Fact]

@@ -72,6 +72,48 @@ public sealed class DocumentSaveServiceTests
     }
 
     [Fact]
+    public void PrefabMultiNodeModelsAndModelFreeGroupsSaveReopenAndSaveAsInOneFamily()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"oasis-prefab-save-{Guid.NewGuid():N}");
+        var external = Path.Combine(root, "Imports", "part.glb");
+        Directory.CreateDirectory(Path.GetDirectoryName(external)!);
+        File.WriteAllText(external, "child-model");
+        try
+        {
+            var tab = new DocumentTabViewModel(EditorDocument.CreateObject3DStub("Prefab"));
+            tab.HasPrefabModel = false;
+            var rootId = tab.PrefabNodeId;
+            tab.AddPrefabNode();
+            var childId = tab.PrefabNodeId;
+            tab.SetObject3DModelSource(external);
+            var modelPath = $"models/{childId}/part.glb";
+            Assert.Equal(modelPath, tab.Object3DModelPath);
+            var first = Path.Combine(root, "Assets", "Object3D", "First", "asset.object3d");
+            var second = Path.Combine(root, "Assets", "Object3D", "Second", "asset.object3d");
+            var service = new DocumentSaveService();
+            service.SaveDocument(tab, first).ApplyTo(tab);
+            Assert.False(tab.IsDirty);
+            Assert.Empty(tab.PendingPrefabModelSources);
+            service.SaveDocument(tab, second).ApplyTo(tab);
+            var opened = DocumentWorkspaceViewModel.BuildOpenDocumentData(second, File.ReadAllText(second));
+            Assert.True(Object3DDocumentStorage.TryRead(opened.Object3DDocumentJson, out var document, out var error), error);
+            Assert.Equal(rootId, document.Root.Id);
+            Assert.Null(document.Root.Component(PrefabComponentKind.Model));
+            Assert.Equal(childId, Assert.Single(document.Root.Children).Id);
+            Assert.Equal(modelPath, document.Root.Children[0].Component(PrefabComponentKind.Model)!.Model!.Path);
+            Assert.Equal("child-model", File.ReadAllText(Path.Combine(Path.GetDirectoryName(second)!, modelPath)));
+            Object3DValidationService.Validate(document, Path.GetDirectoryName(second));
+            var group = new DocumentTabViewModel(EditorDocument.CreateObject3DStub("Group"));
+            group.HasPrefabModel = false;
+            var groupManifest = Path.Combine(root, "Assets", "Object3D", "Group", "asset.object3d");
+            service.SaveDocument(group, groupManifest).ApplyTo(group);
+            Assert.True(File.Exists(groupManifest));
+            Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(groupManifest)!, "model.glb")));
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
     public void Object3DImportKeepsAuthoredPathRelativeAndAllowsEditUndoBeforeSave()
     {
         var root = Path.Combine(Path.GetTempPath(), $"oasis-object3d-import-{Guid.NewGuid():N}");

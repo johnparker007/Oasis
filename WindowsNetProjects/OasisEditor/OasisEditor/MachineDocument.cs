@@ -268,12 +268,12 @@ public static class MachineDocumentStorage
         if (document.ReelAssignments.GroupBy(x => x.MachineReelReference).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine reel assignments must be unique.");
         if (document.ReelAssignments.Any(x => x.MachineReelReference.Kind != MachineObjectKind.Reel || x.ReelAsset is null)) throw new InvalidOperationException("Machine reel assignments require a logical Reel reference and Reel asset reference.");
         if (document.ObjectInstances is null) throw new InvalidOperationException("Machine ObjectInstances collection is required.");
-        if (document.ObjectInstances.GroupBy(x => x.Id, StringComparer.Ordinal).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine Object3D instance IDs must be unique (case-sensitive).");
+        if (document.ObjectInstances.GroupBy(x => x.Id, StringComparer.Ordinal).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine Prefab instance IDs must be unique (case-sensitive).");
         foreach (var instance in document.ObjectInstances)
         {
-            if (!MachineObject3DInstanceId.IsValid(instance.Id)) throw new InvalidOperationException($"Machine Object3D instance ID '{instance.Id}' is invalid; use letters, digits, underscore, or hyphen.");
-            if (string.IsNullOrWhiteSpace(instance.DisplayName)) throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' display name is required.");
-            if (instance.ObjectAsset is null) throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' requires an Object3D asset reference.");
+            if (!MachineObject3DInstanceId.IsValid(instance.Id)) throw new InvalidOperationException($"Machine Prefab instance ID '{instance.Id}' is invalid; use letters, digits, underscore, or hyphen.");
+            if (string.IsNullOrWhiteSpace(instance.DisplayName)) throw new InvalidOperationException($"Machine Prefab instance '{instance.Id}' display name is required.");
+            if (instance.ObjectAsset is null) throw new InvalidOperationException($"Machine Prefab instance '{instance.Id}' requires a Prefab asset reference.");
             _ = new AssetReference(instance.ObjectAsset.Scope, instance.ObjectAsset.Path);
             ValidateTransform(instance.Id, instance.Transform);
         }
@@ -293,11 +293,11 @@ public static class MachineDocumentStorage
     private static void ValidateTransform(string id, MachineObjectTransform? transform)
     {
         if (transform is null || transform.Position is null || transform.Rotation is null || transform.Scale is null)
-            throw new InvalidOperationException($"Machine Object3D instance '{id}' requires a transform.");
+            throw new InvalidOperationException($"Machine Prefab instance '{id}' requires a transform.");
         if (!Finite(transform.Position) || !Finite(transform.Rotation) || !Finite(transform.Scale))
-            throw new InvalidOperationException($"Machine Object3D instance '{id}' transform values must be finite.");
+            throw new InvalidOperationException($"Machine Prefab instance '{id}' transform values must be finite.");
         if (transform.Scale.X <= 0 || transform.Scale.Y <= 0 || transform.Scale.Z <= 0)
-            throw new InvalidOperationException($"Machine Object3D instance '{id}' scale values must be positive.");
+            throw new InvalidOperationException($"Machine Prefab instance '{id}' scale values must be positive.");
     }
 
     private static bool Finite(MachineVector3 value) => double.IsFinite(value.X) && double.IsFinite(value.Y) && double.IsFinite(value.Z);
