@@ -27,8 +27,11 @@ internal static class PanelFaceSourceShapeCommands
         }
         public void Undo()
         {
+            var previousCount = document.GetPanelFaceSourceShapes().Count;
             var shapes = document.GetPanelFaceSourceShapes().Where(s => s.Id != shape.Id).ToArray();
+            if (shapes.Length == previousCount) return;
             document.SetPanelFaceSourceShapes(shapes, new PanelChangeEvent(documentId, shape.Id, PanelChangeProperties.Structure, true, true, true, true));
+            document.MarkDirty();
             WasExecuted = false;
         }
     }

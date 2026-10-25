@@ -4,10 +4,12 @@ An opt-in, local **stdio MCP server** using the official C# SDK. It runs an isol
 editor automation session on a WPF STA dispatcher. It never attaches to an existing
 editor, activates a user window, or opens the normal launcher.
 
-The server supports a repeatable project → Panel2D → MFME FML → edit → save/reopen
+The server supports a repeatable project → Panel2D → MFME FML → edit → Face → save/reopen
 workflow. It reuses the editor's project scaffolder, importer, document command
-history, validation and save service. It does not implement Face/Cabinet/Machine
-assembly or runtime export yet. Existing ArchitectureNext priorities are unchanged.
+history, validation and save service. It does not implement Cabinet/Machine
+assembly or explicit runtime-export tools yet. Face generation and saving reuse
+the editor's existing derived-asset/export behavior. ArchitectureNext priorities
+are unchanged.
 
 ## Build and connect
 
@@ -63,6 +65,13 @@ changes and undo history are session-local, and no confirmation dialog is shown.
 | `save_panel2d` | Save the session document, rejecting external manifest changes. |
 | `undo`, `redo` | Apply the document's existing command history. |
 | `capture_panel2d` | Return a native MCP PNG image of the actual WPF Panel2D edit view. |
+| `add_face_source_shape` | Add an undoable convex source quadrilateral; defaults to the whole panel. |
+| `inspect_face_source_shapes` | Page through persisted/in-memory source-shape IDs and corners. |
+| `create_face` | Create and initially save a new blank or image-based Face. |
+| `generate_face_from_panel` | Generate a new unsaved Face from a saved panel/source shape. |
+| `open_face`, `save_face` | Reopen/persist a Face through the existing validation/save service. |
+| `inspect_face` | Read source links, authored/generated paths, semantic elements and build diagnostics. |
+| `capture_face` | Return the actual WPF/Skia Face layout view fitted offscreen. |
 
 Start with `create_project(name="MCPTest1")`, then `create_panel2d(name="Main Panel")`.
 Use the returned `documentId` for subsequent calls. Copy an FML into the automation
@@ -127,6 +136,58 @@ Content outside the chosen viewport is clipped as in the editor. A Windows
 desktop-capable environment is still required. Rendered
 images can support visual checks but do not establish mouse/keyboard usability.
 
+## Face authoring
+
+`create_face(name, sourceImage?)` follows the editor's native workflow. Omitting
+`sourceImage` creates a blank Face; an image path must be inside the configured
+workspace and have dimensions from 1 to 4096 pixels per axis. The new package is
+initially saved. Existing authored or generated packages are refused.
+
+For a derived Face:
+
+1. Import/open the source Panel2D.
+2. Call `add_face_source_shape(panelDocumentId, name, corners?)`. Without corners it
+   uses the editor's whole-panel logical bounds. A custom `corners` object contains
+   `topLeft`, `topRight`, `bottomRight`, `bottomLeft`, each with numeric `x`/`y`.
+   Ordered convex, nondegenerate quadrilaterals are required. Corners must be finite
+   and within ±1,000,000; estimated output is limited to 4096 pixels per axis.
+3. Use `inspect_face_source_shapes` to retrieve IDs/corners. Adding a shape uses the
+   existing panel command and supports Panel2D undo/redo. Undoing a saved addition
+   correctly marks the source panel dirty.
+4. Save the source panel. Generation rejects dirty sources and externally changed
+   source manifests so persisted source links describe the actual source state.
+5. Call `generate_face_from_panel(panelDocumentId, shapeId, name)`. It reuses the
+   editor's perspective correction, artwork processing, mask extraction, semantic
+   component conversion and tray/emitter authoring services. Without a selected
+   cabinet target it derives output aspect from the source quad. The response
+   includes the new `face` snapshot and conversion counts.
+6. The new Face is initially **unsaved**. Call `save_face(face.documentId)` to create
+   its authored package, then inspect build-product statuses and errors. Saving an
+   authored Face does not guarantee every derived runtime product is current.
+7. `capture_face` returns the real fitted Face layout view, without building or
+   saving. It supports the same size limits and themes as panel capture and
+   restores its viewport. `open_face` reopens persisted content in a new session.
+
+Face snapshots distinguish the persistent `assetId` from the session `documentId`,
+include source panel/shape links, bounds, tray/emitter counts and paged semantic
+elements, and expose build-product statuses/errors. `artworkPath` and `maskPath`
+can refer to derived/intermediate output; `authoredArtworkPath` and
+`authoredMaskPath` identify the canonical authored files in the package (which may
+not exist until a generated Face is saved). `inspect_project` lists open Faces as
+well as open panels. `inspect_face` defaults to 50 elements, maximum 200 per page.
+
+This slice creates new Faces; it does not regenerate/overwrite an existing Face,
+edit Face components or provide workspace-wide undo. Panel `undo`/`redo` covers
+source-shape edits but does not undo Face creation or filesystem writes. Generation
+observes cancellation where the underlying generator supports it. Failures or
+cancellation may leave generated/intermediate files; no rollback/delete is promised.
+
+Face saves compare fingerprints of **all authored package files**, including the
+manifest and PNGs, to detect external additions/changes/deletion. Changes to
+disposable `Generated/` previews are not conflicts. New output/image paths and
+persisted Face asset references are restricted to the workspace, with junctions
+and symlinks refused. Use disposable projects for initial automation.
+
 ## File behavior and boundaries
 
 - Use disposable workspaces until a workflow is verified. New project and package
@@ -150,7 +211,7 @@ images can support visual checks but do not establish mouse/keyboard usability.
 ## Verification
 
 Session behavior tests are in `OasisEditor.Tests/McpEditorSessionTests.cs` and
-`McpPanelEditingTests.cs`:
+`McpPanelEditingTests.cs`, plus `McpFaceAuthoringTests.cs`:
 
 ```powershell
 dotnet test OasisEditor.Tests/OasisEditor.Tests.csproj -c Release
@@ -174,3 +235,11 @@ fit and element framing, viewport restoration and persistence of edited properti
 no visible windows and the process exits on stdin EOF; it uses only Python's
 standard library and sends no desktop input. No FML, ROMs,
 imported user content or screenshot artifacts are stored in this repository.
+
+`face_smoke_test.py` exercises the complete source-shape/generation/save workflow,
+blank/image-based creation, bounded inspection, three-theme Face captures,
+cross-process reopen, duplicate refusal and external manifest conflict handling:
+
+```powershell
+python OasisEditor.Mcp/face_smoke_test.py --server C:\absolute\path\OasisEditor.Mcp.exe --artifacts C:\FaceSmokeResults --fml C:\Layouts\Example.fml
+```
