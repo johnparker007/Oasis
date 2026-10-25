@@ -66,7 +66,7 @@ public sealed partial class McpEditorSession
     private void ValidateMachineAssets(MachineDocument machine)
     {
         ValidateTree(Confine(Project.AssetsDirectory));
-        var references = machine.ObjectInstances.Select(o => o.ObjectAsset).Append(machine.CabinetAsset)
+        var references = machine.ObjectInstances.Select(o => o.ObjectAsset).Concat(machine.PrefabDependencies.Select(dependency => dependency.PrefabAsset)).Append(machine.CabinetAsset)
             .Concat(machine.ReelAssignments.Select(r => r.ReelAsset)).OfType<AssetReference>();
         foreach (var reference in references)
         {

@@ -300,12 +300,11 @@ for transform edits; camera state is never persisted. Sphere and Box collider
 previews are available. Capsule and Mesh previews report their current visual
 limitation rather than displaying an approximate collision shape.
 
-Machine authored schema **9**, Machine runtime **10** and reusable Object runtime
-**2** now carry authored parent/active state and typed node/component trees. Builds
+Machine documents carry authored parent/active state and typed node/component trees. Builds
 copy every referenced GLB into content-hash model paths and deduplicate definitions
 by stable asset GUID, rejecting conflicting contents. Player builds contain all
 dependencies and do not read Editor files. Reauthor old Machine manifests explicitly
-to schema 9 and rebuild; readers accept only current formats.
+to the current schema and rebuild; readers accept only current formats.
 
 The Player registers nodes using source node IDs rather than names/indices, keeps
 the physical root authoritative, and supports ModelLocal/NodeLocal collision frames
@@ -314,7 +313,25 @@ and unsupported transform shear fail contextually. Machine Inspector exposes sou
 identity/defaults separately from permitted placement overrides and Revert.
 Machine-space teleport still targets Machine-space anchors under parented placement;
 reset restores authored node poses/active state and clears body velocities.
-No spawning or language syntax is added by this runtime-component checkpoint.
+Machine authored schema **10** / runtime **11** adds declared Prefab aliases and
+measured geometry surfaces. Prefab authored/runtime formats remain 2. Script
+`prefab:<alias>` dependencies are exported/preloaded even without any placed entity.
+Current scripts use session-scoped `OasisObjectRef` handles (`oasis:<authoredId>`),
+`oasis.instantiate`, `oasis.destroy`, `oasis.is_alive` and the existing renamed
+`oasis.*` movement/reset operations. Old `object:`/`object.*` syntax is rejected;
+explicitly reauthor source and rebuild.
+
+The engine-free language supports typed empty Lists, bounded immutable append/count/
+contains, typed acyclic functions/return, `math.sqrt` and `require`. Lists are capped
+at 256 entries and function calls at 16 levels within the shared instruction budget.
+Top-level initializers cannot call user functions or host operations. Frame/sphere/
+surface queries cross the portable runtime boundary; scripts see no Unity handles.
+
+Runtime templates and GLBs preload once; script-time creation clones inactive
+validated trees, registers IDs before activation, and enforces 256 live roots,
+2,048 nodes, 256 bodies, 128 spawns/event and 100,000 allocations/session. Destroy
+unregisters before deferred Unity removal and deactivates bodies immediately.
+Stale/foreign handles cannot retarget later entities. No pooling/variant API exists.
 
 `create_prefab(name, modelSource?)` initially saves a grouping Prefab or copies one
 workspace GLB into a fresh package. `update_prefab_node` accepts optional `name`,
@@ -366,3 +383,17 @@ of the Unity MCP transport preferences. The client uses the native custom tool w
 discovered; older bridge discovery can invoke the same fixed handler through its
 existing C# execution tool. No safety checks are disabled. Stop the session after
 verification; builds, reports and logs remain local and no user assets enter Git.
+
+`declare_machine_prefab`, `set_machine_geometry_surface`, `set_machine_anchor`,
+`set_machine_behavior` and `remove_machine_object` author the calculated example
+through the document history; saving/building stays explicit. The source operation
+requires existing Oasis behaviour and retains external-file conflict protection.
+
+`author_algorithmic_pool.py --server <exe> --project <disposable .oasisproj>
+--source <Examples/Pool/algorithmic.oasis> --artifacts <directory>` creates the
+spawn-only setup from the measured local Pool copy. Start the batch launcher with
+`-Mode Algorithmic`, then use `verify_pool_player.py` normally. The actual probe
+checks 15+1 dynamic entities, calculated frames/spacing, physics support, collection,
+cue recovery, five new games, stale handles and unload/reload. It does not render
+gameplay or exercise keyboard focus. `runtime_tree_smoke_test.py` remains the
+parented single-ball regression workflow.

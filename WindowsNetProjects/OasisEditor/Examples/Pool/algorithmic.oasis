@@ -1,0 +1,105 @@
+// Fifteen ordinary balls and a separate cue. All lengths are metres.
+state balls: List<OasisObjectRef> = [];
+state cue: List<OasisObjectRef> = [];
+state collected: List<OasisObjectRef> = [];
+
+fn ball_diameter() -> Number {
+    return 2 * collider.sphere_radius(prefab:poolBall);
+}
+
+fn rack_position(row: Number, col: Number, diameter: Number) -> Vec3 {
+    let spacing = diameter + 0.0005;
+    return frame.position(anchor:rackOrigin,
+        vec3((col - row / 2) * spacing, diameter / 2 + 0.0015,
+             row * spacing * math.sqrt(3) / 2));
+}
+
+fn cue_position() -> Vec3 {
+    return frame.position(anchor:cueStart,
+        vec3(0, collider.sphere_radius(prefab:cueBall) + 0.0015, 0));
+}
+
+fn clear_motion(ball: OasisObjectRef) -> Void {
+    oasis.set_velocity(ball, vec3(0, 0, 0));
+    oasis.set_angular_velocity(ball, vec3(0, 0, 0));
+}
+
+fn new_game() -> Void {
+    let diameter = ball_diameter();
+    // Validate all positions before replacing any live entities.
+    for row in range(0, 5) {
+        for col in range(0, 5) {
+            if col <= row {
+                require(surface.contains_sphere(surface:playingSurface,
+                    rack_position(row, col, diameter), diameter / 2),
+                    "Calculated rack does not fit the playing surface.");
+            }
+        }
+    }
+    require(surface.contains_sphere(surface:playingSurface, cue_position(),
+        collider.sphere_radius(prefab:cueBall)), "Cue start is outside the playing surface.");
+    for ball in balls { oasis.destroy(ball); }
+    for ball in cue { oasis.destroy(ball); }
+    balls = [];
+    cue = [];
+    collected = [];
+    for row in range(0, 5) {
+        for col in range(0, 5) {
+            if col <= row {
+                let ball = oasis.instantiate(prefab:poolBall, rack_position(row, col, diameter),
+                    frame.rotation(anchor:rackOrigin, vec3(0, 0, 0)));
+                balls = list.append(balls, ball);
+            }
+        }
+    }
+    cue = list.append(cue, oasis.instantiate(prefab:cueBall, cue_position(),
+        frame.rotation(anchor:cueStart, vec3(0, 0, 0))));
+}
+
+fn rerack() -> Void {
+    let diameter = ball_diameter();
+    for row in range(0, 5) {
+        for col in range(0, 5) {
+            if col <= row {
+                let ball = balls[row * (row + 1) / 2 + col];
+                oasis.set_active(ball, true);
+                oasis.teleport_pose(ball, rack_position(row, col, diameter),
+                    frame.rotation(anchor:rackOrigin, vec3(0, 0, 0)));
+                clear_motion(ball);
+            }
+        }
+    }
+    for ball in cue {
+        oasis.set_active(ball, true);
+        oasis.teleport_pose(ball, cue_position(), frame.rotation(anchor:cueStart, vec3(0, 0, 0)));
+        clear_motion(ball);
+    }
+    collected = [];
+}
+
+on machine.started() { new_game(); }
+on input.pressed(input:newGame) { new_game(); }
+on input.pressed(input:rerack) { rerack(); }
+
+on trigger.entered(pocket, ball) {
+    if pocket == trigger:Pocket_XNeg_Middle or pocket == trigger:Pocket_XNeg_YNeg
+        or pocket == trigger:Pocket_XNeg_YPos or pocket == trigger:Pocket_XPos_Middle
+        or pocket == trigger:Pocket_XPos_YNeg or pocket == trigger:Pocket_XPos_YPos {
+        if list.contains(cue, ball) {
+            oasis.teleport_pose(ball, cue_position(), frame.rotation(anchor:cueStart, vec3(0, 0, 0)));
+            clear_motion(ball);
+        } else {
+            if list.contains(balls, ball) and not list.contains(collected, ball) {
+                let diameter = ball_diameter();
+                let slot = list.count(collected);
+                let tray = frame.position(anchor:collectionTray,
+                    vec3((slot - 7) * (diameter + 0.0005), diameter / 2 + 0.0015, 0));
+                require(surface.contains_sphere(surface:playingSurface, tray, diameter / 2),
+                    "Calculated collection slot is outside the supported surface.");
+                collected = list.append(collected, ball);
+                oasis.teleport_pose(ball, tray, frame.rotation(anchor:collectionTray, vec3(0, 0, 0)));
+                clear_motion(ball);
+            }
+        }
+    }
+}

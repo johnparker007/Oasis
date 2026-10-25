@@ -26,7 +26,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
     public const string ObjectSchema = "oasis.object3d.runtime";
-    public const int MachineSchemaVersion = 10;
+    public const int MachineSchemaVersion = 11;
     public const int CabinetSchemaVersion = 5;
     public const int ObjectSchemaVersion = 2;
 
@@ -67,7 +67,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         ArgumentNullException.ThrowIfNull(progress);
         cancellationToken.ThrowIfCancellationRequested();
         try { MachineDocumentStorage.Validate(machineDocument); }
-        catch (InvalidOperationException exception) { return MachineRuntimeBuildResult.Fail(exception.Message); }
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException) { return MachineRuntimeBuildResult.Fail(exception.Message); }
         var machineAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(machineManifestPath, EditorAssetType.Machine);
         if (string.IsNullOrWhiteSpace(machineAssetName)) return MachineRuntimeBuildResult.Fail("Machine manifests must be stored as Assets/Machines/<Name>/asset.machine before building for Oasis Player.");
         if (machineDocument.CabinetAsset is null) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' has no Cabinet asset assigned.");
@@ -106,7 +106,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             cancellationToken.ThrowIfCancellationRequested();
             ValidateFaceAssignmentTargets(machineDocument.DisplayName, machineDocument.SurfaceAssignments, sourceGlb, cabinetAssetIdentity, cancellationToken);
             var faceReferences = ExportReferencedFaces(project, stagingRoot, machineDocument, cabinetDocument, cabinetAssetIdentity, progress.CreateChild(0.2, 0.7), cancellationToken);
-            var objectInstances = ExportReferencedObjects(project, stagingRoot, machineDocument, cancellationToken);
+            var (prefabDependencies, objectInstances) = ExportReferencedObjects(project, stagingRoot, machineDocument, cancellationToken);
             progress.Report(0.72, "Validating cabinet reflections...");
             cancellationToken.ThrowIfCancellationRequested();
             ValidateReflections(cabinetDocument.Reflections ?? [], GlbCabinetReflectionReceiverDiscovery.Discover(sourceGlb), faceReferences);
@@ -115,7 +115,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             cancellationToken.ThrowIfCancellationRequested();
             File.WriteAllText(Path.Combine(cabinetRoot, CabinetManifestFileName), JsonSerializer.Serialize(cabinetManifest, JsonOptions));
             var anchors = machineDocument.Anchors.Select(MachineRuntimeAnchor.From).ToArray();
-            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, machineDocument.Id, machineDocument.DisplayName, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, objectInstances, anchors, MachineRuntimeManifestDefinition.From(machineDocument.Runtime), machineDocument.InputDefinitions);
+            var geometrySurfaces = machineDocument.GeometrySurfaces.Select(MachineRuntimeGeometrySurface.From).ToArray();
+            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, machineDocument.Id, machineDocument.DisplayName, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, objectInstances, anchors, MachineRuntimeManifestDefinition.From(machineDocument.Runtime), machineDocument.InputDefinitions, prefabDependencies, geometrySurfaces);
             File.WriteAllText(Path.Combine(stagingRoot, MachineManifestFileName), JsonSerializer.Serialize(machineManifest, JsonOptions));
             progress.Report(0.95, "Finalising Oasis Player machine...");
             cancellationToken.ThrowIfCancellationRequested();
@@ -148,31 +149,30 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         return source;
     }
 
-    private IReadOnlyList<MachineRuntimeObjectInstance> ExportReferencedObjects(EditorProject project, string stagingRoot, MachineDocument machine, CancellationToken cancellationToken)
+    private (IReadOnlyList<MachineRuntimePrefabDependency> Dependencies, IReadOnlyList<MachineRuntimeObjectInstance> Instances)
+        ExportReferencedObjects(EditorProject project, string stagingRoot, MachineDocument machine, CancellationToken cancellationToken)
     {
         var instances = new List<MachineRuntimeObjectInstance>();
+        var dependencies = new List<MachineRuntimePrefabDependency>();
         var definitions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var bodyOwners = new Dictionary<string, bool>(StringComparer.Ordinal);
         var sourceRootScales = new Dictionary<string, MachineVector3>(StringComparer.Ordinal);
-        foreach (var instance in machine.ObjectInstances)
+
+        (Object3DDocument Document, string DefinitionId, string DefinitionManifest) ExportDefinition(AssetReference reference, string context)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var reference = instance.ObjectAsset ?? throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' requires an Object3D asset reference.");
             string manifestPath;
             try { manifestPath = _assetResolver.Resolve(project, _libraryRoot, reference); }
             catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
-            { throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' cannot resolve Object3D asset {reference}: {exception.Message}", exception); }
-            if (!File.Exists(manifestPath)) throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' references missing Object3D asset {reference}.");
+            { throw new InvalidOperationException($"{context} cannot resolve Object3D asset {reference}: {exception.Message}", exception); }
+            if (!File.Exists(manifestPath)) throw new InvalidOperationException($"{context} references missing Object3D asset {reference}.");
             if (!string.Equals(Path.GetFileName(manifestPath), ProjectAssetPathService.Object3DManifestFileName, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' reference {reference} is not an Object3D package manifest.");
+                throw new InvalidOperationException($"{context} reference {reference} is not an Object3D package manifest.");
             if (!Object3DDocumentStorage.TryRead(File.ReadAllText(manifestPath), out var document, out var error))
-                throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' references invalid Object3D asset {reference}: {error}");
+                throw new InvalidOperationException($"{context} references invalid Object3D asset {reference}: {error}");
             try { Object3DValidationService.Validate(document, Path.GetDirectoryName(manifestPath)); }
             catch (InvalidOperationException exception)
-            { throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}', Object3D asset '{document.DisplayName}' is invalid: {exception.Message}", exception); }
-            bool HasBody(Object3DNodeDefinition node) => node.Components.Any(c => c.Rigidbody is { Mode: not Object3DRigidbodyMode.Static }) || node.Children.Any(HasBody);
-            bodyOwners[instance.Id] = HasBody(document.Root);
-            sourceRootScales[instance.Id] = document.Root.Transform.Scale;
+            { throw new InvalidOperationException($"{context}, Object3D asset '{document.DisplayName}' is invalid: {exception.Message}", exception); }
 
             var definitionId = Guid.Parse(document.Id).ToString("D").ToLowerInvariant();
             var sourcePackage = Path.GetDirectoryName(manifestPath)!;
@@ -188,8 +188,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 foreach (var child in node.Children) CollectModels(child);
             }
             CollectModels(document.Root);
-            var fingerprint = Object3DDocumentStorage.Serialize(document) + string.Concat(models.OrderBy(m => m.Key, StringComparer.Ordinal)
-                .Select(m => "\n" + m.Key + ":" + m.Value.Hash));
+            var fingerprint = Object3DDocumentStorage.Serialize(document) + string.Concat(models.OrderBy(model => model.Key, StringComparer.Ordinal)
+                .Select(model => "\n" + model.Key + ":" + model.Value.Hash));
             if (definitions.TryGetValue(definitionId, out var existingFingerprint))
             {
                 if (!string.Equals(existingFingerprint, fingerprint, StringComparison.Ordinal))
@@ -209,8 +209,24 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 var runtimeDefinition = Object3DRuntimeManifest.From(document, definitionId, path => "models/" + models[path].Hash + ".glb");
                 File.WriteAllText(Path.Combine(destination, ObjectManifestFileName), JsonSerializer.Serialize(runtimeDefinition, JsonOptions));
             }
-            var definitionManifest = ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(ObjectsDirectoryName, definitionId, ObjectManifestFileName));
-            instances.Add(new MachineRuntimeObjectInstance(instance.Id, instance.DisplayName, definitionId, definitionManifest, MachineRuntimeTransform.From(instance.Transform), instance.ParentId, instance.Active));
+            return (document, definitionId, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(ObjectsDirectoryName, definitionId, ObjectManifestFileName)));
+        }
+
+        // Export declared dependencies first, even when the script only spawns them.
+        foreach (var dependency in machine.PrefabDependencies)
+        {
+            var exported = ExportDefinition(dependency.PrefabAsset, $"Machine Prefab alias '{dependency.Alias}'");
+            dependencies.Add(new MachineRuntimePrefabDependency(dependency.Alias, exported.DefinitionId, exported.DefinitionManifest));
+        }
+        foreach (var instance in machine.ObjectInstances)
+        {
+            var reference = instance.ObjectAsset ?? throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' requires an Object3D asset reference.");
+            var exported = ExportDefinition(reference, $"Machine Object3D instance '{instance.Id}'");
+            var document = exported.Document;
+            bool HasBody(Object3DNodeDefinition node) => node.Components.Any(c => c.Rigidbody is { Mode: not Object3DRigidbodyMode.Static }) || node.Children.Any(HasBody);
+            bodyOwners[instance.Id] = HasBody(document.Root);
+            sourceRootScales[instance.Id] = document.Root.Transform.Scale;
+            instances.Add(new MachineRuntimeObjectInstance(instance.Id, instance.DisplayName, exported.DefinitionId, exported.DefinitionManifest, MachineRuntimeTransform.From(instance.Transform), instance.ParentId, instance.Active));
         }
         var authored = machine.ObjectInstances.ToDictionary(i => i.Id, StringComparer.Ordinal);
         foreach (var instance in machine.ObjectInstances.Where(i => bodyOwners[i.Id]))
@@ -224,7 +240,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 parentId = authored[parentId].ParentId;
             }
         }
-        return instances;
+        return (dependencies, instances);
     }
 
     internal static void ValidateFaceAssignmentTargets(string machineDisplayName, IReadOnlyList<MachineSurfaceAssignment> assignments, string sourceGlb, string cabinetAssetPath, CancellationToken cancellationToken)
@@ -402,7 +418,7 @@ public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, 
     public static MachineRuntimeBuildResult Fail(string errorMessage) => new(false, null, errorMessage);
 }
 
-public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, IReadOnlyList<MachineRuntimeObjectInstance> ObjectInstances, IReadOnlyList<MachineRuntimeAnchor> Anchors, MachineRuntimeManifestDefinition Runtime, IReadOnlyList<InputDefinitionModel> Inputs);
+public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, IReadOnlyList<MachineRuntimeObjectInstance> ObjectInstances, IReadOnlyList<MachineRuntimeAnchor> Anchors, MachineRuntimeManifestDefinition Runtime, IReadOnlyList<InputDefinitionModel> Inputs, IReadOnlyList<MachineRuntimePrefabDependency> PrefabDependencies, IReadOnlyList<MachineRuntimeGeometrySurface> GeometrySurfaces);
 
 /// <summary>Generated Player contract projection; distinct from the authored RuntimeDefinition.</summary>
 [JsonPolymorphic]
@@ -433,6 +449,11 @@ public sealed record MachineRuntimeObjectInstance(string Id, string DisplayName,
 public sealed record MachineRuntimeAnchor(string Id, string DisplayName, RuntimeVector3 Position, RuntimeVector3 RotationEulerDegrees)
 {
     public static MachineRuntimeAnchor From(MachineAnchor value) => new(value.Id, value.DisplayName, RuntimeVector3.From(value.Position), RuntimeVector3.From(value.Rotation));
+}
+public sealed record MachineRuntimePrefabDependency(string Alias, string DefinitionId, string DefinitionManifest);
+public sealed record MachineRuntimeGeometrySurface(string Id, RuntimeVector3 Position, RuntimeVector3 RotationEulerDegrees, double Width, double Length)
+{
+    public static MachineRuntimeGeometrySurface From(MachineGeometrySurface value) => new(value.Id, RuntimeVector3.From(value.Position), RuntimeVector3.From(value.Rotation), value.Width, value.Length);
 }
 public sealed record Object3DRuntimeManifest(string Schema, int SchemaVersion, string DefinitionId, string DisplayName, Object3DRuntimeNode Root)
 {

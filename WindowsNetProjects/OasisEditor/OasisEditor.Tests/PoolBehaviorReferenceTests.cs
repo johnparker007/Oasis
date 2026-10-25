@@ -7,6 +7,28 @@ namespace OasisEditor.Tests;
 public sealed class PoolBehaviorReferenceTests
 {
     [Fact]
+    public void MachineValidatorChecksPrefabAndSurfaceReferencesIncludingFunctionBodies()
+    {
+        const string source = """
+            const ballPrefab = prefab:poolBall;
+            const unknownSurface = surface:missingSurface;
+            fn find_ball() -> OasisObjectRef { return oasis:missingBall; }
+            """;
+        var compilation = OasisScriptCompiler.Compile(source, "behavior.oasis");
+        Assert.True(compilation.Success, string.Join(Environment.NewLine, compilation.Diagnostics));
+        var references = new OasisScriptMachineReferenceIndex(
+            new HashSet<string>(), new HashSet<string>(), new HashSet<string>(), new HashSet<string>(),
+            new HashSet<string>(), new HashSet<string>(), new HashSet<string>(), new HashSet<string>(),
+            new HashSet<string> { "poolBall" }, new HashSet<string> { "playingSurface" });
+
+        var diagnostics = OasisScriptMachineValidator.Validate(compilation.Program!, references);
+
+        Assert.Collection(diagnostics,
+            diagnostic => { Assert.Equal("OSM3010", diagnostic.Code); Assert.Contains("missingSurface", diagnostic.Message); },
+            diagnostic => { Assert.Equal("OSM3001", diagnostic.Code); Assert.Contains("missingBall", diagnostic.Message); });
+    }
+
+    [Fact]
     public void CanonicalScriptResolvesAgainstSingleBallCompositionAndReportsMissingDomains()
     {
         var result = OasisScriptCompiler.Compile(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Pool/behavior.oasis")), "Pool/behavior.oasis");

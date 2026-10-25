@@ -23,7 +23,7 @@ namespace OasisPlayer.Tests
             File.WriteAllText(Path.Combine(_root, "behavior", "behavior.oasis"), "state score = 0; on machine.started() { timer.stop(\"host-call\"); score = score + 1; }");
         }
         [TearDown] public void TearDown() { if (Directory.Exists(_root)) Directory.Delete(_root, true); }
-        private void WriteMachine(int version = 10, string kind = "Oasis", string source = "behavior/behavior.oasis", MachineInputDefinition[] inputs = null)
+        private void WriteMachine(int version = 11, string kind = "Oasis", string source = "behavior/behavior.oasis", MachineInputDefinition[] inputs = null)
         {
             // JsonUtility escaping keeps path test cases valid JSON on Windows too.
             var runtime = new MachineRuntimeManifestDefinition { kind = kind };
@@ -38,7 +38,7 @@ namespace OasisPlayer.Tests
             File.WriteAllText(Path.Combine(_root, "machine.runtime.json"), json);
         }
         [TestCase("Emulation")] [TestCase("Oasis")]
-        public void Schema10RuntimeKindsLoad(string kind)
+        public void Schema11RuntimeKindsLoad(string kind)
         {
             WriteMachine(kind: kind);
             Assert.True(RuntimeBuildLoader.TryLoad(_root, out var build, out var error), error);
@@ -72,8 +72,8 @@ namespace OasisPlayer.Tests
             finally { machine.UnloadAssets(); }
         }
 
-        [Test] public void PreviousSchemaRejected()
-        { WriteMachine(version: 9); Assert.False(RuntimeBuildLoader.TryLoad(_root, out _, out var error)); StringAssert.Contains("schema/version", error); }
+        [TestCase(10)] [TestCase(9)] public void PreviousSchemaRejected(int version)
+        { WriteMachine(version: version); Assert.False(RuntimeBuildLoader.TryLoad(_root, out _, out var error)); StringAssert.Contains("schema/version", error); }
         [Test] public void UnknownRuntimeRejected()
         { WriteMachine(kind: "Unknown"); Assert.False(RuntimeBuildLoader.TryLoad(_root, out _, out var error)); StringAssert.Contains("Unknown Machine runtime", error); }
         [TestCase("../outside.oasis")] [TestCase("behavior/../../outside.oasis")] [TestCase("/outside.oasis")]
@@ -84,7 +84,7 @@ namespace OasisPlayer.Tests
         { File.Delete(Path.Combine(_root, "behavior", "behavior.oasis")); Assert.False(RuntimeBuildLoader.TryLoad(_root, out _, out var error)); StringAssert.Contains("behavior/behavior.oasis is missing", error); }
         [Test] public void InvalidSourceRejectedWithCompilerLocation()
         {
-            File.WriteAllText(Path.Combine(_root, "behavior", "behavior.oasis"), "on machine.started() { object.reset(1); }");
+            File.WriteAllText(Path.Combine(_root, "behavior", "behavior.oasis"), "on machine.started() { oasis.reset(1); }");
             Assert.False(RuntimeBuildLoader.TryLoad(_root, out _, out var error)); StringAssert.Contains("OS2303", error); StringAssert.Contains("behavior/behavior.oasis:1:", error);
         }
         [Test] public void ValidProgramIsSessionReadyWithoutExecutingAtLoad()

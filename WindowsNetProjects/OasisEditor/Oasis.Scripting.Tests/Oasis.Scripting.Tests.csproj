@@ -13,5 +13,6 @@
   <ItemGroup><ProjectReference Include="..\Oasis.Scripting\Oasis.Scripting.csproj" /></ItemGroup>
   <ItemGroup>
     <Content Include="..\Examples\Pool\behavior.oasis" Link="Pool\behavior.oasis" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Examples\Pool\algorithmic.oasis" Link="Pool\algorithmic.oasis" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -41,11 +41,15 @@ namespace OasisPlayer.Loading
     }
 
     /// <summary>Loads reusable Prefab definitions and creates Machine-owned live entity trees.</summary>
-    public sealed class Object3DRuntimeLoader : IDisposable
+    public sealed class Object3DRuntimeLoader : IDisposable, IRuntimePrefabFactory
     {
         private readonly IObject3DModelLoader _modelLoader;
         private readonly Dictionary<string, IObject3DModelDefinition> _loadedModels = new Dictionary<string, IObject3DModelDefinition>(StringComparer.OrdinalIgnoreCase);
         private readonly List<Mesh> _generatedMeshes = new List<Mesh>();
+        private readonly Dictionary<string, RuntimePrefabTemplate> _templates = new Dictionary<string, RuntimePrefabTemplate>(StringComparer.Ordinal);
+        private GameObject _templatesRoot;
+        private Transform _objectsRoot;
+        private RuntimeMachine _machine;
 
         public Object3DRuntimeLoader(IObject3DModelLoader modelLoader) { _modelLoader = modelLoader ?? throw new ArgumentNullException(nameof(modelLoader)); }
 
@@ -55,9 +59,16 @@ namespace OasisPlayer.Loading
             if (machineRoot == null) throw new ArgumentNullException(nameof(machineRoot));
             var objectsRoot = new GameObject("Objects");
             objectsRoot.transform.SetParent(machineRoot, false);
+            _objectsRoot = objectsRoot.transform;
+            _templatesRoot = new GameObject("PrefabTemplates");
+            _templatesRoot.transform.SetParent(machineRoot, false);
+            _templatesRoot.SetActive(false);
             machine.SetMachineSpace(machineRoot);
+            _machine = machine;
             try
             {
+                await LoadTemplatesAsync(machine);
+                machine.AttachPrefabFactory(this);
                 var orderedInstances = OrderInstances(machine);
                 for (var i = 0; i < orderedInstances.Count; i++)
                 {
@@ -79,9 +90,61 @@ namespace OasisPlayer.Loading
             {
                 machine.UnloadAssets();
                 Destroy(objectsRoot);
+                Destroy(_templatesRoot);
+                _templatesRoot = null;
                 Dispose();
                 throw;
             }
+        }
+
+        private async Task LoadTemplatesAsync(RuntimeMachine machine)
+        {
+            var definitions = new Dictionary<string, ResolvedRuntimeObjectDefinition>(StringComparer.Ordinal);
+            foreach (var item in machine.Build.ObjectDefinitions) definitions[item.Key] = item.Value;
+            foreach (var item in machine.Build.PrefabDependencies) definitions[item.Value.Manifest.definitionId] = item.Value;
+            foreach (var item in definitions)
+            {
+                var declaration = TemplateDeclaration(machine, item.Key, item.Value);
+                var root = new GameObject("Template_" + item.Key);
+                root.SetActive(false);
+                root.transform.SetParent(_templatesRoot.transform, false);
+                try
+                {
+                    var nodes = new List<RuntimeObjectNode>();
+                    await BuildNodeAsync(declaration, item.Value, item.Value.Manifest.root, root, true, false, nodes, null);
+                    _templates.Add(item.Key, new RuntimePrefabTemplate(item.Key, item.Value, root, nodes));
+                }
+                catch
+                {
+                    Destroy(root);
+                    throw;
+                }
+            }
+        }
+
+        private static MachineRuntimeObjectInstance TemplateDeclaration(RuntimeMachine machine, string definitionId,
+            ResolvedRuntimeObjectDefinition definition)
+        {
+            var instances = machine.Build.Machine.objectInstances ?? Array.Empty<MachineRuntimeObjectInstance>();
+            for (var i = 0; i < instances.Length; i++)
+            {
+                var instance = instances[i];
+                if (instance != null && instance.definitionId == definitionId) return instance;
+            }
+            foreach (var item in machine.Build.PrefabDependencies)
+            {
+                if (item.Value.Manifest.definitionId != definitionId) continue;
+                return new MachineRuntimeObjectInstance
+                {
+                    id = "prefab:" + item.Key, displayName = item.Key, definitionId = definitionId,
+                    transform = IdentityTransform(), active = false
+                };
+            }
+            return new MachineRuntimeObjectInstance
+            {
+                id = "definition:" + definitionId, displayName = definition.Manifest.displayName, definitionId = definitionId,
+                transform = IdentityTransform(), active = false
+            };
         }
 
         private static List<MachineRuntimeObjectInstance> OrderInstances(RuntimeMachine machine)
@@ -130,28 +193,30 @@ namespace OasisPlayer.Loading
             return ordered;
         }
 
-        private async Task InstantiateAsync(RuntimeMachine machine, Transform parent, MachineRuntimeObjectInstance declaration,
+        private Task InstantiateAsync(RuntimeMachine machine, Transform parent, MachineRuntimeObjectInstance declaration,
             ResolvedRuntimeObjectDefinition definition)
         {
             var rootNode = definition.Manifest.root;
             if (rootNode == null || rootNode.Transform == null) throw Failure(declaration, definition, "Prefab root or root Transform is missing");
-            var root = new GameObject(declaration.id);
+            if (!_templates.TryGetValue(definition.Manifest.definitionId, out var template)) throw Failure(declaration, definition, "Prefab template is missing");
+            var root = UnityEngine.Object.Instantiate(template.Root, parent, false);
+            root.name = declaration.id;
             root.SetActive(false);
-            root.transform.SetParent(parent, false);
             try
             {
                 var initial = CombineRootTransform(declaration.transform, rootNode.Transform, declaration, definition);
                 ApplyTransform(root.transform, initial);
                 if (HasShear(root.transform.localToWorldMatrix)) throw Failure(declaration, definition, "authored parent and placement transforms compose to a shear that the runtime physics hierarchy cannot represent");
 
-                var nodes = new List<RuntimeObjectNode>();
                 var authoredInitial = ToMachineTransform(initial);
-                var rootNodeRuntime = await BuildNodeAsync(declaration, definition, rootNode, root, true, false, nodes, authoredInitial);
+                var nodes = CloneRuntimeNodes(template, root.transform, declaration.id, authoredInitial);
+                var rootNodeRuntime = nodes[0];
                 var instance = new RuntimeObjectInstance(declaration.id, declaration.displayName, declaration.definitionId,
                     definition, root, rootNodeRuntime.Collider, rootNodeRuntime.Rigidbody, authoredInitial,
                     nodes, declaration.parentId, declaration.active);
                 machine.RegisterObject(instance);
                 root.SetActive(declaration.active);
+                return Task.FromResult(true);
             }
             catch (Exception ex)
             {
@@ -159,6 +224,76 @@ namespace OasisPlayer.Loading
                 if (ex is InvalidOperationException && ex.Message.StartsWith("Object3D instance", StringComparison.Ordinal)) throw;
                 throw Failure(declaration, definition, ex.Message, ex);
             }
+        }
+
+        RuntimeObjectInstance IRuntimePrefabFactory.Instantiate(RuntimeMachine machine, string runtimeId, string prefabAlias, RuntimePose machinePose)
+        {
+            if (machine == null) throw new ArgumentNullException(machine == null ? nameof(machine) : nameof(machinePose));
+            if (!machine.Build.PrefabDependencies.TryGetValue(prefabAlias, out var definition)) throw new KeyNotFoundException($"Prefab dependency '{prefabAlias}' is not declared for this Machine.");
+            var declaration = new MachineRuntimeObjectInstance
+            {
+                id = runtimeId,
+                displayName = prefabAlias,
+                definitionId = definition.Manifest.definitionId,
+                transform = new MachineRuntimeObjectTransform
+                {
+                    position = new RuntimeVector3Definition { x = machinePose.Position.X, y = machinePose.Position.Y, z = machinePose.Position.Z },
+                    rotationEulerDegrees = new RuntimeVector3Definition { x = machinePose.RotationEulerDegrees.X, y = machinePose.RotationEulerDegrees.Y, z = machinePose.RotationEulerDegrees.Z },
+                    scale = new RuntimeVector3Definition { x = 1f, y = 1f, z = 1f }
+                },
+                active = true
+            };
+            var parent = _objectsRoot;
+            if (parent == null) throw new InvalidOperationException("Runtime Objects root is unavailable.");
+            if (HasActiveBody(definition.Manifest.root) && HasActiveBodyInAncestors(machine, declaration.parentId))
+                throw Failure(declaration, definition, "cannot spawn an active Rigidbody beneath another active Rigidbody");
+            var rootNode = definition.Manifest.root;
+            if (!_templates.TryGetValue(definition.Manifest.definitionId, out var template)) throw Failure(declaration, definition, "Prefab template is missing");
+            var root = UnityEngine.Object.Instantiate(template.Root, parent, false);
+            root.name = runtimeId;
+            root.SetActive(false);
+            try
+            {
+                var initial = CombineRootTransform(declaration.transform, rootNode.Transform, declaration, definition);
+                ApplyTransform(root.transform, initial);
+                if (HasShear(root.transform.localToWorldMatrix)) throw Failure(declaration, definition, "spawn pose composes to an unsupported shear");
+                var authoredInitial = ToMachineTransform(initial);
+                var nodes = CloneRuntimeNodes(template, root.transform, runtimeId, authoredInitial);
+                return new RuntimeObjectInstance(runtimeId, declaration.displayName, declaration.definitionId, definition,
+                    root, nodes[0].Collider, nodes[0].Rigidbody, authoredInitial, nodes, string.Empty, true);
+            }
+            catch
+            {
+                Destroy(root);
+                throw;
+            }
+        }
+
+        private static List<RuntimeObjectNode> CloneRuntimeNodes(RuntimePrefabTemplate template, Transform root, string rootId,
+            MachineRuntimeObjectTransform initial)
+        {
+            var result = new List<RuntimeObjectNode>(template.Nodes.Count);
+            for (var i = 0; i < template.Nodes.Count; i++)
+            {
+                var source = template.Nodes[i];
+                var nodeObject = ResolvePath(root, source.NodePath).gameObject;
+                var collider = source.ColliderPath != null ? ResolvePath(root, source.ColliderPath).GetComponent<Collider>() : null;
+                var body = source.BodyPath != null ? ResolvePath(root, source.BodyPath).GetComponent<Rigidbody>() : null;
+                result.Add(new RuntimeObjectNode(source.IsRoot ? rootId : CreateChildRuntimeId(rootId, source.PrefabNodeId),
+                    rootId, source.PrefabNodeId, source.Name, nodeObject, collider, body, source.AuthoredTransform,
+                    source.IsRoot ? initial : null));
+            }
+            return result;
+        }
+
+        private static MachineRuntimeObjectTransform IdentityTransform()
+        {
+            return new MachineRuntimeObjectTransform
+            {
+                position = new RuntimeVector3Definition(),
+                rotationEulerDegrees = new RuntimeVector3Definition(),
+                scale = new RuntimeVector3Definition { x = 1f, y = 1f, z = 1f }
+            };
         }
 
         private async Task<RuntimeObjectNode> BuildNodeAsync(MachineRuntimeObjectInstance declaration, ResolvedRuntimeObjectDefinition definition,
@@ -435,6 +570,12 @@ namespace OasisPlayer.Loading
 
         public void Dispose()
         {
+            if (_machine != null) _machine.DetachPrefabFactory(this);
+            _machine = null;
+            Destroy(_templatesRoot);
+            _templatesRoot = null;
+            _objectsRoot = null;
+            _templates.Clear();
             foreach (var definition in _loadedModels.Values) if (definition != null) definition.Dispose();
             _loadedModels.Clear();
             for (var i = 0; i < _generatedMeshes.Count; i++) if (_generatedMeshes[i] != null) Destroy(_generatedMeshes[i]);
@@ -459,6 +600,75 @@ namespace OasisPlayer.Loading
             public Vector3 Position { get; }
             public Quaternion Rotation { get; }
             public Vector3 Scale { get; }
+        }
+
+        private sealed class RuntimePrefabTemplate
+        {
+            public RuntimePrefabTemplate(string definitionId, ResolvedRuntimeObjectDefinition definition, GameObject root,
+                IReadOnlyList<RuntimeObjectNode> sourceNodes)
+            {
+                DefinitionId = definitionId;
+                Definition = definition;
+                Root = root;
+                Nodes = new List<TemplateNode>(sourceNodes.Count);
+                for (var i = 0; i < sourceNodes.Count; i++)
+                {
+                    var node = sourceNodes[i];
+                    Nodes.Add(new TemplateNode(node.PrefabNodeId, node.Name, node.AuthoredTransform,
+                        TransformPath(root.transform, node.Transform),
+                        node.Collider != null ? TransformPath(root.transform, node.Collider.transform) : null,
+                        node.Rigidbody != null ? TransformPath(root.transform, node.Rigidbody.transform) : null,
+                        i == 0));
+                }
+            }
+
+            public string DefinitionId { get; }
+            public ResolvedRuntimeObjectDefinition Definition { get; }
+            public GameObject Root { get; }
+            public List<TemplateNode> Nodes { get; }
+        }
+
+        private sealed class TemplateNode
+        {
+            public TemplateNode(string prefabNodeId, string name, Object3DRuntimeTransform authoredTransform,
+                int[] nodePath, int[] colliderPath, int[] bodyPath, bool isRoot)
+            {
+                PrefabNodeId = prefabNodeId;
+                Name = name;
+                AuthoredTransform = authoredTransform;
+                NodePath = nodePath;
+                ColliderPath = colliderPath;
+                BodyPath = bodyPath;
+                IsRoot = isRoot;
+            }
+            public string PrefabNodeId { get; }
+            public string Name { get; }
+            public Object3DRuntimeTransform AuthoredTransform { get; }
+            public int[] NodePath { get; }
+            public int[] ColliderPath { get; }
+            public int[] BodyPath { get; }
+            public bool IsRoot { get; }
+        }
+
+        private static int[] TransformPath(Transform root, Transform item)
+        {
+            var result = new List<int>();
+            var current = item;
+            while (current != null && current != root)
+            {
+                result.Add(current.GetSiblingIndex());
+                current = current.parent;
+            }
+            if (current != root) throw new InvalidOperationException("Prefab template node is outside its template root.");
+            result.Reverse();
+            return result.ToArray();
+        }
+
+        private static Transform ResolvePath(Transform root, int[] path)
+        {
+            var current = root;
+            for (var i = 0; i < path.Length; i++) current = current.GetChild(path[i]);
+            return current;
         }
     }
 }

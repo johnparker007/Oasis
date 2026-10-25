@@ -22,6 +22,8 @@ namespace OasisPlayer.RuntimeBuild
             if (machine.faces == null) machine.faces = Array.Empty<MachineRuntimeFaceReference>();
             if (machine.objectInstances == null) machine.objectInstances = Array.Empty<MachineRuntimeObjectInstance>();
             if (machine.inputs == null) machine.inputs = Array.Empty<MachineInputDefinition>();
+            if (machine.prefabDependencies == null) machine.prefabDependencies = Array.Empty<MachineRuntimePrefabDependency>();
+            if (machine.geometrySurfaces == null) machine.geometrySurfaces = Array.Empty<MachineRuntimeGeometrySurface>();
             return machine;
         }
 
@@ -122,6 +124,8 @@ namespace OasisPlayer.RuntimeBuild
             if (targetType == typeof(MachineRuntimeManifest)) required = new[] { "schema", "schemaVersion", "machineId", "displayName", "cabinetManifest", "anchors", "runtime" };
             else if (targetType == typeof(MachineRuntimeManifestDefinition)) required = new[] { "kind" };
             else if (targetType == typeof(MachineRuntimeObjectInstance)) required = new[] { "id", "displayName", "definitionId", "definitionManifest", "transform", "active" };
+            else if (targetType == typeof(MachineRuntimePrefabDependency)) required = new[] { "alias", "definitionId", "definitionManifest" };
+            else if (targetType == typeof(MachineRuntimeGeometrySurface)) required = new[] { "id", "position", "rotationEulerDegrees", "width", "length" };
             else if (targetType == typeof(MachineRuntimeObjectTransform)) required = new[] { "position", "rotationEulerDegrees", "scale" };
             else if (targetType == typeof(MachineRuntimeAnchor)) required = new[] { "id", "displayName", "position", "rotationEulerDegrees" };
             else if (targetType == typeof(MachineInputDefinition)) required = new[] { "id" };

@@ -1,11 +1,22 @@
 using System;
 using System.Collections.Generic;
+using Oasis.Scripting;
 using UnityEngine;
 
 namespace OasisPlayer.RuntimeBuild
 {
+    public interface IRuntimePrefabFactory
+    {
+        RuntimeObjectInstance Instantiate(RuntimeMachine machine, string runtimeId, string prefabAlias, RuntimePose machinePose);
+    }
+
     public sealed class RuntimeMachine
     {
+        public const int MaxLiveObjects = 256;
+        public const int MaxLiveNodes = 2048;
+        public const int MaxLiveBodies = 256;
+        public const int MaxSpawnsPerScriptEvent = 128;
+        public const int MaxSpawnAllocations = 100000;
         private readonly Dictionary<string, RuntimeObjectInstance> _objects = new Dictionary<string, RuntimeObjectInstance>(StringComparer.Ordinal);
         private readonly Dictionary<string, RuntimeObjectNode> _objectNodes = new Dictionary<string, RuntimeObjectNode>(StringComparer.Ordinal);
         private readonly Dictionary<string, RuntimeAnchor> _anchors = new Dictionary<string, RuntimeAnchor>(StringComparer.Ordinal);
@@ -19,6 +30,14 @@ namespace OasisPlayer.RuntimeBuild
         private IDisposable _behaviorRuntime;
         private readonly List<RuntimeCabinetReflectionBinding> _cabinetReflectionBindings = new List<RuntimeCabinetReflectionBinding>();
         private readonly List<RuntimeTextureAsset> _cabinetReflectionTextures = new List<RuntimeTextureAsset>();
+        private readonly HashSet<string> _dynamicObjectIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly string _sessionId = Guid.NewGuid().ToString("N");
+        private long _generation = 1;
+        private long _nextSpawnId;
+        private int _spawnAllocations;
+        private int _scriptDispatchDepth;
+        private int _spawnsThisScriptEvent;
+        private IRuntimePrefabFactory _prefabFactory;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         private RuntimeReelLampDiagnosticMode _reelLampDiagnosticMode = RuntimeReelLampDiagnosticMode.FollowLampState;
         private float _reelLampDiagnosticMultiplier = 1f;
@@ -34,6 +53,7 @@ namespace OasisPlayer.RuntimeBuild
             Events = new RuntimeMachineEventDispatcher();
             Timers = new RuntimeTimerService(Events);
             Commands = new RuntimeMachineCommandService(this);
+            Queries = new RuntimeMachineQueryService(this);
             foreach (var declaration in build.Machine.anchors) RegisterAnchor(new RuntimeAnchor(declaration.id, declaration.displayName, declaration.position.Value, declaration.rotationEulerDegrees.Value));
             foreach (var declaration in build.Machine.inputs ?? Array.Empty<MachineInputDefinition>()) RegisterInput(declaration);
         }
@@ -48,9 +68,12 @@ namespace OasisPlayer.RuntimeBuild
         public IReadOnlyDictionary<string, RuntimeInput> Inputs { get { return _inputs; } }
         public RuntimeMachineEventDispatcher Events { get; private set; }
         public RuntimeMachineCommandService Commands { get; private set; }
+        public RuntimeMachineQueryService Queries { get; private set; }
         public Transform MachineSpace { get; private set; }
         public RuntimeTimerService Timers { get; private set; }
         public bool IsActive { get; private set; } = true;
+        public string SessionId { get { return _sessionId; } }
+        public long Generation { get { return _generation; } }
         public bool HasStarted { get; private set; }
         public IReadOnlyList<string> Warnings { get { return _warnings; } }
         public IReadOnlyList<RuntimeCabinetReflectionBinding> CabinetReflectionBindings { get { return _cabinetReflectionBindings; } }
@@ -106,21 +129,170 @@ namespace OasisPlayer.RuntimeBuild
 
         public void RegisterObject(RuntimeObjectInstance instance)
         {
+            RegisterObjectCore(instance, false);
+        }
+
+        private void RegisterObjectCore(RuntimeObjectInstance instance, bool dynamic)
+        {
             if (instance == null) throw new ArgumentNullException(nameof(instance));
             if (string.IsNullOrWhiteSpace(instance.Id)) throw new ArgumentException("Runtime Object3D instance ID is required.", nameof(instance));
             if (_objects.ContainsKey(instance.Id)) throw new InvalidOperationException($"Runtime Object3D instance ID '{instance.Id}' is already registered.");
             var nodes = instance.Nodes;
+            if (_objects.Count + 1 > MaxLiveObjects) throw new InvalidOperationException($"Machine live Object3D limit ({MaxLiveObjects}) was exceeded.");
+            var nodeCount = nodes.Count;
+            var bodyCount = instance.Rigidbody != null ? 1 : 0;
             for (var i = 0; i < nodes.Count; i++)
             {
                 if (nodes[i] == null) throw new ArgumentException("Runtime Object3D node registry contains a null node.", nameof(instance));
                 if (_objectNodes.ContainsKey(nodes[i].RuntimeId)) throw new InvalidOperationException($"Runtime Object3D node ID '{nodes[i].RuntimeId}' is already registered.");
                 for (var j = 0; j < i; j++) if (nodes[j].RuntimeId == nodes[i].RuntimeId) throw new InvalidOperationException($"Runtime Object3D node ID '{nodes[i].RuntimeId}' is duplicated.");
+                if (nodes[i].Rigidbody != null && (i != 0 || nodes[i].Rigidbody != instance.Rigidbody)) bodyCount++;
             }
+            if (_objectNodes.Count + nodeCount > MaxLiveNodes) throw new InvalidOperationException($"Machine live Object3D node limit ({MaxLiveNodes}) was exceeded.");
+            var registeredBodies = 0;
+            foreach (var obj in _objects.Values)
+            {
+                if (obj.Nodes.Count == 0) { if (obj.Rigidbody != null) registeredBodies++; }
+                else for (var i = 0; i < obj.Nodes.Count; i++) if (obj.Nodes[i].Rigidbody != null) registeredBodies++;
+            }
+            if (registeredBodies + bodyCount > MaxLiveBodies) throw new InvalidOperationException($"Machine live Rigidbody limit ({MaxLiveBodies}) was exceeded.");
             _objects.Add(instance.Id, instance);
-            for (var i = 0; i < nodes.Count; i++) _objectNodes.Add(nodes[i].RuntimeId, nodes[i]);
-            var identity = instance.Root.AddComponent<RuntimeObjectIdentity>();
-            identity.Initialize(this, instance.Id);
-            _objectIdentities.Add(identity, instance.Id);
+            RuntimeObjectIdentity identity = null;
+            try
+            {
+                for (var i = 0; i < nodes.Count; i++) _objectNodes.Add(nodes[i].RuntimeId, nodes[i]);
+                identity = instance.Root.AddComponent<RuntimeObjectIdentity>();
+                identity.Initialize(this, instance.Id);
+                _objectIdentities.Add(identity, instance.Id);
+                if (dynamic && !_dynamicObjectIds.Add(instance.Id)) throw new InvalidOperationException($"Runtime Object3D instance ID '{instance.Id}' is already registered as a dynamic object.");
+            }
+            catch
+            {
+                _objects.Remove(instance.Id);
+                for (var i = 0; i < nodes.Count; i++) _objectNodes.Remove(nodes[i].RuntimeId);
+                if (identity != null) _objectIdentities.Remove(identity);
+                _dynamicObjectIds.Remove(instance.Id);
+                throw;
+            }
+        }
+
+        public void AttachPrefabFactory(IRuntimePrefabFactory factory)
+        {
+            if (factory == null) throw new ArgumentNullException(nameof(factory));
+            if (_prefabFactory != null) throw new InvalidOperationException("Runtime Prefab factory is already attached.");
+            _prefabFactory = factory;
+        }
+
+        public void DetachPrefabFactory(IRuntimePrefabFactory factory)
+        {
+            if (ReferenceEquals(_prefabFactory, factory)) _prefabFactory = null;
+        }
+
+        public OasisScriptReferenceValue GetObjectReference(string objectId)
+        {
+            if (!IsActive) throw new InvalidOperationException("Machine session has been unloaded.");
+            if (!TryGetObject(objectId, out _)) throw new KeyNotFoundException($"Runtime Object3D instance '{objectId}' is not registered.");
+            return OasisScriptReferenceValue.OasisObject(objectId, _sessionId, _generation);
+        }
+
+        public RuntimeObjectInstance InstantiatePrefab(string alias, RuntimePose pose)
+        {
+            if (!IsActive) throw new InvalidOperationException("Machine session has been unloaded.");
+            if (_prefabFactory == null) throw new InvalidOperationException("Runtime Prefab factory is unavailable.");
+            if (Build.PrefabDependencies == null || !Build.PrefabDependencies.ContainsKey(alias ?? string.Empty))
+                throw new KeyNotFoundException($"Prefab dependency '{alias}' is not declared for this Machine.");
+            if (_objects.Count >= MaxLiveObjects) throw new InvalidOperationException($"Machine live Object3D limit ({MaxLiveObjects}) was reached.");
+            if (_spawnAllocations >= MaxSpawnAllocations) throw new InvalidOperationException($"Machine spawn allocation limit ({MaxSpawnAllocations}) was reached.");
+            if (_scriptDispatchDepth > 0 && _spawnsThisScriptEvent >= MaxSpawnsPerScriptEvent)
+                throw new InvalidOperationException($"Script event spawn limit ({MaxSpawnsPerScriptEvent}) was reached.");
+            var definition = Build.PrefabDependencies[alias];
+            var nodeCost = CountPrefabNodes(definition.Manifest.root);
+            if (_objectNodes.Count + nodeCost > MaxLiveNodes) throw new InvalidOperationException($"Machine live Object3D node limit ({MaxLiveNodes}) would be exceeded by Prefab '{alias}'.");
+            var bodyCost = CountActiveBodies(definition.Manifest.root);
+            if (bodyCost > 1) throw new InvalidOperationException($"Prefab '{alias}' has nested active Rigidbodies, which are unsupported.");
+            if (CountLiveBodies() + bodyCost > MaxLiveBodies) throw new InvalidOperationException($"Machine live Rigidbody limit ({MaxLiveBodies}) would be exceeded by Prefab '{alias}'.");
+            var id = "@spawn:" + (++_nextSpawnId).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            _spawnAllocations++;
+            if (_scriptDispatchDepth > 0) _spawnsThisScriptEvent++;
+            RuntimeObjectInstance instance = null;
+            var registered = false;
+            try
+            {
+                instance = _prefabFactory.Instantiate(this, id, alias, pose);
+                RegisterObjectCore(instance, true);
+                registered = true;
+                instance.Root.SetActive(true);
+                return instance;
+            }
+            catch
+            {
+                if (registered) DestroyDynamicObject(id);
+                else if (instance != null) instance.Destroy();
+                throw;
+            }
+        }
+
+        public bool IsDynamicObject(string objectId) { return _dynamicObjectIds.Contains(objectId ?? string.Empty); }
+
+        private int CountLiveBodies()
+        {
+            var count = 0;
+            foreach (var instance in _objects.Values)
+            {
+                if (instance.Nodes.Count == 0) { if (instance.Rigidbody != null) count++; }
+                else for (var i = 0; i < instance.Nodes.Count; i++) if (instance.Nodes[i].Rigidbody != null) count++;
+            }
+            return count;
+        }
+
+        private static int CountPrefabNodes(Object3DRuntimeNode node)
+        {
+            if (node == null) return 0;
+            var count = 1;
+            var children = node.children ?? Array.Empty<Object3DRuntimeNode>();
+            for (var i = 0; i < children.Length; i++) count += CountPrefabNodes(children[i]);
+            return count;
+        }
+
+        private static int CountActiveBodies(Object3DRuntimeNode node)
+        {
+            if (node == null) return 0;
+            var component = node.GetComponent("Rigidbody");
+            var count = component != null && component.rigidbody != null && component.rigidbody.mode != "Static" ? 1 : 0;
+            var children = node.children ?? Array.Empty<Object3DRuntimeNode>();
+            for (var i = 0; i < children.Length; i++) count += CountActiveBodies(children[i]);
+            return count;
+        }
+
+        public bool DestroyDynamicObject(string objectId)
+        {
+            if (!_dynamicObjectIds.Remove(objectId ?? string.Empty)) return false;
+            if (!_objects.TryGetValue(objectId, out var instance)) return false;
+            _objects.Remove(objectId);
+            for (var i = 0; i < instance.Nodes.Count; i++) _objectNodes.Remove(instance.Nodes[i].RuntimeId);
+            var identities = new List<RuntimeObjectIdentity>();
+            foreach (var item in _objectIdentities) if (item.Value == objectId) identities.Add(item.Key);
+            for (var i = 0; i < identities.Count; i++) _objectIdentities.Remove(identities[i]);
+            instance.Destroy();
+            return true;
+        }
+
+        public bool IsLiveObjectReference(OasisScriptReferenceValue reference)
+        {
+            return IsActive && reference != null && reference.IsLiveObject &&
+                reference.Type.Equals(OasisScriptType.OasisObjectRef) && reference.SessionId == _sessionId &&
+                reference.Generation == _generation && _objects.ContainsKey(reference.Id);
+        }
+
+        public void BeginScriptEvent()
+        {
+            if (_scriptDispatchDepth++ == 0) _spawnsThisScriptEvent = 0;
+        }
+
+        public void EndScriptEvent()
+        {
+            if (_scriptDispatchDepth > 0) _scriptDispatchDepth--;
+            if (_scriptDispatchDepth == 0) _spawnsThisScriptEvent = 0;
         }
 
         public void SetMachineSpace(Transform machineSpace)
@@ -228,6 +400,7 @@ namespace OasisPlayer.RuntimeBuild
         public void UnloadAssets()
         {
             IsActive = false;
+            _generation++;
             if (_behaviorRuntime != null)
             {
                 _behaviorRuntime.Dispose();
@@ -255,6 +428,8 @@ namespace OasisPlayer.RuntimeBuild
             _objects.Clear();
             _objectNodes.Clear();
             _objectIdentities.Clear();
+            _dynamicObjectIds.Clear();
+            _prefabFactory = null;
             MachineSpace = null;
             _anchors.Clear();
             _triggers.Clear();
@@ -314,6 +489,9 @@ namespace OasisPlayer.RuntimeBuild
         internal void Destroy()
         {
             if (Root == null) return;
+            // Unity destruction is deferred in Play Mode. Remove the physical object
+            // immediately so a new game cannot collide with the previous generation.
+            Root.SetActive(false);
             if (Application.isPlaying) UnityEngine.Object.Destroy(Root);
             else UnityEngine.Object.DestroyImmediate(Root);
             Root = null;

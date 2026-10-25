@@ -25,6 +25,7 @@ namespace Oasis.Scripting
                 var before = _position;
                 if (Current.Kind == OasisScriptTokenKind.Const || Current.Kind == OasisScriptTokenKind.State) declarations.Add(ParseGlobal());
                 else if (Current.Kind == OasisScriptTokenKind.On) declarations.Add(ParseHandler());
+                else if (Current.Kind == OasisScriptTokenKind.Fn) declarations.Add(ParseFunction());
                 else { Error(Current, "Expected a top-level const, state, or event handler declaration."); Take(); }
                 if (_position == before) Take();
             }
@@ -33,9 +34,39 @@ namespace Oasis.Scripting
 
         private OasisScriptVariableDeclarationSyntax ParseGlobal()
         {
-            var start = Take(); var name = Expect(OasisScriptTokenKind.Identifier); Expect(OasisScriptTokenKind.Equal); var value = ParseExpression(); var end = Expect(OasisScriptTokenKind.Semicolon);
+            var start = Take(); var name = Expect(OasisScriptTokenKind.Identifier); OasisScriptType? declaredType = null;
+            if (Current.Kind == OasisScriptTokenKind.Colon) { Take(); declaredType = ParseType(); }
+            Expect(OasisScriptTokenKind.Equal); var value = ParseExpression(); var end = Expect(OasisScriptTokenKind.Semicolon);
             var span = From(start.Span, end.Span);
-            return start.Kind == OasisScriptTokenKind.State ? (OasisScriptVariableDeclarationSyntax)new OasisScriptStateDeclarationSyntax(name.Text, value, span) : new OasisScriptConstDeclarationSyntax(name.Text, value, span);
+            return start.Kind == OasisScriptTokenKind.State ? (OasisScriptVariableDeclarationSyntax)new OasisScriptStateDeclarationSyntax(name.Text, value, span, declaredType) : new OasisScriptConstDeclarationSyntax(name.Text, value, span, declaredType);
+        }
+
+        private OasisScriptFunctionSyntax ParseFunction()
+        {
+            var start = Expect(OasisScriptTokenKind.Fn); var name = Expect(OasisScriptTokenKind.Identifier); Expect(OasisScriptTokenKind.LeftParen);
+            var parameters = new List<OasisScriptFunctionParameterSyntax>();
+            if (Current.Kind != OasisScriptTokenKind.RightParen)
+            {
+                do
+                {
+                    var parameter = Expect(OasisScriptTokenKind.Identifier); Expect(OasisScriptTokenKind.Colon); var type = ParseType();
+                    parameters.Add(new OasisScriptFunctionParameterSyntax(parameter.Text, type, From(parameter.Span, Current.Span)));
+                    if (Current.Kind != OasisScriptTokenKind.Comma) break;
+                    Take();
+                } while (true);
+            }
+            Expect(OasisScriptTokenKind.RightParen); Expect(OasisScriptTokenKind.Arrow); var returnType = ParseType(); var body = ParseBlock();
+            return new OasisScriptFunctionSyntax(name.Text, parameters, returnType, body, From(start.Span, body.Span));
+        }
+
+        private OasisScriptType ParseType()
+        {
+            var name = Expect(OasisScriptTokenKind.Identifier).Text;
+            if (name == "List")
+            {
+                Expect(OasisScriptTokenKind.Less); var element = ParseType(); Expect(OasisScriptTokenKind.Greater); return OasisScriptType.ListOf(element);
+            }
+            return name switch { "Void" => OasisScriptType.Void, "Number" => OasisScriptType.Number, "Bool" => OasisScriptType.Bool, "String" => OasisScriptType.String, "Vec3" => OasisScriptType.Vec3, "OasisObjectRef" => OasisScriptType.OasisObjectRef, "AnchorRef" => OasisScriptType.AnchorRef, "TriggerRef" => OasisScriptType.TriggerRef, "InputRef" => OasisScriptType.InputRef, "PrefabRef" => OasisScriptType.PrefabRef, "SurfaceRef" => OasisScriptType.SurfaceRef, _ => OasisScriptType.Invalid };
         }
 
         private OasisScriptEventHandlerSyntax ParseHandler()
@@ -60,6 +91,7 @@ namespace Oasis.Scripting
         private OasisScriptStatementSyntax ParseStatement()
         {
             if (Current.Kind == OasisScriptTokenKind.Let) { var start = Take(); var name = Expect(OasisScriptTokenKind.Identifier); Expect(OasisScriptTokenKind.Equal); var init = ParseExpression(); var end = Expect(OasisScriptTokenKind.Semicolon); return new OasisScriptLetStatementSyntax(name.Text, init, From(start.Span, end.Span)); }
+            if (Current.Kind == OasisScriptTokenKind.Return) { var start = Take(); OasisScriptExpressionSyntax? value = Current.Kind == OasisScriptTokenKind.Semicolon ? null : ParseExpression(); var end = Expect(OasisScriptTokenKind.Semicolon); return new OasisScriptReturnStatementSyntax(value, From(start.Span, end.Span)); }
             if (Current.Kind == OasisScriptTokenKind.If) { var start = Take(); var condition = ParseExpression(); var thenBlock = ParseBlock(); OasisScriptBlockSyntax? elseBlock = null; if (Current.Kind == OasisScriptTokenKind.Else) { Take(); elseBlock = ParseBlock(); } return new OasisScriptIfStatementSyntax(condition, thenBlock, elseBlock, From(start.Span, (elseBlock ?? thenBlock).Span)); }
             if (Current.Kind == OasisScriptTokenKind.For) { var start = Take(); var name = Expect(OasisScriptTokenKind.Identifier); Expect(OasisScriptTokenKind.In); var iterable = ParseExpression(); var body = ParseBlock(); return new OasisScriptForStatementSyntax(name.Text, iterable, body, From(start.Span, body.Span)); }
             if (Current.Kind == OasisScriptTokenKind.LeftBrace) return ParseBlock();
@@ -110,6 +142,6 @@ namespace Oasis.Scripting
         }
         private static int UnaryPrecedence(OasisScriptTokenKind k) => k == OasisScriptTokenKind.Minus || k == OasisScriptTokenKind.Not ? 7 : 0;
         private static int BinaryPrecedence(OasisScriptTokenKind k) => k == OasisScriptTokenKind.Star || k == OasisScriptTokenKind.Slash || k == OasisScriptTokenKind.Percent ? 6 : k == OasisScriptTokenKind.Plus || k == OasisScriptTokenKind.Minus ? 5 : k == OasisScriptTokenKind.Less || k == OasisScriptTokenKind.LessEqual || k == OasisScriptTokenKind.Greater || k == OasisScriptTokenKind.GreaterEqual ? 4 : k == OasisScriptTokenKind.EqualEqual || k == OasisScriptTokenKind.BangEqual ? 3 : k == OasisScriptTokenKind.And ? 2 : k == OasisScriptTokenKind.Or ? 1 : 0;
-        private static OasisScriptType ReferenceType(string prefix) => prefix switch { "object" => OasisScriptType.ObjectRef, "anchor" => OasisScriptType.AnchorRef, "trigger" => OasisScriptType.TriggerRef, "input" => OasisScriptType.InputRef, "lamp" => OasisScriptType.LampRef, "reel" => OasisScriptType.ReelRef, "alpha" => OasisScriptType.AlphaDisplayRef, "sevenSegment" => OasisScriptType.SevenSegmentRef, _ => OasisScriptType.Invalid };
+        private static OasisScriptType ReferenceType(string prefix) => prefix switch { "oasis" => OasisScriptType.OasisObjectRef, "anchor" => OasisScriptType.AnchorRef, "trigger" => OasisScriptType.TriggerRef, "input" => OasisScriptType.InputRef, "lamp" => OasisScriptType.LampRef, "reel" => OasisScriptType.ReelRef, "alpha" => OasisScriptType.AlphaDisplayRef, "sevenSegment" => OasisScriptType.SevenSegmentRef, "prefab" => OasisScriptType.PrefabRef, "surface" => OasisScriptType.SurfaceRef, _ => OasisScriptType.Invalid };
     }
 }

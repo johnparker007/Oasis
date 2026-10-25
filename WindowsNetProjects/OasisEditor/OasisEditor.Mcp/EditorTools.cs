@@ -60,6 +60,21 @@ public sealed class EditorTools(McpEditorSession session, EditorDispatcher ui)
     [McpServerTool(Name = "save_machine"), Description("Save the open Machine through the existing save service, refusing externally changed manifest or behavior source.")]
     public Task<MachineSnapshot> SaveMachine(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.SaveMachine(documentId), cancellationToken);
 
+    [McpServerTool(Name = "declare_machine_prefab"), Description("Declare a project Prefab alias for script spawning without adding a placed object. One undoable command; does not save.")]
+    public Task<MachineSnapshot> DeclareMachinePrefab(Guid documentId, string alias, string prefabPath, CancellationToken cancellationToken) => ui.Invoke(() => session.DeclareMachinePrefab(documentId, alias, prefabPath), cancellationToken);
+
+    [McpServerTool(Name = "set_machine_geometry_surface"), Description("Set a measured Machine-space rectangular support surface for bounded geometry queries. Finite pose and positive width/length required.")]
+    public Task<MachineSnapshot> SetMachineGeometrySurface(Guid documentId, MachineGeometrySurface surface, CancellationToken cancellationToken) => ui.Invoke(() => session.SetMachineGeometrySurface(documentId, surface), cancellationToken);
+
+    [McpServerTool(Name = "set_machine_behavior"), Description("Replace an existing Oasis Machine's behavior source through an undoable command; diagnostics are returned. Save/build remains explicit.")]
+    public Task<MachineSnapshot> SetMachineBehavior(Guid documentId, string source, CancellationToken cancellationToken) => ui.Invoke(() => session.SetMachineBehavior(documentId, source), cancellationToken);
+
+    [McpServerTool(Name = "set_machine_anchor"), Description("Add or update a Machine-space anchor with stable ID through a validated command.")]
+    public Task<MachineSnapshot> SetMachineAnchor(Guid documentId, MachineAnchor anchor, CancellationToken cancellationToken) => ui.Invoke(() => session.SetMachineAnchor(documentId, anchor), cancellationToken);
+
+    [McpServerTool(Name = "remove_machine_object"), Description("Remove a placed object subtree through its document command history; reusable Prefab sources are retained.")]
+    public Task<MachineSnapshot> RemoveMachineObject(Guid documentId, string objectId, CancellationToken cancellationToken) => ui.Invoke(() => session.RemoveMachineObject(documentId, objectId), cancellationToken);
+
     [McpServerTool(Name = "add_machine_object"), Description("Place a project Prefab using a stable Machine object ID, optional parent and local transform. One undoable command; does not save.")]
     public Task<MachineSnapshot> AddMachineObject(Guid documentId, string id, string prefabPath, CancellationToken cancellationToken,
         string? name = null, MachineObjectTransform? transform = null, string? parentId = null, bool active = true) => ui.Invoke(() => session.AddMachineObject(documentId, id, prefabPath, name, transform, parentId, active), cancellationToken);

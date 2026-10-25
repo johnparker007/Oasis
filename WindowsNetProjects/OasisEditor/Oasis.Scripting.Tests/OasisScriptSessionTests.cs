@@ -12,6 +12,7 @@ public sealed class OasisScriptSessionTests
         return result.Program!;
     }
     private static OasisScriptSession Session(string source, RecordingHost? host = null, int budget = 10000) => new(Compile(source), host ?? new(), new(budget));
+    private static OasisScriptReferenceValue LiveObject(string id) => OasisScriptReferenceValue.OasisObject(id, "test-session", 1);
     private static double State(OasisScriptSession session, string name = "score")
     { Assert.True(session.TryGetState(name, out var value)); return Assert.IsType<OasisScriptNumberValue>(value).Value; }
 
@@ -28,10 +29,10 @@ public sealed class OasisScriptSessionTests
     [Fact] public void FiltersBindingsAndSourceOrder()
     {
         var host = new RecordingHost();
-        var session = Session("state score = 0; on trigger.entered(trigger:pocket, ball) { score = score * 10 + 1; object.reset(ball); } on trigger.entered(pocket, ball) { score = score * 10 + 2; } on timer.elapsed(\"hide\") { score = score * 10 + 3; }", host);
-        session.Dispatch(OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger("other"), OasisScriptReferenceValue.Object("ball08")));
+        var session = Session("state score = 0; on trigger.entered(trigger:pocket, ball) { score = score * 10 + 1; oasis.reset(ball); } on trigger.entered(pocket, ball) { score = score * 10 + 2; } on timer.elapsed(\"hide\") { score = score * 10 + 3; }", host);
+        session.Dispatch(OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger("other"), LiveObject("ball08")));
         Assert.Equal(2, State(session)); Assert.Empty(host.Calls);
-        session.Dispatch(OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger("pocket"), OasisScriptReferenceValue.Object("ball08")));
+        session.Dispatch(OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger("pocket"), LiveObject("ball08")));
         Assert.Equal(212, State(session)); Assert.Equal("ball08", Assert.IsType<OasisScriptReferenceValue>(host.Calls[0].Values[0]).Id);
         session.Dispatch(OasisScriptEvent.TimerElapsed("other")); Assert.Equal(212, State(session));
         session.Dispatch(OasisScriptEvent.TimerElapsed("hide")); Assert.Equal(2123, State(session));
@@ -45,7 +46,7 @@ public sealed class OasisScriptSessionTests
     [Theory]
     [InlineData("2 < 3")] [InlineData("2 <= 2")] [InlineData("3 > 2")] [InlineData("3 >= 3")]
     [InlineData("2 == 2")] [InlineData("2 != 3")] [InlineData("true == true")] [InlineData("\"a\" == \"a\"")]
-    [InlineData("object:a == object:a")] [InlineData("object:a != object:b")]
+    [InlineData("oasis:a == oasis:a")] [InlineData("oasis:a != oasis:b")]
     [InlineData("vec3(1, 2, 3) == vec3(1, 2, 3)")] [InlineData("[1, 2] == [1, 2]")]
     [InlineData("not false and true")] [InlineData("false or true")]
     public void TypedEqualityAndComparisons(string expression)
@@ -77,7 +78,7 @@ public sealed class OasisScriptSessionTests
     [InlineData("[1][1 / 2]", "OSR1004")]
     public void NumericErrorsFaultWithLocationAndNoLaterHostCalls(string expression, string code)
     {
-        var host = new RecordingHost(); var session = Session($"state score = 0;\non machine.started() {{ score = {expression}; object.reset(object:a); }}", host);
+        var host = new RecordingHost(); var session = Session($"state score = 0;\non machine.started() {{ score = {expression}; oasis.reset(oasis:a); }}", host);
         Assert.False(session.Dispatch(OasisScriptEvent.MachineStarted())); Assert.True(session.IsFaulted);
         var error = session.LastRuntimeDiagnostic!; Assert.Equal(code, error.Code); Assert.Equal("behavior.oasis", error.SourceName); Assert.Equal("machine.started", error.EventName); Assert.Equal(2, error.Line); Assert.True(error.Column > 1);
         Assert.False(session.Dispatch(OasisScriptEvent.MachineStarted())); Assert.Same(error, session.LastRuntimeDiagnostic); Assert.Empty(host.Calls); Assert.Equal(0, State(session));
@@ -89,7 +90,7 @@ public sealed class OasisScriptSessionTests
     }
     [Fact] public void InstructionLimitAndInitializationLimit()
     {
-        var host = new RecordingHost(); var session = Session("on machine.started() { for i in range(0, 1000000) { object.reset(object:a); } }", host, 25);
+        var host = new RecordingHost(); var session = Session("on machine.started() { for i in range(0, 1000000) { oasis.reset(oasis:a); } }", host, 25);
         Assert.False(session.Dispatch(OasisScriptEvent.MachineStarted())); Assert.Equal("OSR1001", session.LastRuntimeDiagnostic!.Code); Assert.InRange(host.Calls.Count, 1, 3);
         var initialization = Session("const values = [1, 2, 3, 4, 5];", budget: 3);
         Assert.True(initialization.IsFaulted); Assert.Equal("initialization", initialization.LastRuntimeDiagnostic!.EventName);
@@ -100,20 +101,26 @@ public sealed class OasisScriptSessionTests
         for (var i = 0; i < 100; i++) Assert.True(session.Dispatch(OasisScriptEvent.MachineStarted()));
         Assert.Equal(100, State(session));
     }
+    [Fact] public void DispatchLifecycleWrapsEveryEventOnce()
+    {
+        var host = new RecordingHost(); var session = Session("on timer.elapsed(\"never\") {}", host);
+        Assert.True(session.Dispatch(OasisScriptEvent.MachineStarted()));
+        Assert.Equal(1, host.Dispatches); Assert.Equal(1, host.DispatchesEnded);
+    }
     [Theory] [InlineData(false)] [InlineData(true)]
     public void ExplicitAndUnexpectedHostFailuresAreConverted(bool throws)
     {
         var host = new RecordingHost { Failure = true, Throws = throws };
-        var session = Session("on machine.started() { object.reset(object:a); timer.stop(\"later\"); }", host);
+        var session = Session("on machine.started() { oasis.reset(oasis:a); timer.stop(\"later\"); }", host);
         Assert.False(session.Dispatch(OasisScriptEvent.MachineStarted())); Assert.Equal("OSR1005", session.LastRuntimeDiagnostic!.Code);
         Assert.Single(host.Calls); Assert.False(session.Dispatch(OasisScriptEvent.MachineStarted())); Assert.Single(host.Calls);
     }
     [Fact] public void EveryHostBuiltinDelegatesTypedValues()
     {
-        var host = new RecordingHost(); var session = Session("on machine.started() { object.set_active(object:a, false); object.teleport(object:a, anchor:b); object.teleport_pose(object:a, vec3(1, 2, 3), vec3(4, 5, 6)); object.set_velocity(object:a, vec3(7, 8, 9)); object.set_angular_velocity(object:a, vec3(10, 11, 12)); object.apply_impulse(object:a, vec3(13, 14, 15)); object.reset(object:a); timer.start(\"hide\", 0.5); timer.stop(\"hide\"); }", host);
+        var host = new RecordingHost(); var session = Session("on machine.started() { oasis.set_active(oasis:a, false); oasis.teleport(oasis:a, anchor:b); oasis.teleport_pose(oasis:a, vec3(1, 2, 3), vec3(4, 5, 6)); oasis.set_velocity(oasis:a, vec3(7, 8, 9)); oasis.set_angular_velocity(oasis:a, vec3(10, 11, 12)); oasis.apply_impulse(oasis:a, vec3(13, 14, 15)); oasis.reset(oasis:a); timer.start(\"hide\", 0.5); timer.stop(\"hide\"); }", host);
         Assert.True(session.Dispatch(OasisScriptEvent.MachineStarted()));
         Assert.Equal(new[] { "SetActive", "Teleport", "TeleportPose", "SetVelocity", "SetAngularVelocity", "ApplyImpulse", "ResetObject", "StartTimer", "StopTimer" }, host.Calls.Select(x => x.Name));
-        Assert.Equal(OasisScriptType.ObjectRef, host.Calls[1].Values[0].Type); Assert.Equal(OasisScriptType.AnchorRef, host.Calls[1].Values[1].Type);
+        Assert.Equal(OasisScriptType.OasisObjectRef, host.Calls[1].Values[0].Type); Assert.Equal(OasisScriptType.AnchorRef, host.Calls[1].Values[1].Type);
         Assert.False(Assert.IsType<OasisScriptBoolValue>(host.Calls[0].Values[1]).Value);
         var position = Assert.IsType<OasisScriptVec3Value>(host.Calls[2].Values[1]); Assert.Equal((1d, 2d, 3d), (position.X, position.Y, position.Z));
         Assert.Equal(6, Assert.IsType<OasisScriptVec3Value>(host.Calls[2].Values[2]).Z);
@@ -124,14 +131,14 @@ public sealed class OasisScriptSessionTests
     }
     [Fact] public void PoolPocketUsesPureHost()
     {
-        var host = new RecordingHost(); var session = Session("state pocketed = 0; on trigger.entered(trigger:PocketLeftCorner, ball) { object.teleport(ball, anchor:traySlot01); object.set_velocity(ball, vec3(0, 0, 0)); pocketed = pocketed + 1; }", host);
-        Assert.True(session.Dispatch(OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger("PocketLeftCorner"), OasisScriptReferenceValue.Object("ball08"))));
+        var host = new RecordingHost(); var session = Session("state pocketed = 0; on trigger.entered(trigger:PocketLeftCorner, ball) { oasis.teleport(ball, anchor:traySlot01); oasis.set_velocity(ball, vec3(0, 0, 0)); pocketed = pocketed + 1; }", host);
+        Assert.True(session.Dispatch(OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger("PocketLeftCorner"), LiveObject("ball08"))));
         Assert.Equal("ball08", Assert.IsType<OasisScriptReferenceValue>(host.Calls[0].Values[0]).Id); Assert.Equal("traySlot01", Assert.IsType<OasisScriptReferenceValue>(host.Calls[0].Values[1]).Id);
         var velocity = Assert.IsType<OasisScriptVec3Value>(host.Calls[1].Values[1]); Assert.Equal((0d, 0d, 0d), (velocity.X, velocity.Y, velocity.Z)); Assert.Equal(1, State(session, "pocketed"));
     }
     [Fact] public void WhacAMoleUsesPureTimerEvents()
     {
-        var host = new RecordingHost(); var session = Session("state raised = false; on machine.started() { object.teleport(object:mole1, anchor:mole1Up); timer.start(\"hideMole\", 0.5); raised = true; } on timer.elapsed(\"hideMole\") { object.teleport(object:mole1, anchor:mole1Down); raised = false; }", host);
+        var host = new RecordingHost(); var session = Session("state raised = false; on machine.started() { oasis.teleport(oasis:mole1, anchor:mole1Up); timer.start(\"hideMole\", 0.5); raised = true; } on timer.elapsed(\"hideMole\") { oasis.teleport(oasis:mole1, anchor:mole1Down); raised = false; }", host);
         Assert.True(session.Dispatch(OasisScriptEvent.MachineStarted())); session.TryGetState("raised", out var raised); Assert.True(Assert.IsType<OasisScriptBoolValue>(raised).Value);
         Assert.Equal("mole1Up", Assert.IsType<OasisScriptReferenceValue>(host.Calls[0].Values[1]).Id);
         Assert.Equal("hideMole", Assert.IsType<OasisScriptStringValue>(host.Calls[1].Values[0]).Value);
@@ -142,10 +149,10 @@ public sealed class OasisScriptSessionTests
     {
         var session = Session("state score = 0; on input.pressed(i) { score = score + 1; } on input.released(i) { score = score + 1; } on trigger.exited(t, o) { score = score + 1; } on collision.entered(o, other) { score = score + 1; } on collision.exited(o, other) { score = score + 1; }");
         session.Dispatch(OasisScriptEvent.InputPressed(OasisScriptReferenceValue.Input("add"))); session.Dispatch(OasisScriptEvent.InputReleased(OasisScriptReferenceValue.Input("add")));
-        session.Dispatch(OasisScriptEvent.TriggerExited(OasisScriptReferenceValue.Trigger("t"), OasisScriptReferenceValue.Object("o")));
-        session.Dispatch(OasisScriptEvent.CollisionEntered(OasisScriptReferenceValue.Object("o"), OasisScriptReferenceValue.Object("other")));
-        session.Dispatch(OasisScriptEvent.CollisionExited(OasisScriptReferenceValue.Object("o"), OasisScriptReferenceValue.Object("other")));
-        Assert.Equal(5, State(session)); Assert.Throws<ArgumentException>(() => OasisScriptEvent.InputPressed(OasisScriptReferenceValue.Object("wrong")));
+        session.Dispatch(OasisScriptEvent.TriggerExited(OasisScriptReferenceValue.Trigger("t"), LiveObject("o")));
+        session.Dispatch(OasisScriptEvent.CollisionEntered(LiveObject("o"), LiveObject("other")));
+        session.Dispatch(OasisScriptEvent.CollisionExited(LiveObject("o"), LiveObject("other")));
+        Assert.Equal(5, State(session)); Assert.Throws<ArgumentException>(() => OasisScriptEvent.InputPressed(LiveObject("wrong")));
     }
     [Fact] public void RangeAdvancesExactlyAboveDoubleUnitResolution()
     {
@@ -169,10 +176,63 @@ public sealed class OasisScriptSessionTests
         Assert.Throws<NotSupportedException>(() => ((IList<OasisScriptDeclarationSyntax>)program.Syntax.Declarations).Clear());
         Assert.Throws<NotSupportedException>(() => ((IList<OasisScriptStatementSyntax>)program.EventHandlers[0].Body.Statements).Clear());
     }
-    internal sealed record Call(string Name, OasisScriptValue[] Values);
-    internal sealed class RecordingHost : IOasisScriptHost
+    [Fact] public void ScopedObjectReferencesIncludeSessionAndGenerationInEquality()
     {
-        public List<Call> Calls { get; } = new(); public bool Failure { get; set; } public bool Throws { get; set; }
+        var a = OasisScriptReferenceValue.OasisObject("ball", "load-a", 1);
+        Assert.True(a.IsLiveObject);
+        Assert.Throws<ArgumentException>(() => OasisScriptReferenceValue.OasisObject("ball", "", 1));
+        Assert.Throws<ArgumentException>(() => new OasisScriptReferenceValue(OasisScriptType.OasisObjectRef, "ball"));
+        var resolveCount = 0;
+        var crossSession = new RecordingHost { ResolveFactory = id => OasisScriptReferenceValue.OasisObject(id, ++resolveCount == 1 ? "load-a" : "load-b", 1) };
+        var session = Session("state same = false; state first: OasisObjectRef = oasis:ball; on machine.started() { same = first == oasis:ball; }", crossSession);
+        Assert.True(session.Dispatch(OasisScriptEvent.MachineStarted())); session.TryGetState("same", out var value); Assert.False(Assert.IsType<OasisScriptBoolValue>(value).Value);
+    }
+    [Fact] public void TypedEmptyListsAndFunctionsCanUpdateState()
+    {
+        var host = new RecordingHost();
+        var session = Session("state balls: List<OasisObjectRef> = []; fn add(ball: OasisObjectRef) -> Void { balls = list.append(balls, ball); return; } on machine.started() { add(oasis:ball01); add(oasis:ball02); }", host);
+        Assert.False(session.IsFaulted);
+        Assert.True(session.Dispatch(OasisScriptEvent.MachineStarted()), session.LastRuntimeDiagnostic?.ToString());
+        Assert.True(session.TryGetState("balls", out var value));
+        var balls = Assert.IsType<OasisScriptListValue>(value);
+        Assert.Equal(2, balls.Values.Count);
+        Assert.Equal(2, balls.Values.Count);
+        Assert.Equal("ball01", Assert.IsType<OasisScriptReferenceValue>(balls.Values[0]).Id);
+    }
+    [Fact] public void FunctionGraphRejectsRecursionAndChecksTypes()
+    {
+        var recursive = OasisScriptCompiler.Compile("fn first() -> Number { return second(); } fn second() -> Number { return first(); }");
+        Assert.False(recursive.Success); Assert.Contains(recursive.Diagnostics, d => d.Message.Contains("Recursive", StringComparison.Ordinal));
+        var wrongType = OasisScriptCompiler.Compile("fn twice(value: Number) -> Number { return value * 2; } state result = 0; on machine.started() { result = twice(true); }");
+        Assert.False(wrongType.Success); Assert.Contains(wrongType.Diagnostics, d => d.Code == "OS2303");
+    }
+    [Fact] public void FunctionResolutionUsesLexicalGlobalsInsteadOfCallerLocals()
+    {
+        var session = Session("const global_value = 1; fn get_value() -> Number { return global_value; } state result = 0; on machine.started() { let temporary = 9; result = get_value(); }");
+        Assert.True(session.Dispatch(OasisScriptEvent.MachineStarted()), session.LastRuntimeDiagnostic?.ToString());
+        Assert.Equal(1, State(session, "result"));
+    }
+    [Fact] public void SqrtAndRequireHaveBoundedRuntimeErrors()
+    {
+        var sqrt = Session("state answer = 0; on machine.started() { answer = math.sqrt(81); }");
+        Assert.True(sqrt.Dispatch(OasisScriptEvent.MachineStarted())); Assert.Equal(9, State(sqrt, "answer"));
+        var require = Session("on machine.started() { require(false, \"preflight failed\"); }");
+        Assert.False(require.Dispatch(OasisScriptEvent.MachineStarted())); Assert.Equal("OSR1006", require.LastRuntimeDiagnostic!.Code); Assert.Contains("preflight failed", require.LastRuntimeDiagnostic.Message);
+    }
+    [Fact] public void EmptyTypedListAndScopedHostQueryResultsAreValidated()
+    {
+        var host = new RecordingHost { QueryValue = OasisScriptHostResult.Return(LiveObject("spawned")) };
+        var session = Session("state spawned: OasisObjectRef = oasis:original; on machine.started() { spawned = oasis.instantiate(prefab:ball, vec3(0,0,0), vec3(0,0,0)); }", host);
+        Assert.True(session.Dispatch(OasisScriptEvent.MachineStarted()), session.LastRuntimeDiagnostic?.ToString());
+        Assert.Equal("spawned", Assert.IsType<OasisScriptReferenceValue>(host.QueryValue!.Value).Id);
+        var wrongHost = new RecordingHost { QueryValue = OasisScriptHostResult.Return(new OasisScriptBoolValue(true)) };
+        var invalid = Session("on machine.started() { let ball = oasis.instantiate(prefab:ball, vec3(0,0,0), vec3(0,0,0)); }", wrongHost);
+        Assert.False(invalid.Dispatch(OasisScriptEvent.MachineStarted())); Assert.Equal("OSR1005", invalid.LastRuntimeDiagnostic!.Code);
+    }
+    internal sealed record Call(string Name, OasisScriptValue[] Values);
+    internal sealed class RecordingHost : IOasisScriptValueHost, IOasisScriptDispatchHost
+    {
+        public List<Call> Calls { get; } = new(); public bool Failure { get; set; } public bool Throws { get; set; } public OasisScriptHostResult? QueryValue { get; set; } public OasisScriptReferenceValue? ResolvedValue { get; set; } public Func<string, OasisScriptReferenceValue>? ResolveFactory { get; set; } public int Dispatches { get; private set; } public int DispatchesEnded { get; private set; }
         private OasisScriptHostResult Record(string name, params OasisScriptValue[] args)
         { Calls.Add(new(name, args)); if (Throws) throw new InvalidOperationException("unexpected host error"); return Failure ? OasisScriptHostResult.Fail("missing object") : OasisScriptHostResult.Ok; }
         public OasisScriptHostResult SetActive(OasisScriptReferenceValue obj, bool active) => Record("SetActive", obj, new OasisScriptBoolValue(active));
@@ -184,5 +244,9 @@ public sealed class OasisScriptSessionTests
         public OasisScriptHostResult ResetObject(OasisScriptReferenceValue obj) => Record("ResetObject", obj);
         public OasisScriptHostResult StartTimer(string name, double seconds) => Record("StartTimer", new OasisScriptStringValue(name), new OasisScriptNumberValue(seconds));
         public OasisScriptHostResult StopTimer(string name) => Record("StopTimer", new OasisScriptStringValue(name));
+        public OasisScriptHostResult ResolveObject(string authoredId) => OasisScriptHostResult.Return(ResolveFactory?.Invoke(authoredId) ?? ResolvedValue ?? LiveObject(authoredId));
+        public OasisScriptHostResult Query(string operation, IReadOnlyList<OasisScriptValue> arguments) { Calls.Add(new(operation, arguments.ToArray())); return QueryValue ?? OasisScriptHostResult.Fail("unsupported test query"); }
+        public void BeginDispatch() => Dispatches++;
+        public void EndDispatch() => DispatchesEnded++;
     }
 }

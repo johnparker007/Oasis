@@ -1,7 +1,15 @@
 # Prefab and algorithmic Pool delivery plan — proposed
 
-Status updated 2026-10-25: P1 authoring delivered in PR #745; P2 and P3 are being
-verified. P4–P8 remain planned. [Architecture and inspected baseline](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md) defines the contracts. [Active roadmap](10_ACTIVE_ROADMAP.md) owns sequencing.
+Status updated 2026-10-25: P1 authoring is merged in PR #745; P2/P3 are merged
+in PR #746. The Pool-required P4 subset and P5 are implemented and locally verified:
+165 shared scripting tests, 1,441 Editor tests and 206 focused Unity tests passed.
+Actual Player checks cover the calculated rack, all six pockets, collection/cue
+recovery, five new games and unload/reload. The earlier full Unity suite retained
+24 failures in unchanged geometry/rendering/reflection tests; it was not a clean
+full-suite pass. Optional values and kinematic target movement remain deferred,
+along with P6–P8. The sections below retain the wider proposed contracts.
+[Architecture and inspected baseline](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md)
+defines the contracts. [Active roadmap](10_ACTIVE_ROADMAP.md) owns sequencing.
 
 ## Sequencing and common gates
 

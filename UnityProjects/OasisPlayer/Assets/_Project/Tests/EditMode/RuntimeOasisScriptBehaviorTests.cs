@@ -32,10 +32,10 @@ namespace OasisPlayer.Tests
             var ball = AddObject(machine, "ball08", true);
             using (var host = new RuntimeMachineOasisScriptHost(machine))
             {
-                Ok(host.Teleport(OasisScriptReferenceValue.Object("ball08"), OasisScriptReferenceValue.Anchor("rackBall08")));
+                Ok(host.Teleport(machine.GetObjectReference("ball08"), OasisScriptReferenceValue.Anchor("rackBall08")));
                 Assert.AreEqual(new Vector3(8, 7, 6), ball.Root.transform.localPosition);
-                Ok(host.SetVelocity(OasisScriptReferenceValue.Object("ball08"), new OasisScriptVec3Value(1.25, -2.5, 3.75)));
-                Ok(host.SetAngularVelocity(OasisScriptReferenceValue.Object("ball08"), new OasisScriptVec3Value(4, 5, 6)));
+                Ok(host.SetVelocity(machine.GetObjectReference("ball08"), new OasisScriptVec3Value(1.25, -2.5, 3.75)));
+                Ok(host.SetAngularVelocity(machine.GetObjectReference("ball08"), new OasisScriptVec3Value(4, 5, 6)));
                 Assert.AreEqual(new Vector3(1.25f, -2.5f, 3.75f), ball.Rigidbody.linearVelocity);
                 Assert.AreEqual(new Vector3(4, 5, 6), ball.Rigidbody.angularVelocity);
             }
@@ -69,7 +69,7 @@ namespace OasisPlayer.Tests
                         default: result = host.ResetObject(value); break;
                     }
                     Assert.False(result.Success);
-                    StringAssert.Contains("ObjectRef", result.Error);
+                    StringAssert.Contains("OasisObjectRef", result.Error);
                     Assert.True(instance.Root.activeSelf);
                     Assert.AreEqual(Vector3.zero, instance.Root.transform.localPosition);
                     Assert.AreEqual(Vector3.zero, instance.Rigidbody.linearVelocity);
@@ -84,11 +84,11 @@ namespace OasisPlayer.Tests
             var instance = AddObject(machine, "foo", true);
             using (var host = new RuntimeMachineOasisScriptHost(machine))
             {
-                var obj = OasisScriptReferenceValue.Object("foo");
+                var obj = machine.GetObjectReference("foo");
                 var zero = new OasisScriptVec3Value(0, 0, 0);
-                StringAssert.Contains("AnchorRef", host.Teleport(obj, OasisScriptReferenceValue.Object("foo")).Error);
+                StringAssert.Contains("AnchorRef", host.Teleport(obj, OasisScriptReferenceValue.AuthoredObject("foo")).Error);
                 StringAssert.Contains("AnchorRef", host.Teleport(obj, null).Error);
-                StringAssert.Contains("Invalid ObjectRef ID", host.ResetObject(OasisScriptReferenceValue.Object("object:foo")).Error);
+                StringAssert.Contains("resolved OasisObjectRef", host.ResetObject(OasisScriptReferenceValue.AuthoredObject("foo")).Error);
                 Assert.False(host.TeleportPose(obj, null, zero).Success);
                 Assert.False(host.TeleportPose(obj, zero, null).Success);
                 Assert.False(host.SetVelocity(obj, null).Success);
@@ -139,17 +139,17 @@ namespace OasisPlayer.Tests
             AddObject(machine, "decoration", false);
             using (var host = new RuntimeMachineOasisScriptHost(machine))
             {
-                var obj = OasisScriptReferenceValue.Object("decoration");
-                StringAssert.Contains("missing", host.Teleport(OasisScriptReferenceValue.Object("missing"), OasisScriptReferenceValue.Anchor("target")).Error);
+                var obj = machine.GetObjectReference("decoration");
+                StringAssert.Contains("missing", host.Teleport(OasisScriptReferenceValue.OasisObject("missing", machine.SessionId, machine.Generation), OasisScriptReferenceValue.Anchor("target")).Error);
                 StringAssert.Contains("missingAnchor", host.Teleport(obj, OasisScriptReferenceValue.Anchor("missingAnchor")).Error);
                 StringAssert.Contains("no Rigidbody", host.SetVelocity(obj, new OasisScriptVec3Value(0, 0, 0)).Error);
                 StringAssert.Contains("no Rigidbody", host.SetAngularVelocity(obj, new OasisScriptVec3Value(0, 0, 0)).Error);
                 StringAssert.Contains("no Rigidbody", host.ApplyImpulse(obj, new OasisScriptVec3Value(1, 0, 0)).Error);
                 // Damaged live instance exercises the unexpected-exception boundary without a fake host.
                 machine.RegisterObject(new RuntimeObjectInstance("damaged", "damaged", "def", null, Root("damaged"), null, null, null));
-                var failure = host.ResetObject(OasisScriptReferenceValue.Object("damaged"));
+                var failure = host.ResetObject(machine.GetObjectReference("damaged"));
                 Assert.False(failure.Success);
-                StringAssert.Contains("object.reset", failure.Error);
+                StringAssert.Contains("oasis.reset", failure.Error);
                 StringAssert.Contains("unexpected NullReferenceException", failure.Error);
             }
         }
@@ -182,17 +182,19 @@ namespace OasisPlayer.Tests
             yield return new TestCaseData(new RuntimeMachineStartedEvent(), "machine.started", Array.Empty<string>(), Array.Empty<OasisScriptType>());
             yield return new TestCaseData(new RuntimeInputPressedEvent("reset"), "input.pressed", new[] { "reset" }, new[] { OasisScriptType.InputRef });
             yield return new TestCaseData(new RuntimeInputReleasedEvent("reset"), "input.released", new[] { "reset" }, new[] { OasisScriptType.InputRef });
-            yield return new TestCaseData(new RuntimeTriggerEnteredEvent("PocketLeftCorner", "ball08"), "trigger.entered", new[] { "PocketLeftCorner", "ball08" }, new[] { OasisScriptType.TriggerRef, OasisScriptType.ObjectRef });
-            yield return new TestCaseData(new RuntimeTriggerExitedEvent("PocketLeftCorner", "ball08"), "trigger.exited", new[] { "PocketLeftCorner", "ball08" }, new[] { OasisScriptType.TriggerRef, OasisScriptType.ObjectRef });
-            yield return new TestCaseData(new RuntimeCollisionEnteredEvent("ball08", "ball09"), "collision.entered", new[] { "ball08", "ball09" }, new[] { OasisScriptType.ObjectRef, OasisScriptType.ObjectRef });
-            yield return new TestCaseData(new RuntimeCollisionExitedEvent("ball08", "ball09"), "collision.exited", new[] { "ball08", "ball09" }, new[] { OasisScriptType.ObjectRef, OasisScriptType.ObjectRef });
+            yield return new TestCaseData(new RuntimeTriggerEnteredEvent("PocketLeftCorner", "ball08"), "trigger.entered", new[] { "PocketLeftCorner", "ball08" }, new[] { OasisScriptType.TriggerRef, OasisScriptType.OasisObjectRef });
+            yield return new TestCaseData(new RuntimeTriggerExitedEvent("PocketLeftCorner", "ball08"), "trigger.exited", new[] { "PocketLeftCorner", "ball08" }, new[] { OasisScriptType.TriggerRef, OasisScriptType.OasisObjectRef });
+            yield return new TestCaseData(new RuntimeCollisionEnteredEvent("ball08", "ball09"), "collision.entered", new[] { "ball08", "ball09" }, new[] { OasisScriptType.OasisObjectRef, OasisScriptType.OasisObjectRef });
+            yield return new TestCaseData(new RuntimeCollisionExitedEvent("ball08", "ball09"), "collision.exited", new[] { "ball08", "ball09" }, new[] { OasisScriptType.OasisObjectRef, OasisScriptType.OasisObjectRef });
             yield return new TestCaseData(new RuntimeTimerElapsedEvent("hide"), "timer.elapsed", new[] { "hide" }, new[] { OasisScriptType.String });
         }
 
         [TestCaseSource(nameof(EventCases))]
         public void EveryA7EventProducesCanonicalTypedValues(RuntimeMachineEvent value, string name, string[] ids, OasisScriptType[] types)
         {
-            Assert.True(RuntimeOasisScriptBehavior.TryTranslateEvent(value, out var translated));
+            var machine = Machine();
+            for (var i = 0; i < ids.Length; i++) if (types[i] == OasisScriptType.OasisObjectRef) AddObject(machine, ids[i], false);
+            Assert.True(RuntimeOasisScriptBehavior.TryTranslateEvent(machine, value, out var translated));
             Assert.AreEqual(name, translated.Name);
             Assert.AreEqual(ids.Length, translated.Arguments.Count);
             for (var i = 0; i < ids.Length; i++)
@@ -200,13 +202,18 @@ namespace OasisPlayer.Tests
                 Assert.AreEqual(types[i], translated.Arguments[i].Type);
                 var reference = translated.Arguments[i] as OasisScriptReferenceValue;
                 Assert.AreEqual(ids[i], reference != null ? reference.Id : ((OasisScriptStringValue)translated.Arguments[i]).Value);
+                if (types[i] == OasisScriptType.OasisObjectRef)
+                {
+                    Assert.AreEqual(machine.SessionId, reference.SessionId);
+                    Assert.AreEqual(machine.Generation, reference.Generation);
+                }
             }
         }
 
         [Test]
         public void DispatchCompletesSynchronouslyAndHandlersRetainSourceOrder()
         {
-            var machine = Machine("state count = 0; on input.pressed(input:reset) { count = count * 10 + 1; } on input.pressed(input:reset) { count = count * 10 + 2; object.teleport_pose(object:foo, vec3(count,0,0), vec3(0,0,0)); }");
+            var machine = Machine("state count = 0; on input.pressed(input:reset) { count = count * 10 + 1; } on input.pressed(input:reset) { count = count * 10 + 2; oasis.teleport_pose(oasis:foo, vec3(count,0,0), vec3(0,0,0)); }");
             var instance = AddObject(machine, "foo", false);
             var behavior = Attach(machine);
             machine.Events.Subscribe(value =>
@@ -221,7 +228,7 @@ namespace OasisPlayer.Tests
         [Test]
         public void MachineStartedUsesA7AndRunsExactlyOnceAfterAttachment()
         {
-            var machine = Machine("state starts = 0; on machine.started() { starts = starts + 1; object.teleport_pose(object:foo, vec3(starts,0,0), vec3(0,0,0)); }");
+            var machine = Machine("state starts = 0; on machine.started() { starts = starts + 1; oasis.teleport_pose(oasis:foo, vec3(starts,0,0), vec3(0,0,0)); }");
             var instance = AddObject(machine, "foo", false);
             Attach(machine);
             Assert.AreEqual(Vector3.zero, instance.Root.transform.localPosition);
@@ -294,12 +301,12 @@ namespace OasisPlayer.Tests
             Assert.AreEqual(1, _faults.Count);
         }
 
-        [TestCase("object.teleport(object:missing, anchor:target);", "missing")]
-        [TestCase("object.teleport(object:foo, anchor:missingAnchor);", "missingAnchor")]
-        [TestCase("object.set_velocity(object:foo, vec3(0,0,0));", "no Rigidbody")]
+        [TestCase("oasis.teleport(oasis:missing, anchor:target);", "missing")]
+        [TestCase("oasis.teleport(oasis:foo, anchor:missingAnchor);", "missingAnchor")]
+        [TestCase("oasis.set_velocity(oasis:foo, vec3(0,0,0));", "no Rigidbody")]
         public void HostFailureFaultsOnceWithoutEscapingThePublisher(string command, string expected)
         {
-            var machine = Machine("on input.pressed(input:reset) { " + command + " timer.start(\"afterFault\", 1); } on input.released(input:reset) { object.set_active(object:foo, false); }", new[] { Anchor("target", 1, 2, 3) });
+            var machine = Machine("on input.pressed(input:reset) { " + command + " timer.start(\"afterFault\", 1); } on input.released(input:reset) { oasis.set_active(oasis:foo, false); }", new[] { Anchor("target", 1, 2, 3) });
             var instance = AddObject(machine, "foo", false);
             var behavior = Attach(machine);
             machine.CompleteStartup();
@@ -328,7 +335,7 @@ namespace OasisPlayer.Tests
         [Test]
         public void MachineStartedHandlerFaultKeepsMachineLoadedAndDisablesLaterEvents()
         {
-            var machine = Machine("on machine.started() { object.reset(object:missing); } on input.pressed(input:reset) { timer.start(\"late\", 1); }");
+            var machine = Machine("on machine.started() { oasis.reset(oasis:missing); } on input.pressed(input:reset) { timer.start(\"late\", 1); }");
             var behavior = Attach(machine);
             Assert.DoesNotThrow(() => machine.CompleteStartup());
             Assert.True(machine.HasStarted);
@@ -342,7 +349,7 @@ namespace OasisPlayer.Tests
         [Test]
         public void PoolTriggerRelayRunsScriptAndMovesLiveBallAndClearsBothVelocities()
         {
-            var machine = Machine("on trigger.entered(trigger:PocketLeftCorner, ball) { object.teleport(ball, anchor:traySlot01); object.set_velocity(ball, vec3(0,0,0)); object.set_angular_velocity(ball, vec3(0,0,0)); } on trigger.exited(trigger:PocketLeftCorner, ball) { object.set_active(ball, false); }", new[] { Anchor("traySlot01", 3, 2, 1) });
+            var machine = Machine("on trigger.entered(trigger:PocketLeftCorner, ball) { oasis.teleport(ball, anchor:traySlot01); oasis.set_velocity(ball, vec3(0,0,0)); oasis.set_angular_velocity(ball, vec3(0,0,0)); } on trigger.exited(trigger:PocketLeftCorner, ball) { oasis.set_active(ball, false); }", new[] { Anchor("traySlot01", 3, 2, 1) });
             var ball = AddObject(machine, "ball08", true);
             ball.Rigidbody.linearVelocity = new Vector3(4, 5, 6);
             ball.Rigidbody.angularVelocity = new Vector3(1, 2, 3);
@@ -367,7 +374,7 @@ namespace OasisPlayer.Tests
         [Test]
         public void LogicalInputPressedAndReleasedDriveActualA7Commands()
         {
-            var machine = Machine("on input.pressed(input:reset) { object.teleport(object:ball08, anchor:rackBall08); object.set_velocity(object:ball08, vec3(0,0,0)); } on input.released(input:reset) { object.set_angular_velocity(object:ball08, vec3(0,0,0)); }", new[] { Anchor("rackBall08", 7, 8, 9) });
+            var machine = Machine("on input.pressed(input:reset) { oasis.teleport(oasis:ball08, anchor:rackBall08); oasis.set_velocity(oasis:ball08, vec3(0,0,0)); } on input.released(input:reset) { oasis.set_angular_velocity(oasis:ball08, vec3(0,0,0)); }", new[] { Anchor("rackBall08", 7, 8, 9) });
             var ball = AddObject(machine, "ball08", true);
             ball.Rigidbody.linearVelocity = new Vector3(1, 2, 3);
             ball.Rigidbody.angularVelocity = new Vector3(4, 5, 6);
@@ -383,7 +390,7 @@ namespace OasisPlayer.Tests
         [Test]
         public void CollisionBridgePreservesDirectionAndDispatchesEnteredAndExited()
         {
-            var machine = Machine("on collision.entered(object:one, other) { object.teleport_pose(other, vec3(4,5,6), vec3(0,0,0)); } on collision.exited(object:one, other) { object.set_active(other, false); }");
+            var machine = Machine("on collision.entered(oasis:one, other) { oasis.teleport_pose(other, vec3(4,5,6), vec3(0,0,0)); } on collision.exited(oasis:one, other) { oasis.set_active(other, false); }");
             var first = AddObject(machine, "one", true);
             var second = AddObject(machine, "two", true);
             Attach(machine);
@@ -400,7 +407,7 @@ namespace OasisPlayer.Tests
         [Test]
         public void WhacAMoleStartedAndA7TimerFeedbackRaiseThenLowerLiveObject()
         {
-            var machine = Machine("on machine.started() { object.teleport(object:mole1, anchor:mole1Up); timer.start(\"hide\", 0.5); } on timer.elapsed(\"hide\") { object.teleport(object:mole1, anchor:mole1Down); }", new[] { Anchor("mole1Up", 0, 1, 0), Anchor("mole1Down", 0, 0, 0) });
+            var machine = Machine("on machine.started() { oasis.teleport(oasis:mole1, anchor:mole1Up); timer.start(\"hide\", 0.5); } on timer.elapsed(\"hide\") { oasis.teleport(oasis:mole1, anchor:mole1Down); }", new[] { Anchor("mole1Up", 0, 1, 0), Anchor("mole1Down", 0, 0, 0) });
             var mole = AddObject(machine, "mole1", false);
             Attach(machine);
             machine.CompleteStartup();
@@ -421,7 +428,7 @@ namespace OasisPlayer.Tests
         [Test]
         public void DirectPoseUsesMachineSpaceAndDoesNotReapplyIntrinsicCorrection()
         {
-            var machine = Machine("on input.pressed(input:reset) { object.teleport_pose(object:foo, vec3(1,2,3), vec3(0,90,0)); }");
+            var machine = Machine("on input.pressed(input:reset) { oasis.teleport_pose(oasis:foo, vec3(1,2,3), vec3(0,90,0)); }");
             var instance = AddObject(machine, "foo", true);
             var parent = Root("MachineSpace");
             parent.transform.position = new Vector3(10, 20, 30);
@@ -443,7 +450,7 @@ namespace OasisPlayer.Tests
         [Test]
         public void SetActivePreservesRegistryAndCanReactivateThroughScript()
         {
-            var machine = Machine("on input.pressed(input:reset) { object.set_active(object:foo, false); } on input.released(input:reset) { object.set_active(object:foo, true); }");
+            var machine = Machine("on input.pressed(input:reset) { oasis.set_active(oasis:foo, false); } on input.released(input:reset) { oasis.set_active(oasis:foo, true); }");
             var instance = AddObject(machine, "foo", false);
             Attach(machine);
             machine.SetInputState("reset", true);
@@ -457,7 +464,7 @@ namespace OasisPlayer.Tests
         [Test]
         public void ApplyImpulseDelegatesToA7WithoutAnotherPhysicsPolicy()
         {
-            var machine = Machine("on input.pressed(input:reset) { object.apply_impulse(object:foo, vec3(2,0,0)); }");
+            var machine = Machine("on input.pressed(input:reset) { oasis.apply_impulse(oasis:foo, vec3(2,0,0)); }");
             var instance = AddObject(machine, "foo", true);
             instance.Rigidbody.mass = 2;
             instance.Rigidbody.linearDamping = 0;
@@ -479,7 +486,7 @@ namespace OasisPlayer.Tests
         [Test]
         public void ResetUsesSettledA7SemanticsWithoutReinstantiation()
         {
-            var machine = Machine("on input.pressed(input:reset) { object.reset(object:foo); }");
+            var machine = Machine("on input.pressed(input:reset) { oasis.reset(oasis:foo); }");
             var instance = AddObject(machine, "foo", true, new Vector3(1, 2, 3));
             var root = instance.Root;
             instance.AuthoredInitialTransform.rotationEulerDegrees = Vector(10, 20, 30);
