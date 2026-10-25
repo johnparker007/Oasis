@@ -29,16 +29,27 @@ The editor is moving to a folder-as-asset storage model. Current implementation 
 
 ## Environment Constraints
 
-The Codex execution environment does **not** contain the required Windows/.NET/WPF toolchain.
+Determine the execution environment before running verification.
 
-Do not:
+Restricted cloud or non-Windows agents without the Windows/.NET/WPF toolchain:
 
-- attempt to build the solution
-- attempt to run the application
-- attempt to execute unit tests
-- create `BuildAndTestAttempt`-style Markdown files
+- Do not attempt WPF builds, launch the application, or run Windows-dependent tests.
+- Describe the verification required in a supported local environment.
 
-After completing a task, describe what should be tested locally.
+Local Windows agents with the required SDK, WindowsDesktop reference pack and runtime:
+
+- May build OasisEditor and run existing managed tests using supported local tools.
+- May launch and interact with the editor when desktop automation is available and the user permits desktop use.
+- When the user is using the PC, perform background work only; do not activate windows, capture the desktop, or send mouse/keyboard input without agreement.
+- Use disposable projects for UI verification; preserve user content and uncommitted work.
+- Prefer existing tooling and cached dependencies. Obtain approval before software installation or substantial configuration changes.
+- Capture actual UI evidence before claiming visual verification. Accessibility text alone does not verify layout, rendering or theme quality.
+- Report commands, outcomes, warnings, failures, skipped tests and verification limitations.
+- Do not change Unity packages or configuration merely to experiment with automation without approval.
+
+Do not create `BuildAndTestAttempt`-style Markdown files.
+
+All architectural, command/undo, theme, language compatibility and current-priority rules remain in force.
 
 ## Unity Language Compatibility
 
@@ -127,4 +138,4 @@ Add automated tests where practical.
 
 After completing implementation, describe the local verification steps required.
 
-Do not attempt to execute builds or tests within Codex.
+Run builds and tests only in a supported environment as described under Environment Constraints.

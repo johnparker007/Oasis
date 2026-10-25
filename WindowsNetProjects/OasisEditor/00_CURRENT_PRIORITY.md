@@ -24,6 +24,7 @@ Proposed A8.6 fruit-device work is deferred behind this track; A8.7 mole validat
 is expanded into P7, with a moving-shelf/coin proving case at P8. Variants are P6,
 a separate later milestone, not a Pool prerequisite. No parallel competing plans.
 
-Do not execute builds/tests in Codex. Use static checks and describe local
-Windows/.NET and Unity verification. No application/schema/asset/generated-output
+Restricted cloud agents must not execute unsupported builds/tests. Local agents may
+use supported .NET/Windows and Unity tools under AGENTS.md Environment Constraints.
+No application/schema/asset/generated-output
 changes are authorised by this planning document itself.
