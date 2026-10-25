@@ -40,4 +40,6 @@ the existing verify_pool_player.py client. It tests the actual local Pool GLBs,
 wall clearance, real CharacterController wall contact, enter/leave input release,
 a physical cue impulse, motion gating and replacement-cue lookup after newGame.
 Mouse feel, visual camera/HUD layout and manual walking require a user-approved
-interactive session. The standalone Windows build needs its own smoke check.
+interactive session. The Windows development build also passed a hidden headless startup check against
+the actual saved Pool project (the ready marker was reached). Headless shader
+warnings are expected and do not establish rendered correctness.

@@ -5,6 +5,16 @@ one playable Pool table and one basic working fruit machine. Prioritise a functi
 end-to-end loop before a visual arcade designer, polished avatars or complete game rules.
 Prefab variants and the mole/coin proving cases remain deferred.
 
+## First implementation verification
+
+The standalone foundation has 150 focused Unity tests passing. The actual local
+Pool GLBs passed room wall clearance, CharacterController wall contact, held-input
+release, cue impulse, moving-ball shot rejection and cue replacement after newGame.
+A Windows development Player was built and reached its ready marker in a hidden
+headless startup check. Its headless shader warnings do not verify rendered output.
+Multi-machine arcade loading, authored profile defaults and fruit gameplay remain
+future milestones; this is not a completed arcade.
+
 ## Ownership and interaction profiles
 
 The Player owns the visitor, walking collision, camera, pointer capture and selection
