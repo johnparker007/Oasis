@@ -9,12 +9,13 @@ namespace OasisEditor.Automation;
 
 internal static class McpPanelCapture
 {
-    public static byte[] Capture(DocumentTabViewModel document, string projectDirectory, int width, int height, ThemePreference theme)
+    public static byte[] Capture(DocumentTabViewModel document, string projectDirectory, int width, int height, ThemePreference theme, string framing, Rect? target)
     {
         if (width is < 320 or > 1920 || height is < 240 or > 1080) throw new ArgumentOutOfRangeException(nameof(width), "Capture size out of range.");
         if (Application.Current is null) throw new InvalidOperationException("Capture requires the MCP host's WPF dispatcher.");
         new ApplicationThemeService().ApplyTheme(Application.Current, theme);
         var previousProject = ProjectAssetPathResolver.ProjectDirectoryPath;
+        var previousView = new EditorViewportTransform(document.PanelZoom, document.PanelPanX, document.PanelPanY);
         var view = new SkiaPanel2DEditView { DataContext = document, Width = width, Height = height };
         // Skia's WPF element needs a presentation source to initialize rendering.
         // An offscreen tool window supplies it without activating or entering the taskbar.
@@ -32,6 +33,9 @@ internal static class McpPanelCapture
             view.Measure(new Size(width, height));
             view.Arrange(new Rect(0, 0, width, height));
             view.UpdateLayout();
+            if (framing == "fit") view.FitToViewport();
+            else if (target is { } bounds) view.FrameContent(bounds);
+            view.RefreshForCapture();
             var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
             bitmap.Render(view);
             var encoder = new PngBitmapEncoder();
@@ -45,6 +49,9 @@ internal static class McpPanelCapture
             source.RootVisual = null;
             view.DataContext = null;
             view.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent));
+            document.PanelZoom = previousView.Zoom;
+            document.PanelPanX = previousView.PanX;
+            document.PanelPanY = previousView.PanY;
             ProjectAssetPathResolver.ProjectDirectoryPath = previousProject;
         }
     }

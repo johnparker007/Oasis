@@ -89,10 +89,32 @@ public partial class SkiaPanel2DEditView : UserControl
     }
 
     private void OnFitRequested(object? sender, EventArgs e)
+        => FitToViewport();
+
+    internal void FitToViewport()
     {
         if (Document is not { } document) return;
         var (viewport, bounds, dpi) = NavigationGeometry(document);
         SetViewport(EditorViewportTransform.Fit(viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY, ContentScale(document)));
+    }
+
+    internal void FrameContent(Rect target)
+    {
+        if (Document is not { } document) return;
+        var (viewport, bounds, dpi) = NavigationGeometry(document);
+        var scale = ContentScale(document);
+        var fit = EditorViewportTransform.Fit(viewport, target, dpi.DpiScaleX, dpi.DpiScaleY, scale);
+        var zoom = Math.Clamp(fit.ClampedZoom * 0.9, EditorViewportTransform.MinZoom, EditorViewportTransform.MaxZoom);
+        var next = new EditorViewportTransform(zoom, 0, 0);
+        var centre = next.ContentToScreen(new Point(target.X + target.Width / 2, target.Y + target.Height / 2), viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY, scale);
+        SetViewport(next with { PanX = viewport.Width / 2 - centre.X, PanY = viewport.Height / 2 - centre.Y });
+    }
+
+    internal void RefreshForCapture()
+    {
+        UpdateStatus();
+        EditSkiaSurface.InvalidateVisual();
+        UpdateLayout();
     }
 
     private void OnZoomRequested(object? sender, double zoom) => ZoomAtViewportCentre(zoom);
