@@ -5,11 +5,19 @@ namespace OasisEditor;
 
 public partial class App : Application
 {
+    private bool _suppressInteractiveStartup;
+
+    // WPF queues OnStartup from Application's constructor, even if the host
+    // runs Dispatcher.Run instead of Application.Run. MCP needs resources only.
+    public static App CreateAutomationHost() => new() { _suppressInteractiveStartup = true };
+
     private readonly IApplicationThemeService _applicationThemeService = new ApplicationThemeService();
     private readonly EditorPreferencesStore _preferencesStore = new();
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        if (_suppressInteractiveStartup) return;
+
         _applicationThemeService.EnsureFluentThemeResources(this);
 
         var preferences = _preferencesStore.Load();

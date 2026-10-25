@@ -22,7 +22,8 @@ internal static class Program
         Console.SetOut(Console.Error);
         try
         {
-            var app = new App { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            var app = App.CreateAutomationHost();
+            app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             app.InitializeComponent();
             var themes = new ApplicationThemeService();
             themes.EnsureFluentThemeResources(app);
