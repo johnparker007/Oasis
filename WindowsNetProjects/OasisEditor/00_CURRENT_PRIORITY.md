@@ -14,5 +14,5 @@ loading/build sections of 09_RUNTIME_BUILD_AND_PLAYER_CONTRACT.md.
 Gameplay belongs in Machine-owned behavior.oasis; commands and timers use A7.
 Anchors are Machine-space data and live Object3D roots/Rigidbodies are authoritative.
 Do not attach scripts to Emulation Machines. Preserve A8.4 fault/unload semantics.
-Do not execute builds/tests in Codex; use supported local .NET/Windows and Unity tools.
+Restricted cloud agents must not execute unsupported builds/tests. Local agents may use supported .NET/Windows and Unity tools under AGENTS.md Environment Constraints.
 Fruit-device commands are A8.6; Whac-A-Mole gameplay validation is A8.7.
