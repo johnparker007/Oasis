@@ -19,6 +19,7 @@ namespace OasisPlayer.UI.Controllers
         private bool _previousCursorVisible;
         private int _openVersion;
         private CursorLockMode _previousLockMode;
+        public static bool IsOpen { get; private set; }
 
         private void Awake()
         {
@@ -44,7 +45,7 @@ namespace OasisPlayer.UI.Controllers
 
         private void Update()
         {
-            if (!Input.GetKeyDown(KeyCode.Escape)) return;
+            if (!Input.GetKeyDown(KeyCode.F10)) return;
 
             if (_open) CancelAndClose();
             else OpenGraphicsSettings();
@@ -75,6 +76,7 @@ namespace OasisPlayer.UI.Controllers
             _document.rootVisualElement.pickingMode = PickingMode.Position;
 
             _open = true;
+            IsOpen = true;
             _openVersion++;
             var openVersion = _openVersion;
 
@@ -107,6 +109,7 @@ namespace OasisPlayer.UI.Controllers
             CloseDocumentRoot();
             _controller = null;
             _open = false;
+            IsOpen = false;
             UnityEngine.Cursor.visible = _previousCursorVisible;
             UnityEngine.Cursor.lockState = _previousLockMode;
         }

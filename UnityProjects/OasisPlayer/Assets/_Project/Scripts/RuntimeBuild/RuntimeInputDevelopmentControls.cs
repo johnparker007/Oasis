@@ -1,4 +1,3 @@
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -32,6 +31,12 @@ namespace OasisPlayer.RuntimeBuild
         }
 
         public IReadOnlyList<Binding> Bindings { get { return Array.AsReadOnly(bindings ?? Array.Empty<Binding>()); } }
+
+        public void SetInteractionEnabled(bool value)
+        {
+            if (!value) ReleaseInputs();
+            enabled = value;
+        }
 
         public void Configure(Binding[] values)
         {
@@ -92,4 +97,3 @@ namespace OasisPlayer.RuntimeBuild
         private void OnDestroy() { ReleaseInputs(); _machine = null; }
     }
 }
-#endif

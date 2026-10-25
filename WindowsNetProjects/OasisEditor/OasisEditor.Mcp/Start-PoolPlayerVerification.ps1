@@ -2,7 +2,7 @@
 param(
     [Parameter(Mandatory)][string]$BuildRoot,
     [Parameter(Mandatory)][string]$BridgeExecutable,
-    [ValidateSet('SingleBall','Algorithmic')][string]$Mode = 'SingleBall',
+    [ValidateSet('SingleBall','Algorithmic','Playable')][string]$Mode = 'SingleBall',
     [string]$UnityExecutable = 'C:\Program Files\Unity\Hub\Editor\6000.0.47f1\Editor\Unity.exe'
 )
 $ErrorActionPreference = 'Stop'

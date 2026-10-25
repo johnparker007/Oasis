@@ -1,6 +1,6 @@
 # Oasis Architecture Next — Overview
 
-> Prefab authoring P1 is delivered in PR #745; runtime-component P2 and single-ball P3 verification are in progress. The [Prefab/OasisObject architecture](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md) and [delivery plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md) distinguish subsequent milestones. Variants/functions/spawning remain later capabilities until their own implementation and verification.
+> Prefab authoring/runtime and calculated Pool are merged through PR #747. The current user priority is the [playable arcade plan](15_PLAYABLE_ARCADE.md): walking, explicit interaction profiles, Pool shots and a basic fruit-machine loop. Variants remain deferred.
 
 ## Purpose
 

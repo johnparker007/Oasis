@@ -6,6 +6,13 @@ This file replaces the completed historical refactor phase plan. It lists only a
 
 The durable ownership rules live in the numbered architecture documents in this directory. Historical phase/audit documents are intentionally removed once their implementation is merged so future Codex tasks do not consume obsolete transitional context.
 
+## Immediate user priority
+
+Deliver the [playable arcade milestones](15_PLAYABLE_ARCADE.md): first a walkable
+standalone preview with explicit Buttons/Pool profiles, then two-machine layout
+composition and a labelled fruit-machine demo, followed by real emulation integration.
+The arcade designer and Prefab variants remain later work.
+
 ## Current baseline
 
 The following foundations are already implemented and should be treated as current architecture, not future work:

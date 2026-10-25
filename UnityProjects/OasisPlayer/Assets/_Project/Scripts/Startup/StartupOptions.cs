@@ -10,13 +10,14 @@ namespace OasisPlayer.Startup
 
     public sealed class StartupOptions
     {
-        public StartupOptions(StartupMode mode, string buildDirectory, bool fullscreen, int width, int height)
+        public StartupOptions(StartupMode mode, string buildDirectory, bool fullscreen, int width, int height, string interaction = "buttons")
         {
             Mode = mode;
             BuildDirectory = buildDirectory ?? string.Empty;
             Fullscreen = fullscreen;
             Width = width;
             Height = height;
+            Interaction = interaction;
         }
 
         public StartupMode Mode { get; }
@@ -24,6 +25,7 @@ namespace OasisPlayer.Startup
         public bool Fullscreen { get; }
         public int Width { get; }
         public int Height { get; }
+        public string Interaction { get; }
 
         public string SceneName => Mode switch
         {
