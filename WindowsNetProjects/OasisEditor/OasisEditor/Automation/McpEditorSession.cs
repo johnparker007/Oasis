@@ -57,7 +57,8 @@ public sealed partial class McpEditorSession
     }
 
     public ProjectSnapshot InspectProject() => new(_projectFile ?? throw new InvalidOperationException("No project open."),
-        _panels.Values.Select(p => Describe(p, 0, 0)).ToArray(), _faces.Values.Select(f => DescribeFace(f, 0, 0)).ToArray());
+        _panels.Values.Select(p => Describe(p, 0, 0)).ToArray(), _faces.Values.Select(f => DescribeFace(f, 0, 0)).ToArray(),
+        _machines.Select(m => new MachineDocumentReference(m.Key, m.Value.Path)).ToArray());
 
     public PanelSnapshot CreatePanel(string name)
     {
@@ -261,7 +262,8 @@ public sealed partial class McpEditorSession
     }
 }
 
-public sealed record ProjectSnapshot(string ProjectFile, IReadOnlyList<PanelSnapshot> OpenPanels, IReadOnlyList<FaceSnapshot> OpenFaces);
+public sealed record ProjectSnapshot(string ProjectFile, IReadOnlyList<PanelSnapshot> OpenPanels, IReadOnlyList<FaceSnapshot> OpenFaces, IReadOnlyList<MachineDocumentReference> OpenMachines);
+public sealed record MachineDocumentReference(Guid DocumentId, string Path);
 public sealed record PanelSnapshot(Guid DocumentId, string Name, string Path, bool IsDirty, bool CanUndo, bool CanRedo,
     int ElementCount, int Offset, IReadOnlyList<PanelElementSnapshot> Elements, IReadOnlyList<string> SelectedElementIds, PanelViewSnapshot View);
 public sealed record PanelElementSnapshot(string Id, string Name, string Kind, double X, double Y, double Width, double Height, bool IsVisible, bool IsTransformLocked, bool IsSelected);

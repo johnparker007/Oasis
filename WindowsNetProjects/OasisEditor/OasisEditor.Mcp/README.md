@@ -6,8 +6,8 @@ editor, activates a user window, or opens the normal launcher.
 
 The server supports a repeatable project → Panel2D → MFME FML → edit → Face → save/reopen
 workflow. It reuses the editor's project scaffolder, importer, document command
-history, validation and save service. It does not implement Cabinet/Machine
-assembly or explicit runtime-export tools yet. Face generation and saving reuse
+history, validation and save service. It also inspects, captures and builds existing
+Machines; Cabinet/Machine authoring is not exposed yet. Face generation and saving reuse
 the editor's existing derived-asset/export behavior. ArchitectureNext priorities
 are unchanged.
 
@@ -54,6 +54,11 @@ changes and undo history are session-local, and no confirmation dialog is shown.
 | `create_project` | Create a new project by name; existing folders are refused. |
 | `open_project` | Open a current-schema project with the standard Assets/Generated layout. |
 | `inspect_project` | Read the project path and open document IDs. |
+| `list_recent_projects` | Read the editor's recent project paths; does not grant access outside the workspace. |
+| `list_machine_assets` | List up to 200 canonical Machine manifests in the open project. |
+| `open_machine`, `inspect_machine` | Read Machine configuration, behavior source and bounded diagnostics. |
+| `capture_machine` | Return the real offscreen WPF Machine Composition 3D view. |
+| `build_machine` | Run the existing runtime builder into the project's Generated output. |
 | `create_panel2d` | Create and initially save a fresh Panel2D asset package. |
 | `open_panel2d` | Validate/reopen a persisted package and obtain a new session document ID. |
 | `import_fml` | Import a workspace FML through the document's undoable import command. |
@@ -243,3 +248,57 @@ cross-process reopen, duplicate refusal and external manifest conflict handling:
 ```powershell
 python OasisEditor.Mcp/face_smoke_test.py --server C:\absolute\path\OasisEditor.Mcp.exe --artifacts C:\FaceSmokeResults --fml C:\Layouts\Example.fml
 ```
+
+## Existing Machines and Player verification
+
+Use a disposable copy of the `.oasisproj` and `Assets/` tree, with an empty
+`Generated/` directory. `list_recent_projects` only reads the ordinary recent list;
+opening still requires a project inside the explicitly configured workspace.
+`open_machine` accepts `Assets/Machines/<Name>/asset.machine` and returns a session
+document ID, configuration, canonical `behavior.oasis` source (maximum 256 KiB)
+and up to 100 behavior diagnostics. This slice requires project-local dependencies;
+Library assets must first be copied into the project through the normal workflow.
+Asset trees and JSON path references are validated before opening the preview.
+
+`capture_machine(documentId, width=1000, height=700, theme="System")` renders the
+actual WPF 3D composition view in a non-activating offscreen window. Its limits are
+640–1920 by 480–1080 pixels. It is not a full editor screenshot or interaction test.
+`build_machine(documentId)` runs the existing builder and replaces disposable
+Generated build output; inspect `success` and diagnostics. External Machine manifest
+edits are refused. Build reads current asset/source files, so do not change the
+project concurrently. No authored save/edit tools are exposed for Machines yet.
+
+```powershell
+python OasisEditor.Mcp/machine_smoke_test.py --server C:\absolute\path\OasisEditor.Mcp.exe --project C:\Disposable\PoolTableTest1\PoolTableTest1.oasisproj --artifacts C:\PoolResults
+```
+
+The optional Unity assembly under `Assets/_Project/Editor/McpVerification` is
+enabled only when `com.coplaydev.unity-mcp` is installed (verified with v10.3.0).
+It adds `oasis_verify_pool_build` with `start`/`status` actions. This is a Pool-specific
+integration probe, requiring `ball01`, `rackBall01`, `traySlot01`, `rerack`, `newGame`
+and six pocket triggers. It refuses ordinary interactive sessions and requires an
+explicit `OASIS_POOL_VERIFY_BUILD` environment variable. It enters actual batch Play
+Mode because GLB loading requires runtime APIs. It checks loaded colliders/body,
+startup, logical input adapters, trigger relay dispatch, duplicate collection guard,
+reset and two seconds of real physics; it reports placement and collision bounds.
+It does not verify focused keyboard input, rendered gameplay or natural pocket entry.
+
+With the bridge installed in an isolated Python environment, and no Unity session
+already running:
+
+```powershell
+$session = ./OasisEditor.Mcp/Start-PoolPlayerVerification.ps1 -BuildRoot C:\Disposable\PoolTableTest1\Generated\Builds\PoolTableTest1 -BridgeExecutable C:\Tools\Scripts\mcp-for-unity.exe
+# Wait for connected.txt in $session; inspect failed.txt/Editor.log on failure.
+python OasisEditor.Mcp/verify_pool_player.py --output C:\PoolResults\player.json
+./OasisEditor.Mcp/Stop-PoolPlayerVerification.ps1 -SessionDirectory $session
+```
+
+The launcher uses hidden batch Unity and a localhost bridge on port 8080; it refuses
+an existing Unity process or occupied port. Stop verifies process identity, requests
+a graceful Unity exit and stops only its owned bridge. Unity restores transport
+preferences on normal exit, including across Play Mode domain reloads, and has a
+20-minute session timeout. An abnormal termination may require manual restoration
+of the Unity MCP transport preferences. The client uses the native custom tool when
+discovered; older bridge discovery can invoke the same fixed handler through its
+existing C# execution tool. No safety checks are disabled. Stop the session after
+verification; builds, reports and logs remain local and no user assets enter Git.
