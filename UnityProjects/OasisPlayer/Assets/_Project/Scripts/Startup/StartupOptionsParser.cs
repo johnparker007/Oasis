@@ -15,12 +15,21 @@ namespace OasisPlayer.Startup
             bool? fullscreen = null;
             var width = 1280;
             var height = 800;
+            var interaction = "buttons";
 
             for (var i = 0; i < args.Count; i++)
             {
                 var arg = args[i];
                 switch (arg)
                 {
+                    // Unity also receives these process arguments. Accept only the engine
+                    // switches used by the background standalone smoke check.
+                    case "-batchmode":
+                    case "-nographics":
+                        break;
+                    case "-logFile":
+                        if (!ReadValue(args, ref i, arg, out _, out error)) return false;
+                        break;
                     case "--mode":
                         if (!ReadValue(args, ref i, arg, out var rawMode, out error)) return false;
                         if (rawMode == "machine-preview")
@@ -41,6 +50,11 @@ namespace OasisPlayer.Startup
                         break;
                     case "--build":
                         if (!ReadValue(args, ref i, arg, out build, out error)) return false;
+                        break;
+                    case "--interaction":
+                        if (!ReadValue(args, ref i, arg, out interaction, out error)) return false;
+                        if (interaction != "buttons" && interaction != "pool")
+                        { error = "--interaction must be buttons or pool."; return false; }
                         break;
                     case "--windowed":
                         fullscreen = false;
@@ -72,7 +86,7 @@ namespace OasisPlayer.Startup
                 return false;
             }
 
-            options = new StartupOptions(mode, build, fullscreen ?? false, width, height);
+            options = new StartupOptions(mode, build, fullscreen ?? false, width, height, interaction);
             return true;
         }
 

@@ -57,6 +57,7 @@ namespace OasisPlayer.Editor.Verification
 
         private static async Task<object> Verify()
         {
+            if (Environment.GetEnvironmentVariable("OASIS_POOL_VERIFY_MODE") == "playable") return await PlayableRoomVerification.Verify();
             if (Environment.GetEnvironmentVariable("OASIS_POOL_VERIFY_MODE") == "algorithmic") return await AlgorithmicPoolVerification.Verify();
             var checks = new List<string>();
             MachinePreviewLoader loader = null;

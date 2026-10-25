@@ -13,6 +13,8 @@ public class StartupController : MonoBehaviour
     [SerializeField] private string[] editorDevelopmentArguments = { "--mode", "machine-preview", "--build", "" };
     private FatalErrorOverlay _errors;
     private static StartupController _instance;
+    private MachinePreviewLoader _loader;
+    private GameObject _roomHost;
 
     private void Awake()
     {
@@ -32,9 +34,27 @@ public class StartupController : MonoBehaviour
             Screen.SetResolution(options.Width, options.Height, options.Fullscreen);
             if (!RuntimeBuildLoader.TryLoad(options.BuildDirectory, out var build, out error)) { _errors.Show(error); return; }
             await SceneManager.LoadSceneAsync(options.SceneName, LoadSceneMode.Single);
-            await new MachinePreviewLoader(new GltfFastCabinetModelLoader()).LoadAsync(build);
+            _loader = new MachinePreviewLoader(new GltfFastCabinetModelLoader());
+            var machine = await _loader.LoadAsync(build);
+            _roomHost = new GameObject("Playable preview room");
+            var room = _roomHost.AddComponent<PlayableMachineRoom>();
+            room.Initialize(machine, Camera.main, options.Interaction == "pool" ? MachineInteractionProfile.Pool : MachineInteractionProfile.Buttons);
+            room.UiIsOpen = () => PlayerUiRuntime.IsOpen;
+            Debug.Log("Oasis playable preview ready: " + options.Interaction);
         }
-        catch (Exception ex) { _errors.Show(ex.Message); }
+        catch (Exception ex)
+        {
+            if (_roomHost != null) Destroy(_roomHost);
+            if (_loader != null) _loader.Unload();
+            _errors.Show(ex.Message);
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (_instance != this) return;
+        if (_loader != null) _loader.Unload();
+        _instance = null;
     }
 
     private string[] GetStartupArguments()
