@@ -5,13 +5,14 @@
         "OasisPlayer.RuntimeBuild",
         "OasisPlayer.Loading",
         "OasisPlayer.Settings",
+        "OasisPlayer.Fabric",
         "Oasis.Scripting"
     ],
     "includePlatforms": [
         "Editor"
     ],
     "excludePlatforms": [],
-    "allowUnsafeCode": false,
+    "allowUnsafeCode": true,
     "overrideReferences": true,
     "precompiledReferences": [
         "nunit.framework.dll"

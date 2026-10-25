@@ -1,0 +1,14 @@
+{
+  "name": "OasisPlayer.Fabric",
+  "rootNamespace": "OasisPlayer.Fabric",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}

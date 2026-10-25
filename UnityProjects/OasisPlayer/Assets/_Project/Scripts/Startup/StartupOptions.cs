@@ -10,7 +10,7 @@ namespace OasisPlayer.Startup
 
     public sealed class StartupOptions
     {
-        public StartupOptions(StartupMode mode, string buildDirectory, bool fullscreen, int width, int height, string interaction = "", string arcadeManifest = "")
+        public StartupOptions(StartupMode mode, string buildDirectory, bool fullscreen, int width, int height, string interaction = "", string arcadeManifest = "", string fabricRuntime = "", string amberImpact = "")
         {
             Mode = mode;
             BuildDirectory = buildDirectory ?? string.Empty;
@@ -19,6 +19,7 @@ namespace OasisPlayer.Startup
             Height = height;
             Interaction = interaction;
             ArcadeManifest = arcadeManifest;
+            FabricRuntime = fabricRuntime; AmberImpact = amberImpact;
         }
 
         public StartupMode Mode { get; }
@@ -28,6 +29,8 @@ namespace OasisPlayer.Startup
         public int Height { get; }
         public string Interaction { get; }
         public string ArcadeManifest { get; }
+        public string FabricRuntime { get; }
+        public string AmberImpact { get; }
 
         public string SceneName => Mode switch
         {

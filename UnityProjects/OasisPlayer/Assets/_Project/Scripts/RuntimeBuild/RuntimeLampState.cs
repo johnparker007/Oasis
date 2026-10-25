@@ -6,7 +6,10 @@ namespace OasisPlayer.RuntimeBuild
     public sealed class RuntimeLampState
     {
         public const int MinimumLampNumber = 0;
-        public const int MaximumLampNumber = 255;
+        public const int MaximumLampNumber = 511;
+        // Current Face ID textures are byte-encoded. Keep their GPU lookup unchanged
+        // while retaining every native JPM channel in authoritative CPU state.
+        public const int FaceLookupCapacity = 256;
         private readonly float[] _brightness = new float[MaximumLampNumber + 1];
         private int _version;
         private bool _dirty;
@@ -99,11 +102,11 @@ namespace OasisPlayer.RuntimeBuild
         public RuntimeLampStateTexture(RuntimeLampState lampState)
         {
             if (lampState == null) throw new ArgumentNullException(nameof(lampState));
-            Texture = new Texture2D(lampState.Capacity, 1, TextureFormat.RGBA32, false, true);
+            Texture = new Texture2D(RuntimeLampState.FaceLookupCapacity, 1, TextureFormat.RGBA32, false, true);
             Texture.name = "OasisRuntimeLampState";
             Texture.wrapMode = TextureWrapMode.Clamp;
             Texture.filterMode = FilterMode.Point;
-            _pixels = new Color[lampState.Capacity];
+            _pixels = new Color[RuntimeLampState.FaceLookupCapacity];
             Upload(lampState, true);
         }
         public Texture2D Texture { get; private set; }

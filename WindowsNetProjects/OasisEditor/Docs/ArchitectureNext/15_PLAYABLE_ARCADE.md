@@ -13,14 +13,14 @@ release, cue impulse, moving-ball shot rejection and cue replacement after newGa
 A Windows development Player was built and reached its ready marker in a hidden
 headless startup check. Its headless shader warnings do not verify rendered output.
 Authored profile defaults and multi-machine loading are merged in PR #749: Machine
-schema 11 / runtime 12 requires a Buttons or Pool interaction object. Pool names its
+schema 11 / runtime 13 requires a Buttons or Pool interaction object. Pool names its
 cue Prefab alias and playing surface explicitly. Inspector choices and MCP updates
 use undoable document commands. The current-format arcade package (version 1)
 contains explicit placement IDs/build dependencies, room dimensions and visitor spawn.
 
 Two actual Pool tables passed independent-session and handle-scope checks, shared-key
 input isolation, a rotated placement shot, unload/reload and overlap rollback. Editor
-tests pass 1,443/1,443 and focused Unity tests 208/208. The two-Pool sample proves the
+tests now pass 1,445/1,445 and the focused Unity suite 220/220. The two-Pool sample proves the
 composition layer. A Windows development Player also reached the two-machine
 arcade ready marker in a hidden headless startup check. Headless shader warnings
 do not verify appearance; fruit gameplay, visual checks and the arcade designer remain future
@@ -71,18 +71,19 @@ a profile from asset names, runtime kind or available anchors.
    two-machine layout; defer dragging furniture and decoration. Reject overlap/outside
    room/spawn-in-machine and partial-load failures with placement context. Test two
    simultaneous machines, input isolation, visitor collision and unload/reload.
-3. **Basic fruit-machine loop.** First identify one usable Cabinet/Face/reel build
-   and its logical coin/start/hold inputs. Current Player inspection found runtime
-   metadata and dynamic device rendering, but no executing emulation bridge. Implement
-   a clearly labelled Oasis demonstration with credits, stake, spin, reel stop, modest
-   deterministic payout and lamps/displays using the portable device host boundary.
-   Keep credits as game state, not real-money accounting. This unlocks walking up,
-   inserting credit, playing and leaving. It is not proof of ROM compatibility.
-4. **ROM-backed fruit machine.** Select one already-supported emulator core and a
-   lawful local ROM fixture. Connect start/stop, logical inputs, reel/lamp/display
-   updates and fault reporting to the same runtime state boundary. Verify a real boot,
-   credit and spin. Never attach Oasis behavior to an Emulation Machine. If no viable
-   core is available, report the concrete dependency and retain the labelled demo.
+3. **Fabric/Amber JPM Impact integration (implemented and verified).** The user
+   clarified that real emulation must use the existing Editor Fabric/Amber path,
+   replacing the proposed scripted fruit demo. The Player consumes the Editor's
+   exported ROM dependencies and FAB2 bytes through Fabric v4, with worker-owned
+   native timing, inputs, snapshots, audio and lifecycle. A real Casino Crazy ROM
+   proof passed boot/output/audio/input/reset/restart and operation alongside Pool.
+   The installed provider supports one active board per process. See
+   [the integration contract](../../OasisEditor.Mcp/PLAYER_FABRIC_IMPACT.md).
+4. **User-configured credited play.** The user will set up a current Editor project
+   with verified emulation coin and Start mappings. Until then, defer credit/spin/
+   payout acceptance. The current proof uses borrowed artwork and its coin was
+   rejected; do not guess controls or call it a completed fruit machine. Verify the
+   user's saved configuration through Editor export and the same Player boundary.
 5. **Layout authoring and polish.** Profile defaults already have Inspector/MCP
    editing. Expose arcade layout creation/save/build through document commands, then implement a designer
    over that contract. Add pool appearance, shot aiming feedback, sound, camera
@@ -92,8 +93,7 @@ a profile from asset names, runtime kind or available anchors.
 
 The overall milestone is complete when the visitor can walk between two machines,
 enter either, take a Pool shot or play a fruit-machine credit/spin loop, leave without
-stuck keys, open settings and reload without duplicated sessions. Mark the scripted
-demo and ROM-backed result separately. A successful single-machine preview is only
+stuck keys, open settings and reload without duplicated sessions. Distinguish verified native integration from actual credited-play/payout acceptance. A successful single-machine preview is only
 milestone 1, not a completed multi-machine arcade.
 
 Automated verification covers actual GLB loading/physics, bounds, CharacterController

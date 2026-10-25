@@ -92,16 +92,19 @@ namespace OasisPlayer.Loading
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 if (developmentControls)
                 {
+                if (machine.Build.Machine.runtime.kind != "Emulation")
+                {
                 var controls = sessionRoot.AddComponent<RuntimeLampDevelopmentControls>();
                 controls.Initialize(machine);
                 var reelControls = sessionRoot.AddComponent<RuntimeReelDevelopmentControls>();
                 reelControls.Initialize(machine);
+                }
                 var inputControls = sessionRoot.AddComponent<RuntimeInputDevelopmentControls>();
                 inputControls.Initialize(machine);
                 }
 #endif
                 foreach (var warning in machine.Warnings) Debug.LogWarning(warning);
-                if (startBehavior) StartBehavior();
+                if (startBehavior) await StartBehaviorAsync();
                 return machine;
             }
             catch
@@ -111,9 +114,22 @@ namespace OasisPlayer.Loading
             }
         }
 
+        public async Task StartBehaviorAsync()
+        {
+            if (_runtimeMachine == null || !_runtimeMachine.IsActive || _runtimeMachine.HasStarted) throw new InvalidOperationException("Expected a loaded, unstarted Machine.");
+            if (_runtimeMachine.Build.Machine.runtime.kind == "Emulation" && _runtimeMachine.Build.Machine.runtime.platform != "None")
+            {
+                await RuntimeFabricBehavior.AttachAsync(_runtimeMachine, FabricHostOptions.Current);
+                _runtimeMachine.CompleteStartup();
+            }
+            else StartBehavior();
+        }
+
         public void StartBehavior()
         {
             if (_runtimeMachine == null || !_runtimeMachine.IsActive || _runtimeMachine.HasStarted) throw new InvalidOperationException("Expected a loaded, unstarted Machine.");
+            if (_runtimeMachine.Build.Machine.runtime.kind == "Emulation" && _runtimeMachine.Build.Machine.runtime.platform != "None")
+                throw new InvalidOperationException("Native emulation startup must use StartBehaviorAsync.");
             _oasisBehavior = RuntimeOasisScriptBehavior.AttachTo(_runtimeMachine);
             _runtimeMachine.CompleteStartup();
         }

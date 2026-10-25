@@ -7,7 +7,7 @@ rejected. Gameplay remains Machine-owned.
 
 ## Calculated fifteen-ball rack and separate cue
 
-Use Machine authored schema 11 / runtime 12 and Prefab authored/runtime schema 2.
+Use Machine authored schema 11 / runtime 13 and Prefab authored/runtime schema 2.
 Set the Machine interaction to Pool, cue alias `cueBall`, playing surface
 `playingSurface`. Declare `poolBall` and `cueBall` in the Machine's Prefab dependency table. They may
 reference the same ordinary asset (the verified local setup uses the original

@@ -32,6 +32,11 @@ public class StartupController : MonoBehaviour
         {
             var args = GetStartupArguments();
             if (!StartupOptionsParser.TryParse(args, out var options, out var error)) { _errors.Show(error); return; }
+            var fabric = FabricHostOptions.FromEnvironment();
+            if (!string.IsNullOrEmpty(options.FabricRuntime)) fabric.RuntimeDll = options.FabricRuntime;
+            if (!string.IsNullOrEmpty(options.AmberImpact)) fabric.ImpactDll = options.AmberImpact;
+            FabricHostOptions.Current = fabric;
+            Application.runInBackground = true;
             Screen.SetResolution(options.Width, options.Height, options.Fullscreen);
             if (options.Mode == StartupMode.Arcade)
             {

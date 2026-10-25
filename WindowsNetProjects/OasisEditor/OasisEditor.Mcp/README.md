@@ -314,7 +314,7 @@ and unsupported transform shear fail contextually. Machine Inspector exposes sou
 identity/defaults separately from permitted placement overrides and Revert.
 Machine-space teleport still targets Machine-space anchors under parented placement;
 reset restores authored node poses/active state and clears body velocities.
-Machine authored schema **11** / runtime **12** contains declared Prefab aliases and
+Machine authored schema **11** / runtime **13** contains declared Prefab aliases and
 measured geometry surfaces. Prefab authored/runtime formats remain 2. Script
 `prefab:<alias>` dependencies are exported/preloaded even without any placed entity.
 Current scripts use session-scoped `OasisObjectRef` handles (`oasis:<authoredId>`),
@@ -401,10 +401,16 @@ parented single-ball regression workflow.
 
 ## Saved interaction profiles and arcades
 
-Machine authored/runtime formats are now 11/12. `set_machine_interaction` sets
+Machine authored/runtime formats are now 11/13. `set_machine_interaction` sets
 `Buttons`, or `Pool` with declared `cuePrefabAlias` and `playingSurfaceId`; it is
 undoable and does not save. The Machine Inspector uses explicit choices for both
 references. Old Machine packages must be explicitly reauthored and rebuilt.
 
 See [arcade packaging and launch](ARCADE.md). This hand-authored layout package
 precedes a visual arcade designer; layout document/MCP authoring is still deferred.
+
+## Native JPM Impact emulation
+
+The Windows Player now uses the existing Fabric/Amber core path, with current
+ROM/config export and host-selected DLLs. See [Player Fabric/Impact](PLAYER_FABRIC_IMPACT.md)
+for launch, ownership, verification and the remaining user-configured gameplay tests.

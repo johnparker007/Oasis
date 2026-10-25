@@ -75,6 +75,8 @@ namespace OasisPlayer.RuntimeBuild
         public string SessionId { get { return _sessionId; } }
         public long Generation { get { return _generation; } }
         public bool HasStarted { get; private set; }
+        public RuntimeFabricBehavior FabricBehavior { get; internal set; }
+        public string EmulationFault { get; internal set; }
         public IReadOnlyList<string> Warnings { get { return _warnings; } }
         public IReadOnlyList<RuntimeCabinetReflectionBinding> CabinetReflectionBindings { get { return _cabinetReflectionBindings; } }
         public RuntimeLampState LampState { get; private set; }

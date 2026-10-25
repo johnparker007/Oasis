@@ -61,7 +61,7 @@ namespace OasisPlayer.Loading
                 for (var i = 0; i < _loaders.Count; i++)
                 {
                     currentId = Layout.machines[i].id;
-                    _loaders[i].StartBehavior();
+                    await _loaders[i].StartBehaviorAsync();
                     if (_loaders[i].OasisBehaviorFault != null) throw new InvalidDataException(_loaders[i].OasisBehaviorFault.ToString());
                 }
             }

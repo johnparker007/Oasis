@@ -28,8 +28,8 @@ def package(args):
         if output.is_relative_to(build):
             raise ValueError("Package output must be outside every source Machine build.")
         manifest = json.loads((build / "machine.runtime.json").read_text(encoding="utf-8-sig"))
-        if manifest.get("schema") != "oasis.machine.runtime" or manifest.get("schemaVersion") != 12 or not manifest.get("interaction"):
-            raise ValueError(f"{machine_id}: rebuild with the current Editor (Machine runtime 12).")
+        if manifest.get("schema") != "oasis.machine.runtime" or manifest.get("schemaVersion") != 13 or not manifest.get("interaction"):
+            raise ValueError(f"{machine_id}: rebuild with the current Editor (Machine runtime 13).")
         key = str(build).casefold()
         if key not in sources:
             sources[key] = (build, f"machines/{machine_id}")
