@@ -1,5 +1,7 @@
 # Dynamic Object3D, Behaviour and Scripting Architecture
 
+> Delivered Object3D/A8 baseline and existing contracts below remain current. The proposed evolution is in [Prefab/OasisObject architecture](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md) and [delivery plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md); none of P1–P8 is implemented. Proposed variants/functions/spawning are later milestones, not current functionality.
+
 ## Goal
 
 Support physical arcade games authored entirely through Oasis Editor without turning Cabinet GLBs or Unity GameObjects into the gameplay API.
