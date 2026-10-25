@@ -1,6 +1,7 @@
 # Prefab and algorithmic Pool delivery plan — proposed
 
-Status: planning only, 2026-10-10; none of P1–P8 is started or completed. [Architecture and inspected baseline](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md) defines the contracts. [Active roadmap](10_ACTIVE_ROADMAP.md) owns sequencing.
+Status updated 2026-10-25: P1 authoring delivered in PR #745; P2 and P3 are being
+verified. P4–P8 remain planned. [Architecture and inspected baseline](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md) defines the contracts. [Active roadmap](10_ACTIVE_ROADMAP.md) owns sequencing.
 
 ## Sequencing and common gates
 
@@ -8,7 +9,7 @@ Dependency spine: P1 -> P2 -> P3 -> P4 -> P5. P6 depends on P1–P4 and is indep
 
 A1–A7/A8.1–A8.4 are delivered. A8.5 single-ball implementation, trigger discoverability and development authored-key support are delivered, but actual local Pool content wiring and verification remain outstanding. P3 is the unchanged-gameplay gate; if the baseline cannot be verified locally, resolve its wiring/defects before extending gameplay. A8.6 fruit-device scripting remains deferred behind this proposed track; A8.7 becomes P7's expanded mole proving case. This reprioritisation is proposed for human review, not an instruction that work has begun. Installation/video tracks remain deferred.
 
-All implementation phases must read AGENTS.md and current priority first; use the canonical C# 9 engine-free scripting package and current document commands, theme and incremental projection patterns. No builds/tests execute in Codex. Automated coverage below means coverage to add and run locally with Windows/.NET and Unity toolchains. No inherited suite pass is claimed.
+All implementation phases must read AGENTS.md and current priority first; use the canonical C# 9 engine-free scripting package and current document commands, theme and incremental projection patterns. Follow AGENTS.md's environment rules: supported local Windows/.NET/Unity runs are permitted; unsupported cloud runs are not. Automated coverage below is phase-specific and must be backed by local execution before claiming a pass.
 
 Formats are latest-only: each format change updates writer/reader/validators/fixtures together and increments affected versions. No dual loaders, fallback syntax or automatic legacy migration layers. Preserve asset GUIDs and stable placement IDs when deliberately reauthoring current content; old-format packages may stop loading. Concrete sample reauthoring instructions and regenerate/rebuild steps accompany each format PR. Generated output/authored assets/scenes change only in later explicitly scoped implementation tasks, not this documentation task.
 

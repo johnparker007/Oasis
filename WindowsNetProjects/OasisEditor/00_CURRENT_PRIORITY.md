@@ -1,9 +1,10 @@
 # Current Priority for Codex
 
-The proposed next workstream is the evolution of the existing Object3D asset/instance
-pipeline into Prefab / OasisObject / Component contracts, followed by algorithmic
-Pool setup. This is a documentation proposal; P1–P8 have not started. The first
-implementation task, if authorised, is P1 only.
+The active workstream evolves the existing Object3D asset/instance pipeline into
+Prefab / OasisObject / Component contracts, followed by algorithmic Pool setup.
+P1 authoring is delivered in PR #745. P2 runtime components and the P3 single-ball
+checkpoint have passed local verification and await merge; P4 spawning/language additions and P5 calculated
+Pool setup follow only after that checkpoint. The user has authorised this sequence.
 
 Read AGENTS.md, then Docs/ArchitectureNext/00_OVERVIEW.md,
 10_ACTIVE_ROADMAP.md, 13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md and
@@ -13,8 +14,11 @@ Read AGENTS.md, then Docs/ArchitectureNext/00_OVERVIEW.md,
 
 Delivered baseline: A1–A7 and A8.1–A8.4; A8.5 initial single-ball Pool script and
 integration coverage, merged trigger discoverability and authored development
-keyboard bindings. Actual Pool asset wiring and local suite/manual verification
-remain outstanding. Preserve single-ball build/load/input/trigger/reset as the P3
+keyboard bindings. A disposable actual Pool copy with corrected anchors passed
+single-ball physics, all six natural pocket drops, input/trigger/reset on the P1
+runtime baseline and again under P2 with a parented ball and inline child. Original
+user content is still unchanged. Preserve single-ball
+build/load/input/trigger/reset as the P3
 gate before multi-ball work. Existing lists/for/range/arithmetic are delivered;
 spawning, functions, typed live refs and focused geometry queries are proposed.
 

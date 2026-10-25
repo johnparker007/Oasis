@@ -282,6 +282,23 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         _document = _document.SaveAs(savePath, _document.ContentSummary).MarkClean();
         NotifyDocumentMetadataChanged();
+        if (Document.DocumentType == EditorDocumentType.Object3D)
+            foreach (var machine in _openDocumentsAccessor?.Invoke() ?? []) machine.RefreshSavedPrefabSource(savePath);
+    }
+
+    private void RefreshSavedPrefabSource(string path)
+    {
+        if (Document.DocumentType != EditorDocumentType.Machine || CurrentProject is null) return;
+        foreach (var reference in _machineDocumentModel.ObjectInstances.Select(i => i.ObjectAsset).OfType<AssetReference>().Distinct())
+        {
+            try
+            {
+                var source = new AssetReferenceResolver().Resolve(CurrentProject, CurrentLibraryRoot, reference);
+                if (string.Equals(Path.GetFullPath(source), Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase)) _machineComposition3D?.InvalidateDefinition(reference);
+            }
+            catch (Exception exception) when (exception is IOException or ArgumentException or InvalidOperationException) { }
+        }
+        foreach (var row in MachineObjectInstanceRows) row.NotifyAssetNavigationChanged();
     }
 
     internal void ApplyContentSummary(string summary)
@@ -859,11 +876,27 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         var instance = new MachineObject3DInstance($"object{number}", "Object", null, MachineObjectTransform.Identity);
         ExecuteMachineMutation(machine => machine with { ObjectInstances = [.. machine.ObjectInstances, instance] }, "Add Machine Object3D instance");
     }
-    internal void RemoveMachineObjectInstance(string id) => ExecuteMachineMutation(machine => machine with { ObjectInstances = machine.ObjectInstances.Where(instance => !string.Equals(instance.Id, id, StringComparison.Ordinal)).ToArray() }, "Remove Machine Object3D instance");
+    internal void RemoveMachineObjectInstance(string id)
+    {
+        var removed = new HashSet<string>(StringComparer.Ordinal) { id };
+        while (true)
+        {
+            var descendants = _machineDocumentModel.ObjectInstances.Where(i => i.ParentId is not null && removed.Contains(i.ParentId) && !removed.Contains(i.Id)).Select(i => i.Id).ToArray();
+            if (descendants.Length == 0) break;
+            removed.UnionWith(descendants);
+        }
+        ExecuteMachineMutation(machine => machine with { ObjectInstances = machine.ObjectInstances.Where(i => !removed.Contains(i.Id)).ToArray() }, "Remove Machine object subtree");
+    }
     internal bool UpdateMachineObjectInstance(string originalId, MachineObject3DInstance replacement, string description)
     {
+        var existing = _machineDocumentModel.ObjectInstances.FirstOrDefault(i => i.Id == originalId);
+        if (existing is null) return false;
+        if (existing == replacement) return true;
         if (!MachineObject3DInstanceId.IsValid(replacement.Id) || _machineDocumentModel.ObjectInstances.Any(instance => !string.Equals(instance.Id, originalId, StringComparison.Ordinal) && string.Equals(instance.Id, replacement.Id, StringComparison.Ordinal))) return false;
-        ExecuteMachineMutation(machine => machine with { ObjectInstances = machine.ObjectInstances.Select(instance => string.Equals(instance.Id, originalId, StringComparison.Ordinal) ? replacement : instance).ToArray() }, description);
+        var objects = _machineDocumentModel.ObjectInstances.Select(instance => instance.Id == originalId ? replacement
+            : instance.ParentId == originalId ? instance with { ParentId = replacement.Id } : instance).ToArray();
+        try { MachineDocumentStorage.ValidateInstanceParents(objects); } catch (InvalidOperationException) { return false; }
+        ExecuteMachineMutation(machine => machine with { ObjectInstances = objects }, description);
         return true;
     }
     private void AddMachineAnchor()
@@ -2406,12 +2439,31 @@ public sealed class MachineObjectInstanceRow : INotifyPropertyChanged
         _selectedChoice = Choices.FirstOrDefault(choice => Equals(choice.AssetPath, instance.ObjectAsset));
         RemoveCommand = new RelayCommand(() => owner.RemoveMachineObjectInstance(_instance.Id));
         OpenSelectedAssetCommand = new RelayCommand(() => owner.OpenMachineAsset(_instance.ObjectAsset), () => CanOpenSelectedAsset);
+        RevertPlacementCommand = new RelayCommand(() => Update(_instance with { Transform = MachineObjectTransform.Identity, Active = true, ParentId = null }, "Revert object placement"));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public ObservableCollection<MachineAssetChoice> Choices { get; }
     public System.Windows.Input.ICommand RemoveCommand { get; }
     public System.Windows.Input.ICommand OpenSelectedAssetCommand { get; }
+    public System.Windows.Input.ICommand RevertPlacementCommand { get; }
+    public bool Active { get => _instance.Active; set => Update(_instance with { Active = value }, "Set object active", nameof(Active)); }
+    public string? ParentId { get => _instance.ParentId; set => Update(_instance with { ParentId = string.IsNullOrWhiteSpace(value) ? null : value }, "Set object parent", nameof(ParentId)); }
+    public IReadOnlyList<MachineParentChoice> ParentChoices => [new(null, "Machine root"), .. _owner.GetMachineDocument().ObjectInstances.Where(i => i.Id != _instance.Id).Select(i => new MachineParentChoice(i.Id, i.DisplayName + " (" + i.Id + ")"))];
+    public string SourcePrefabId => ReadSourcePrefab()?.Id ?? "Unavailable";
+    public string SourceDefaults => ReadSourcePrefab() is { } source
+        ? source.Root.Name + ": " + string.Join(", ", source.Root.Components.Select(c => c.Kind)) + $"; {source.Root.Children.Length} child node(s)"
+        : "Source Prefab could not be resolved.";
+    private Object3DDocument? ReadSourcePrefab()
+    {
+        if (_instance.ObjectAsset is null || _owner.CurrentProject is null) return null;
+        try
+        {
+            var path = new AssetReferenceResolver().Resolve(_owner.CurrentProject, _owner.CurrentLibraryRoot, _instance.ObjectAsset);
+            return File.Exists(path) && Object3DDocumentStorage.TryRead(File.ReadAllText(path), out var source, out _) ? source : null;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException) { return null; }
+    }
     public bool CanOpenSelectedAsset => _owner.CanOpenMachineAssetReference(_instance.ObjectAsset);
     public string Id { get => _instance.Id; set => Update(_instance with { Id = value?.Trim() ?? string.Empty }, "Rename Machine Object3D instance", nameof(Id)); }
     public string DisplayName
@@ -2473,8 +2525,10 @@ public sealed class MachineObjectInstanceRow : INotifyPropertyChanged
         if (_owner.UpdateMachineObjectInstance(_instance.Id, replacement, description)) _instance = replacement;
         else if (rejectedPropertyName is not null) PropertyChanged?.Invoke(this, new(rejectedPropertyName));
     }
-    internal void NotifyAssetNavigationChanged() { PropertyChanged?.Invoke(this, new(nameof(CanOpenSelectedAsset))); if (OpenSelectedAssetCommand is RelayCommand command) command.RaiseCanExecuteChanged(); }
+    internal void NotifyAssetNavigationChanged() { foreach (var name in new[] { nameof(CanOpenSelectedAsset), nameof(SourcePrefabId), nameof(SourceDefaults) }) PropertyChanged?.Invoke(this, new(name)); if (OpenSelectedAssetCommand is RelayCommand command) command.RaiseCanExecuteChanged(); }
 }
+
+public sealed record MachineParentChoice(string? Id, string Name);
 
 public sealed class MachineAnchorRow : INotifyPropertyChanged
 {

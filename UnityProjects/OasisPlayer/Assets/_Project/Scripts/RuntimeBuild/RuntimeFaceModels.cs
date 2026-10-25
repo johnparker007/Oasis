@@ -7,6 +7,7 @@ namespace OasisPlayer.RuntimeBuild
     public sealed class RuntimeMachine
     {
         private readonly Dictionary<string, RuntimeObjectInstance> _objects = new Dictionary<string, RuntimeObjectInstance>(StringComparer.Ordinal);
+        private readonly Dictionary<string, RuntimeObjectNode> _objectNodes = new Dictionary<string, RuntimeObjectNode>(StringComparer.Ordinal);
         private readonly Dictionary<string, RuntimeAnchor> _anchors = new Dictionary<string, RuntimeAnchor>(StringComparer.Ordinal);
         private readonly Dictionary<string, RuntimeTrigger> _triggers = new Dictionary<string, RuntimeTrigger>(StringComparer.Ordinal);
         private readonly Dictionary<string, RuntimeInput> _inputs = new Dictionary<string, RuntimeInput>(StringComparer.Ordinal);
@@ -41,11 +42,13 @@ namespace OasisPlayer.RuntimeBuild
         public GameObject Cabinet { get; private set; }
         public IReadOnlyList<RuntimeFace> Faces { get { return _faces; } }
         public IReadOnlyDictionary<string, RuntimeObjectInstance> Objects { get { return _objects; } }
+        public IReadOnlyDictionary<string, RuntimeObjectNode> ObjectNodes { get { return _objectNodes; } }
         public IReadOnlyDictionary<string, RuntimeAnchor> Anchors { get { return _anchors; } }
         public IReadOnlyDictionary<string, RuntimeTrigger> Triggers { get { return _triggers; } }
         public IReadOnlyDictionary<string, RuntimeInput> Inputs { get { return _inputs; } }
         public RuntimeMachineEventDispatcher Events { get; private set; }
         public RuntimeMachineCommandService Commands { get; private set; }
+        public Transform MachineSpace { get; private set; }
         public RuntimeTimerService Timers { get; private set; }
         public bool IsActive { get; private set; } = true;
         public bool HasStarted { get; private set; }
@@ -106,10 +109,24 @@ namespace OasisPlayer.RuntimeBuild
             if (instance == null) throw new ArgumentNullException(nameof(instance));
             if (string.IsNullOrWhiteSpace(instance.Id)) throw new ArgumentException("Runtime Object3D instance ID is required.", nameof(instance));
             if (_objects.ContainsKey(instance.Id)) throw new InvalidOperationException($"Runtime Object3D instance ID '{instance.Id}' is already registered.");
+            var nodes = instance.Nodes;
+            for (var i = 0; i < nodes.Count; i++)
+            {
+                if (nodes[i] == null) throw new ArgumentException("Runtime Object3D node registry contains a null node.", nameof(instance));
+                if (_objectNodes.ContainsKey(nodes[i].RuntimeId)) throw new InvalidOperationException($"Runtime Object3D node ID '{nodes[i].RuntimeId}' is already registered.");
+                for (var j = 0; j < i; j++) if (nodes[j].RuntimeId == nodes[i].RuntimeId) throw new InvalidOperationException($"Runtime Object3D node ID '{nodes[i].RuntimeId}' is duplicated.");
+            }
             _objects.Add(instance.Id, instance);
+            for (var i = 0; i < nodes.Count; i++) _objectNodes.Add(nodes[i].RuntimeId, nodes[i]);
             var identity = instance.Root.AddComponent<RuntimeObjectIdentity>();
             identity.Initialize(this, instance.Id);
             _objectIdentities.Add(identity, instance.Id);
+        }
+
+        public void SetMachineSpace(Transform machineSpace)
+        {
+            if (machineSpace == null) throw new ArgumentNullException(nameof(machineSpace));
+            MachineSpace = machineSpace;
         }
 
         public bool TryGetObject(string id, out RuntimeObjectInstance instance)
@@ -121,6 +138,13 @@ namespace OasisPlayer.RuntimeBuild
         {
             if (!TryGetObject(id, out var instance)) throw new KeyNotFoundException($"Runtime Object3D instance '{id}' is not registered.");
             return instance;
+        }
+
+        public bool TryGetObjectNode(string runtimeNodeId, out RuntimeObjectNode node) { return _objectNodes.TryGetValue(runtimeNodeId ?? string.Empty, out node); }
+        public RuntimeObjectNode GetObjectNode(string runtimeNodeId)
+        {
+            if (!TryGetObjectNode(runtimeNodeId, out var node)) throw new KeyNotFoundException($"Runtime Object3D node '{runtimeNodeId}' is not registered.");
+            return node;
         }
 
         public void RegisterAnchor(RuntimeAnchor anchor)
@@ -229,7 +253,9 @@ namespace OasisPlayer.RuntimeBuild
             _faces.Clear();
             foreach (var instance in _objects.Values) instance.Destroy();
             _objects.Clear();
+            _objectNodes.Clear();
             _objectIdentities.Clear();
+            MachineSpace = null;
             _anchors.Clear();
             _triggers.Clear();
             _inputs.Clear();
@@ -252,6 +278,13 @@ namespace OasisPlayer.RuntimeBuild
     {
         public RuntimeObjectInstance(string id, string displayName, string definitionId, ResolvedRuntimeObjectDefinition definition,
             GameObject root, Collider collider, Rigidbody rigidbody, MachineRuntimeObjectTransform authoredInitialTransform)
+            : this(id, displayName, definitionId, definition, root, collider, rigidbody, authoredInitialTransform, null, string.Empty, true)
+        {
+        }
+
+        public RuntimeObjectInstance(string id, string displayName, string definitionId, ResolvedRuntimeObjectDefinition definition,
+            GameObject root, Collider collider, Rigidbody rigidbody, MachineRuntimeObjectTransform authoredInitialTransform,
+            IReadOnlyList<RuntimeObjectNode> nodes, string parentId, bool initiallyActive)
         {
             Id = id;
             DisplayName = displayName;
@@ -261,6 +294,9 @@ namespace OasisPlayer.RuntimeBuild
             Collider = collider;
             Rigidbody = rigidbody;
             AuthoredInitialTransform = authoredInitialTransform;
+            Nodes = nodes ?? Array.Empty<RuntimeObjectNode>();
+            ParentId = parentId ?? string.Empty;
+            InitiallyActive = initiallyActive;
         }
 
         public string Id { get; private set; }
@@ -271,6 +307,9 @@ namespace OasisPlayer.RuntimeBuild
         public Collider Collider { get; private set; }
         public Rigidbody Rigidbody { get; private set; }
         public MachineRuntimeObjectTransform AuthoredInitialTransform { get; private set; }
+        public IReadOnlyList<RuntimeObjectNode> Nodes { get; private set; }
+        public string ParentId { get; private set; }
+        public bool InitiallyActive { get; private set; }
 
         internal void Destroy()
         {
@@ -279,6 +318,43 @@ namespace OasisPlayer.RuntimeBuild
             else UnityEngine.Object.DestroyImmediate(Root);
             Root = null;
         }
+    }
+
+    /// <summary>A stable Prefab node projection. Child runtime IDs derive only from root and asset node IDs.</summary>
+    public sealed class RuntimeObjectNode
+    {
+        public RuntimeObjectNode(string runtimeId, string rootObjectId, string prefabNodeId, string name,
+            GameObject gameObject, Collider collider, Rigidbody rigidbody, Object3DRuntimeTransform authoredTransform,
+            MachineRuntimeObjectTransform initialTransform = null, bool initiallyActive = true)
+        {
+            RuntimeId = runtimeId;
+            RootObjectId = rootObjectId;
+            PrefabNodeId = prefabNodeId;
+            Name = name;
+            GameObject = gameObject;
+            Collider = collider;
+            Rigidbody = rigidbody;
+            AuthoredTransform = authoredTransform;
+            InitialTransform = initialTransform ?? new MachineRuntimeObjectTransform
+            {
+                position = authoredTransform != null ? authoredTransform.position : new RuntimeVector3Definition(),
+                rotationEulerDegrees = authoredTransform != null ? authoredTransform.rotationEulerDegrees : new RuntimeVector3Definition(),
+                scale = authoredTransform != null ? authoredTransform.scale : new RuntimeVector3Definition { x = 1f, y = 1f, z = 1f }
+            };
+            InitiallyActive = initiallyActive;
+        }
+
+        public string RuntimeId { get; private set; }
+        public string RootObjectId { get; private set; }
+        public string PrefabNodeId { get; private set; }
+        public string Name { get; private set; }
+        public GameObject GameObject { get; private set; }
+        public Transform Transform { get { return GameObject != null ? GameObject.transform : null; } }
+        public Collider Collider { get; private set; }
+        public Rigidbody Rigidbody { get; private set; }
+        public Object3DRuntimeTransform AuthoredTransform { get; private set; }
+        public MachineRuntimeObjectTransform InitialTransform { get; private set; }
+        public bool InitiallyActive { get; private set; }
     }
 
     public sealed class RuntimeFace

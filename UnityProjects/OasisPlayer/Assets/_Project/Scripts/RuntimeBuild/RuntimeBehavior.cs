@@ -110,8 +110,16 @@ namespace OasisPlayer.RuntimeBuild
         {
             var instance = _machine.GetObject(objectId);
             var transform = instance.Root.transform;
-            transform.localPosition = pose.Position.ToUnity();
-            transform.localRotation = Quaternion.Euler(pose.RotationEulerDegrees.ToUnity());
+            if (_machine.MachineSpace == null)
+            {
+                transform.localPosition = pose.Position.ToUnity();
+                transform.localRotation = Quaternion.Euler(pose.RotationEulerDegrees.ToUnity());
+            }
+            else
+            {
+                transform.position = _machine.MachineSpace.TransformPoint(pose.Position.ToUnity());
+                transform.rotation = _machine.MachineSpace.rotation * Quaternion.Euler(pose.RotationEulerDegrees.ToUnity());
+            }
             if (instance.Rigidbody != null)
             {
                 instance.Rigidbody.position = transform.position;
@@ -125,11 +133,34 @@ namespace OasisPlayer.RuntimeBuild
         public void ResetObject(string objectId)
         {
             var instance = _machine.GetObject(objectId);
-            instance.Root.SetActive(true);
+            instance.Root.SetActive(instance.InitiallyActive);
             var authored = instance.AuthoredInitialTransform;
             instance.Root.transform.localScale = authored.scale.Value;
-            Teleport(objectId, new RuntimePose(RuntimeVector3.FromUnity(authored.position.Value), RuntimeVector3.FromUnity(authored.rotationEulerDegrees.Value)));
+            instance.Root.transform.localPosition = authored.position.Value;
+            instance.Root.transform.localRotation = Quaternion.Euler(authored.rotationEulerDegrees.Value);
+            if (instance.Rigidbody != null)
+            {
+                instance.Rigidbody.position = instance.Root.transform.position;
+                instance.Rigidbody.rotation = instance.Root.transform.rotation;
+            }
             if (instance.Rigidbody != null) { instance.Rigidbody.linearVelocity = Vector3.zero; instance.Rigidbody.angularVelocity = Vector3.zero; }
+            foreach (var node in instance.Nodes)
+            {
+                if (node.GameObject == null || node.GameObject == instance.Root) continue;
+                var initial = node.InitialTransform;
+                node.Transform.localPosition = initial.position.Value;
+                node.Transform.localRotation = Quaternion.Euler(initial.rotationEulerDegrees.Value);
+                node.Transform.localScale = initial.scale.Value;
+                node.GameObject.SetActive(node.InitiallyActive);
+                if (node.Rigidbody != null)
+                {
+                    node.Rigidbody.position = node.Transform.position;
+                    node.Rigidbody.rotation = node.Transform.rotation;
+                    node.Rigidbody.linearVelocity = Vector3.zero;
+                    node.Rigidbody.angularVelocity = Vector3.zero;
+                }
+            }
+            Physics.SyncTransforms();
         }
         public void StartTimer(string timerId, float durationSeconds) { _machine.Timers.StartTimer(timerId, durationSeconds); }
         public bool StopTimer(string timerId) { return _machine.Timers.StopTimer(timerId); }

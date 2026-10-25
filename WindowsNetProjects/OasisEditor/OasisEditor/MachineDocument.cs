@@ -18,7 +18,7 @@ public sealed record MachineDocument(
     MachineAnchor[] Anchors,
     MachineBehaviorDefinition? Behavior)
 {
-    public const int CurrentSchemaVersion = 8;
+    public const int CurrentSchemaVersion = 9;
 
     [JsonIgnore]
     public EmulationRuntimeDefinition EmulationRuntime => Runtime as EmulationRuntimeDefinition
@@ -55,7 +55,7 @@ public sealed record MachineVector3(double X, double Y, double Z)
 
 /// <summary>
 /// A Machine-level transform. Rotation is authored as Euler angles in degrees around X, Y and Z;
-/// runtime conversion applies them in Unity's standard Z-X-Y order. There is no parent transform in schema 8.
+/// runtime conversion applies them in Unity's standard Z-X-Y order. Instance transforms are parent-local.
 /// </summary>
 public sealed record MachineObjectTransform(MachineVector3 Position, MachineVector3 Rotation, MachineVector3 Scale)
 {
@@ -63,7 +63,8 @@ public sealed record MachineObjectTransform(MachineVector3 Position, MachineVect
 }
 
 /// <summary>One independently identified use of a reusable Object3D asset in a Machine.</summary>
-public sealed record MachineObject3DInstance(string Id, string DisplayName, AssetReference? ObjectAsset, MachineObjectTransform Transform);
+public sealed record MachineObject3DInstance(string Id, string DisplayName, AssetReference? ObjectAsset, MachineObjectTransform Transform,
+    string? ParentId = null, bool Active = true);
 
 /// <summary>A stable, Machine-owned position and XYZ Euler rotation in composition space. Anchors have no scale or scene object.</summary>
 public sealed record MachineAnchor(string Id, string DisplayName, MachineVector3 Position, MachineVector3 Rotation)
@@ -268,6 +269,7 @@ public static class MachineDocumentStorage
         if (document.ReelAssignments.GroupBy(x => x.MachineReelReference).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine reel assignments must be unique.");
         if (document.ReelAssignments.Any(x => x.MachineReelReference.Kind != MachineObjectKind.Reel || x.ReelAsset is null)) throw new InvalidOperationException("Machine reel assignments require a logical Reel reference and Reel asset reference.");
         if (document.ObjectInstances is null) throw new InvalidOperationException("Machine ObjectInstances collection is required.");
+        if (document.ObjectInstances.Any(i => i is null)) throw new InvalidOperationException("Machine ObjectInstances cannot contain null entries.");
         if (document.ObjectInstances.GroupBy(x => x.Id, StringComparer.Ordinal).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine Object3D instance IDs must be unique (case-sensitive).");
         foreach (var instance in document.ObjectInstances)
         {
@@ -277,6 +279,7 @@ public static class MachineDocumentStorage
             _ = new AssetReference(instance.ObjectAsset.Scope, instance.ObjectAsset.Path);
             ValidateTransform(instance.Id, instance.Transform);
         }
+        ValidateInstanceParents(document.ObjectInstances);
         if (document.Anchors is null) throw new InvalidOperationException("Machine Anchors collection is required.");
         if (document.Anchors.GroupBy(x => x.Id, StringComparer.Ordinal).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine anchor IDs must be unique (case-sensitive).");
         foreach (var anchor in document.Anchors)
@@ -288,6 +291,22 @@ public static class MachineDocumentStorage
         }
         if (document.CabinetAsset is not null) _ = new AssetReference(document.CabinetAsset.Scope, document.CabinetAsset.Path);
         foreach (var assignment in document.ReelAssignments) _ = new AssetReference(assignment.ReelAsset.Scope, assignment.ReelAsset.Path);
+    }
+
+    internal static void ValidateInstanceParents(MachineObject3DInstance[] objects)
+    {
+        var instances = objects.ToDictionary(i => i.Id, StringComparer.Ordinal);
+        foreach (var instance in objects)
+        {
+            var visited = new HashSet<string>(StringComparer.Ordinal) { instance.Id };
+            var current = instance;
+            while (current.ParentId is not null)
+            {
+                if (!instances.TryGetValue(current.ParentId, out var parent)) throw new InvalidOperationException($"Machine instance '{current.Id}' parent '{current.ParentId}' does not exist.");
+                if (!visited.Add(parent.Id)) throw new InvalidOperationException($"Machine instance '{instance.Id}' has a parent cycle.");
+                current = parent;
+            }
+        }
     }
 
     private static void ValidateTransform(string id, MachineObjectTransform? transform)

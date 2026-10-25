@@ -145,24 +145,6 @@ public sealed record Object3DDocument(
 
     public Object3DDocument WithRoot(Object3DNodeDefinition root) => this with { Root = root };
 
-    /// <summary>Provides the old runtime-v1 single-root projection, or a contextual reason it cannot represent this tree.</summary>
-    public bool TryProjectSingleRoot(out Object3DModelDefinition model, out Object3DPhysicsDefinition physics, out string error)
-    {
-        model = Model;
-        physics = Physics;
-        error = string.Empty;
-        if (Root.Children.Length != 0) error = $"Object3D '{DisplayName}' root '{Root.Name}' has child nodes; runtime schema 1 supports a single root only.";
-        else if (!Root.Components.Any(component => component.Kind == Object3DComponentDefinition.ModelKind)) error = $"Object3D '{DisplayName}' root '{Root.Name}' has no Model component; runtime schema 1 requires a model.";
-        else if (Root.Transform != MachineObjectTransform.Identity) error = $"Object3D '{DisplayName}' root '{Root.Name}' has a non-identity transform; runtime schema 1 cannot represent it.";
-        else if (Root.Components.Any(component => component.Kind is not (Object3DComponentDefinition.TransformKind or Object3DComponentDefinition.ModelKind or Object3DComponentDefinition.ColliderKind or Object3DComponentDefinition.RigidbodyKind)))
-            error = $"Object3D '{DisplayName}' root '{Root.Name}' contains a component runtime schema 1 cannot represent.";
-        else if (physics.Collider.Kind != Object3DColliderKind.None && physics.Collider.SourceFrame == Object3DColliderSourceFrame.NodeLocal && (model.Scale != 1 || model.UpAxis != "Y"))
-            error = $"Object3D '{DisplayName}' Collider uses NodeLocal coordinates while its Model has intrinsic scale/up-axis correction; runtime schema 1 only represents ModelLocal collider coordinates in this case.";
-        else if (physics.Rigidbody.Mode == Object3DRigidbodyMode.Kinematic) error = $"Object3D '{DisplayName}' Rigidbody is kinematic; runtime schema 1 supports only static or dynamic bodies.";
-        else if (physics.Collider.IsTrigger) error = $"Object3D '{DisplayName}' collider is a trigger; runtime schema 1 cannot represent trigger colliders.";
-        return error.Length == 0;
-    }
-
     private static Object3DNodeDefinition CreateRoot(Object3DModelDefinition model, Object3DPhysicsDefinition physics) => new(
         Guid.NewGuid().ToString("D"), "Root",
         [
@@ -197,10 +179,12 @@ public static class Object3DValidationService
     }
 
     private static void ValidateNode(Object3DDocument document, Object3DNodeDefinition? node, string path,
-        HashSet<string> nodeIds, HashSet<string> componentIds, HashSet<Object3DNodeDefinition> activeNodes, HashSet<Object3DNodeDefinition> visitedNodes)
+        HashSet<string> nodeIds, HashSet<string> componentIds, HashSet<Object3DNodeDefinition> activeNodes, HashSet<Object3DNodeDefinition> visitedNodes,
+        bool hasScaledAncestor = false, int depth = 0)
     {
         if (node is null) throw new InvalidOperationException($"Object3D '{document.DisplayName}' {path}: node is null.");
         var context = $"Object3D '{document.DisplayName}' node '{node.Name}' ({path})";
+        if (depth > 60) throw new InvalidOperationException($"{context}: hierarchy exceeds the supported depth of 60.");
         if (!activeNodes.Add(node)) throw new InvalidOperationException($"{context}: hierarchy contains a cycle.");
         if (!visitedNodes.Add(node)) throw new InvalidOperationException($"{context}: node is referenced more than once; hierarchy must be a tree.");
         if (!Guid.TryParse(node.Id, out _) || !nodeIds.Add(node.Id)) throw new InvalidOperationException($"{context}: node ID must be a unique stable GUID.");
@@ -234,8 +218,13 @@ public static class Object3DValidationService
         var collider = node.Components.SingleOrDefault(component => component.Kind == Object3DComponentDefinition.ColliderKind)?.Collider;
         if (!hasModel && collider is { Kind: not Object3DColliderKind.None, SourceFrame: not Object3DColliderSourceFrame.NodeLocal })
             throw new InvalidOperationException($"{context} Collider: source frame must be NodeLocal when the node has no Model component.");
+        if (!hasModel && collider?.Kind == Object3DColliderKind.Mesh)
+            throw new InvalidOperationException($"{context}: Mesh collider requires a Model component.");
+        if (hasScaledAncestor && node.Components.Any(c => c.Rigidbody is { Mode: not Object3DRigidbodyMode.Static }))
+            throw new InvalidOperationException($"{context}: active Rigidbody beneath a scaled parent is unsupported.");
 
-        foreach (var child in node.Children) ValidateNode(document, child, $"{path}/{child.Name}", nodeIds, componentIds, activeNodes, visitedNodes);
+        foreach (var child in node.Children) ValidateNode(document, child, $"{path}/{child.Name}", nodeIds, componentIds, activeNodes, visitedNodes,
+            hasScaledAncestor || node.Transform.Scale != MachineVector3.One, depth + 1);
         var subtreeBodies = node.Components.Count(component => component.Rigidbody is { Mode: not Object3DRigidbodyMode.Static }) + node.Children.Sum(CountBodies);
         if (subtreeBodies > 1) throw new InvalidOperationException($"{context}: only one Rigidbody may own a node subtree.");
         activeNodes.Remove(node);
@@ -276,6 +265,7 @@ public static class Object3DValidationService
     {
         if (!Enum.IsDefined(collider.Kind)) throw new InvalidOperationException($"{context}: collider kind is unsupported.");
         if (!Enum.IsDefined(collider.SourceFrame)) throw new InvalidOperationException($"{context}: collider source frame is unsupported.");
+        if (collider.Kind == Object3DColliderKind.None && collider.IsTrigger) throw new InvalidOperationException($"{context}: None collider cannot be a trigger.");
         if (collider.Kind is Object3DColliderKind.Sphere or Object3DColliderKind.Box or Object3DColliderKind.Capsule) ValidateVector(collider.Center, $"{context} collider center");
         if (collider.Kind == Object3DColliderKind.Sphere && !FinitePositive(collider.Radius)) throw new InvalidOperationException($"{context}: sphere radius must be positive and finite.");
         if (collider.Kind == Object3DColliderKind.Box)

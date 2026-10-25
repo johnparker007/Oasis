@@ -1,6 +1,8 @@
 # Prefabs, OasisObjects and Components — proposed architecture
 
-Status: proposal only, 2026-10-10. No implementation has started. Delivery and prerequisites are in [the phased plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md). This extends A1–A8, rather than replacing their delivered runtime boundary.
+Status updated 2026-10-25: P1 authoring delivered in PR #745; P2 runtime components
+and the P3 checkpoint are being verified. Later language/lifecycle/variants sections
+remain proposals. Delivery and prerequisites are in [the phased plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md). This extends A1–A8, rather than replacing their delivered runtime boundary.
 
 ## Evidence and current baseline
 

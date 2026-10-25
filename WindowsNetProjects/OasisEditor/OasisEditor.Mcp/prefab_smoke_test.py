@@ -38,18 +38,19 @@ async def main(args):
         assert not machine["isDirty"]
         prefab = await call("open_prefab", path=str(project.parent / "Assets/Object3D/PoolBall/asset.object3d"))
         prefab_id = prefab["documentId"]
-        assert prefab["canBuildSingleRoot"]
+        assert prefab["canBuildStructure"]
         build = await call("build_machine", documentId=machine_id)
         assert build["success"], build
-        before_build = fingerprints(Path(build["buildRoot"]))
         before_id = prefab["prefab"]["root"]["id"]
         child = await call("add_prefab_child", documentId=prefab_id, parentNodeId=before_id, name="Proof marker")
         assert len(child["prefab"]["root"]["children"]) == 1
-        assert not child["canBuildSingleRoot"]
+        assert child["canBuildStructure"]
         await call("save_prefab", documentId=prefab_id)
-        rejected = await call("build_machine", documentId=machine_id)
-        assert not rejected["success"] and "child nodes" in rejected["errorMessage"], rejected
-        assert before_build == fingerprints(Path(build["buildRoot"])), "Rejected build changed previous good output"
+        tree_build = await call("build_machine", documentId=machine_id)
+        assert tree_build["success"], tree_build
+        definition = next(Path(tree_build["buildRoot"]).rglob("object.runtime.json"))
+        runtime_tree = json.loads(definition.read_text(encoding="utf-8-sig"))["root"]
+        assert runtime_tree["children"][0]["id"] == child["prefab"]["root"]["children"][0]["id"]
         restored = await call("prefab_history", documentId=prefab_id)
         assert restored["prefab"]["root"]["id"] == before_id
         assert not restored["prefab"]["root"]["children"]
@@ -64,7 +65,7 @@ async def main(args):
         image = next(block for block in result.content if block.type == "image")
         (artifacts / "machine.png").write_bytes(base64.b64decode(image.data))
         (artifacts / "report.json").write_text(json.dumps({"machine": machine, "prefab": restored, "build": build}, indent=2), encoding="utf-8")
-        print("PASS: command-backed anchor fix, prefab identity/hierarchy/undo/save, unsupported-build preservation, three-theme captures and actual Pool build", flush=True)
+        print("PASS: command-backed anchor fix, prefab identity/hierarchy/undo/save, runtime component tree export, three-theme captures and actual Pool build", flush=True)
         print(json.dumps(build), flush=True)
 
 

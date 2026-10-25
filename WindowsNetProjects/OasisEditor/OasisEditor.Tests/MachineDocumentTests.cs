@@ -28,7 +28,7 @@ public sealed class MachineDocumentTests
     }
 
     [Fact]
-    public void Schema8_RoundTripsCompositionRuntimeAndInputs()
+    public void Schema9_RoundTripsCompositionRuntimeAndInputs()
     {
         var machine = MachineDocument.Create("Machine A") with
         {
@@ -40,7 +40,7 @@ public sealed class MachineDocumentTests
         var json = MachineDocumentStorage.Serialize(machine);
         using (var authored = JsonDocument.Parse(json))
         {
-            Assert.Equal(8, authored.RootElement.GetProperty("schemaVersion").GetInt32());
+            Assert.Equal(9, authored.RootElement.GetProperty("schemaVersion").GetInt32());
             Assert.Empty(authored.RootElement.GetProperty("objectInstances").EnumerateArray());
             Assert.Equal("Emulation", authored.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
             Assert.False(authored.RootElement.GetProperty("runtime").TryGetProperty("$type", out _));
@@ -56,9 +56,9 @@ public sealed class MachineDocumentTests
     [Fact]
     public void WrongSchema_IsRejectedWithoutCompatibilityFallback()
     {
-        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")).Replace("\"schemaVersion\": 8", "\"schemaVersion\": 7");
+        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")).Replace("\"schemaVersion\": 9", "\"schemaVersion\": 7");
         Assert.False(MachineDocumentStorage.TryRead(json, out _, out var error));
-        Assert.Contains("only version 8", error);
+        Assert.Contains("only version 9", error);
     }
 
     [Fact]

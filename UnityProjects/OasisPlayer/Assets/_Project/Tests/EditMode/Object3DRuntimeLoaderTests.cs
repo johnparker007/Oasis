@@ -63,12 +63,41 @@ namespace OasisPlayer.Tests
             }
             Assert.AreEqual(new Vector3(1, 2, 3), machine.GetObject("cueBall").Root.transform.localPosition);
             Assert.AreEqual(new Vector3(2, 3, 4), machine.GetObject("ball01").Root.transform.localPosition);
-            machine.GetObject("cueBall").Rigidbody.position = new Vector3(10, 0, 0);
-            machine.GetObject("ball01").Rigidbody.position = new Vector3(20, 0, 0);
-            machine.GetObject("ball08").Rigidbody.position = new Vector3(30, 0, 0);
-            Assert.AreEqual(new Vector3(10, 0, 0), machine.GetObject("cueBall").Root.transform.position);
-            Assert.AreEqual(new Vector3(20, 0, 0), machine.GetObject("ball01").Root.transform.position);
-            Assert.AreEqual(new Vector3(30, 0, 0), machine.GetObject("ball08").Root.transform.position);
+            WithScriptPhysics(() =>
+            {
+                foreach (var id in new[] { "cueBall", "ball01", "ball08" }) machine.GetObject(id).Rigidbody.useGravity = false;
+                machine.GetObject("cueBall").Rigidbody.position = new Vector3(10, 0, 0);
+                machine.GetObject("ball01").Rigidbody.position = new Vector3(20, 0, 0);
+                machine.GetObject("ball08").Rigidbody.position = new Vector3(30, 0, 0);
+                Physics.Simulate(.02f);
+            });
+            AssertVector(new Vector3(10, 0, 0), machine.GetObject("cueBall").Root.transform.position);
+            AssertVector(new Vector3(20, 0, 0), machine.GetObject("ball01").Root.transform.position);
+            AssertVector(new Vector3(30, 0, 0), machine.GetObject("ball08").Root.transform.position);
+        }
+
+        [Test]
+        public async Task ReusesGlbImportAcrossDifferentDefinitionIdsWithSameAbsolutePath()
+        {
+            var firstDefinition = Definition("None");
+            var secondDefinition = Definition("None");
+            secondDefinition.Manifest.definitionId = "other-def";
+            var first = Instance("first", 0);
+            var second = Instance("second", 1);
+            second.definitionId = "other-def";
+            var definitions = new Dictionary<string, ResolvedRuntimeObjectDefinition>
+            {
+                { "def", firstDefinition },
+                { "other-def", secondDefinition }
+            };
+            var machine = Machine(new[] { first, second }, definitions);
+            var parent = NewRoot("Machine");
+            var modelLoader = new FakeModelLoader();
+            using (var loader = new Object3DRuntimeLoader(modelLoader)) await loader.LoadAsync(machine, parent.transform);
+
+            Assert.AreEqual(1, modelLoader.LoadCount);
+            Assert.AreEqual(2, machine.Objects.Count);
+            Assert.AreNotSame(machine.GetObject("first").Root, machine.GetObject("second").Root);
         }
 
         [Test]
@@ -84,8 +113,8 @@ namespace OasisPlayer.Tests
 
             var root = machine.GetObject("object").Root.transform;
             Assert.That(Quaternion.Angle(Quaternion.Euler(13, 27, 41), root.localRotation), Is.LessThan(.001f));
-            Assert.AreEqual(new Vector3(2, 3, 4), root.localScale);
-            Assert.AreEqual(Vector3.one * .5f, root.GetChild(0).localScale);
+            AssertVector(new Vector3(2, 3, 4), root.localScale);
+            AssertVector(Vector3.one * .5f, root.GetChild(0).localScale);
             Assert.That(Quaternion.Angle(Quaternion.Euler(0, 0, 90), root.GetChild(0).localRotation), Is.LessThan(.001f));
         }
 
@@ -198,26 +227,164 @@ namespace OasisPlayer.Tests
             using (var loader = new Object3DRuntimeLoader(new FakeModelLoader())) await loader.LoadAsync(machine, parent.transform);
             var live = machine.GetObject("ball");
 
-            live.Rigidbody.position = new Vector3(9, 8, 7);
+            WithScriptPhysics(() =>
+            {
+                live.Rigidbody.useGravity = false;
+                live.Rigidbody.position = new Vector3(9, 8, 7);
+                Physics.Simulate(.02f);
+            });
 
             Assert.AreSame(live.Root.transform, live.Rigidbody.transform);
-            Assert.AreEqual(new Vector3(9, 8, 7), live.Root.transform.position);
+            AssertVector(new Vector3(9, 8, 7), live.Root.transform.position);
             Assert.AreEqual(new Vector3(0, 1, 2), live.AuthoredInitialTransform.position.Value);
+        }
+
+        [Test]
+        public async Task BuildsPrefabChildrenAndRegistersStableNodeIds()
+        {
+            var definition = Definition("None");
+            var rootNode = definition.Manifest.root;
+            var childId = "child-node-guid";
+            rootNode.children = new[] { new Object3DRuntimeNode
+            {
+                id = childId, name = "Articulated Child", children = Array.Empty<Object3DRuntimeNode>(),
+                components = new[]
+                {
+                    new Object3DRuntimeComponent { componentId = "child-transform", kind = "Transform", contractVersion = 1, transform = new Object3DRuntimeTransform { position = Vector(1, 2, 3), rotationEulerDegrees = Vector(0, 45, 0), scale = Vector(1, 2, 1) } },
+                    new Object3DRuntimeComponent { componentId = "child-collider", kind = "Collider", contractVersion = 1, collider = new Object3DRuntimeCollider { kind = "Sphere", center = new[] { 0f, 0f, 0f }, radius = .5f, sourceFrame = "NodeLocal" } }
+                }
+            } };
+            var machine = Machine(new[] { Instance("ball01", 0) }, definition);
+            var parent = NewRoot("Machine");
+            using (var loader = new Object3DRuntimeLoader(new FakeModelLoader())) await loader.LoadAsync(machine, parent.transform);
+
+            var rootKey = machine.GetObject("ball01").Id;
+            var childKey = "@node:6:ball01:child-node-guid";
+            Assert.AreEqual(2, machine.ObjectNodes.Count);
+            Assert.AreEqual(rootKey, machine.GetObjectNode(rootKey).RuntimeId);
+            var childNode = machine.GetObjectNode(childKey);
+            Assert.AreEqual(childId, childNode.PrefabNodeId);
+            Assert.AreEqual("Articulated Child", childNode.Name);
+            Assert.AreEqual(new Vector3(1, 2, 3), childNode.Transform.localPosition);
+            Assert.AreEqual(new Vector3(1, 2, 1), childNode.Transform.localScale);
+            Assert.AreSame(machine.GetObject("ball01").Root.transform, childNode.Transform.parent);
+            Assert.AreSame(childNode.GameObject, childNode.Collider.gameObject);
+            Assert.IsNull(childNode.Rigidbody);
+            Assert.IsNull(machine.GetObject("ball01").Rigidbody);
+        }
+
+        [Test]
+        public async Task CombinesPlacementAndPrefabRootTransformOnAuthoritativeObject()
+        {
+            var declaration = Instance("ball", 2);
+            declaration.transform.rotationEulerDegrees = Vector(0, 90, 0);
+            declaration.transform.scale = Vector(2, 2, 2);
+            var definition = Definition("None");
+            var transform = definition.Manifest.root.GetComponent("Transform");
+            transform.transform.position = Vector(1, 0, 0);
+            var machine = Machine(new[] { declaration }, definition);
+            var parent = NewRoot("Machine");
+            using (var loader = new Object3DRuntimeLoader(new FakeModelLoader())) await loader.LoadAsync(machine, parent.transform);
+
+            var live = machine.GetObject("ball");
+            AssertVector(new Vector3(2, 3, 2), live.Root.transform.localPosition);
+            AssertVector(new Vector3(2, 2, 2), live.Root.transform.localScale);
+            Assert.That(Quaternion.Angle(Quaternion.Euler(0, 90, 0), live.Root.transform.localRotation), Is.LessThan(.001f));
+            AssertVector(live.Root.transform.localPosition, live.AuthoredInitialTransform.position.Value);
+            AssertVector(live.Root.transform.localScale, live.AuthoredInitialTransform.scale.Value);
+        }
+
+        [Test]
+        public async Task RejectsUnrepresentableShearWhenCombiningRootAndPlacement()
+        {
+            var declaration = Instance("sheared", 0);
+            declaration.transform.scale = Vector(2, 1, 1);
+            var definition = Definition("Sphere");
+            definition.Manifest.root.GetComponent("Transform").transform.rotationEulerDegrees = Vector(0, 45, 0);
+            var machine = Machine(new[] { declaration }, definition);
+            var parent = NewRoot("Machine");
+
+            using (var loader = new Object3DRuntimeLoader(new FakeModelLoader()))
+            {
+                var error = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(machine, parent.transform));
+                StringAssert.Contains("shear", error.Message);
+            }
+
+            Assert.AreEqual(0, machine.Objects.Count);
+            Assert.IsNull(parent.transform.Find("Objects"));
+        }
+
+        [Test]
+        public async Task LoadsAuthoredParentBeforeChildAndRejectsParentCycles()
+        {
+            var parentDeclaration = Instance("parent", 0);
+            var childDeclaration = Instance("child", 0);
+            childDeclaration.parentId = "parent";
+            var machine = Machine(new[] { childDeclaration, parentDeclaration }, Definition("None"));
+            var parent = NewRoot("Machine");
+            using (var loader = new Object3DRuntimeLoader(new FakeModelLoader())) await loader.LoadAsync(machine, parent.transform);
+            Assert.AreSame(machine.GetObject("parent").Root.transform, machine.GetObject("child").Root.transform.parent);
+
+            var cycleA = Instance("cycleA", 0); cycleA.parentId = "cycleB";
+            var cycleB = Instance("cycleB", 0); cycleB.parentId = "cycleA";
+            var cyclicMachine = Machine(new[] { cycleA, cycleB }, Definition("None"));
+            var cycleRoot = NewRoot("CycleMachine");
+            using (var loader = new Object3DRuntimeLoader(new FakeModelLoader()))
+            {
+                var error = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(cyclicMachine, cycleRoot.transform));
+                StringAssert.Contains("cycle", error.Message);
+            }
+            Assert.AreEqual(0, cyclicMachine.Objects.Count);
+            Assert.IsNull(cycleRoot.transform.Find("Objects"));
+        }
+
+        [Test]
+        public async Task RejectsActiveRigidbodyInChildInstanceWhenAncestorOwnsOne()
+        {
+            var parentDeclaration = Instance("movingParent", 0);
+            var childDeclaration = Instance("movingChild", 0);
+            childDeclaration.parentId = parentDeclaration.id;
+            var machine = Machine(new[] { childDeclaration, parentDeclaration }, Definition("Sphere", rigidbody: true));
+            var parent = NewRoot("Machine");
+
+            using (var loader = new Object3DRuntimeLoader(new FakeModelLoader()))
+            {
+                var error = Assert.ThrowsAsync<InvalidOperationException>(async () => await loader.LoadAsync(machine, parent.transform));
+                StringAssert.Contains("active Rigidbody", error.Message);
+                StringAssert.Contains("movingParent", error.Message);
+            }
+
+            Assert.AreEqual(0, machine.Objects.Count);
+            Assert.IsNull(parent.transform.Find("Objects"));
         }
 
         private RuntimeMachine Machine(MachineRuntimeObjectInstance[] instances, ResolvedRuntimeObjectDefinition definition)
         {
-            var manifest = new MachineRuntimeManifest { anchors = Array.Empty<MachineRuntimeAnchor>(), objectInstances = instances };
             var definitions = new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "def", definition } };
+            return Machine(instances, definitions);
+        }
+
+        private RuntimeMachine Machine(MachineRuntimeObjectInstance[] instances, IReadOnlyDictionary<string, ResolvedRuntimeObjectDefinition> definitions)
+        {
+            var manifest = new MachineRuntimeManifest { anchors = Array.Empty<MachineRuntimeAnchor>(), objectInstances = instances };
             return new RuntimeMachine(new ResolvedRuntimeBuild("", manifest, "", new CabinetRuntimeManifest(), "", Array.Empty<MachineRuntimeFaceReference>(), definitions), null);
         }
 
         private static ResolvedRuntimeObjectDefinition Definition(string kind, bool rigidbody = false, string upAxis = "Y", float modelScale = 1)
         {
-            var manifest = new Object3DRuntimeManifest { definitionId = "def", displayName = "Pool Ball", modelScale = modelScale, upAxis = upAxis,
-                collider = new Object3DRuntimeCollider { kind = kind, center = new[] { 1f, 2f, 3f }, radius = .25f, size = new[] { 4f, 5f, 6f }, height = 2, axis = "Z" },
-                rigidbody = new Object3DRuntimeRigidbody { enabled = rigidbody, mass = .17f, useGravity = true } };
-            return new ResolvedRuntimeObjectDefinition("manifest", "model", manifest);
+            var transform = new Object3DRuntimeComponent { componentId = "transform", kind = "Transform", contractVersion = 1, transform = new Object3DRuntimeTransform
+            { position = Vector(0, 0, 0), rotationEulerDegrees = Vector(0, 0, 0), scale = Vector(1, 1, 1) } };
+            var model = new Object3DRuntimeComponent { componentId = "model", kind = "Model", contractVersion = 1, model = new Object3DRuntimeModel { path = "model.glb", scale = modelScale, upAxis = upAxis } };
+            var collider = new Object3DRuntimeComponent { componentId = "collider", kind = "Collider", contractVersion = 1, collider = new Object3DRuntimeCollider
+            { kind = kind, center = kind == "None" || kind == "Mesh" ? Array.Empty<float>() : new[] { 1f, 2f, 3f }, radius = kind == "Sphere" || kind == "Capsule" ? .25f : 0f,
+                size = kind == "Box" ? new[] { 4f, 5f, 6f } : Array.Empty<float>(), height = kind == "Capsule" ? 2f : 0f, axis = kind == "Capsule" ? "Z" : string.Empty, sourceFrame = "ModelLocal", isTrigger = false } };
+            var body = new Object3DRuntimeComponent { componentId = "body", kind = "Rigidbody", contractVersion = 1, rigidbody = new Object3DRuntimeRigidbody
+            { mode = rigidbody ? "Dynamic" : "Static", mass = rigidbody ? .17f : 0f, useGravity = rigidbody } };
+            var root = new Object3DRuntimeNode { id = "root-node-guid", name = "Root", components = new[] { transform, model, collider, body }, children = Array.Empty<Object3DRuntimeNode>() };
+            var manifest = new Object3DRuntimeManifest { schema = RuntimeBuildLoader.ObjectSchema, schemaVersion = RuntimeBuildLoader.ObjectSchemaVersion,
+                definitionId = "def", displayName = "Pool Ball", root = root };
+            var modelPaths = new Dictionary<string, string> { { "model.glb", "model" } };
+            return new ResolvedRuntimeObjectDefinition("manifest", modelPaths, manifest);
         }
 
         private static MachineRuntimeObjectInstance Instance(string id, float x)
@@ -227,6 +394,13 @@ namespace OasisPlayer.Tests
 
         private static MachineRuntimeObjectTransform Transform() { return new MachineRuntimeObjectTransform { position = Vector(0, 0, 0), rotationEulerDegrees = Vector(0, 0, 0), scale = Vector(1, 1, 1) }; }
         private static RuntimeVector3Definition Vector(float x, float y, float z) { return new RuntimeVector3Definition { x = x, y = y, z = z }; }
+        private static void AssertVector(Vector3 expected, Vector3 actual) { Assert.That(Vector3.Distance(expected, actual), Is.LessThan(.001f), "Expected " + expected + " but got " + actual); }
+        private static void WithScriptPhysics(Action action)
+        {
+            var previous = Physics.simulationMode;
+            try { Physics.simulationMode = SimulationMode.Script; action(); }
+            finally { Physics.simulationMode = previous; }
+        }
         private GameObject NewRoot(string name) { var value = new GameObject(name); _created.Add(value); return value; }
 
         private sealed class FakeModelLoader : IObject3DModelLoader

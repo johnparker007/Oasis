@@ -6,18 +6,18 @@ namespace OasisEditor.Tests;
 
 public sealed class OasisRuntimeDefinitionTests
 {
-    [Fact] public void OasisRoundTripsMinimalShapeUnderSchema8()
+    [Fact] public void OasisRoundTripsMinimalShapeUnderSchema9()
     {
         var machine = MachineDocument.Create("Pool") with { Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript() };
         var json = MachineDocumentStorage.Serialize(machine);
         using var parsed = JsonDocument.Parse(json);
-        Assert.Equal(8, parsed.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(9, parsed.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Single(parsed.RootElement.GetProperty("runtime").EnumerateObject());
         Assert.Equal("Oasis", parsed.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
         Assert.True(MachineDocumentStorage.TryRead(json, out var loaded, out var error), error);
         Assert.IsType<OasisRuntimeDefinition>(loaded.Runtime); Assert.Equal(machine.Behavior, loaded.Behavior);
-        Assert.False(MachineDocumentStorage.TryRead(json.Replace("\"schemaVersion\": 8", "\"schemaVersion\": 7"), out _, out error));
-        Assert.Contains("only version 8", error);
+        Assert.False(MachineDocumentStorage.TryRead(json.Replace("\"schemaVersion\": 9", "\"schemaVersion\": 7"), out _, out error));
+        Assert.Contains("only version 9", error);
         Assert.False(MachineDocumentStorage.TryRead(json.Replace("\"Oasis\"", "\"Unknown\""), out _, out error)); Assert.Contains("Unsupported", error);
     }
     [Fact] public void RuntimeBehaviorUnionIsExclusive()

@@ -246,16 +246,18 @@ namespace OasisPlayer.Tests
             Assert.AreEqual(new[] { "+rerack" }, events);
             controls.Poll(k => false); Assert.AreEqual(new[] { "+rerack", "-rerack" }, events);
             Pocket("ball01"); controls.Poll(k => k == KeyCode.N); At("ball01", Rack);
-            controls.enabled = false; Assert.AreEqual("-newGame", events.Last());
+            // EditMode does not reliably dispatch lifecycle callbacks for plain MonoBehaviours.
+            // Invoke the actual callback explicitly to verify its release behavior.
+            controls.enabled = false; typeof(RuntimeInputDevelopmentControls).GetMethod("OnDisable", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Invoke(controls, null); Assert.AreEqual("-newGame", events.Last());
             controls.Poll(k => true); Assert.AreEqual(4, events.Count);
             controls.enabled = true; controls.Poll(k => k == KeyCode.N);
             controls.Configure(Array.Empty<RuntimeInputDevelopmentControls.Binding>()); Assert.AreEqual("-newGame", events.Last());
             controls.Configure(new[] { new RuntimeInputDevelopmentControls.Binding { key = KeyCode.R, inputId = "rerack" } });
             controls.Poll(k => true); var old = _machine; Load(); controls.Initialize(_machine);
             Assert.False(old.Inputs["rerack"].IsPressed); controls.Poll(k => true); Assert.True(_machine.Inputs["rerack"].IsPressed);
-            controls.SendMessage("OnApplicationFocus", false); Assert.False(_machine.Inputs["rerack"].IsPressed);
+            typeof(RuntimeInputDevelopmentControls).GetMethod("OnApplicationFocus", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Invoke(controls, new object[] { false }); Assert.False(_machine.Inputs["rerack"].IsPressed);
             controls.Poll(k => true); Assert.False(_machine.Inputs["rerack"].IsPressed);
-            controls.SendMessage("OnApplicationFocus", true); controls.Poll(k => true);
+            typeof(RuntimeInputDevelopmentControls).GetMethod("OnApplicationFocus", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Invoke(controls, new object[] { true }); controls.Poll(k => true);
             _machine.UnloadAssets(); Assert.DoesNotThrow(() => controls.Poll(k => true)); controls.enabled = false;
         }
 #endif

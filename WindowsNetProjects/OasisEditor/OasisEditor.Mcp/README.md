@@ -300,11 +300,21 @@ for transform edits; camera state is never persisted. Sphere and Box collider
 previews are available. Capsule and Mesh previews report their current visual
 limitation rather than displaying an approximate collision shape.
 
-At this authoring checkpoint the runtime format is still Object3D v1: only an
-identity-root single-model structure with representable static/dynamic physics can
-build. Children, kinematic bodies and trigger colliders report explicit projection
-errors and preserve the previous build. They are authored correctly but need the
-subsequent runtime-component phase. No spawning or language syntax is added here.
+Machine authored schema **9**, Machine runtime **10** and reusable Object runtime
+**2** now carry authored parent/active state and typed node/component trees. Builds
+copy every referenced GLB into content-hash model paths and deduplicate definitions
+by stable asset GUID, rejecting conflicting contents. Player builds contain all
+dependencies and do not read Editor files. Reauthor old Machine manifests explicitly
+to schema 9 and rebuild; readers accept only current formats.
+
+The Player registers nodes using source node IDs rather than names/indices, keeps
+the physical root authoritative, and supports ModelLocal/NodeLocal collision frames
+and Static/Dynamic/Kinematic defaults. Nested active bodies, scaled body parents
+and unsupported transform shear fail contextually. Machine Inspector exposes source
+identity/defaults separately from permitted placement overrides and Revert.
+Machine-space teleport still targets Machine-space anchors under parented placement;
+reset restores authored node poses/active state and clears body velocities.
+No spawning or language syntax is added by this runtime-component checkpoint.
 
 `create_prefab(name, modelSource?)` initially saves a grouping Prefab or copies one
 workspace GLB into a fresh package. `update_prefab_node` accepts optional `name`,
@@ -316,8 +326,7 @@ at 800–1920 by 600–1080 pixels. All calls operate on an isolated document se
 `prefab_smoke_test.py` takes the same `--server`, `--project` and `--artifacts`
 arguments as `machine_smoke_test.py`. It requires a disposable current-schema
 PoolTableTest1 project. It fixes the two anchors through MCP, checks hierarchy
-creation/undo/save and identity, verifies unsupported child export preserves the
-previous good runtime package, then captures the real Prefab view in three themes
+creation/undo/save and identity, verifies child node/component export, then captures the real Prefab view in three themes
 and builds the restored single-ball machine. It changes the disposable copy only.
 
 ```powershell

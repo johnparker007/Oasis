@@ -85,7 +85,7 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
             if (SelectedObject is null) return Rect3D.Empty;
             var instance = _document.GetMachineDocument().ObjectInstances.FirstOrDefault(item => item.Id == SelectedObject.Id);
             if (instance?.ObjectAsset is null || !_definitionCache.TryGetValue(instance.ObjectAsset, out var loaded)) return Rect3D.Empty;
-            return MachineCompositionTransform.Create(instance.Transform, loaded.Definition.Model).TransformBounds(loaded.Model.Bounds);
+            return InstancePlacement(instance).TransformBounds(loaded.Model.Bounds);
         }
     }
     public double GridSize => Bounds.IsEmpty ? 10 : Math.Max(1, Math.Ceiling(Math.Max(Bounds.SizeX, Math.Max(Bounds.SizeY, Bounds.SizeZ)) * 2));
@@ -103,6 +103,11 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
     public void RefreshDefinitions() => _refreshTask = RebuildAsync(clearCache: true);
     internal Task RefreshDefinitionsAsync() { RefreshDefinitions(); return _refreshTask; }
     internal Task WaitForRefreshAsync() => _refreshTask;
+    internal void InvalidateDefinition(AssetReference reference)
+    {
+        _definitionCache.Remove(reference);
+        _refreshTask = RebuildAsync(clearCache: false, reloadCabinet: false);
+    }
 
     internal void Refresh(MachineDocument machine, bool cabinetChanged, bool objectInstancesChanged)
     {
@@ -121,7 +126,7 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
 
     private bool DefinitionsChanged(MachineDocument machine) => machine.ObjectInstances.Any(instance => instance.ObjectAsset is not null && !_definitionCache.ContainsKey(instance.ObjectAsset));
 
-    private async Task RebuildAsync(bool clearCache)
+    private async Task RebuildAsync(bool clearCache, bool reloadCabinet = true)
     {
         if (_disposed) return;
         _refreshCancellation.Cancel();
@@ -132,19 +137,19 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
         if (clearCache) _definitionCache.Clear();
         _definitionDiagnostics.Clear();
         _instanceDiagnostics.Clear();
-        _cabinetDiagnostic = null;
+        if (reloadCabinet) _cabinetDiagnostic = null;
         RefreshDiagnostics();
         var project = _document.CurrentProject;
         if (project is null) { _cabinetDiagnostic = "Open this Machine in a project to resolve composition assets."; RefreshDiagnostics(); return; }
         var machine = _document.GetMachineDocument();
-        await LoadCabinetAsync(project, machine.CabinetAsset, version, token);
+        if (reloadCabinet) await LoadCabinetAsync(project, machine.CabinetAsset, version, token);
         foreach (var reference in machine.ObjectInstances.Select(i => i.ObjectAsset).OfType<AssetReference>().Distinct())
             if (!_definitionCache.ContainsKey(reference)) await LoadObjectAsync(project, reference, version, token);
         if (!IsCurrent(version, token)) return;
         Refresh(machine, false, false);
         RebuildObjectInstances();
         RebuildAnchors();
-        ResetCamera();
+        if (reloadCabinet) ResetCamera();
     }
 
     private async Task LoadCabinetAsync(EditorProject project, AssetReference? reference, int version, CancellationToken token)
@@ -178,11 +183,29 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
             var manifest = _resolver.Resolve(project, _document.CurrentLibraryRoot, reference);
             if (!File.Exists(manifest)) throw new InvalidOperationException($"manifest not found: {reference.Path}");
             if (!Object3DDocumentStorage.TryRead(await File.ReadAllTextAsync(manifest, token), out var definition, out var error)) throw new InvalidOperationException(error);
-            var modelPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifest)!, definition.Model.Path));
-            var result = await _loader.LoadAsync(modelPath, token);
-            if (!result.Succeeded || result.Model is null) throw new InvalidOperationException(result.ErrorMessage);
+            var modelCache = new Dictionary<string, Model3DGroup>(StringComparer.OrdinalIgnoreCase);
+            async Task<Model3DGroup> Compose(Object3DNodeDefinition node)
+            {
+                var group = new Model3DGroup { Transform = Placement(node.Transform) };
+                foreach (var component in node.Components.Where(c => c.Model is not null))
+                {
+                    var model = component.Model!;
+                    var path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifest)!, model.Path));
+                    if (!modelCache.TryGetValue(path, out var visual))
+                    {
+                        var result = await _loader.LoadAsync(path, token);
+                        if (!result.Succeeded || result.Model is null) throw new InvalidOperationException($"Node '{node.Name}': {result.ErrorMessage}");
+                        modelCache[path] = visual = result.Model;
+                    }
+                    group.Children.Add(new Model3DGroup { Children = { visual }, Transform = MachineCompositionTransform.Create(MachineObjectTransform.Identity, model) });
+                }
+                foreach (var child in node.Children) group.Children.Add(await Compose(child));
+                group.Freeze();
+                return group;
+            }
+            var composed = await Compose(definition.Root);
             if (!IsCurrent(version, token)) return;
-            _definitionCache[reference] = new(definition, result.Model);
+            _definitionCache[reference] = new(definition, composed);
             _definitionDiagnostics.Remove(reference);
         }
         catch (OperationCanceledException) { return; }
@@ -203,7 +226,8 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
         {
             if (instance.ObjectAsset is null) { _instanceDiagnostics[instance.Id] = $"{instance.Id}: no Object3D asset assigned."; continue; }
             if (!_definitionCache.TryGetValue(instance.ObjectAsset, out var loaded)) { _instanceDiagnostics[instance.Id] = $"{instance.Id}: Object3D reference is unresolved ({instance.ObjectAsset.Path})."; continue; }
-            group.Children.Add(new Model3DGroup { Children = { loaded.Model }, Transform = MachineCompositionTransform.Create(instance.Transform, loaded.Definition.Model) });
+            if (!IsActiveInHierarchy(instance)) continue;
+            group.Children.Add(new Model3DGroup { Children = { loaded.Model }, Transform = InstancePlacement(instance) });
         }
         // Composition refresh can complete on a worker thread in headless tests, and the
         // viewport may subsequently read this WPF Freezable on the UI thread. Production
@@ -215,6 +239,35 @@ public sealed class MachineComposition3DViewModel : INotifyPropertyChanged, IDis
         Notify(nameof(SelectedBounds));
         RecalculateBounds();
         RefreshDiagnostics();
+    }
+
+    private static Transform3D Placement(MachineObjectTransform value) => MachineCompositionTransform.Create(value, new("", 1, "Y"));
+
+    private Transform3D InstancePlacement(MachineObject3DInstance instance)
+    {
+        var matrix = Placement(instance.Transform).Value;
+        var instances = _document.GetMachineDocument().ObjectInstances;
+        var visited = new HashSet<string>(StringComparer.Ordinal) { instance.Id };
+        var current = instance;
+        while (current.ParentId is not null)
+        {
+            var parent = instances.FirstOrDefault(i => i.Id == current.ParentId);
+            if (parent is null || !visited.Add(parent.Id)) break;
+            if (parent.ObjectAsset is not null && _definitionCache.TryGetValue(parent.ObjectAsset, out var source))
+                matrix.Append(Placement(source.Definition.Root.Transform).Value);
+            matrix.Append(Placement(parent.Transform).Value);
+            current = parent;
+        }
+        return new MatrixTransform3D(matrix);
+    }
+
+    private bool IsActiveInHierarchy(MachineObject3DInstance instance)
+    {
+        var instances = _document.GetMachineDocument().ObjectInstances;
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        for (var current = instance; current is not null && visited.Add(current.Id); current = instances.FirstOrDefault(i => i.Id == current.ParentId))
+            if (!current.Active) return false;
+        return true;
     }
 
     private void RecalculateBounds()

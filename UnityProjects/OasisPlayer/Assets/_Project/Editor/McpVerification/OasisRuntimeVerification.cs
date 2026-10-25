@@ -79,21 +79,21 @@ namespace OasisPlayer.Editor.Verification
                 var rack = machine.GetAnchor("rackBall01").Position;
                 var tray = machine.GetAnchor("traySlot01").Position;
                 if (ball.Rigidbody == null || ball.Collider == null) throw new InvalidOperationException("Ball Rigidbody/Collider missing.");
-                AssertPose(ball, new Vector3(rack.X, rack.Y, rack.Z));
+                AssertPose(machine, ball, new Vector3(rack.X, rack.Y, rack.Z));
                 checks.Add("machine.started activated/teleported the real loaded ball and cleared its motion");
                 foreach (var input in new[] { "rerack", "newGame" })
                 {
                     Displace(ball);
                     if (!machine.SetInputState(input, true)) throw new InvalidOperationException("Input missing: " + input);
                     machine.SetInputState(input, false);
-                    AssertPose(ball, new Vector3(rack.X, rack.Y, rack.Z));
+                    AssertPose(machine, ball, new Vector3(rack.X, rack.Y, rack.Z));
                     checks.Add(input + " reset the live loaded object and both velocities");
                 }
                 var relays = spawn.GetComponentsInChildren<RuntimeTriggerRelay>(true);
                 if (machine.Triggers.Count != 6 || relays.Length != 6) throw new InvalidOperationException("Expected six registered Pool pocket relays.");
                 Displace(ball);
                 relays[0].PublishEntered(ball.Collider);
-                AssertPose(ball, new Vector3(tray.X, tray.Y, tray.Z));
+                AssertPose(machine, ball, new Vector3(tray.X, tray.Y, tray.Z));
                 checks.Add("Real pocket relay dispatched trigger.entered and collected the live ball");
                 Displace(ball);
                 var displaced = ball.Root.transform.localPosition;
@@ -101,9 +101,9 @@ namespace OasisPlayer.Editor.Verification
                 if (ball.Root.transform.localPosition != displaced) throw new InvalidOperationException("Duplicate collection was not ignored.");
                 checks.Add("Duplicate collection guard prevented a second teleport");
                 machine.SetInputState("rerack", true); machine.SetInputState("rerack", false);
-                AssertPose(ball, new Vector3(rack.X, rack.Y, rack.Z));
+                AssertPose(machine, ball, new Vector3(rack.X, rack.Y, rack.Z));
                 Displace(ball); relays[0].PublishEntered(ball.Collider);
-                AssertPose(ball, new Vector3(tray.X, tray.Y, tray.Z));
+                AssertPose(machine, ball, new Vector3(tray.X, tray.Y, tray.Z));
                 checks.Add("Re-rack cleared collected state and enabled collection again");
                 if (loader.OasisBehaviorFault != null) throw new InvalidOperationException("Oasis behavior faulted during verification.");
                 var cabinetColliders = machine.Cabinet.GetComponentsInChildren<Collider>(true);
@@ -118,9 +118,9 @@ namespace OasisPlayer.Editor.Verification
                 }).ToArray();
                 machine.SetInputState("rerack", true); machine.SetInputState("rerack", false);
                 Physics.SyncTransforms();
-                var physicsStart = ball.Root.transform.localPosition;
+                var physicsStart = MachinePosition(machine, ball);
                 for (var step = 0; step < 120; step++) Physics.Simulate(1f / 60f);
-                var physicsEnd = ball.Root.transform.localPosition;
+                var physicsEnd = MachinePosition(machine, ball);
                 checks.Add("Simulated two seconds of Unity physics from the authored rack anchor");
                 var supportedAtRack = Vector3.Distance(physicsStart, physicsEnd) < 0.02f;
                 var naturalPocketChecks = new List<string>();
@@ -140,7 +140,7 @@ namespace OasisPlayer.Editor.Verification
                         ball.Rigidbody.WakeUp();
                         Physics.SyncTransforms();
                         for (var step = 0; step < 120; step++) Physics.Simulate(1f / 60f);
-                        var final = ball.Root.transform.localPosition;
+                        var final = MachinePosition(machine, ball);
                         if (Vector3.Distance(final, new Vector3(tray.X, tray.Y, tray.Z)) > 0.02f)
                             throw new InvalidOperationException("Natural drop did not reach supported collection anchor for " + relay.name + ": " + final);
                         naturalPocketChecks.Add(relay.name);
@@ -149,7 +149,8 @@ namespace OasisPlayer.Editor.Verification
                 }
                 return new SuccessResponse("Actual authored Pool build load/input/trigger/reset verification passed.", new
                 {
-                    pending = false, checks, objectCount = machine.Objects.Count, triggerCount = machine.Triggers.Count,
+                    pending = false, checks, objectCount = machine.Objects.Count, nodeCount = machine.ObjectNodes.Count,
+                    nodeIds = machine.ObjectNodes.Keys.ToArray(), triggerCount = machine.Triggers.Count,
                     warnings = machine.Warnings.ToArray(), rackAnchor = new[] { rack.X, rack.Y, rack.Z }, trayAnchor = new[] { tray.X, tray.Y, tray.Z },
                     anchorsCoincide = rack.X == tray.X && rack.Y == tray.Y && rack.Z == tray.Z,
                     ballColliderMinY = ballBounds.min.y, ballColliderMaxY = ballBounds.max.y, cabinetColliderMaxY = nearestSurfaceTop,
@@ -168,6 +169,10 @@ namespace OasisPlayer.Editor.Verification
             }
         }
 
+        private static Vector3 MachinePosition(RuntimeMachine machine, RuntimeObjectInstance ball)
+        {
+            return machine.MachineSpace != null ? machine.MachineSpace.InverseTransformPoint(ball.Root.transform.position) : ball.Root.transform.localPosition;
+        }
         private static void Displace(RuntimeObjectInstance ball)
         {
             ball.Root.transform.localPosition = new Vector3(0.2f, 2, 0.3f);
@@ -175,9 +180,9 @@ namespace OasisPlayer.Editor.Verification
             ball.Rigidbody.angularVelocity = new Vector3(3, 2, 1);
         }
 
-        private static void AssertPose(RuntimeObjectInstance ball, Vector3 expected)
+        private static void AssertPose(RuntimeMachine machine, RuntimeObjectInstance ball, Vector3 expected)
         {
-            if (!ball.Root.activeSelf || Vector3.Distance(ball.Root.transform.localPosition, expected) > 0.0001f
+            if (!ball.Root.activeSelf || Vector3.Distance(MachinePosition(machine, ball), expected) > 0.0001f
                 || ball.Rigidbody.linearVelocity.sqrMagnitude > 0.000001f || ball.Rigidbody.angularVelocity.sqrMagnitude > 0.000001f)
                 throw new InvalidOperationException("Ball pose/activation/velocity verification failed at " + ball.Root.transform.localPosition);
         }
