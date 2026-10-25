@@ -421,7 +421,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(objectManifest)!);
         File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(objectManifest)!, "ball.glb"), [1, 2, 3]);
         var id = Guid.NewGuid().ToString("D");
-        var definition = new Object3DDocument(1, id, "Pool Ball", new("ball.glb", 0.5, "Z"),
+        var definition = new Object3DDocument(Object3DDocument.CurrentSchemaVersion, id, "Pool Ball", new("ball.glb", 0.5, "Z"),
             new(new(Object3DColliderKind.Sphere, [1, 2, 3], 0.25), new(true, 0.17, true)));
         File.WriteAllText(objectManifest, Object3DDocumentStorage.Serialize(definition));
         var reference = AssetReference.Project(paths.ToProjectRelativePath(setup.Project, objectManifest));

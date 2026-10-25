@@ -122,6 +122,31 @@ namespace OasisPlayer.Editor.Verification
                 for (var step = 0; step < 120; step++) Physics.Simulate(1f / 60f);
                 var physicsEnd = ball.Root.transform.localPosition;
                 checks.Add("Simulated two seconds of Unity physics from the authored rack anchor");
+                var supportedAtRack = Vector3.Distance(physicsStart, physicsEnd) < 0.02f;
+                var naturalPocketChecks = new List<string>();
+                if (supportedAtRack && Vector3.Distance(new Vector3(rack.X, rack.Y, rack.Z), new Vector3(tray.X, tray.Y, tray.Z)) > 0.05f)
+                {
+                    foreach (var relay in relays)
+                    {
+                        machine.SetInputState("rerack", true); machine.SetInputState("rerack", false);
+                        var pocketCollider = relay.GetComponent<Collider>();
+                        if (pocketCollider == null) throw new InvalidOperationException("Pocket relay has no collider: " + relay.name);
+                        var pocketBounds = pocketCollider.bounds;
+                        var drop = new Vector3(pocketBounds.center.x, pocketBounds.max.y + 0.1f, pocketBounds.center.z);
+                        ball.Root.transform.position = drop;
+                        ball.Rigidbody.position = drop;
+                        ball.Rigidbody.linearVelocity = Vector3.zero;
+                        ball.Rigidbody.angularVelocity = Vector3.zero;
+                        ball.Rigidbody.WakeUp();
+                        Physics.SyncTransforms();
+                        for (var step = 0; step < 120; step++) Physics.Simulate(1f / 60f);
+                        var final = ball.Root.transform.localPosition;
+                        if (Vector3.Distance(final, new Vector3(tray.X, tray.Y, tray.Z)) > 0.02f)
+                            throw new InvalidOperationException("Natural drop did not reach supported collection anchor for " + relay.name + ": " + final);
+                        naturalPocketChecks.Add(relay.name);
+                    }
+                    checks.Add("Natural physics drop into all six pockets collected the ball onto supported tray anchor");
+                }
                 return new SuccessResponse("Actual authored Pool build load/input/trigger/reset verification passed.", new
                 {
                     pending = false, checks, objectCount = machine.Objects.Count, triggerCount = machine.Triggers.Count,
@@ -130,7 +155,8 @@ namespace OasisPlayer.Editor.Verification
                     ballColliderMinY = ballBounds.min.y, ballColliderMaxY = ballBounds.max.y, cabinetColliderMaxY = nearestSurfaceTop,
                     collisionGeometry, physicsStart = new[] { physicsStart.x, physicsStart.y, physicsStart.z },
                     physicsEnd = new[] { physicsEnd.x, physicsEnd.y, physicsEnd.z }, ballFellBelowRack = physicsEnd.y < physicsStart.y - 0.1f,
-                    limitations = "Batch Play Mode checks real GLB loading, runtime script/command adapters and two seconds of physics. Pocket event injected through actual relay. Not a natural rolling-to-pocket, keyboard-focus or rendered-gameplay test."
+                    supportedAtRack, naturalPocketChecks,
+                    limitations = "Batch Play Mode checks real GLB loading, runtime script/command adapters and controlled physics. Checks include relay injection and, when anchors are distinct and rack supported, natural vertical drops into each pocket. Not a rolling shot, keyboard-focus or rendered-gameplay test."
                 });
             }
             catch (Exception exception) { return new ErrorResponse(exception.ToString()); }

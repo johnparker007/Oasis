@@ -166,6 +166,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' reference {reference} is not an Object3D package manifest.");
             if (!Object3DDocumentStorage.TryRead(File.ReadAllText(manifestPath), out var document, out var error))
                 throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' references invalid Object3D asset {reference}: {error}");
+            if (!document.TryProjectSingleRoot(out _, out _, out var projectionError))
+                throw new InvalidOperationException($"Machine instance '{instance.Id}': {projectionError}");
             try { Object3DValidationService.Validate(document, Path.GetDirectoryName(manifestPath)); }
             catch (InvalidOperationException exception)
             { throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}', Object3D asset '{document.DisplayName}' is invalid: {exception.Message}", exception); }

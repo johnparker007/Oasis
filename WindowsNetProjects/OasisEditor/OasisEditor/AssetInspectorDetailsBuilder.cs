@@ -286,7 +286,7 @@ public static class AssetInspectorDetailsBuilder
             ProjectAssetPathService.Cabinet3DManifestFileName => "Cabinet3D",
             "asset.machine" => "Machine",
             "asset.reel" => "Reel",
-            "asset.object3d" => "Object3D",
+            "asset.object3d" => "Prefab",
             _ => string.Empty
         };
         return assetType.Length > 0;

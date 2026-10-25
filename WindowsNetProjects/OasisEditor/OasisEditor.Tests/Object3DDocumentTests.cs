@@ -5,12 +5,12 @@ namespace OasisEditor.Tests;
 public sealed class Object3DDocumentTests
 {
     [Fact]
-    public void Version1_RoundTripsIdentityModelAndPoolBallPhysics()
+    public void Version2_RoundTripsIdentityModelAndPoolBallPhysics()
     {
         var source = PoolBall();
         var json = Object3DDocumentStorage.Serialize(source);
         Assert.True(Object3DDocumentStorage.TryRead(json, out var result, out var error), error);
-        Assert.Equal(1, result.SchemaVersion);
+        Assert.Equal(2, result.SchemaVersion);
         Assert.Equal(source.Id, result.Id);
         Assert.Equal("Pool Ball", result.DisplayName);
         Assert.Equal(source.Model, result.Model);
@@ -24,10 +24,10 @@ public sealed class Object3DDocumentTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(2)]
+    [InlineData(1)]
     public void ReaderAcceptsOnlyCurrentSchema(int version)
     {
-        var json = Object3DDocumentStorage.Serialize(PoolBall()).Replace("\"schemaVersion\": 1", $"\"schemaVersion\": {version}");
+        var json = Object3DDocumentStorage.Serialize(PoolBall()).Replace("\"schemaVersion\": 2", $"\"schemaVersion\": {version}");
         Assert.False(Object3DDocumentStorage.TryRead(json, out _, out _));
     }
 

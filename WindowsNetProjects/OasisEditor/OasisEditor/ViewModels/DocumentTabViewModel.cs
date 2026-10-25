@@ -177,7 +177,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         EditorDocumentType.Machine => "Machine",
         EditorDocumentType.Face => "Face",
         EditorDocumentType.Reel => "Reel",
-        EditorDocumentType.Object3D => "Object3D",
+        EditorDocumentType.Object3D => "Prefab",
         _ => "Document Type"
     };
     public string FilePath => Document.FilePath;
@@ -394,6 +394,14 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     }
     public ReelDocument GetReelDocument() => _reelDocumentModel;
     public Object3DDocument GetObject3DDocument() => _object3DDocumentModel;
+    private PrefabAuthoringViewModel? _prefabAuthoring;
+    public PrefabAuthoringViewModel? PrefabAuthoring => Document.DocumentType == EditorDocumentType.Object3D ? _prefabAuthoring ??= new(this) : null;
+    internal void SetObject3DDocumentFromAuthoring(Object3DDocument next, string description)
+    {
+        Object3DValidationService.Validate(next);
+        if (Object3DDocumentStorage.Serialize(next) == Object3DDocumentStorage.Serialize(_object3DDocumentModel)) return;
+        SetObject3DValue(next, description);
+    }
     public string ReelDisplayName { get => _reelDocumentModel.DisplayName; set => SetReelValue(_reelDocumentModel with { DisplayName = value?.Trim() ?? string.Empty }, "Rename Reel"); }
     public double ReelDiameterMm { get => _reelDocumentModel.DiameterMm; set => SetReelValue(_reelDocumentModel with { DiameterMm = value }, "Set Reel diameter"); }
     public double ReelWidthMm { get => _reelDocumentModel.WidthMm; set => SetReelValue(_reelDocumentModel with { WidthMm = value }, "Set Reel width"); }
@@ -419,14 +427,20 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     public double Object3DColliderSizeZ { get => ColliderVector(_object3DDocumentModel.Physics.Collider.Size, 2, 1); set => SetColliderSize(2, value); }
     public double Object3DColliderHeight { get => _object3DDocumentModel.Physics.Collider.Height ?? 2; set => SetCollider(_object3DDocumentModel.Physics.Collider with { Height = value }, "Set collider height"); }
     public Object3DCapsuleAxis Object3DColliderAxis { get => _object3DDocumentModel.Physics.Collider.Axis ?? Object3DCapsuleAxis.Y; set => SetCollider(_object3DDocumentModel.Physics.Collider with { Axis = value }, "Set collider axis"); }
-    public bool Object3DRigidbodyEnabled { get => _object3DDocumentModel.Physics.Rigidbody.Enabled; set { var body = _object3DDocumentModel.Physics.Rigidbody with { Enabled = value, Mass = value ? _object3DDocumentModel.Physics.Rigidbody.Mass ?? 1 : null, UseGravity = value ? _object3DDocumentModel.Physics.Rigidbody.UseGravity ?? true : null }; SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Rigidbody = body } }, "Toggle Object3D Rigidbody"); } }
+    public bool Object3DRigidbodyEnabled { get => _object3DDocumentModel.Physics.Rigidbody.Enabled; set { var body = _object3DDocumentModel.Physics.Rigidbody with { Mode = value ? Object3DRigidbodyMode.Dynamic : Object3DRigidbodyMode.Static, Mass = value ? _object3DDocumentModel.Physics.Rigidbody.Mass ?? 1 : null, UseGravity = value }; SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Rigidbody = body } }, "Toggle Object3D Rigidbody"); } }
     public double Object3DRigidbodyMass { get => _object3DDocumentModel.Physics.Rigidbody.Mass ?? 1; set { var body = _object3DDocumentModel.Physics.Rigidbody with { Mass = value }; SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Rigidbody = body } }, "Set Rigidbody mass"); } }
-    public bool Object3DUseGravity { get => _object3DDocumentModel.Physics.Rigidbody.UseGravity ?? true; set { var body = _object3DDocumentModel.Physics.Rigidbody with { UseGravity = value }; SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Rigidbody = body } }, "Set Rigidbody gravity"); } }
+    public bool Object3DUseGravity { get => _object3DDocumentModel.Physics.Rigidbody.UseGravity ?? false; set { var body = _object3DDocumentModel.Physics.Rigidbody with { UseGravity = value }; SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Rigidbody = body } }, "Set Rigidbody gravity"); } }
     private static double ColliderVector(double[]? values, int index, double fallback = 0) => values is { Length: 3 } ? values[index] : fallback;
     private void SetColliderCenter(int index, double value) { var v = (_object3DDocumentModel.Physics.Collider.Center ?? [0,0,0]).ToArray(); v[index] = value; SetCollider(_object3DDocumentModel.Physics.Collider with { Center = v }, "Set collider center"); }
     private void SetColliderSize(int index, double value) { var v = (_object3DDocumentModel.Physics.Collider.Size ?? [1,1,1]).ToArray(); v[index] = value; SetCollider(_object3DDocumentModel.Physics.Collider with { Size = v }, "Set collider size"); }
     private void SetCollider(Object3DColliderDefinition collider, string description) => SetObject3DValue(_object3DDocumentModel with { Physics = _object3DDocumentModel.Physics with { Collider = collider } }, description);
-    private void SetObject3DValue(Object3DDocument next, string description) { if (next == _object3DDocumentModel) return; try { Object3DValidationService.Validate(next); } catch (InvalidOperationException) { return; } _commandService.Execute(new SetObject3DDocumentCommand(this, next, description)); }
+    private void SetObject3DValue(Object3DDocument next, string description)
+    {
+        if (next == _object3DDocumentModel) return;
+        try { Object3DValidationService.Validate(next); } catch (InvalidOperationException) { return; }
+        if (Object3DDocumentStorage.Serialize(next) == Object3DDocumentStorage.Serialize(_object3DDocumentModel)) return;
+        _commandService.Execute(new SetObject3DDocumentCommand(this, next, description));
+    }
     internal string? PendingObject3DModelSourcePath => _pendingObject3DModelSourcePath;
     internal void SetObject3DModelSource(string sourcePath)
     {
@@ -967,6 +981,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         InvalidateCorrectionInputCache();
         DisposeCabinetViewer();
         _machineComposition3D?.Dispose();
+        _prefabAuthoring?.Dispose();
         SelectionState.SelectionChanged -= OnSelectionStateChanged;
     }
 

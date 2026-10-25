@@ -86,7 +86,7 @@ public sealed class EditorDocument
         title, EditorDocumentType.Reel, "Not saved yet (.reel)", "Reusable physical reel definition");
 
     public static EditorDocument CreateObject3DStub(string title) => CreateUntitledWithType(
-        title, EditorDocumentType.Object3D, "Not saved yet (.object3d)", "Reusable physical 3D object definition");
+        title, EditorDocumentType.Object3D, "Not saved yet (.object3d)", "Reusable Prefab node and component defaults");
 
     private static EditorDocument CreateUntitledWithType(
         string title,

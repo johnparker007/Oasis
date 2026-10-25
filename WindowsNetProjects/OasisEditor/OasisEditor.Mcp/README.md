@@ -59,6 +59,13 @@ changes and undo history are session-local, and no confirmation dialog is shown.
 | `open_machine`, `inspect_machine` | Read Machine configuration, behavior source and bounded diagnostics. |
 | `capture_machine` | Return the real offscreen WPF Machine Composition 3D view. |
 | `build_machine` | Run the existing runtime builder into the project's Generated output. |
+| `update_machine_anchor`, `save_machine` | Edit anchor pose through commands and save with manifest/source conflict checks. |
+| `undo_machine`, `redo_machine` | Apply the Machine's document command history. |
+| `create_prefab`, `open_prefab`, `inspect_prefab` | Create a grouping/model Prefab or inspect current-schema nodes and components. |
+| `update_prefab_node`, `add_prefab_child` | Edit supported defaults atomically or add a transform-only child. |
+| `reparent_prefab_node`, `remove_prefab_node` | Undoable hierarchy operations; cycles and root removal are refused. |
+| `prefab_history`, `save_prefab` | Undo/redo or persist validated Prefab assets with package fingerprint checks. |
+| `capture_prefab` | Capture the actual hierarchy, 3D viewport and Inspector offscreen. |
 | `create_panel2d` | Create and initially save a fresh Panel2D asset package. |
 | `open_panel2d` | Validate/reopen a persisted package and obtain a new session document ID. |
 | `import_fml` | Import a workspace FML through the document's undoable import command. |
@@ -263,10 +270,55 @@ Asset trees and JSON path references are validated before opening the preview.
 `capture_machine(documentId, width=1000, height=700, theme="System")` renders the
 actual WPF 3D composition view in a non-activating offscreen window. Its limits are
 640–1920 by 480–1080 pixels. It is not a full editor screenshot or interaction test.
-`build_machine(documentId)` runs the existing builder and replaces disposable
-Generated build output; inspect `success` and diagnostics. External Machine manifest
-edits are refused. Build reads current asset/source files, so do not change the
-project concurrently. No authored save/edit tools are exposed for Machines yet.
+`update_machine_anchor` accepts an existing anchor ID plus optional `position` and
+`rotation` XYZ vectors. It adds one document command; no-ops add no history. Save
+before building. `save_machine` preserves the canonical script and refuses external
+manifest/source edits. `build_machine(documentId)` runs the existing builder and
+replaces disposable Generated output; inspect `success` and diagnostics. Build
+reads current dependency files, so do not change the project concurrently.
+
+## Prefab authoring checkpoint
+
+Prefab authoring evolves the single existing Object3D family. Package paths remain
+`Assets/Object3D/<Name>/asset.object3d`; there is no second catalog or resolver.
+Authored schema **2** contains a stable asset GUID and a root/child tree with stable
+node/component GUIDs. Supported version-1 components are Transform, Model, Collider
+and Rigidbody. Transform is mandatory per node; grouping nodes need no model.
+Collider coordinates explicitly use ModelLocal or NodeLocal (required without a
+model). Dynamic and kinematic modes are distinct; nested body ownership is rejected.
+Machine behaviour remains the gameplay owner.
+
+The latest-only reader deliberately rejects schema 1. Reauthor old assets explicitly
+with the current format, retaining their asset GUID, model path/intrinsic settings,
+collider dimensions and body defaults. Back up authored files first and rebuild all
+Generated output. No automatic legacy loader or migration tool is provided.
+
+The Editor's Prefab view exposes hierarchy, local transforms, component defaults,
+diagnostics and a transient model/collider preview. Edits use document commands;
+IDs survive rename/reorder/default changes and undo. The source model cache is reused
+for transform edits; camera state is never persisted. Sphere and Box collider
+previews are available. Capsule and Mesh previews report their current visual
+limitation rather than displaying an approximate collision shape.
+
+At this authoring checkpoint the runtime format is still Object3D v1: only an
+identity-root single-model structure with representable static/dynamic physics can
+build. Children, kinematic bodies and trigger colliders report explicit projection
+errors and preserve the previous build. They are authored correctly but need the
+subsequent runtime-component phase. No spawning or language syntax is added here.
+
+`create_prefab(name, modelSource?)` initially saves a grouping Prefab or copies one
+workspace GLB into a fresh package. `update_prefab_node` accepts optional `name`,
+`transform`, one typed `component`, or `removeComponentKind`. Component kinds and
+payloads must match; all validation occurs before the single command. Existing
+component IDs are retained on edits. `capture_prefab` supports System/Light/Dark
+at 800–1920 by 600–1080 pixels. All calls operate on an isolated document session.
+
+`prefab_smoke_test.py` takes the same `--server`, `--project` and `--artifacts`
+arguments as `machine_smoke_test.py`. It requires a disposable current-schema
+PoolTableTest1 project. It fixes the two anchors through MCP, checks hierarchy
+creation/undo/save and identity, verifies unsupported child export preserves the
+previous good runtime package, then captures the real Prefab view in three themes
+and builds the restored single-ball machine. It changes the disposable copy only.
 
 ```powershell
 python OasisEditor.Mcp/machine_smoke_test.py --server C:\absolute\path\OasisEditor.Mcp.exe --project C:\Disposable\PoolTableTest1\PoolTableTest1.oasisproj --artifacts C:\PoolResults
@@ -281,7 +333,10 @@ explicit `OASIS_POOL_VERIFY_BUILD` environment variable. It enters actual batch 
 Mode because GLB loading requires runtime APIs. It checks loaded colliders/body,
 startup, logical input adapters, trigger relay dispatch, duplicate collection guard,
 reset and two seconds of real physics; it reports placement and collision bounds.
-It does not verify focused keyboard input, rendered gameplay or natural pocket entry.
+It also drops the ball naturally into each real pocket when the rack is supported
+and the collection anchor is distinct, checking collection and two seconds of
+support at each destination. It does not verify focused keyboard input, rendered
+gameplay or a rolling shot.
 
 With the bridge installed in an isolated Python environment, and no Unity session
 already running:
