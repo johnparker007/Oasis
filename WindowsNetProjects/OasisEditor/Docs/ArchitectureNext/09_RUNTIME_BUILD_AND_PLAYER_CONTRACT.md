@@ -1,6 +1,6 @@
 # Runtime Build and Oasis Player Contract
 
-> Current Machine authored/runtime schemas are 11/12; Prefab authored/runtime schemas are 2. The [Prefab delivery plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md) records the delivered runtime tree and lifecycle work. The [playable arcade plan](15_PLAYABLE_ARCADE.md) adds saved interaction profiles and explicit multi-machine placement packages.
+> Current Machine authored/runtime schemas are 11/13; Prefab authored/runtime schemas are 2. The [Prefab delivery plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md) records the delivered runtime tree and lifecycle work. The [playable arcade plan](15_PLAYABLE_ARCADE.md) adds saved interaction profiles and explicit multi-machine placement packages.
 
 ## Build root
 
@@ -38,7 +38,7 @@ Do not duplicate semantic mesh geometry into runtime manifests.
 ## Prefab and live object contract
 
 The existing Object3D asset family now authors ordinary Prefabs. Machine runtime
-schema 12 exports authored object trees/placements, named spawn-only Prefab
+schema 13 exports authored object trees/placements, named spawn-only Prefab
 requirements, lightweight anchors and geometry surfaces. Definitions are emitted
 once under `objects/<object-guid>/` with `object.runtime.json` (schema
 `oasis.object3d.runtime`, version 2) and content-addressed GLB dependencies.
@@ -74,6 +74,17 @@ before loading; measured Cabinet placement and clearance are checked before scri
 start. Failure rolls back every loaded session. One visitor controller gates input
 to one engaged station, releasing held keys on leave, settings, focus loss or unload.
 The current package can be authored by script; a visual layout designer is deferred.
+
+## Native Impact hosting
+
+Impact exports a `runtime.fabric` descriptor with explicit relative ROM roles/slots
+and the Editor-generated FAB2 binary configuration. Host-selected exact Windows x64
+Fabric/Amber DLL paths are separate from content. Original ROM paths are stripped
+from generated settings metadata. The Player owns native timing/input/snapshot/audio
+and shutdown on one worker, with main-thread device updates. The installed JPM DLL
+has one board per process; additional Impact sessions are rejected before creation.
+See [Player Fabric/Impact](../../OasisEditor.Mcp/PLAYER_FABRIC_IMPACT.md) for the
+verified boundary and the user-deferred credited-play acceptance.
 
 ## Diagnostics
 

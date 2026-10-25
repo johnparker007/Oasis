@@ -26,7 +26,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
     public const string ObjectSchema = "oasis.object3d.runtime";
-    public const int MachineSchemaVersion = 12;
+    public const int MachineSchemaVersion = 13;
     public const int CabinetSchemaVersion = 5;
     public const int ObjectSchemaVersion = 2;
 
@@ -89,6 +89,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             // Read and validate the persisted source again; never trust the Editor buffer.
             var behaviorSource = ValidateBehavior(project, machineManifestPath, machineDocument);
             ReplaceEmptyDirectory(stagingRoot);
+            var fabricRuntime = ExportImpactFabricRuntime(project, stagingRoot, machineDocument.Runtime);
             if (behaviorSource is not null)
             {
                 Directory.CreateDirectory(Path.Combine(stagingRoot, "behavior"));
@@ -116,7 +117,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             File.WriteAllText(Path.Combine(cabinetRoot, CabinetManifestFileName), JsonSerializer.Serialize(cabinetManifest, JsonOptions));
             var anchors = machineDocument.Anchors.Select(MachineRuntimeAnchor.From).ToArray();
             var geometrySurfaces = machineDocument.GeometrySurfaces.Select(MachineRuntimeGeometrySurface.From).ToArray();
-            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, machineDocument.Id, machineDocument.DisplayName, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, objectInstances, anchors, MachineRuntimeManifestDefinition.From(machineDocument.Runtime), machineDocument.InputDefinitions, prefabDependencies, geometrySurfaces, MachineRuntimeInteraction.From(machineDocument.Interaction));
+            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, machineDocument.Id, machineDocument.DisplayName, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, objectInstances, anchors, MachineRuntimeManifestDefinition.From(machineDocument.Runtime, fabricRuntime), machineDocument.InputDefinitions, prefabDependencies, geometrySurfaces, MachineRuntimeInteraction.From(machineDocument.Interaction));
             File.WriteAllText(Path.Combine(stagingRoot, MachineManifestFileName), JsonSerializer.Serialize(machineManifest, JsonOptions));
             progress.Report(0.95, "Finalising Oasis Player machine...");
             cancellationToken.ThrowIfCancellationRequested();
@@ -124,7 +125,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             progress.Report(1, "Oasis Player machine build complete.");
             return MachineRuntimeBuildResult.Ok(buildRoot);
         }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or InvalidOperationException)
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or InvalidOperationException or ArgumentException)
         {
             return MachineRuntimeBuildResult.Fail($"Failed to build Oasis Player runtime output: {ex.Message}");
         }
@@ -133,6 +134,90 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             if (Directory.Exists(stagingRoot)) Directory.Delete(stagingRoot, recursive: true);
         }
     }
+
+    private static FabricRuntimeDescriptor? ExportImpactFabricRuntime(EditorProject project, string stagingRoot, RuntimeDefinition runtime)
+    {
+        if (runtime is not EmulationRuntimeDefinition { Platform: FruitMachinePlatformType.Impact, PlatformSettings: System6NativeRomSettings authoredSettings })
+            return null;
+
+        var resolvedSettings = CloneSystem6Settings(project, authoredSettings);
+        ValidateContiguousRomSlots(resolvedSettings.ProgramRomPaths, "program");
+        ValidateContiguousRomSlots(resolvedSettings.SoundRomPaths, "sound");
+        if (string.IsNullOrWhiteSpace(resolvedSettings.ProgramRom1Path))
+            throw new InvalidOperationException("Impact builds require Program ROM 1.");
+
+        var romResources = FabricEmulationBackend.BuildRomResources(resolvedSettings);
+        var roms = new List<FabricRuntimeRom>(romResources.Count);
+        foreach (var resource in romResources)
+        {
+            var source = Path.GetFullPath(resource.Path);
+            if (!File.Exists(source))
+                throw new InvalidOperationException($"Impact {RomRoleName(resource.Role)} ROM {resource.Slot + 1} was not found: '{resource.Path}'.");
+
+            var roleName = RomRoleName(resource.Role);
+            var relativePath = $"emulation/roms/{roleName}-{resource.Slot}.bin";
+            var destination = Path.Combine(stagingRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(source, destination, overwrite: true);
+            roms.Add(new FabricRuntimeRom((int)resource.Role, checked((int)resource.Slot), relativePath));
+        }
+
+        byte[] configurationBytes;
+        try
+        {
+            configurationBytes = FabricAmberSystem6Configuration.FromSystem6(authoredSettings).ToNativeBytes();
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or OverflowException)
+        {
+            throw new InvalidOperationException($"Impact Amber configuration is invalid: {exception.Message}", exception);
+        }
+
+        const string configurationPath = "emulation/impact.config.bin";
+        var configurationDestination = Path.Combine(stagingRoot, configurationPath.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(configurationDestination)!);
+        File.WriteAllBytes(configurationDestination, configurationBytes);
+
+        return new FabricRuntimeDescriptor("amber", "jpm-system6", configurationPath, roms);
+    }
+
+    private static System6NativeRomSettings CloneSystem6Settings(EditorProject project, System6NativeRomSettings settings)
+    {
+        var clone = JsonSerializer.Deserialize<System6NativeRomSettings>(JsonSerializer.Serialize(settings))
+            ?? throw new InvalidOperationException("Impact settings could not be copied for runtime export.");
+        clone.ProgramRom1Path = Resolve(settings.ProgramRom1Path);
+        clone.ProgramRom2Path = Resolve(settings.ProgramRom2Path);
+        clone.ProgramRom3Path = Resolve(settings.ProgramRom3Path);
+        clone.ProgramRom4Path = Resolve(settings.ProgramRom4Path);
+        clone.SoundRom1Path = Resolve(settings.SoundRom1Path);
+        clone.SoundRom2Path = Resolve(settings.SoundRom2Path);
+        clone.SoundRom3Path = Resolve(settings.SoundRom3Path);
+        clone.SoundRom4Path = Resolve(settings.SoundRom4Path);
+        return clone;
+
+        string Resolve(string path)
+        {
+            return string.IsNullOrWhiteSpace(path) || Path.IsPathFullyQualified(path)
+                ? path
+                : Path.GetFullPath(Path.Combine(project.ProjectDirectory, path.Replace('/', Path.DirectorySeparatorChar)));
+        }
+    }
+
+    private static void ValidateContiguousRomSlots(IReadOnlyList<string> paths, string role)
+    {
+        var gap = false;
+        for (var index = 0; index < paths.Count; index++)
+        {
+            if (string.IsNullOrWhiteSpace(paths[index])) gap = true;
+            else if (gap) throw new InvalidOperationException($"Impact {role} ROM slots must be contiguous from ROM 1; ROM {index + 1} is configured after a gap.");
+        }
+    }
+
+    private static string RomRoleName(FabricRomRole role) => role switch
+    {
+        FabricRomRole.Program => "program",
+        FabricRomRole.Sound => "sound",
+        _ => throw new InvalidOperationException($"Impact ROM role '{role}' is unsupported.")
+    };
 
     private string? ValidateBehavior(EditorProject project, string manifestPath, MachineDocument machine)
     {
@@ -431,14 +516,32 @@ public sealed record MachineRuntimeInteraction(string Kind, string? CuePrefabAli
 [JsonDerivedType(typeof(OasisMachineRuntimeManifestDefinition))]
 public abstract record MachineRuntimeManifestDefinition(string Kind)
 {
-    public static MachineRuntimeManifestDefinition From(RuntimeDefinition runtime) => runtime switch
+    public static MachineRuntimeManifestDefinition From(RuntimeDefinition runtime, FabricRuntimeDescriptor? fabric = null) => runtime switch
     {
-        EmulationRuntimeDefinition emulation => new EmulationMachineRuntimeManifestDefinition(emulation.Platform.ToString(), JsonSerializer.Serialize(emulation.PlatformSettings, emulation.PlatformSettings.GetType(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })),
+        EmulationRuntimeDefinition emulation => new EmulationMachineRuntimeManifestDefinition(emulation.Platform.ToString(), SerializePlatformSettings(emulation), fabric),
         OasisRuntimeDefinition => new OasisMachineRuntimeManifestDefinition(new("OasisScript", "behavior/behavior.oasis")),
         _ => throw new InvalidOperationException($"Runtime '{runtime.Kind}' is not supported by the Player build pipeline.")
     };
+
+    private static string SerializePlatformSettings(EmulationRuntimeDefinition emulation)
+    {
+        if (emulation.Platform != FruitMachinePlatformType.Impact || emulation.PlatformSettings is not System6NativeRomSettings settings)
+            return JsonSerializer.Serialize(emulation.PlatformSettings, emulation.PlatformSettings.GetType(), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+        // The Player consumes the copied ROMs through FabricRuntimeDescriptor. Keep the
+        // settings useful for inspection without leaking machine-local source paths.
+        var sanitized = JsonSerializer.Deserialize<System6NativeRomSettings>(JsonSerializer.Serialize(settings))
+            ?? throw new InvalidOperationException("Impact settings could not be copied for runtime metadata.");
+        sanitized.ProgramRom1Path = string.Empty; sanitized.ProgramRom2Path = string.Empty;
+        sanitized.ProgramRom3Path = string.Empty; sanitized.ProgramRom4Path = string.Empty;
+        sanitized.SoundRom1Path = string.Empty; sanitized.SoundRom2Path = string.Empty;
+        sanitized.SoundRom3Path = string.Empty; sanitized.SoundRom4Path = string.Empty;
+        return JsonSerializer.Serialize(sanitized, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+    }
 }
-public sealed record EmulationMachineRuntimeManifestDefinition(string Platform, string PlatformSettingsJson) : MachineRuntimeManifestDefinition("Emulation");
+public sealed record EmulationMachineRuntimeManifestDefinition(string Platform, string PlatformSettingsJson, FabricRuntimeDescriptor? Fabric = null) : MachineRuntimeManifestDefinition("Emulation");
+public sealed record FabricRuntimeDescriptor(string BackendKind, string MachineIdentifier, string Configuration, IReadOnlyList<FabricRuntimeRom> Roms);
+public sealed record FabricRuntimeRom(int Role, int Slot, string Path);
 public sealed record OasisMachineRuntimeManifestDefinition(MachineRuntimeBehavior Behavior) : MachineRuntimeManifestDefinition("Oasis");
 public sealed record MachineRuntimeBehavior(string Kind, string Source);
 public sealed record MachineRuntimeFaceReference(string FaceId, string AssetName, string CabinetFaceTargetId, string FrontSide, int FaceRotation, bool FaceFlipHorizontal, string Manifest);

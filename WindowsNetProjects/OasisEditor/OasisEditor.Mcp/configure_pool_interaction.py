@@ -15,7 +15,7 @@ async def main(args):
   build=await call('build_machine',documentId=doc)
   assert build['success'],build
   manifest=json.loads((Path(build['buildRoot'])/'machine.runtime.json').read_text(encoding='utf-8-sig'))
-  assert manifest['schemaVersion']==12 and manifest['interaction']['kind']=='Pool'
+  assert manifest['schemaVersion']==13 and manifest['interaction']['kind']=='Pool'
   assert manifest['interaction']['cuePrefabAlias']=='cueBall' and manifest['interaction']['playingSurfaceId']=='playingSurface'
   (out/'profile-report.json').write_text(json.dumps(dict(saved=saved,build=build),indent=2))
   print(json.dumps(build),flush=True)

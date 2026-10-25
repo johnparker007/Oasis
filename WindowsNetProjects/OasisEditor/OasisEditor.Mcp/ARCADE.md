@@ -7,7 +7,7 @@ it does not contain a fruit-machine game yet.
 
 ## Machine profile
 
-Use the current Editor (Machine authored schema 11 / generated runtime 12).
+Use the current Editor (Machine authored schema 11 / generated runtime 13).
 The Machine Inspector offers Buttons or Pool. Choosing Pool requires explicit
 cue Prefab alias and playing surface choices; no first asset is guessed.
 The MCP equivalent is `set_machine_interaction(documentId, "Pool", "cueBall",
@@ -65,6 +65,10 @@ a solid box inside a Pool table.
 `Start-PoolPlayerVerification.ps1 -Mode Arcade -ArcadeManifest <manifest>` plus the
 existing verification client exercises two actual Pool GLBs: live-handle isolation,
 held-key release/switching, rotated cue shot, independent physics, unload/reload and
-overlap rollback. The latest focused Unity suites passed 208 tests; Editor suites
-passed 1,443. Rendered arcade layout, Inspector appearance and mouse feel still
+overlap rollback. The latest native-integration focused Unity suite passed 220 tests; Editor suites
+passed 1,445. Rendered arcade layout, Inspector appearance and mouse feel still
 require a permitted manual desktop session.
+
+A separate Pool + real JPM Impact integration fixture is now available; see
+[Fabric/Impact hosting](PLAYER_FABRIC_IMPACT.md). It uses explicit local native DLLs
+and does not yet verify game-specific credit/Start/payout mappings.

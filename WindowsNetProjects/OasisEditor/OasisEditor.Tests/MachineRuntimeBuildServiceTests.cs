@@ -443,7 +443,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.runtime.json", SearchOption.AllDirectories).Count());
         Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "*.glb", SearchOption.AllDirectories).Count());
         using var machineJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
-        Assert.Equal(12, machineJson.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(13, machineJson.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Pool", machineJson.RootElement.GetProperty("interaction").GetProperty("kind").GetString());
         Assert.Equal("poolBall", machineJson.RootElement.GetProperty("interaction").GetProperty("cuePrefabAlias").GetString());
         Assert.Equal("playingSurface", machineJson.RootElement.GetProperty("interaction").GetProperty("playingSurfaceId").GetString());
@@ -575,7 +575,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.Single(Directory.EnumerateFiles(result.BuildRoot!, "*.oasis", SearchOption.AllDirectories));
         var json = File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json"));
         using var manifest = JsonDocument.Parse(json);
-        Assert.Equal(12, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(13, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Buttons", manifest.RootElement.GetProperty("interaction").GetProperty("kind").GetString());
         var runtime = manifest.RootElement.GetProperty("runtime");
         Assert.Equal("Oasis", runtime.GetProperty("kind").GetString());
@@ -595,9 +595,111 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.True(result.Success, result.ErrorMessage); Assert.False(Directory.Exists(Path.Combine(result.BuildRoot!, "behavior")));
         Assert.Empty(Directory.EnumerateFiles(result.BuildRoot!, "*.oasis", SearchOption.AllDirectories));
         using var emulation = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
-        Assert.Equal(12, emulation.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(13, emulation.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Emulation", emulation.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
         Assert.False(emulation.RootElement.GetProperty("runtime").TryGetProperty("behavior", out _));
+    }
+
+    [Fact]
+    public void ImpactBuildPackagesFabricConfigurationAndProjectRelativeRomsWithoutHostPaths()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var romDirectory = Path.Combine(setup.Project.ProjectDirectory, "Assets", "ROMs");
+        Directory.CreateDirectory(romDirectory);
+        var program1 = Path.Combine(romDirectory, "program-1.bin");
+        var program2 = Path.Combine(romDirectory, "program-2.bin");
+        var sound1 = Path.Combine(_root, "external-sound.bin");
+        File.WriteAllBytes(program1, [1, 2, 3]);
+        File.WriteAllBytes(program2, [4, 5, 6, 7]);
+        File.WriteAllBytes(sound1, [8, 9]);
+        var settings = new System6NativeRomSettings
+        {
+            ProgramRom1Path = Path.GetRelativePath(setup.Project.ProjectDirectory, program1),
+            ProgramRom2Path = Path.GetRelativePath(setup.Project.ProjectDirectory, program2),
+            SoundRom1Path = sound1,
+            PercentSwitchValue = 7
+        };
+        var machine = setup.Machine with
+        {
+            Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.Impact, settings)
+        };
+
+        var result = Build(setup.Project, machine);
+
+        Assert.True(result.Success, result.ErrorMessage);
+        var root = result.BuildRoot!;
+        var program1Path = Path.Combine(root, "emulation", "roms", "program-0.bin");
+        var program2Path = Path.Combine(root, "emulation", "roms", "program-1.bin");
+        var sound1Path = Path.Combine(root, "emulation", "roms", "sound-0.bin");
+        Assert.Equal(File.ReadAllBytes(program1), File.ReadAllBytes(program1Path));
+        Assert.Equal(File.ReadAllBytes(program2), File.ReadAllBytes(program2Path));
+        Assert.Equal(File.ReadAllBytes(sound1), File.ReadAllBytes(sound1Path));
+        Assert.Equal(FabricAmberSystem6Configuration.FromSystem6(settings).ToNativeBytes(),
+            File.ReadAllBytes(Path.Combine(root, "emulation", "impact.config.bin")));
+
+        var machineJson = File.ReadAllText(Path.Combine(root, "machine.runtime.json"));
+        using var manifest = JsonDocument.Parse(machineJson);
+        var runtime = manifest.RootElement.GetProperty("runtime");
+        var fabric = runtime.GetProperty("fabric");
+        Assert.Equal("amber", fabric.GetProperty("backendKind").GetString());
+        Assert.Equal("jpm-system6", fabric.GetProperty("machineIdentifier").GetString());
+        Assert.Equal("emulation/impact.config.bin", fabric.GetProperty("configuration").GetString());
+        var roms = fabric.GetProperty("roms").EnumerateArray().ToArray();
+        Assert.Collection(roms,
+            rom => { Assert.Equal(1, rom.GetProperty("role").GetInt32()); Assert.Equal(0, rom.GetProperty("slot").GetInt32()); Assert.Equal("emulation/roms/program-0.bin", rom.GetProperty("path").GetString()); },
+            rom => { Assert.Equal(1, rom.GetProperty("role").GetInt32()); Assert.Equal(1, rom.GetProperty("slot").GetInt32()); Assert.Equal("emulation/roms/program-1.bin", rom.GetProperty("path").GetString()); },
+            rom => { Assert.Equal(2, rom.GetProperty("role").GetInt32()); Assert.Equal(0, rom.GetProperty("slot").GetInt32()); Assert.Equal("emulation/roms/sound-0.bin", rom.GetProperty("path").GetString()); });
+        Assert.DoesNotContain(setup.Project.ProjectDirectory, machineJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(sound1, machineJson, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ImpactBuildRejectsMissingProgramRomAndGappedRomSlots()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var romDirectory = Path.Combine(setup.Project.ProjectDirectory, "Assets", "ROMs");
+        Directory.CreateDirectory(romDirectory);
+        var program1 = Path.Combine(romDirectory, "program-1.bin");
+        var program3 = Path.Combine(romDirectory, "program-3.bin");
+        File.WriteAllBytes(program1, [1]);
+        File.WriteAllBytes(program3, [3]);
+        var service = new MachineRuntimeBuildService();
+        var manifestPath = WriteMachine(setup.Project, setup.Machine with
+        {
+            Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.Impact, new System6NativeRomSettings())
+        });
+
+        var missing = service.BuildFromMachineDocument(setup.Project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(missing.Success);
+        Assert.Contains("Program ROM 1", missing.ErrorMessage);
+
+        var missingFileSettings = new System6NativeRomSettings { ProgramRom1Path = "Assets/ROMs/missing.bin" };
+        WriteMachine(setup.Project, setup.Machine with { Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.Impact, missingFileSettings) });
+        var missingFile = service.BuildFromMachineDocument(setup.Project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(missingFile.Success);
+        Assert.Contains("program ROM 1 was not found", missingFile.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+
+        var gappedSettings = new System6NativeRomSettings
+        {
+            ProgramRom1Path = Path.GetRelativePath(setup.Project.ProjectDirectory, program1),
+            ProgramRom3Path = Path.GetRelativePath(setup.Project.ProjectDirectory, program3)
+        };
+        WriteMachine(setup.Project, setup.Machine with { Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.Impact, gappedSettings) });
+        var gapped = service.BuildFromMachineDocument(setup.Project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(gapped.Success);
+        Assert.Contains("program ROM slots must be contiguous", gapped.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+
+        var invalidConfiguration = new System6NativeRomSettings
+        {
+            ProgramRom1Path = Path.GetRelativePath(setup.Project.ProjectDirectory, program1),
+            PercentSwitchValue = 16
+        };
+        WriteMachine(setup.Project, setup.Machine with { Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.Impact, invalidConfiguration) });
+        var invalid = service.BuildFromMachineDocument(setup.Project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(invalid.Success);
+        Assert.Contains("Impact Amber configuration is invalid", invalid.ErrorMessage);
     }
 
     [Theory]

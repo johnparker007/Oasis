@@ -17,6 +17,7 @@ namespace OasisPlayer.Startup
             var height = 800;
             var interaction = "";
             var arcade = "";
+            var fabric = ""; var amber = "";
 
             for (var i = 0; i < args.Count; i++)
             {
@@ -48,6 +49,12 @@ namespace OasisPlayer.Startup
                             error = $"Unknown startup mode '{rawMode}'. Supported modes: machine-preview, arcade.";
                             return false;
                         }
+                        break;
+                    case "--fabric-runtime":
+                        if (!ReadValue(args, ref i, arg, out fabric, out error)) return false;
+                        break;
+                    case "--amber-impact":
+                        if (!ReadValue(args, ref i, arg, out amber, out error)) return false;
                         break;
                     case "--arcade":
                         if (!ReadValue(args, ref i, arg, out arcade, out error)) return false;
@@ -94,7 +101,7 @@ namespace OasisPlayer.Startup
             { error = "Arcade mode requires --arcade <manifest> and uses each Machine's authored profile; do not pass --build or --interaction."; return false; }
             if (mode == StartupMode.MachinePreview && !string.IsNullOrEmpty(arcade))
             { error = "--arcade requires --mode arcade."; return false; }
-            options = new StartupOptions(mode, build, fullscreen ?? false, width, height, interaction, arcade);
+            options = new StartupOptions(mode, build, fullscreen ?? false, width, height, interaction, arcade, fabric, amber);
             return true;
         }
 

@@ -10,8 +10,9 @@ The durable ownership rules live in the numbered architecture documents in this 
 
 Deliver the [playable arcade milestones](15_PLAYABLE_ARCADE.md): the walkable
 preview is delivered, and saved Buttons/Pool profiles plus two-machine composition
-have passed local verification. Next is a labelled fruit-machine demo, followed by
-real emulation integration.
+have passed local verification. The user has replaced the proposed scripted demo with real Fabric/Amber JPM
+Impact integration, now locally verified. Credited-play tests await the current
+Editor project with coin/Start mappings that the user will prepare.
 The arcade designer and Prefab variants remain later work.
 
 ## Current baseline

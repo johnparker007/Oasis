@@ -96,10 +96,19 @@ namespace OasisPlayer.RuntimeBuild
     {
         public string kind = string.Empty;
         public string platform = string.Empty;
-        // Complete selected-platform settings encoded as JSON for reliable retention without Fabric hosting.
+        // Retained platform metadata; native Impact launch uses its exported Fabric descriptor.
         public string platformSettingsJson = string.Empty;
         public MachineRuntimeBehavior behavior;
+        public FabricRuntimeDescriptor fabric;
     }
+    [Serializable] public sealed class FabricRuntimeDescriptor
+    {
+        public string backendKind;
+        public string machineIdentifier;
+        public string configuration;
+        public FabricRuntimeRom[] roms;
+    }
+    [Serializable] public sealed class FabricRuntimeRom { public int role; public int slot; public string path; }
     [Serializable] public sealed class MachineRuntimeBehavior
     {
         public string kind = string.Empty;
@@ -305,6 +314,7 @@ namespace OasisPlayer.RuntimeBuild
         // Session-ready program. A8.4 supplies the real host and event adapter.
         public OasisScriptProgram ScriptProgram { get; }
         public string BuildRoot { get; }
+        public string FabricConfigurationPath { get { return Machine.runtime.fabric == null ? null : ArcadeLayoutManifest.ResolveBuildPath(BuildRoot, Machine.runtime.fabric.configuration); } }
         public MachineRuntimeManifest Machine { get; }
         public string CabinetManifestPath { get; }
         public CabinetRuntimeManifest Cabinet { get; }
@@ -319,8 +329,28 @@ namespace OasisPlayer.RuntimeBuild
         public const string MachineSchema = "oasis.machine.runtime";
         public const string CabinetSchema = "oasis.cabinet.runtime";
         public const string ObjectSchema = "oasis.object3d.runtime";
-        public const int MachineSchemaVersion = 12;
+        public const int MachineSchemaVersion = 13;
         public const int ObjectSchemaVersion = 2;
+
+        public static void ValidateFabricDescriptor(string root, FabricRuntimeDescriptor descriptor)
+        {
+            if (descriptor == null || descriptor.backendKind != "amber" || descriptor.machineIdentifier != "jpm-system6" || descriptor.roms == null)
+                throw new InvalidDataException("Current Impact build requires an amber/jpm-system6 Fabric descriptor.");
+            var config = ArcadeLayoutManifest.ResolveBuildPath(root, descriptor.configuration);
+            if (!File.Exists(config)) throw new FileNotFoundException("Exported Impact configuration is missing.", config);
+            if (new FileInfo(config).Length != 648) throw new InvalidDataException("Impact configuration must be 648 bytes.");
+            RuntimeFabricBehavior.ReadReelSteps(File.ReadAllBytes(config));
+            var slots = new HashSet<string>(StringComparer.Ordinal); var programs = 0; var sounds = 0;
+            foreach (var rom in descriptor.roms)
+            {
+                if (rom == null || (rom.role != 1 && rom.role != 2) || rom.slot < 0 || rom.slot > 3 || !slots.Add(rom.role + ":" + rom.slot)) throw new InvalidDataException("Invalid or duplicate Impact ROM role/slot.");
+                if (!File.Exists(ArcadeLayoutManifest.ResolveBuildPath(root, rom.path))) throw new InvalidDataException("Exported ROM is missing: " + rom.path);
+                if (rom.role == 1) programs++; else sounds++;
+            }
+            if (programs == 0) throw new InvalidDataException("Impact requires program ROM slot zero.");
+            for (var slot = 0; slot < programs; slot++) if (!slots.Contains("1:" + slot)) throw new InvalidDataException("Program ROM slots must be contiguous from zero.");
+            for (var slot = 0; slot < sounds; slot++) if (!slots.Contains("2:" + slot)) throw new InvalidDataException("Sound ROM slots must be contiguous from zero.");
+        }
 
         public static bool TryLoad(string buildDirectory, out ResolvedRuntimeBuild build, out string error)
         {
@@ -370,6 +400,13 @@ namespace OasisPlayer.RuntimeBuild
                 if (machine.runtime.behavior != null || !IsSupportedEmulationPlatform(machine.runtime.platform)
                     || !LooksLikeJsonObject(machine.runtime.platformSettingsJson))
                 { error = $"Machine Emulation runtime definition is invalid in {machinePath}."; return false; }
+                if (machine.runtime.platform == "Impact")
+                {
+                    try { ValidateFabricDescriptor(root, machine.runtime.fabric); }
+                    catch (Exception exception) when (exception is InvalidDataException || exception is IOException || exception is ArgumentException)
+                    { error = "Impact runtime dependencies: " + exception.Message; return false; }
+                }
+                else if (machine.runtime.fabric != null) { error = "Fabric Impact descriptor cannot be attached to another platform."; return false; }
             }
             else if (machine.runtime.kind == "Oasis")
             {
@@ -380,7 +417,7 @@ namespace OasisPlayer.RuntimeBuild
                 { error = $"Machine '{machine.displayName}' behavior source: {error}"; return false; }
                 if (behavior.source != "behavior/behavior.oasis")
                 { error = "Oasis behavior source must be behavior/behavior.oasis."; return false; }
-                if (!string.IsNullOrEmpty(machine.runtime.platform) || !string.IsNullOrEmpty(machine.runtime.platformSettingsJson))
+                if (machine.runtime.fabric != null || !string.IsNullOrEmpty(machine.runtime.platform) || !string.IsNullOrEmpty(machine.runtime.platformSettingsJson))
                 { error = "Oasis runtime must not contain Emulation settings."; return false; }
                 if (!File.Exists(sourcePath)) { error = $"Machine '{machine.displayName}' behavior/behavior.oasis is missing."; return false; }
                 try

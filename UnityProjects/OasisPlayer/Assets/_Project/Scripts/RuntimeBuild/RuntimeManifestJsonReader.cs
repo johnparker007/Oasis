@@ -124,6 +124,8 @@ namespace OasisPlayer.RuntimeBuild
         {
             string[] required = null;
             if (targetType == typeof(MachineRuntimeManifest)) required = new[] { "schema", "schemaVersion", "machineId", "displayName", "cabinetManifest", "anchors", "runtime", "interaction" };
+            else if (targetType == typeof(FabricRuntimeDescriptor)) required = new[] { "backendKind", "machineIdentifier", "configuration", "roms" };
+            else if (targetType == typeof(FabricRuntimeRom)) required = new[] { "role", "slot", "path" };
             else if (targetType == typeof(MachineInteractionDefinition)) required = new[] { "kind" };
             else if (targetType == typeof(ArcadeLayoutManifest)) required = new[] { "schema", "schemaVersion", "width", "length", "height", "visitorSpawn", "visitorYaw", "machines" };
             else if (targetType == typeof(ArcadeMachinePlacement)) required = new[] { "id", "build", "position", "yaw" };

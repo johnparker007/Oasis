@@ -26,12 +26,25 @@ namespace OasisPlayer.Tests
             Assert.True(state.SetBrightness(0, 1f));
             state.MarkClean();
             Assert.False(state.SetBrightness(0, 1f));
-            Assert.False(state.SetBrightness(256, 1f));
+            Assert.False(state.SetBrightness(512, 1f));
             Assert.False(state.IsDirty);
             Assert.True(state.SetBrightness(1, 1f));
             state.MarkClean();
             Assert.False(state.SetBrightness(1, 1f));
             Assert.False(state.IsDirty);
+        }
+
+        [Test]
+        public void NativeJpmChannelsAreRetainedWithoutChangingByteEncodedFaceLookup()
+        {
+            var state = new RuntimeLampState();
+            Assert.AreEqual(512, state.Capacity);
+            state.SetBrightness(511, 1f);
+            using (var texture = new RuntimeLampStateTexture(state))
+            {
+                Assert.AreEqual(256, texture.Texture.width);
+                Assert.AreEqual(1f, state.GetBrightness(511));
+            }
         }
 
         [Test]

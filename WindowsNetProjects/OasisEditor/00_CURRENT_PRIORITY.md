@@ -1,15 +1,20 @@
 # Current Priority for Codex
 
-The active user-authorised workstream is the playable arcade foundation: walking,
-safe room placement, explicit machine interaction profiles, basic Pool shots and
-a fruit-machine playable loop. Follow Docs/ArchitectureNext/15_PLAYABLE_ARCADE.md.
-The walkable preview is merged in PR #748. Saved Buttons/Pool profiles,
-Inspector/MCP edits and validated multi-machine arcade loading are merged in PR #749. Two actual Pool tables passed isolation, rotated-shot and lifecycle
-checks; 1,443 Editor tests and 208 focused Unity tests pass. The original Pool project
-was backed up and reauthored to Machine schema 11 / runtime 12 with a Pool profile.
-The next milestone is a labelled fruit-machine game loop in the shared arcade;
-ROM emulation and the visual arcade designer remain later work. Manual visual
-and mouse/keyboard checks remain excluded while the user is working.
+The active user-authorised workstream is real Fabric / Amber JPM Impact integration
+in Unity Player, using the Editor as reference. A scripted fruit-machine demo is
+not the next step. See OasisEditor.Mcp/PLAYER_FABRIC_IMPACT.md and the arcade plan.
+Native boot, output/audio/input delivery, reset/restart and the mixed Pool/Impact
+arcade passed actual local verification. The user has no current saved project with
+verified coin/Start mappings and will prepare one later; credit/spin/payout tests
+are deferred until then. Do not guess those settings or claim credited play.
+
+Walkable preview and arcade composition are merged in PRs #748/#749. Current
+Machine authored/runtime schemas are 11/13 (Prefab 2). The original Pool build was
+regenerated without changing its authored gameplay. Editor tests pass 1,445/1,445;
+focused Unity tests pass 220/220. Manual visual/audio/keyboard checks remain excluded
+while the user is working. The installed JPM DLL supports one active board per
+process; it may run alongside Oasis machines, but not another simultaneous JPM board.
+
 P1 authoring is delivered in PR #745; P2 runtime components and the P3 single-ball
 checkpoint are merged in PR #746. The Pool-required P4 lifecycle/language/query
 subset and P5 calculated Pool setup are merged in PR #747 and locally verified.

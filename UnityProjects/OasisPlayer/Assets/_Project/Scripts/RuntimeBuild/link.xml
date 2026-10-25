@@ -1,6 +1,8 @@
 <linker>
   <assembly fullname="OasisPlayer.RuntimeBuild">
     <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeManifest" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.FabricRuntimeDescriptor" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.FabricRuntimeRom" preserve="all" />
     <type fullname="OasisPlayer.RuntimeBuild.MachineInteractionDefinition" preserve="all" />
     <type fullname="OasisPlayer.RuntimeBuild.ArcadeLayoutManifest" preserve="all" />
     <type fullname="OasisPlayer.RuntimeBuild.ArcadeMachinePlacement" preserve="all" />

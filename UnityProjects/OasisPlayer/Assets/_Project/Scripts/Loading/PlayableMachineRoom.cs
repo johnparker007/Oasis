@@ -172,6 +172,7 @@ namespace OasisPlayer.Loading
         private void Update()
         {
             if (_stations.Count == 0) return;
+            if (_engaged && !string.IsNullOrEmpty(_machine.EmulationFault)) { _message = "Emulation stopped: " + _machine.EmulationFault; LeaveMachine(); ReleasePointer(); return; }
             if (_engaged && !_machine.IsActive) { LeaveMachine(); ReleasePointer(); return; }
             var anyActive = false; foreach (var station in _stations) if (station.Machine.IsActive) anyActive = true;
             if (!anyActive) { LeaveMachine(); ReleasePointer(); enabled = false; return; }
