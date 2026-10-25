@@ -14,6 +14,7 @@ public class StartupController : MonoBehaviour
     private FatalErrorOverlay _errors;
     private static StartupController _instance;
     private MachinePreviewLoader _loader;
+    private ArcadeSession _arcade;
     private GameObject _roomHost;
 
     private void Awake()
@@ -32,20 +33,36 @@ public class StartupController : MonoBehaviour
             var args = GetStartupArguments();
             if (!StartupOptionsParser.TryParse(args, out var options, out var error)) { _errors.Show(error); return; }
             Screen.SetResolution(options.Width, options.Height, options.Fullscreen);
-            if (!RuntimeBuildLoader.TryLoad(options.BuildDirectory, out var build, out error)) { _errors.Show(error); return; }
-            await SceneManager.LoadSceneAsync(options.SceneName, LoadSceneMode.Single);
-            _loader = new MachinePreviewLoader(new GltfFastCabinetModelLoader());
-            var machine = await _loader.LoadAsync(build);
-            _roomHost = new GameObject("Playable preview room");
-            var room = _roomHost.AddComponent<PlayableMachineRoom>();
-            room.Initialize(machine, Camera.main, options.Interaction == "pool" ? MachineInteractionProfile.Pool : MachineInteractionProfile.Buttons);
-            room.UiIsOpen = () => PlayerUiRuntime.IsOpen;
-            Debug.Log("Oasis playable preview ready: " + options.Interaction);
+            if (options.Mode == StartupMode.Arcade)
+            {
+                await SceneManager.LoadSceneAsync(options.SceneName, LoadSceneMode.Single);
+                _arcade = new ArcadeSession();
+                await _arcade.LoadAsync(options.ArcadeManifest);
+                _roomHost = new GameObject("Playable arcade room");
+                var room = _roomHost.AddComponent<PlayableMachineRoom>();
+                room.InitializeArcade(_arcade.Stations, Camera.main, _arcade.Layout);
+                room.UiIsOpen = () => PlayerUiRuntime.IsOpen;
+                Debug.Log("Oasis arcade ready: " + _arcade.Stations.Count + " machines");
+            }
+            else
+            {
+                if (!RuntimeBuildLoader.TryLoad(options.BuildDirectory, out var build, out error)) { _errors.Show(error); return; }
+                await SceneManager.LoadSceneAsync(options.SceneName, LoadSceneMode.Single);
+                _loader = new MachinePreviewLoader(new GltfFastCabinetModelLoader());
+                var machine = await _loader.LoadAsync(build);
+                _roomHost = new GameObject("Playable preview room");
+                var room = _roomHost.AddComponent<PlayableMachineRoom>();
+                var selected = string.IsNullOrEmpty(options.Interaction) ? build.Machine.interaction.kind : options.Interaction;
+                room.Initialize(machine, Camera.main, selected == "pool" || selected == "Pool" ? MachineInteractionProfile.Pool : MachineInteractionProfile.Buttons);
+                room.UiIsOpen = () => PlayerUiRuntime.IsOpen;
+                Debug.Log("Oasis playable preview ready: " + selected);
+            }
         }
         catch (Exception ex)
         {
             if (_roomHost != null) Destroy(_roomHost);
             if (_loader != null) _loader.Unload();
+            if (_arcade != null) _arcade.Dispose();
             _errors.Show(ex.Message);
         }
     }
@@ -54,6 +71,7 @@ public class StartupController : MonoBehaviour
     {
         if (_instance != this) return;
         if (_loader != null) _loader.Unload();
+        if (_arcade != null) _arcade.Dispose();
         _instance = null;
     }
 

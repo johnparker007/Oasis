@@ -30,7 +30,27 @@ namespace OasisPlayer.RuntimeBuild
         public MachineRuntimeGeometrySurface[] geometrySurfaces = Array.Empty<MachineRuntimeGeometrySurface>();
         public MachineRuntimeAnchor[] anchors;
         public MachineRuntimeManifestDefinition runtime;
+        public MachineInteractionDefinition interaction = new MachineInteractionDefinition();
         public MachineInputDefinition[] inputs = Array.Empty<MachineInputDefinition>();
+    }
+
+    [Serializable] public sealed class MachineInteractionDefinition
+    {
+        public string kind = "Buttons";
+        public string cuePrefabAlias;
+        public string playingSurfaceId;
+        public void Validate(MachineRuntimeManifest machine)
+        {
+            if (kind == "Buttons")
+            {
+                if (!string.IsNullOrEmpty(cuePrefabAlias) || !string.IsNullOrEmpty(playingSurfaceId)) throw new InvalidDataException("Buttons interaction cannot contain Pool parameters.");
+                return;
+            }
+            if (kind != "Pool") throw new InvalidDataException("Unknown interaction profile: " + kind);
+            if (machine.prefabDependencies == null || !Array.Exists(machine.prefabDependencies, p => p != null && p.alias == cuePrefabAlias) ||
+                machine.geometrySurfaces == null || !Array.Exists(machine.geometrySurfaces, p => p != null && p.id == playingSurfaceId))
+                throw new InvalidDataException("Pool interaction requires declared cue Prefab and playing surface references.");
+        }
     }
 
     [Serializable] public sealed class RuntimeVector3Definition { public float x; public float y; public float z; public Vector3 Value { get { return new Vector3(x, y, z); } } }
@@ -299,7 +319,7 @@ namespace OasisPlayer.RuntimeBuild
         public const string MachineSchema = "oasis.machine.runtime";
         public const string CabinetSchema = "oasis.cabinet.runtime";
         public const string ObjectSchema = "oasis.object3d.runtime";
-        public const int MachineSchemaVersion = 11;
+        public const int MachineSchemaVersion = 12;
         public const int ObjectSchemaVersion = 2;
 
         public static bool TryLoad(string buildDirectory, out ResolvedRuntimeBuild build, out string error)
@@ -465,6 +485,12 @@ namespace OasisPlayer.RuntimeBuild
                     || !IsFinitePositive(surface.width) || !IsFinitePositive(surface.length))
                 { error = "Geometry surface ID, finite pose and positive dimensions are required; IDs must be unique."; return false; }
             }
+            try
+            {
+                if (machine.interaction == null) throw new InvalidDataException("Machine interaction profile is required.");
+                machine.interaction.Validate(machine);
+            }
+            catch (InvalidDataException exception) { error = exception.Message; return false; }
             for (var i = 0; i < requests.Count; i++)
             {
                 var instance = requests[i];

@@ -17,9 +17,9 @@ behaviour. Its canonical source extension is `.oasis`; examples use
 networking, reflection, CLR interop, or host-object dependency, so Editor and Player
 can consume one lexer/parser/type-checker implementation.
 
-Machine authored schema 10 separates Runtime from Behaviour: Oasis requires one
+Machine authored schema 11 separates Runtime from Behaviour: Oasis requires one
 package-local `behavior.oasis`; Emulation forbids behaviour. A8.3 implements source
-packaging (current Machine runtime schema 11) and pure interpretation; A8.4 implements the
+packaging (current Machine runtime schema 12) and pure interpretation; A8.4 implements the
 Player-side A7 host adapter. Canonical source is in `Oasis.Scripting/Package/Runtime/`, compiled by
 the .NET project and Player's local UPM package without source duplication.
 

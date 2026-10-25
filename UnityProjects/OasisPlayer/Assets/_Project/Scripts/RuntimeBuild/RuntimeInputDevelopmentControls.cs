@@ -19,12 +19,12 @@ namespace OasisPlayer.RuntimeBuild
         private readonly SortedSet<string> _pressed = new SortedSet<string>(StringComparer.Ordinal);
         private bool _hasFocus = true;
 
-        public void Initialize(RuntimeMachine machine)
+        public void Initialize(RuntimeMachine machine, bool includeEmulation = false)
         {
             ReleaseInputs();
             _machine = machine;
             // Each load/replacement restores authored data once, never during polling.
-            Configure(machine != null && machine.Build.Machine.runtime.kind == "Oasis"
+            Configure(machine != null && (includeEmulation || machine.Build.Machine.runtime.kind == "Oasis")
                 ? RuntimeInputShortcutMapper.CreateBindings(machine.Build.Machine.inputs,
                     warning => Debug.LogWarning(warning, this))
                 : Array.Empty<Binding>());

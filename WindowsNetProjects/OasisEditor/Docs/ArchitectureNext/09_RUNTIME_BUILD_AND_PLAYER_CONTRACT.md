@@ -1,6 +1,6 @@
 # Runtime Build and Oasis Player Contract
 
-> Delivered Object3D/A8 baseline and existing contracts below remain current. The proposed evolution is in [Prefab/OasisObject architecture](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md) and [delivery plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md); none of P1–P8 is implemented. Proposed variants/functions/spawning are later milestones, not current functionality.
+> Current Machine authored/runtime schemas are 11/12; Prefab authored/runtime schemas are 2. The [Prefab delivery plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md) records the delivered runtime tree and lifecycle work. The [playable arcade plan](15_PLAYABLE_ARCADE.md) adds saved interaction profiles and explicit multi-machine placement packages.
 
 ## Build root
 
@@ -35,23 +35,45 @@ Cabinet semantic geometry remains authoritative in the GLB:
 
 Do not duplicate semantic mesh geometry into runtime manifests.
 
-## Dynamic Object3D contract
+## Prefab and live object contract
 
-Object3D differs from Cabinet semantic geometry because Machine instance identity and placement are Machine-owned.
+The existing Object3D asset family now authors ordinary Prefabs. Machine runtime
+schema 12 exports authored object trees/placements, named spawn-only Prefab
+requirements, lightweight anchors and geometry surfaces. Definitions are emitted
+once under `objects/<object-guid>/` with `object.runtime.json` (schema
+`oasis.object3d.runtime`, version 2) and content-addressed GLB dependencies.
+Conflicting resolved definitions claiming the same GUID fail the build.
 
-Machine runtime schema 9 contains Machine-owned Object3D instance declarations. Each declaration preserves its authored ID/display name and position, Euler rotation in degrees, and placement scale, and points at a generated definition manifest rather than an authoring path.
+Definitions retain stable inline node/component IDs and explicit Transform, Model,
+Collider and Rigidbody defaults. Placement transforms are separate from intrinsic
+model scale/up-axis correction. Cabinet semantic geometry remains authoritative
+in the Cabinet GLB; it is not duplicated into these declarations.
 
-Reusable definitions are emitted once under `objects/<object-guid>/` with `object.runtime.json` (schema `oasis.object3d.runtime`, version 1) and `object.glb`. The lower-case canonical authored Object3D GUID is the deterministic package/definition identity. Definitions retain model scale/up-axis and the minimal collider/Rigidbody contract; generated paths are package-relative. Conflicting resolved definitions claiming the same GUID fail the build.
+Each Machine session owns its imported templates, authored/spawned object registry,
+script state, events, timers and physics adapters. Script `OasisObjectRef` handles
+are scoped to session/generation and become invalid on destruction or unload.
+Bounded instantiate/destroy operations register atomically and deactivate destroyed
+roots before deferred engine destruction. Unload clears registries, imports and
+live handles. See [the scripting contract](12_OASIS_SCRIPT.md).
 
-The Player validates the typed definitions, loads each referenced GLB definition once per Machine session, and instantiates every Machine occurrence from that shared import. A live instance has an authoritative physical placement root under `RuntimeMachine/Objects`; `RuntimeObjectInstance.Root.transform` is both the current live transform and the transform Unity physics moves. When enabled, the Rigidbody is attached directly to that root. Intrinsic model scale and up-axis conversion live on a `ModelCorrection` child and therefore cannot become a second independently moving physical root. Y-up is unchanged, Z-up rotates -90 degrees around X, and X-up rotates +90 degrees around Z.
+Anchors retain stable raw ID, display name and Machine-space position/rotation,
+without assets, scale or physics. Named geometry surfaces retain an oriented
+rectangle for focused spatial queries.
 
-Object3D primitive collider coordinates are authored in source-model coordinates. A `PhysicsCorrection` child receives exactly the same uniform model scale and up-axis rotation as `ModelCorrection`, so primitive center, dimensions and orientation remain aligned without baking or approximating the conversion. Its collider is part of the ancestor root Rigidbody's compound body. A Mesh collider remains on the sole usable rendered mesh, preserving the imported node transforms, and fails clearly when the model has zero or multiple usable meshes. A Mesh collider is made convex when its definition also enables a dynamic Rigidbody, as required by Unity physics; Oasis does not perform convex decomposition. Colliders may therefore be on the root or descendants, but a live Object3D Rigidbody is always on the registered root.
+## Interaction and arcade composition
 
-`RuntimeMachine` registers live `RuntimeObjectInstance` values by raw Machine instance ID (the Object3D domain represented canonically as `object:<id>`). Each value retains identity/display name, its resolved definition, authoritative live root GameObject, optional Collider/root Rigidbody, and authored initial-transform data that physics does not mutate. Unload destroys all instance roots, clears the registry, and releases the per-load glTF imports. Object3D GLBs remain visible and are not processed using Cabinet semantic-name conventions.
+Machine owns a required `interaction` object: `Buttons`, or `Pool` with explicit
+`cuePrefabAlias` and `playingSurfaceId`. Pool references must resolve against the
+Machine's declared dependencies/surfaces. Interaction profile and runtime kind are
+independent; no profile implicitly runs an emulator or changes game rules.
 
-See `11_DYNAMIC_OBJECTS_BEHAVIOUR_AND_SCRIPTING.md`.
-
-Machine runtime schema 9 also exports lightweight `anchors[]` declarations with raw stable ID, display name, Machine-space position, and `rotationEulerDegrees`. Anchors have no scale, asset, physics, or Editor-only viewport state. The Player validates and registers them as `RuntimeAnchor` values before content setup; it does not create Unity GameObjects to store them.
+Arcade runtime schema 1 composes contained, explicit generated Machine dependencies
+with stable placement IDs and floor position/yaw, room dimensions and visitor spawn.
+One independent loader/session is owned per placement. All dependencies are resolved
+before loading; measured Cabinet placement and clearance are checked before scripts
+start. Failure rolls back every loaded session. One visitor controller gates input
+to one engaged station, releasing held keys on leave, settings, focus loss or unload.
+The current package can be authored by script; a visual layout designer is deferred.
 
 ## Diagnostics
 

@@ -28,7 +28,7 @@ public sealed class MachineDocumentTests
     }
 
     [Fact]
-    public void Schema10_RoundTripsCompositionRuntimeAndInputs()
+    public void Schema11_RoundTripsCompositionRuntimeInputsAndDefaultInteraction()
     {
         var machine = MachineDocument.Create("Machine A") with
         {
@@ -40,7 +40,8 @@ public sealed class MachineDocumentTests
         var json = MachineDocumentStorage.Serialize(machine);
         using (var authored = JsonDocument.Parse(json))
         {
-            Assert.Equal(10, authored.RootElement.GetProperty("schemaVersion").GetInt32());
+            Assert.Equal(11, authored.RootElement.GetProperty("schemaVersion").GetInt32());
+            Assert.Equal("Buttons", authored.RootElement.GetProperty("interaction").GetProperty("kind").GetString());
             Assert.Empty(authored.RootElement.GetProperty("objectInstances").EnumerateArray());
             Assert.Equal("Emulation", authored.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
             Assert.False(authored.RootElement.GetProperty("runtime").TryGetProperty("$type", out _));
@@ -56,9 +57,9 @@ public sealed class MachineDocumentTests
     [Fact]
     public void WrongSchema_IsRejectedWithoutCompatibilityFallback()
     {
-        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")).Replace("\"schemaVersion\": 10", "\"schemaVersion\": 7");
+        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")).Replace("\"schemaVersion\": 11", "\"schemaVersion\": 7");
         Assert.False(MachineDocumentStorage.TryRead(json, out _, out var error));
-        Assert.Contains("only version 10", error);
+        Assert.Contains("only version 11", error);
     }
 
     [Fact]
@@ -79,7 +80,7 @@ public sealed class MachineDocumentTests
     }
 
     [Fact]
-    public void Schema10_RoundTripsPrefabDependenciesAndGeometrySurfaces()
+    public void Schema11_RoundTripsPrefabDependenciesAndGeometrySurfaces()
     {
         var source = MachineDocument.Create("Pool") with
         {
@@ -104,6 +105,32 @@ public sealed class MachineDocumentTests
         {
             GeometrySurfaces = [new("playingSurface", new(double.NaN, 0, 0), new(0, 0, 0), 1, 1)]
         }));
+    }
+
+    [Fact]
+    public void PoolInteraction_RoundTripsAndRequiresDeclaredPrefabAndSurface()
+    {
+        var machine = MachineDocument.Create("Pool") with
+        {
+            PrefabDependencies = [new("cueBall", AssetReference.Project("Assets/Object3D/PoolBall/asset.object3d"))],
+            GeometrySurfaces = [new("playingSurface", MachineVector3.Zero, MachineVector3.Zero, 1, 2)],
+            Interaction = new MachineInteractionDefinition("Pool", "cueBall", "playingSurface")
+        };
+        var json = MachineDocumentStorage.Serialize(machine);
+        using var parsed = JsonDocument.Parse(json);
+        var interaction = parsed.RootElement.GetProperty("interaction");
+        Assert.Equal("Pool", interaction.GetProperty("kind").GetString());
+        Assert.Equal("cueBall", interaction.GetProperty("cuePrefabAlias").GetString());
+        Assert.Equal("playingSurface", interaction.GetProperty("playingSurfaceId").GetString());
+        Assert.True(MachineDocumentStorage.TryRead(json, out var reopened, out var error), error);
+        Assert.Equal(machine.Interaction, reopened.Interaction);
+
+        Assert.Throws<InvalidOperationException>(() => MachineDocumentStorage.Serialize(machine with { Interaction = new("Pool", "missing", "playingSurface") }));
+        Assert.Throws<InvalidOperationException>(() => MachineDocumentStorage.Serialize(machine with { Interaction = new("Pool", "cueBall", "missing") }));
+        Assert.Throws<InvalidOperationException>(() => MachineDocumentStorage.Serialize(machine with { Interaction = new("Unknown") }));
+        Assert.Throws<InvalidOperationException>(() => MachineDocumentStorage.Serialize(machine with { Interaction = new("Buttons", "cueBall", null) }));
+        Assert.False(MachineDocumentStorage.TryRead(json.Replace("\"interaction\": {", "\"unused\": {"), out _, out error));
+        Assert.Contains("Interaction object is required", error);
     }
 
     [Theory]

@@ -66,6 +66,9 @@ public sealed class EditorTools(McpEditorSession session, EditorDispatcher ui)
     [McpServerTool(Name = "set_machine_geometry_surface"), Description("Set a measured Machine-space rectangular support surface for bounded geometry queries. Finite pose and positive width/length required.")]
     public Task<MachineSnapshot> SetMachineGeometrySurface(Guid documentId, MachineGeometrySurface surface, CancellationToken cancellationToken) => ui.Invoke(() => session.SetMachineGeometrySurface(documentId, surface), cancellationToken);
 
+    [McpServerTool(Name = "set_machine_interaction"), Description("Set the Machine interaction profile through one undoable command. Use kind Buttons with no Pool parameters, or Pool with a declared cuePrefabAlias and geometrySurface playingSurfaceId. Does not save.")]
+    public Task<MachineSnapshot> SetMachineInteraction(Guid documentId, string kind, CancellationToken cancellationToken, string? cuePrefabAlias = null, string? playingSurfaceId = null) => ui.Invoke(() => session.SetMachineInteraction(documentId, kind, cuePrefabAlias, playingSurfaceId), cancellationToken);
+
     [McpServerTool(Name = "set_machine_behavior"), Description("Replace an existing Oasis Machine's behavior source through an undoable command; diagnostics are returned. Save/build remains explicit.")]
     public Task<MachineSnapshot> SetMachineBehavior(Guid documentId, string source, CancellationToken cancellationToken) => ui.Invoke(() => session.SetMachineBehavior(documentId, source), cancellationToken);
 

@@ -26,7 +26,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
     public const string ObjectSchema = "oasis.object3d.runtime";
-    public const int MachineSchemaVersion = 11;
+    public const int MachineSchemaVersion = 12;
     public const int CabinetSchemaVersion = 5;
     public const int ObjectSchemaVersion = 2;
 
@@ -116,7 +116,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
             File.WriteAllText(Path.Combine(cabinetRoot, CabinetManifestFileName), JsonSerializer.Serialize(cabinetManifest, JsonOptions));
             var anchors = machineDocument.Anchors.Select(MachineRuntimeAnchor.From).ToArray();
             var geometrySurfaces = machineDocument.GeometrySurfaces.Select(MachineRuntimeGeometrySurface.From).ToArray();
-            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, machineDocument.Id, machineDocument.DisplayName, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, objectInstances, anchors, MachineRuntimeManifestDefinition.From(machineDocument.Runtime), machineDocument.InputDefinitions, prefabDependencies, geometrySurfaces);
+            var machineManifest = new MachineRuntimeManifest(MachineSchema, MachineSchemaVersion, machineDocument.Id, machineDocument.DisplayName, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(CabinetDirectoryName, CabinetManifestFileName)), faceReferences, objectInstances, anchors, MachineRuntimeManifestDefinition.From(machineDocument.Runtime), machineDocument.InputDefinitions, prefabDependencies, geometrySurfaces, MachineRuntimeInteraction.From(machineDocument.Interaction));
             File.WriteAllText(Path.Combine(stagingRoot, MachineManifestFileName), JsonSerializer.Serialize(machineManifest, JsonOptions));
             progress.Report(0.95, "Finalising Oasis Player machine...");
             cancellationToken.ThrowIfCancellationRequested();
@@ -418,7 +418,12 @@ public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, 
     public static MachineRuntimeBuildResult Fail(string errorMessage) => new(false, null, errorMessage);
 }
 
-public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, IReadOnlyList<MachineRuntimeObjectInstance> ObjectInstances, IReadOnlyList<MachineRuntimeAnchor> Anchors, MachineRuntimeManifestDefinition Runtime, IReadOnlyList<InputDefinitionModel> Inputs, IReadOnlyList<MachineRuntimePrefabDependency> PrefabDependencies, IReadOnlyList<MachineRuntimeGeometrySurface> GeometrySurfaces);
+public sealed record MachineRuntimeManifest(string Schema, int SchemaVersion, string MachineId, string DisplayName, string CabinetManifest, IReadOnlyList<MachineRuntimeFaceReference> Faces, IReadOnlyList<MachineRuntimeObjectInstance> ObjectInstances, IReadOnlyList<MachineRuntimeAnchor> Anchors, MachineRuntimeManifestDefinition Runtime, IReadOnlyList<InputDefinitionModel> Inputs, IReadOnlyList<MachineRuntimePrefabDependency> PrefabDependencies, IReadOnlyList<MachineRuntimeGeometrySurface> GeometrySurfaces, MachineRuntimeInteraction Interaction);
+
+public sealed record MachineRuntimeInteraction(string Kind, string? CuePrefabAlias = null, string? PlayingSurfaceId = null)
+{
+    public static MachineRuntimeInteraction From(MachineInteractionDefinition value) => new(value.Kind, value.CuePrefabAlias, value.PlayingSurfaceId);
+}
 
 /// <summary>Generated Player contract projection; distinct from the authored RuntimeDefinition.</summary>
 [JsonPolymorphic]

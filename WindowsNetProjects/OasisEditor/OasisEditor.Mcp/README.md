@@ -314,7 +314,7 @@ and unsupported transform shear fail contextually. Machine Inspector exposes sou
 identity/defaults separately from permitted placement overrides and Revert.
 Machine-space teleport still targets Machine-space anchors under parented placement;
 reset restores authored node poses/active state and clears body velocities.
-Machine authored schema **10** / runtime **11** adds declared Prefab aliases and
+Machine authored schema **11** / runtime **12** contains declared Prefab aliases and
 measured geometry surfaces. Prefab authored/runtime formats remain 2. Script
 `prefab:<alias>` dependencies are exported/preloaded even without any placed entity.
 Current scripts use session-scoped `OasisObjectRef` handles (`oasis:<authoredId>`),
@@ -398,3 +398,13 @@ checks 15+1 dynamic entities, calculated frames/spacing, physics support, collec
 cue recovery, five new games, stale handles and unload/reload. It does not render
 gameplay or exercise keyboard focus. `runtime_tree_smoke_test.py` remains the
 parented single-ball regression workflow.
+
+## Saved interaction profiles and arcades
+
+Machine authored/runtime formats are now 11/12. `set_machine_interaction` sets
+`Buttons`, or `Pool` with declared `cuePrefabAlias` and `playingSurfaceId`; it is
+undoable and does not save. The Machine Inspector uses explicit choices for both
+references. Old Machine packages must be explicitly reauthored and rebuilt.
+
+See [arcade packaging and launch](ARCADE.md). This hand-authored layout package
+precedes a visual arcade designer; layout document/MCP authoring is still deferred.

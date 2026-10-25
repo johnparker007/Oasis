@@ -7,8 +7,9 @@ rejected. Gameplay remains Machine-owned.
 
 ## Calculated fifteen-ball rack and separate cue
 
-Use Machine authored schema 10 / runtime 11 and Prefab authored/runtime schema 2.
-Declare `poolBall` and `cueBall` in the Machine's Prefab dependency table. They may
+Use Machine authored schema 11 / runtime 12 and Prefab authored/runtime schema 2.
+Set the Machine interaction to Pool, cue alias `cueBall`, playing surface
+`playingSurface`. Declare `poolBall` and `cueBall` in the Machine's Prefab dependency table. They may
 reference the same ordinary asset (the verified local setup uses the original
 white ball appearance); the cue is a separate entity. No variants are required.
 The Prefab must have a root-centred Sphere collider and uniform positive root
