@@ -4,9 +4,10 @@ The active workstream evolves the existing Object3D asset/instance pipeline into
 Prefab / OasisObject / Component contracts, followed by algorithmic Pool setup.
 P1 authoring is delivered in PR #745; P2 runtime components and the P3 single-ball
 checkpoint are merged in PR #746. The Pool-required P4 lifecycle/language/query
-subset and P5 calculated Pool setup are implemented and locally verified.
+subset and P5 calculated Pool setup are merged in PR #747 and locally verified.
 Optional values and physics-step kinematic targets remain deferred with P6–P8.
-The user has authorised this sequence.
+The original PoolTableTest1 project was backed up, explicitly reauthored and
+verified in the actual Player with sixteen runtime nodes. The user authorised this sequence.
 
 Read AGENTS.md, then Docs/ArchitectureNext/00_OVERVIEW.md,
 10_ACTIVE_ROADMAP.md, 13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md and

@@ -66,7 +66,8 @@ IDs are case-sensitive Machine identities, not GameObject display names.
 | Logical inputs | `input:rerack`, `input:newGame` | Machine input declarations |
 
 The canonical pocket IDs match the six Blender object names supplied in the screenshot.
-The exported GLB has not been inspected; confirm it actually contains all six meshes.
+The actual local exported GLB passed all six natural pocket-drop checks. Other
+Cabinet exports must also contain all six semantic volumes.
 `OasisTrigger_` is removed when deriving the logical ID, so
 `OasisTrigger_Pocket_XNeg_Middle` becomes `trigger:Pocket_XNeg_Middle`. Preserve
 spelling and case. A semantic node name takes precedence over a semantic mesh name;

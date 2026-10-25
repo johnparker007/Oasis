@@ -7,7 +7,8 @@ editor, activates a user window, or opens the normal launcher.
 The server supports a repeatable project → Panel2D → MFME FML → edit → Face → save/reopen
 workflow. It reuses the editor's project scaffolder, importer, document command
 history, validation and save service. It also inspects, captures and builds existing
-Machines; Cabinet/Machine authoring is not exposed yet. Face generation and saving reuse
+Machines and edits their Prefab dependencies, anchors, geometry surfaces and
+behavior. Cabinet geometry authoring is not exposed yet. Face generation and saving reuse
 the editor's existing derived-asset/export behavior. ArchitectureNext priorities
 are unchanged.
 

@@ -1,7 +1,7 @@
 # Prefab and algorithmic Pool delivery plan — proposed
 
 Status updated 2026-10-25: P1 authoring is merged in PR #745; P2/P3 are merged
-in PR #746. The Pool-required P4 subset and P5 are implemented and locally verified:
+in PR #746. The Pool-required P4 subset and P5 are merged in PR #747 and locally verified:
 165 shared scripting tests, 1,441 Editor tests and 206 focused Unity tests passed.
 Actual Player checks cover the calculated rack, all six pockets, collection/cue
 recovery, five new games and unload/reload. The earlier full Unity suite retained

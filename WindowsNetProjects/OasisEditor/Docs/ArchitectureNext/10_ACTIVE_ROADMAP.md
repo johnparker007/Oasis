@@ -206,7 +206,7 @@ The added suites have not run in Codex, and no inherited suite pass is assumed.
 
 P1 authoring is merged in PR #745; P2 runtime components and P3 single-ball
 verification are merged in PR #746. The Pool-required P4 subset and P5 are
-implemented and locally verified, including actual 16-ball Player physics and lifecycle.
+merged in PR #747 and locally verified, including actual 16-ball Player physics and lifecycle.
 Optional values and kinematic target movement remain deferred for later proving cases.
 Evolve the existing Object3D pipeline rather than adding a parallel Prefab system.
 Contracts and inspected baseline:
