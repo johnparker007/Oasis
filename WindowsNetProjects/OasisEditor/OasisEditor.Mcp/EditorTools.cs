@@ -8,6 +8,29 @@ namespace OasisEditor.Mcp;
 [McpServerToolType]
 public sealed class EditorTools(McpEditorSession session, EditorDispatcher ui)
 {
+    [McpServerTool(Name = "list_recent_projects", ReadOnly = true), Description("Read the editor's recent-project list. Listing does not grant workspace access; use a server configured for the intended project or a disposable copy.")]
+    public Task<IReadOnlyList<string>> RecentProjects(CancellationToken cancellationToken) => ui.Invoke(McpEditorSession.ListRecentProjects, cancellationToken);
+
+    [McpServerTool(Name = "list_machine_assets", ReadOnly = true), Description("List saved Machine manifest paths in the open project, maximum 200.")]
+    public Task<IReadOnlyList<string>> Machines(CancellationToken cancellationToken) => ui.Invoke(session.ListMachineAssets, cancellationToken);
+
+    [McpServerTool(Name = "open_machine", ReadOnly = true), Description("Open a saved Machine for read-only inspection inside the project; returns configuration, objects, anchors, inputs, script and diagnostics. Does not display a window or save.")]
+    public Task<MachineSnapshot> OpenMachine(string path, CancellationToken cancellationToken) => ui.Invoke(() => session.OpenMachine(path), cancellationToken);
+
+    [McpServerTool(Name = "inspect_machine", ReadOnly = true), Description("Read an open Machine's configuration and Oasis script diagnostics; document IDs belong to this session.")]
+    public Task<MachineSnapshot> InspectMachine(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.InspectMachine(documentId), cancellationToken);
+
+    [McpServerTool(Name = "build_machine"), Description("Build the persisted Machine for Oasis Player through the existing validated build pipeline. Writes/replaces Generated build output; use a disposable project. Currently requires project-local assets; returns success/buildRoot/errorMessage. Does not launch Player.")]
+    public Task<MachineRuntimeBuildResult> BuildMachine(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.BuildMachine(documentId, cancellationToken), cancellationToken);
+
+    [McpServerTool(Name = "capture_machine", ReadOnly = true), Description("Return a PNG of the real editor's Machine Composition view rendered offscreen. No focus changes. Width 640..1920, height 480..1080; theme System/Light/Dark. View render, not a full-window screenshot.")]
+    public async Task<CallToolResult> CaptureMachine(Guid documentId, CancellationToken cancellationToken, int width = 1200, int height = 900, string theme = "System")
+    {
+        if (!Enum.TryParse<ThemePreference>(theme, true, out var preference) || !Enum.IsDefined(preference)) throw new ArgumentException("Use System, Light or Dark.");
+        var pending = await ui.Invoke(() => session.CaptureMachineAsync(documentId, width, height, preference), cancellationToken);
+        return new CallToolResult { Content = [ImageContentBlock.FromBytes(await pending, "image/png")] };
+    }
+
     [McpServerTool(Name = "create_project"), Description("Create a new project under the explicit workspace. Refuses existing directories; one project per session.")]
     public Task<ProjectSnapshot> CreateProject(string name, CancellationToken cancellationToken) => ui.Invoke(() => session.CreateProject(name), cancellationToken);
 

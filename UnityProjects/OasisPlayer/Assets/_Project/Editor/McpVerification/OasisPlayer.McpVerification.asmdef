@@ -1,0 +1,8 @@
+{
+  "name": "OasisPlayer.McpVerification",
+  "references": ["OasisPlayer.Loading", "OasisPlayer.RuntimeBuild", "Oasis.Scripting", "MCPForUnity.Editor"],
+  "includePlatforms": ["Editor"],
+  "defineConstraints": ["OASIS_MCP_VERIFICATION"],
+  "versionDefines": [{"name": "com.coplaydev.unity-mcp", "expression": "10.3.0", "define": "OASIS_MCP_VERIFICATION"}],
+  "autoReferenced": true
+}

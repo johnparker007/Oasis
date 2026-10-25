@@ -214,8 +214,9 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         if (_machineComposition3D is not null) return _machineComposition3D;
         var composition = new MachineComposition3DViewModel(this, MachineCompositionLoaderFactory());
         _machineComposition3D = composition;
-        composition.Refresh(GetMachineDocument(), cabinetChanged: false, objectInstancesChanged: true);
-        composition.RefreshDefinitions();
+        // One initial rebuild loads Cabinet-only and Object3D compositions alike.
+        // A second refresh here cancels/restarts the first model load.
+        composition.Refresh(GetMachineDocument(), cabinetChanged: true, objectInstancesChanged: true);
         return composition;
     }
 
