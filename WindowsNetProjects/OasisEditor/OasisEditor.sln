@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oasis.Scripting", "Oasis.Sc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oasis.Scripting.Tests", "Oasis.Scripting.Tests\Oasis.Scripting.Tests.csproj", "{C81E527B-CC7C-48CE-972B-921E195761E1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OasisEditor.Mcp", "OasisEditor.Mcp\OasisEditor.Mcp.csproj", "{3A8E0359-9096-45A7-8D40-71396826AE80}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{C81E527B-CC7C-48CE-972B-921E195761E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C81E527B-CC7C-48CE-972B-921E195761E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C81E527B-CC7C-48CE-972B-921E195761E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3A8E0359-9096-45A7-8D40-71396826AE80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3A8E0359-9096-45A7-8D40-71396826AE80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3A8E0359-9096-45A7-8D40-71396826AE80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3A8E0359-9096-45A7-8D40-71396826AE80}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
