@@ -12,7 +12,7 @@ Pool GLBs passed room wall clearance, CharacterController wall contact, held-inp
 release, cue impulse, moving-ball shot rejection and cue replacement after newGame.
 A Windows development Player was built and reached its ready marker in a hidden
 headless startup check. Its headless shader warnings do not verify rendered output.
-Authored profile defaults and multi-machine loading are now implemented: Machine
+Authored profile defaults and multi-machine loading are merged in PR #749: Machine
 schema 11 / runtime 12 requires a Buttons or Pool interaction object. Pool names its
 cue Prefab alias and playing surface explicitly. Inspector choices and MCP updates
 use undoable document commands. The current-format arcade package (version 1)
