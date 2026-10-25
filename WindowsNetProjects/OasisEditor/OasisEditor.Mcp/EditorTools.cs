@@ -44,10 +44,38 @@ public sealed class EditorTools(McpEditorSession session, EditorDispatcher ui)
     [McpServerTool(Name = "set_panel_view"), Description("Set transient viewport zoom (0.01..64; 1=100%) and pan in view coordinates. Does not dirty or save the document. Use capture_panel2d framing=fit or element for automatic framing.")]
     public Task<PanelViewSnapshot> SetView(Guid documentId, double zoom, CancellationToken cancellationToken, double panX = 0, double panY = 0) => ui.Invoke(() => session.SetPanelView(documentId, zoom, panX, panY), cancellationToken);
 
-    [McpServerTool(Name = "undo"), Description("Undo the last command in the specified session document. Does not undo copied files or saves.")]
+    [McpServerTool(Name = "add_face_source_shape"), Description("Add an undoable four-corner Face Source Shape to a Panel2D. Omit corners to use the whole panel; otherwise supply topLeft/topRight/bottomRight/bottomLeft with x/y. Requires a convex nondegenerate quad and output <=4096 pixels per axis. Save the panel before generating a Face.")]
+    public Task<FaceSourceShapeSnapshot> AddFaceSourceShape(Guid panelDocumentId, string name, CancellationToken cancellationToken, FaceQuad? corners = null) => ui.Invoke(() => session.AddFaceSourceShape(panelDocumentId, name, corners), cancellationToken);
+
+    [McpServerTool(Name = "inspect_face_source_shapes", ReadOnly = true), Description("Read a bounded page of Face Source Shape IDs and corners in the specified Panel2D. Limit 1..200.")]
+    public Task<IReadOnlyList<FaceSourceShapeSnapshot>> InspectShapes(Guid panelDocumentId, CancellationToken cancellationToken, int offset = 0, int limit = 50) => ui.Invoke(() => session.InspectFaceSourceShapes(panelDocumentId, offset, limit), cancellationToken);
+
+    [McpServerTool(Name = "create_face"), Description("Create and initially save a fresh Face package using the editor's native blank/image workflow. Optional sourceImage must be inside the workspace, max 4096 pixels per dimension. Refuses existing authored/generated packages. May write assets before a failed save; never silently overwrites an existing Face package.")]
+    public Task<FaceSnapshot> CreateFace(string name, CancellationToken cancellationToken, string? sourceImage = null) => ui.Invoke(() => session.CreateFace(name, sourceImage), cancellationToken);
+
+    [McpServerTool(Name = "generate_face_from_panel"), Description("Generate a NEW, unsaved Face from a saved, clean Panel2D and persisted source shape ID, through the editor's perspective/artwork/mask/semantic conversion pipeline. Returns conversion counts and Face diagnostics. Writes generated intermediates; call save_face to persist the authored package. Does not regenerate an existing Face.")]
+    public Task<FaceGenerationSnapshot> GenerateFace(Guid panelDocumentId, string shapeId, string name, CancellationToken cancellationToken) => ui.Invoke(() => session.GenerateFaceFromPanel(panelDocumentId, shapeId, name, cancellationToken), cancellationToken);
+
+    [McpServerTool(Name = "open_face"), Description("Validate and reopen Assets/Faces/<Name>/asset.face inside the open project. Reads local workspace asset references only.")]
+    public Task<FaceSnapshot> OpenFace(string path, CancellationToken cancellationToken) => ui.Invoke(() => session.OpenFaceDocument(path), cancellationToken);
+
+    [McpServerTool(Name = "inspect_face", ReadOnly = true), Description("Read Face identity, source links, artwork/mask paths, conversion geometry, build-product status and a bounded page of semantic elements. Limit 1..200. Save success does not imply every derived product is current; inspect these diagnostics.")]
+    public Task<FaceSnapshot> InspectFace(Guid documentId, CancellationToken cancellationToken, int offset = 0, int limit = 50) => ui.Invoke(() => session.InspectFace(documentId, offset, limit), cancellationToken);
+
+    [McpServerTool(Name = "save_face"), Description("Persist a session Face using the existing save/export service. Refuses external changes to any file in the authored Face package since opening/saving. Generated previews may be written; inspect build diagnostics afterward.")]
+    public Task<FaceSnapshot> SaveFace(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.SaveFace(documentId), cancellationToken);
+
+    [McpServerTool(Name = "capture_face", ReadOnly = true), Description("Return a PNG of the real WPF/Skia Face layout view fitted offscreen. No desktop capture/focus change; no build/save. Width 320..1920, height 240..1080; theme System/Light/Dark. Excludes shell, menus and dialogs; restores viewport afterward.")]
+    public Task<CallToolResult> CaptureFace(Guid documentId, CancellationToken cancellationToken, int width = 1000, int height = 700, string theme = "System") => ui.Invoke(() =>
+    {
+        if (!Enum.TryParse<ThemePreference>(theme, true, out var preference) || !Enum.IsDefined(preference)) throw new ArgumentException("Use System, Light or Dark.");
+        return new CallToolResult { Content = [ImageContentBlock.FromBytes(session.CaptureFace(documentId, width, height, preference), "image/png")] };
+    }, cancellationToken);
+
+    [McpServerTool(Name = "undo"), Description("Undo the last command in the specified Panel2D session document, including source-shape creation. Does not undo Face creation, copied files or saves.")]
     public Task<PanelSnapshot> Undo(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.Undo(documentId), cancellationToken);
 
-    [McpServerTool(Name = "redo"), Description("Redo the next command in the specified session document.")]
+    [McpServerTool(Name = "redo"), Description("Redo the next command in the specified Panel2D session document, including source-shape creation.")]
     public Task<PanelSnapshot> Redo(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.Redo(documentId), cancellationToken);
 
     [McpServerTool(Name = "capture_panel2d", ReadOnly = true), Description("Return a PNG of the actual WPF Panel2D view offscreen, without focus changes. Width 320..1920, height 240..1080; theme System/Light/Dark. Framing=current uses the session viewport, fit fits the panel, element fits the supplied elementId. Captures restore zoom/pan. Excludes window chrome, menus and dialogs.")]

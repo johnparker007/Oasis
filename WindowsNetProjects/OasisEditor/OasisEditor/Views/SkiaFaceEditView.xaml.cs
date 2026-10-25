@@ -91,10 +91,20 @@ public partial class SkiaFaceEditView : UserControl
     }
 
     private void OnFitRequested(object? sender, EventArgs e)
+        => FitToViewport();
+
+    internal void FitToViewport()
     {
         if (Document is not { } document) return;
         var (viewport, bounds, dpi) = NavigationGeometry(document);
         SetViewport(EditorViewportTransform.Fit(viewport, bounds, dpi.DpiScaleX, dpi.DpiScaleY, ContentScale(document)));
+    }
+
+    internal void RefreshForCapture()
+    {
+        UpdateStatus();
+        FaceSkiaSurface.InvalidateVisual();
+        UpdateLayout();
     }
 
     private void OnZoomRequested(object? sender, double zoom)
