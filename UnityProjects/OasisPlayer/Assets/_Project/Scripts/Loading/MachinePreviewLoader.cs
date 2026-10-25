@@ -43,9 +43,8 @@ namespace OasisPlayer.Loading
             _objectModelLoader = objectModelLoader;
         }
 
-        public async Task<RuntimeMachine> LoadAsync(ResolvedRuntimeBuild build)
+        public Task<RuntimeMachine> LoadAsync(ResolvedRuntimeBuild build)
         {
-            Unload();
             var spawns = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsSortMode.None)
                 .Where(t => t.parent == null && t.name == "MachineSpawn")
                 .ToArray();
@@ -56,8 +55,16 @@ namespace OasisPlayer.Loading
                     : "MachinePreview scene contains duplicate root transforms named 'MachineSpawn'.");
             }
 
+            return LoadAsync(build, spawns[0]);
+        }
+
+        public async Task<RuntimeMachine> LoadAsync(ResolvedRuntimeBuild build, Transform placementRoot, bool startBehavior = true, bool developmentControls = true)
+        {
+            if (build == null) throw new ArgumentNullException(nameof(build));
+            if (placementRoot == null) throw new ArgumentNullException(nameof(placementRoot));
+            Unload();
             var sessionRoot = new GameObject("RuntimeMachine");
-            sessionRoot.transform.SetParent(spawns[0], false);
+            sessionRoot.transform.SetParent(placementRoot, false);
             _current = sessionRoot;
             try
             {
@@ -83,16 +90,18 @@ namespace OasisPlayer.Loading
                 var behaviorDriver = sessionRoot.AddComponent<RuntimeBehaviorDriver>();
                 behaviorDriver.Initialize(machine);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (developmentControls)
+                {
                 var controls = sessionRoot.AddComponent<RuntimeLampDevelopmentControls>();
                 controls.Initialize(machine);
                 var reelControls = sessionRoot.AddComponent<RuntimeReelDevelopmentControls>();
                 reelControls.Initialize(machine);
                 var inputControls = sessionRoot.AddComponent<RuntimeInputDevelopmentControls>();
                 inputControls.Initialize(machine);
+                }
 #endif
                 foreach (var warning in machine.Warnings) Debug.LogWarning(warning);
-                _oasisBehavior = RuntimeOasisScriptBehavior.AttachTo(machine);
-                machine.CompleteStartup();
+                if (startBehavior) StartBehavior();
                 return machine;
             }
             catch
@@ -100,6 +109,13 @@ namespace OasisPlayer.Loading
                 Unload();
                 throw;
             }
+        }
+
+        public void StartBehavior()
+        {
+            if (_runtimeMachine == null || !_runtimeMachine.IsActive || _runtimeMachine.HasStarted) throw new InvalidOperationException("Expected a loaded, unstarted Machine.");
+            _oasisBehavior = RuntimeOasisScriptBehavior.AttachTo(_runtimeMachine);
+            _runtimeMachine.CompleteStartup();
         }
 
         public void Unload()
@@ -118,6 +134,7 @@ namespace OasisPlayer.Loading
 
             if (_current != null)
             {
+                _current.SetActive(false);
                 _modelLoader.Unload(_current);
                 _current = null;
             }

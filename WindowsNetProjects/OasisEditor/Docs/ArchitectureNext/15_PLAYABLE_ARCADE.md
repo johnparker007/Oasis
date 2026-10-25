@@ -12,8 +12,19 @@ Pool GLBs passed room wall clearance, CharacterController wall contact, held-inp
 release, cue impulse, moving-ball shot rejection and cue replacement after newGame.
 A Windows development Player was built and reached its ready marker in a hidden
 headless startup check. Its headless shader warnings do not verify rendered output.
-Multi-machine arcade loading, authored profile defaults and fruit gameplay remain
-future milestones; this is not a completed arcade.
+Authored profile defaults and multi-machine loading are now implemented: Machine
+schema 11 / runtime 12 requires a Buttons or Pool interaction object. Pool names its
+cue Prefab alias and playing surface explicitly. Inspector choices and MCP updates
+use undoable document commands. The current-format arcade package (version 1)
+contains explicit placement IDs/build dependencies, room dimensions and visitor spawn.
+
+Two actual Pool tables passed independent-session and handle-scope checks, shared-key
+input isolation, a rotated placement shot, unload/reload and overlap rollback. Editor
+tests pass 1,443/1,443 and focused Unity tests 208/208. The two-Pool sample proves the
+composition layer. A Windows development Player also reached the two-machine
+arcade ready marker in a hidden headless startup check. Headless shader warnings
+do not verify appearance; fruit gameplay, visual checks and the arcade designer remain future
+milestones. This is not the completed Pool-plus-fruit arcade.
 
 ## Ownership and interaction profiles
 
@@ -35,11 +46,11 @@ a horizontal bounded impulse and disallows shots while balls are moving. Its ini
 contract is cueBall dependency/entity alias and playingSurface geometry; it supports
 upright tables only. No full Pool rules or cue animation are implied.
 
-The first preview uses an explicit launch override, `--interaction buttons|pool`.
-Next, move the default profile and its typed parameters into Machine authoring and
-generated runtime contracts together, with validation, Inspector/MCP commands and a
-format revision. An arcade placement can then supply a documented override. Do not
-infer a profile from asset names, runtime kind or available anchors.
+The Machine now owns its default profile and typed parameters. The preview may
+explicitly override it with `--interaction buttons|pool`; omitting the option uses
+its saved profile. Arcade mode uses each Machine's saved profile and rejects this
+global override. Placement-specific overrides are deferred until needed. Never infer
+a profile from asset names, runtime kind or available anchors.
 
 ## Ordered milestones
 
@@ -52,7 +63,7 @@ infer a profile from asset names, runtime kind or available anchors.
    calculated Pool build, including room walls and held-input cleanup. No user scene
    edits or desktop automation are required. Cabinet walking collision continues to
    use authored semantic colliders; there is no invisible solid box filling the table.
-2. **Arcade composition.** Add a small current-format layout asset: room dimensions,
+2. **Arcade composition (implemented and verified).** A small current-format layout package contains: room dimensions,
    visitor spawn, stable placement IDs, explicit generated Machine build dependencies,
    position/yaw and clearances. Add loader overloads taking an explicit placement root;
    remove the single-global-MachineSpawn assumption from multi-machine loading.
@@ -72,8 +83,8 @@ infer a profile from asset names, runtime kind or available anchors.
    updates and fault reporting to the same runtime state boundary. Verify a real boot,
    credit and spin. Never attach Oasis behavior to an Emulation Machine. If no viable
    core is available, report the concrete dependency and retain the labelled demo.
-5. **Editor/MCP authoring and polish.** Expose profile defaults and simple arcade layout
-   creation/save/build through existing document commands, then implement a designer
+5. **Layout authoring and polish.** Profile defaults already have Inspector/MCP
+   editing. Expose arcade layout creation/save/build through document commands, then implement a designer
    over that contract. Add pool appearance, shot aiming feedback, sound, camera
    obstruction, input rebinding/controller support and fuller rules incrementally.
 

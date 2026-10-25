@@ -15,7 +15,8 @@ namespace OasisPlayer.Startup
             bool? fullscreen = null;
             var width = 1280;
             var height = 800;
-            var interaction = "buttons";
+            var interaction = "";
+            var arcade = "";
 
             for (var i = 0; i < args.Count; i++)
             {
@@ -39,14 +40,17 @@ namespace OasisPlayer.Startup
                         }
                         else if (rawMode == "arcade")
                         {
-                            error = "Arcade mode is recognised but is not implemented in Phase 1.";
-                            return false;
+                            mode = StartupMode.Arcade;
+                            modeSet = true;
                         }
                         else
                         {
-                            error = $"Unknown startup mode '{rawMode}'. Supported mode: machine-preview.";
+                            error = $"Unknown startup mode '{rawMode}'. Supported modes: machine-preview, arcade.";
                             return false;
                         }
+                        break;
+                    case "--arcade":
+                        if (!ReadValue(args, ref i, arg, out arcade, out error)) return false;
                         break;
                     case "--build":
                         if (!ReadValue(args, ref i, arg, out build, out error)) return false;
@@ -76,7 +80,7 @@ namespace OasisPlayer.Startup
 
             if (!modeSet)
             {
-                error = "Missing required --mode machine-preview argument.";
+                error = "Missing required --mode machine-preview|arcade argument.";
                 return false;
             }
 
@@ -86,7 +90,11 @@ namespace OasisPlayer.Startup
                 return false;
             }
 
-            options = new StartupOptions(mode, build, fullscreen ?? false, width, height, interaction);
+            if (mode == StartupMode.Arcade && (string.IsNullOrWhiteSpace(arcade) || !string.IsNullOrEmpty(build) || !string.IsNullOrEmpty(interaction)))
+            { error = "Arcade mode requires --arcade <manifest> and uses each Machine's authored profile; do not pass --build or --interaction."; return false; }
+            if (mode == StartupMode.MachinePreview && !string.IsNullOrEmpty(arcade))
+            { error = "--arcade requires --mode arcade."; return false; }
+            options = new StartupOptions(mode, build, fullscreen ?? false, width, height, interaction, arcade);
             return true;
         }
 

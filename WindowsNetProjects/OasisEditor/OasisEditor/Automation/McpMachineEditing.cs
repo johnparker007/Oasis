@@ -81,6 +81,19 @@ public sealed partial class McpEditorSession
         return InspectMachine(documentId);
     }
 
+    /// <summary>Sets the authored interaction profile through the Machine document command history.</summary>
+    public MachineSnapshot SetMachineInteraction(Guid documentId, string kind, string? cuePrefabAlias = null, string? playingSurfaceId = null)
+    {
+        var entry = GetMachine(documentId);
+        var current = entry.Document.GetMachineDocument();
+        var interaction = new MachineInteractionDefinition(kind, cuePrefabAlias, playingSurfaceId);
+        var next = current with { Interaction = interaction };
+        MachineDocumentStorage.Validate(next);
+        if (current.Interaction == interaction) return InspectMachine(documentId);
+        entry.Document.ExecuteMachineMutation(_ => next, "Set Machine interaction profile via MCP");
+        return InspectMachine(documentId);
+    }
+
     public MachineSnapshot SetMachineAnchor(Guid documentId, MachineAnchor anchor)
     {
         ArgumentNullException.ThrowIfNull(anchor);

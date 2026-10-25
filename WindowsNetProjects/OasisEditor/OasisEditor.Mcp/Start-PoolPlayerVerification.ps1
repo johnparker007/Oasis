@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory)][string]$BuildRoot,
     [Parameter(Mandatory)][string]$BridgeExecutable,
-    [ValidateSet('SingleBall','Algorithmic','Playable')][string]$Mode = 'SingleBall',
+    [ValidateSet('SingleBall','Algorithmic','Playable','Arcade')][string]$Mode = 'SingleBall',
+    [string]$ArcadeManifest,
     [string]$UnityExecutable = 'C:\Program Files\Unity\Hub\Editor\6000.0.47f1\Editor\Unity.exe'
 )
 $ErrorActionPreference = 'Stop'
@@ -17,6 +18,10 @@ $session = Join-Path $env:TEMP ('OasisPoolPlayer-' + [guid]::NewGuid().ToString(
 New-Item -ItemType Directory -Path $session | Out-Null
 $env:OASIS_POOL_VERIFY_BUILD = $build
 $env:OASIS_POOL_VERIFY_MODE = $Mode.ToLowerInvariant()
+if ($Mode -eq 'Arcade') {
+    if ([string]::IsNullOrWhiteSpace($ArcadeManifest)) { throw 'Arcade verification requires -ArcadeManifest.' }
+    $env:OASIS_ARCADE_VERIFY_LAYOUT = (Resolve-Path -LiteralPath $ArcadeManifest).Path
+} else { Remove-Item Env:OASIS_ARCADE_VERIFY_LAYOUT -ErrorAction SilentlyContinue }
 $env:OASIS_VERIFY_SESSION_DIR = $session
 $env:UNITY_MCP_ALLOW_BATCH = '1'
 $env:UNITY_MCP_LOG_DIR = Join-Path $session 'server'

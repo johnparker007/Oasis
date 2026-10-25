@@ -3,10 +3,14 @@
 The active user-authorised workstream is the playable arcade foundation: walking,
 safe room placement, explicit machine interaction profiles, basic Pool shots and
 a fruit-machine playable loop. Follow Docs/ArchitectureNext/15_PLAYABLE_ARCADE.md.
-The first implementation is a single-machine playable preview; multi-machine
-composition and the fruit-machine loop follow as separate milestones. The first
-implementation passed 150 focused Unity tests, actual-GLB room/shot checks and a
-Windows development build/headless startup check; interactive visual checks remain.
+The walkable preview is merged in PR #748. The current implementation adds saved
+Buttons/Pool profiles, Inspector/MCP edits and a validated multi-machine arcade
+package/loader. Two actual Pool tables passed isolation, rotated-shot and lifecycle
+checks; 1,443 Editor tests and 208 focused Unity tests pass. The original Pool project
+was backed up and reauthored to Machine schema 11 / runtime 12 with a Pool profile.
+The next milestone is a labelled fruit-machine game loop in the shared arcade;
+ROM emulation and the visual arcade designer remain later work. Manual visual
+and mouse/keyboard checks remain excluded while the user is working.
 P1 authoring is delivered in PR #745; P2 runtime components and the P3 single-ball
 checkpoint are merged in PR #746. The Pool-required P4 lifecycle/language/query
 subset and P5 calculated Pool setup are merged in PR #747 and locally verified.

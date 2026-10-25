@@ -35,6 +35,8 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
     private string? _lastObservedDocumentSelectionKey;
     private bool _hadInspectorSelection;
     private bool _avoidCalibrationInputEvaluation;
+    private Guid? _pendingMachineInteractionDocumentId;
+    private MachineInteractionDefinition? _pendingMachineInteraction;
 
     private enum InspectorSelectionSource
     {
@@ -395,6 +397,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
             RebuildReelDocumentPropertyRows(selectedDocument);
             return;
         }
+        if (selectedDocument?.Document.DocumentType == EditorDocumentType.Machine)
+        {
+            RebuildMachineDocumentPropertyRows(selectedDocument);
+            return;
+        }
 
         if (selectedDocument is null || selection is not PanelSelectionInfo panelSelection)
         {
@@ -493,6 +500,11 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         if (selectedDocument?.Document.DocumentType == EditorDocumentType.Reel)
         {
             RebuildReelDocumentPropertyRows(selectedDocument);
+            return;
+        }
+        if (selectedDocument?.Document.DocumentType == EditorDocumentType.Machine)
+        {
+            RebuildMachineDocumentPropertyRows(selectedDocument);
             return;
         }
 
@@ -715,6 +727,81 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
         _lastInspectorSelectionKind = selection.Domain == EditorSelectionDomain.PanelElement && selection.IsSameConcreteType ? selection.PanelElements[0].Kind : null;
         _lastInspectorFaceSelectionKind = selection.Domain == EditorSelectionDomain.FaceElement && selection.IsSameConcreteType ? FaceSelectionService.GetKindToken(selection.FaceElements[0]) : "multi";
         OnPropertyChanged(nameof(InspectorPropertyRows));
+    }
+
+    private void RebuildMachineDocumentPropertyRows(DocumentTabViewModel document)
+    {
+        var machine = document.GetMachineDocument();
+        var interaction = machine.Interaction.Kind == "Pool"
+            ? machine.Interaction
+            : _pendingMachineInteractionDocumentId == document.DocumentId ? _pendingMachineInteraction : null;
+        _propertyRows.Add(new InspectorChoicePropertyViewModel("Interaction", "Machine", ["Buttons", "Pool"], interaction?.Kind ?? machine.Interaction.Kind,
+            commit: kind =>
+            {
+                var current = document.GetMachineDocument();
+                if (kind == "Buttons")
+                {
+                    _pendingMachineInteraction = null;
+                    _pendingMachineInteractionDocumentId = null;
+                    return TryApplyMachineInteraction(document, new MachineInteractionDefinition("Buttons"));
+                }
+                if (kind != "Pool") return "Choose Buttons or Pool.";
+                _pendingMachineInteractionDocumentId = document.DocumentId;
+                _pendingMachineInteraction = current.Interaction.Kind == "Pool" ? current.Interaction : new MachineInteractionDefinition("Pool");
+                RebuildPropertyRows();
+                return null;
+            }));
+        if (interaction is not null)
+        {
+            var cueChoices = machine.PrefabDependencies.Select(dependency => dependency.Alias).ToArray();
+            var surfaceChoices = machine.GeometrySurfaces.Select(surface => surface.Id).ToArray();
+            var cueValue = interaction.CuePrefabAlias ?? "(select cue Prefab)";
+            var surfaceValue = interaction.PlayingSurfaceId ?? "(select playing surface)";
+            var cueOptions = interaction.CuePrefabAlias is null ? new[] { "(select cue Prefab)" }.Concat(cueChoices).ToArray() : cueChoices;
+            var surfaceOptions = interaction.PlayingSurfaceId is null ? new[] { "(select playing surface)" }.Concat(surfaceChoices).ToArray() : surfaceChoices;
+            _propertyRows.Add(new InspectorChoicePropertyViewModel("Cue Prefab Alias", "Machine", cueOptions, cueValue,
+                commit: value => TrySetPendingMachineInteraction(document, interaction with { CuePrefabAlias = value.StartsWith("(", StringComparison.Ordinal) ? null : value })));
+            _propertyRows.Add(new InspectorChoicePropertyViewModel("Playing Surface ID", "Machine", surfaceOptions, surfaceValue,
+                commit: value => TrySetPendingMachineInteraction(document, interaction with { PlayingSurfaceId = value.StartsWith("(", StringComparison.Ordinal) ? null : value })));
+        }
+        _propertyRows.Add(new InspectorInfoPropertyViewModel("Profile", "Machine", machine.Interaction.Kind == "Pool"
+            ? "Pool interaction uses the declared cue Prefab and playing surface."
+            : interaction is not null
+                ? "Choose the cue Prefab alias and playing surface to apply the Pool profile."
+                : "Buttons interaction uses the standard machine controls."));
+        _hadInspectorSelection = true;
+        _lastInspectorSelectionObjectId = GetDocumentSelectionKey();
+        _lastInspectorSelectionKind = null;
+        _lastInspectorFaceSelectionKind = "machine-document";
+        OnPropertyChanged(nameof(InspectorPropertyRows));
+    }
+
+    private static string? TryApplyMachineInteraction(DocumentTabViewModel document, MachineInteractionDefinition interaction)
+    {
+        var current = document.GetMachineDocument();
+        if (current.Interaction == interaction) return null;
+        var next = current with { Interaction = interaction };
+        try { MachineDocumentStorage.Validate(next); }
+        catch (InvalidOperationException exception) { return exception.Message; }
+        document.ExecuteMachineMutation(_ => next, "Set Machine interaction profile");
+        return null;
+    }
+
+    private string? TrySetPendingMachineInteraction(DocumentTabViewModel document, MachineInteractionDefinition interaction)
+    {
+        _pendingMachineInteractionDocumentId = document.DocumentId;
+        _pendingMachineInteraction = interaction;
+        if (string.IsNullOrWhiteSpace(interaction.CuePrefabAlias) || string.IsNullOrWhiteSpace(interaction.PlayingSurfaceId))
+        {
+            RebuildPropertyRows();
+            return null;
+        }
+        var error = TryApplyMachineInteraction(document, interaction);
+        if (error is not null) return error;
+        _pendingMachineInteraction = null;
+        _pendingMachineInteractionDocumentId = null;
+        RebuildPropertyRows();
+        return null;
     }
 
     private void AddAggregateRows(DocumentTabViewModel document, AggregateSelection selection, ICollection<InspectorPropertyRowViewModel> rows)
@@ -1051,6 +1138,10 @@ public sealed class InspectorViewModel : INotifyPropertyChanged
 
         if (selectedDocument is not null
             && selectedDocument.Document.DocumentType == EditorDocumentType.Cabinet3D)
+        {
+            return true;
+        }
+        if (selectedDocument?.Document.DocumentType == EditorDocumentType.Machine)
         {
             return true;
         }

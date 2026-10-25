@@ -8,9 +8,10 @@ The durable ownership rules live in the numbered architecture documents in this 
 
 ## Immediate user priority
 
-Deliver the [playable arcade milestones](15_PLAYABLE_ARCADE.md): first a walkable
-standalone preview with explicit Buttons/Pool profiles, then two-machine layout
-composition and a labelled fruit-machine demo, followed by real emulation integration.
+Deliver the [playable arcade milestones](15_PLAYABLE_ARCADE.md): the walkable
+preview is delivered, and saved Buttons/Pool profiles plus two-machine composition
+have passed local verification. Next is a labelled fruit-machine demo, followed by
+real emulation integration.
 The arcade designer and Prefab variants remain later work.
 
 ## Current baseline

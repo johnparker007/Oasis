@@ -39,6 +39,7 @@ async def main(args):
         await call("set_machine_geometry_surface", documentId=document_id,
                    surface={"id": "playingSurface", "position": {"x": 0, "y": .80154955, "z": 0},
                             "rotation": {"x": 0, "y": 0, "z": 0}, "width": .778, "length": 1.58})
+        await call("set_machine_interaction", documentId=document_id, kind="Pool", cuePrefabAlias="cueBall", playingSurfaceId="playingSurface")
         behavior = await call("set_machine_behavior", documentId=document_id, source=source)
         if behavior["behaviorDiagnostics"]:
             raise RuntimeError(json.dumps(behavior["behaviorDiagnostics"], indent=2))

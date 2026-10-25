@@ -18,10 +18,11 @@ public sealed record MachineDocument(
     MachineAnchor[] Anchors,
     MachineBehaviorDefinition? Behavior)
 {
-    public const int CurrentSchemaVersion = 10;
+    public const int CurrentSchemaVersion = 11;
 
     public MachinePrefabDeclaration[] PrefabDependencies { get; init; } = [];
     public MachineGeometrySurface[] GeometrySurfaces { get; init; } = [];
+    public MachineInteractionDefinition Interaction { get; init; } = new("Buttons");
 
     [JsonIgnore]
     public EmulationRuntimeDefinition EmulationRuntime => Runtime as EmulationRuntimeDefinition
@@ -40,6 +41,9 @@ public sealed record MachineDocument(
         [],
         null);
 }
+
+/// <summary>Authored player interaction mode and its optional Pool-specific references.</summary>
+public sealed record MachineInteractionDefinition(string Kind, string? CuePrefabAlias = null, string? PlayingSurfaceId = null);
 
 /// <summary>The single optional behaviour source owned by a Machine package.</summary>
 public sealed record MachineBehaviorDefinition(string Kind, string Source)
@@ -194,6 +198,7 @@ public static class MachineDocumentStorage
             writer.WritePropertyName("objectInstances"); JsonSerializer.Serialize(writer, document.ObjectInstances, Options);
             writer.WritePropertyName("prefabDependencies"); JsonSerializer.Serialize(writer, document.PrefabDependencies, Options);
             writer.WritePropertyName("geometrySurfaces"); JsonSerializer.Serialize(writer, document.GeometrySurfaces, Options);
+            writer.WritePropertyName("interaction"); JsonSerializer.Serialize(writer, document.Interaction, Options);
             writer.WritePropertyName("anchors"); JsonSerializer.Serialize(writer, document.Anchors, Options);
             if (document.Behavior is not null) { writer.WritePropertyName("behavior"); JsonSerializer.Serialize(writer, document.Behavior, Options); }
             writer.WritePropertyName("runtime");
@@ -267,7 +272,10 @@ public static class MachineDocumentStorage
                 PrefabDependencies = root.TryGetProperty("prefabDependencies", out var dependencies)
                     ? dependencies.Deserialize<MachinePrefabDeclaration[]>(Options) ?? [] : [],
                 GeometrySurfaces = root.TryGetProperty("geometrySurfaces", out var geometrySurfaces)
-                    ? geometrySurfaces.Deserialize<MachineGeometrySurface[]>(Options) ?? [] : []
+                    ? geometrySurfaces.Deserialize<MachineGeometrySurface[]>(Options) ?? [] : [],
+                Interaction = root.TryGetProperty("interaction", out var interaction)
+                    ? interaction.Deserialize<MachineInteractionDefinition>(Options) ?? throw new InvalidOperationException("Machine Interaction object is required.")
+                    : throw new InvalidOperationException("Machine Interaction object is required.")
             };
             Validate(document);
             return true;
@@ -281,6 +289,7 @@ public static class MachineDocumentStorage
         if (document.SchemaVersion != MachineDocument.CurrentSchemaVersion) throw new InvalidOperationException("Only the current Machine schema can be written.");
         if (!Guid.TryParse(document.Id, out _)) throw new InvalidOperationException("Machine ID must be a stable GUID.");
         if (string.IsNullOrWhiteSpace(document.DisplayName)) throw new InvalidOperationException("Machine display name is required.");
+        ValidateInteraction(document);
         RuntimeDefinitionValidation.Validate(document.DisplayName, document.Runtime, document.Behavior);
         if (document.SurfaceAssignments.GroupBy(x => x.TargetId, StringComparer.Ordinal).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine surface target assignments must be unique.");
         if (document.ReelAssignments.GroupBy(x => x.MachineReelReference).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine reel assignments must be unique.");
@@ -330,6 +339,26 @@ public static class MachineDocumentStorage
             if (!double.IsFinite(surface.Width) || surface.Width <= 0 || !double.IsFinite(surface.Length) || surface.Length <= 0)
                 throw new InvalidOperationException($"Machine geometry surface '{surface.Id}' width and length must be positive and finite.");
         }
+    }
+
+    private static void ValidateInteraction(MachineDocument document)
+    {
+        var interaction = document.Interaction ?? throw new InvalidOperationException("Machine Interaction object is required.");
+        if (interaction.Kind == "Buttons")
+        {
+            if (interaction.CuePrefabAlias is not null || interaction.PlayingSurfaceId is not null)
+                throw new InvalidOperationException("Buttons interaction must not declare Pool parameters.");
+            return;
+        }
+        if (interaction.Kind != "Pool") throw new InvalidOperationException($"Unsupported Machine interaction kind '{interaction.Kind}'. Use Buttons or Pool.");
+        if (string.IsNullOrWhiteSpace(interaction.CuePrefabAlias) || !MachineCompositionId.IsValid(interaction.CuePrefabAlias))
+            throw new InvalidOperationException("Pool interaction requires a valid CuePrefabAlias.");
+        if (!document.PrefabDependencies.Any(dependency => string.Equals(dependency.Alias, interaction.CuePrefabAlias, StringComparison.Ordinal)))
+            throw new InvalidOperationException($"Pool interaction CuePrefabAlias '{interaction.CuePrefabAlias}' must name a declared Prefab dependency.");
+        if (string.IsNullOrWhiteSpace(interaction.PlayingSurfaceId) || !MachineCompositionId.IsValid(interaction.PlayingSurfaceId))
+            throw new InvalidOperationException("Pool interaction requires a valid PlayingSurfaceId.");
+        if (!document.GeometrySurfaces.Any(surface => string.Equals(surface.Id, interaction.PlayingSurfaceId, StringComparison.Ordinal)))
+            throw new InvalidOperationException($"Pool interaction PlayingSurfaceId '{interaction.PlayingSurfaceId}' must name a declared geometry surface.");
     }
 
     internal static void ValidateInstanceParents(MachineObject3DInstance[] objects)

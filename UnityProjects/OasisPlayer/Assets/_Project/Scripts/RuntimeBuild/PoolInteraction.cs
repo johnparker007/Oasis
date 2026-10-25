@@ -11,10 +11,12 @@ namespace OasisPlayer.RuntimeBuild
     {
         private readonly RuntimeMachine _machine;
         private readonly string _cueAlias;
-        public PoolInteraction(RuntimeMachine machine, string cueAlias = "cueBall")
+        private readonly string _surfaceId;
+        public PoolInteraction(RuntimeMachine machine, string cueAlias = "cueBall", string surfaceId = "playingSurface")
         {
             _machine = machine ?? throw new ArgumentNullException(nameof(machine));
             _cueAlias = cueAlias;
+            _surfaceId = surfaceId;
         }
 
         public bool TryGetCue(out RuntimeObjectInstance cue)
@@ -42,7 +44,7 @@ namespace OasisPlayer.RuntimeBuild
                 if (ball.Root != null && ball.Root.activeInHierarchy && ball.Rigidbody != null &&
                     (ball.Rigidbody.linearVelocity.sqrMagnitude > .0025f || ball.Rigidbody.angularVelocity.sqrMagnitude > .25f)) return false;
             var center = _machine.MachineSpace.InverseTransformPoint(cue.Rigidbody.position);
-            if (!_machine.Queries.SurfaceContainsSphere("playingSurface", RuntimeVector3.FromUnity(center), _machine.Queries.SphereRadius(_cueAlias)))
+            if (!_machine.Queries.SurfaceContainsSphere(_surfaceId, RuntimeVector3.FromUnity(center), _machine.Queries.SphereRadius(_cueAlias)))
             { message = "The cue ball is outside the playing surface."; return false; }
             cue.Rigidbody.WakeUp();
             cue.Rigidbody.AddForce(worldDirection.normalized * speed * cue.Rigidbody.mass, ForceMode.Impulse);

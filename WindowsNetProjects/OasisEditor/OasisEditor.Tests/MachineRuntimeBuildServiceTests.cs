@@ -430,7 +430,11 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
             new("cueBall", "Cue Ball", reference, new(new(1, 2, 3), new(10, 20, 30), new(1, 1, 1))),
             new("ball01", "Ball 1", reference, new(new(4, 5, 6), new(40, 50, 60), new(2, 2, 2))),
             new("ball08", "Ball 8", reference, new(new(7, 8, 9), new(70, 80, 90), new(3, 3, 3)))
-        ] };
+        ],
+            PrefabDependencies = [new("poolBall", reference)],
+            GeometrySurfaces = [new("playingSurface", MachineVector3.Zero, MachineVector3.Zero, 1.2, 2.4)],
+            Interaction = new MachineInteractionDefinition("Pool", "poolBall", "playingSurface")
+        };
 
         machine = WithRuntimeBehavior(setup.Project, machine, oasis);
         var result = Build(setup.Project, machine);
@@ -439,7 +443,10 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.runtime.json", SearchOption.AllDirectories).Count());
         Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "*.glb", SearchOption.AllDirectories).Count());
         using var machineJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
-        Assert.Equal(11, machineJson.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(12, machineJson.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("Pool", machineJson.RootElement.GetProperty("interaction").GetProperty("kind").GetString());
+        Assert.Equal("poolBall", machineJson.RootElement.GetProperty("interaction").GetProperty("cuePrefabAlias").GetString());
+        Assert.Equal("playingSurface", machineJson.RootElement.GetProperty("interaction").GetProperty("playingSurfaceId").GetString());
         var instances = machineJson.RootElement.GetProperty("objectInstances");
         Assert.Equal(new[] { "cueBall", "ball01", "ball08" }, instances.EnumerateArray().Select(x => x.GetProperty("id").GetString()));
         Assert.Equal(80, instances[2].GetProperty("transform").GetProperty("rotationEulerDegrees").GetProperty("y").GetDouble());
@@ -568,7 +575,8 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.Single(Directory.EnumerateFiles(result.BuildRoot!, "*.oasis", SearchOption.AllDirectories));
         var json = File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json"));
         using var manifest = JsonDocument.Parse(json);
-        Assert.Equal(11, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(12, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("Buttons", manifest.RootElement.GetProperty("interaction").GetProperty("kind").GetString());
         var runtime = manifest.RootElement.GetProperty("runtime");
         Assert.Equal("Oasis", runtime.GetProperty("kind").GetString());
         Assert.False(runtime.TryGetProperty("platform", out _));
@@ -587,7 +595,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.True(result.Success, result.ErrorMessage); Assert.False(Directory.Exists(Path.Combine(result.BuildRoot!, "behavior")));
         Assert.Empty(Directory.EnumerateFiles(result.BuildRoot!, "*.oasis", SearchOption.AllDirectories));
         using var emulation = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
-        Assert.Equal(11, emulation.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(12, emulation.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Emulation", emulation.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
         Assert.False(emulation.RootElement.GetProperty("runtime").TryGetProperty("behavior", out _));
     }

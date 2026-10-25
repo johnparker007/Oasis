@@ -11,6 +11,39 @@ namespace OasisEditor.Tests;
 public sealed class InspectorViewModelTests
 {
     [Fact]
+    public void MachineInteractionInspector_UsesUndoableProfileEdits()
+    {
+        var machine = MachineDocument.Create("Pool") with
+        {
+            PrefabDependencies = [new("cueBall", AssetReference.Project("Assets/Object3D/PoolBall/asset.object3d"))],
+            GeometrySurfaces = [new("playingSurface", MachineVector3.Zero, MachineVector3.Zero, 1, 2)]
+        };
+        var document = new DocumentTabViewModel(EditorDocument.CreateMachineStub("Pool"), machineDocumentJson: MachineDocumentStorage.Serialize(machine));
+        var context = new ActiveDocumentContextService();
+        context.SetActiveDocument(document);
+        var viewModel = CreateInspectorViewModel(document, context);
+        viewModel.NotifyContextChanged();
+
+        var profile = Assert.IsType<InspectorChoicePropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Interaction"));
+        Assert.Equal(new[] { "Buttons", "Pool" }, profile.Choices);
+        profile.Value = "Pool";
+        Assert.Equal("Buttons", document.GetMachineDocument().Interaction.Kind);
+        var cue = Assert.IsType<InspectorChoicePropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Cue Prefab Alias"));
+        Assert.Equal("(select cue Prefab)", cue.Value);
+        Assert.Equal(new[] { "(select cue Prefab)", "cueBall" }, cue.Choices);
+        cue.Value = "cueBall";
+        var surface = Assert.IsType<InspectorChoicePropertyViewModel>(viewModel.InspectorPropertyRows.Single(row => row.DisplayName == "Playing Surface ID"));
+        Assert.Equal(new[] { "(select playing surface)", "playingSurface" }, surface.Choices);
+        surface.Value = "playingSurface";
+        Assert.Equal(new MachineInteractionDefinition("Pool", "cueBall", "playingSurface"), document.GetMachineDocument().Interaction);
+        Assert.True(document.IsDirty);
+        Assert.True(document.CommandService.TryUndo());
+        Assert.Equal("Buttons", document.GetMachineDocument().Interaction.Kind);
+        Assert.True(document.CommandService.TryRedo());
+        Assert.Equal("Pool", document.GetMachineDocument().Interaction.Kind);
+    }
+
+    [Fact]
     public void FaceArtworkProcessingStack_AddCalibrationInvalidatesBuildAndRefreshesAcrossUndoRedo()
     {
         var face = new FaceDocumentModel

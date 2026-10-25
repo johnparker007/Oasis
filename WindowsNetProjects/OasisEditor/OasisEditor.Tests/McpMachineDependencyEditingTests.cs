@@ -37,6 +37,16 @@ public sealed class McpMachineDependencyEditingTests : IDisposable
         var noOpSurface = _session.SetMachineGeometrySurface(machine.DocumentId, surface);
         Assert.Equal(updated.CanUndo, noOpSurface.CanUndo);
 
+        var pool = _session.SetMachineInteraction(machine.DocumentId, "Pool", "poolBall", "playingSurface");
+        Assert.Equal(new MachineInteractionDefinition("Pool", "poolBall", "playingSurface"), pool.Machine.Interaction);
+        Assert.True(pool.IsDirty);
+        Assert.True(pool.CanUndo);
+        Assert.Throws<InvalidOperationException>(() => _session.SetMachineInteraction(machine.DocumentId, "Pool", "missing", "playingSurface"));
+        Assert.Throws<InvalidOperationException>(() => _session.SetMachineInteraction(machine.DocumentId, "Pool", "poolBall", "missing"));
+        Assert.Throws<InvalidOperationException>(() => _session.SetMachineInteraction(machine.DocumentId, "Unknown"));
+        Assert.Equal("Buttons", _session.UndoMachine(machine.DocumentId).Machine.Interaction.Kind);
+        Assert.Equal("Pool", _session.RedoMachine(machine.DocumentId).Machine.Interaction.Kind);
+
         var saved = _session.SaveMachine(machine.DocumentId);
         Assert.False(saved.IsDirty);
         var reopenedSession = new McpEditorSession(_root);
@@ -44,6 +54,7 @@ public sealed class McpMachineDependencyEditingTests : IDisposable
         var reopened = reopenedSession.OpenMachine(saved.Path);
         Assert.Equal(surface, Assert.Single(reopened.Machine.GeometrySurfaces));
         Assert.Equal("poolBall", Assert.Single(reopened.Machine.PrefabDependencies).Alias);
+        Assert.Equal(new MachineInteractionDefinition("Pool", "poolBall", "playingSurface"), reopened.Machine.Interaction);
     }
 
     [Fact]

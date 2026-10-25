@@ -1,8 +1,8 @@
 # Playable machine preview
 
 The current first slice supplies a walkable single-machine room, explicit Buttons
-or Pool controls and bounded physical Pool shots. It is not the multi-machine
-arcade designer. The delivery sequence is in
+or Pool controls and bounded physical Pool shots. The [arcade loader](ARCADE.md) now supports several placed Machines;
+the visual arcade designer remains later work. The delivery sequence is in
 [the playable arcade plan](../Docs/ArchitectureNext/15_PLAYABLE_ARCADE.md).
 
 Launch a generated Machine build with a current Windows Player:
@@ -26,6 +26,7 @@ Machine. All balls must settle before another shot. It resolves the current cue
 rather than caching a reference across new games. Aiming is an initial elevated
 orbit camera: no cue mesh, aiming line, camera obstruction or full Pool rules yet.
 Buttons mode routes the Machine's authored keyboard shortcuts while engaged.
+Omitting `--interaction` now uses the saved Machine profile.
 Runtime kind and control profile are independent; selecting Buttons does not
 supply an emulation core or fruit-machine game rules.
 

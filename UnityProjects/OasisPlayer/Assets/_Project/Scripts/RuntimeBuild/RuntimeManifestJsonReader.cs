@@ -27,6 +27,8 @@ namespace OasisPlayer.RuntimeBuild
             return machine;
         }
 
+        public static ArcadeLayoutManifest ReadArcade(string json) { return Deserialize<ArcadeLayoutManifest>(json); }
+
         public static Object3DRuntimeManifest ReadObject(string json)
         {
             return Deserialize<Object3DRuntimeManifest>(json);
@@ -121,7 +123,10 @@ namespace OasisPlayer.RuntimeBuild
         private static void RequireFields(Type targetType, Dictionary<string, object> properties, string context)
         {
             string[] required = null;
-            if (targetType == typeof(MachineRuntimeManifest)) required = new[] { "schema", "schemaVersion", "machineId", "displayName", "cabinetManifest", "anchors", "runtime" };
+            if (targetType == typeof(MachineRuntimeManifest)) required = new[] { "schema", "schemaVersion", "machineId", "displayName", "cabinetManifest", "anchors", "runtime", "interaction" };
+            else if (targetType == typeof(MachineInteractionDefinition)) required = new[] { "kind" };
+            else if (targetType == typeof(ArcadeLayoutManifest)) required = new[] { "schema", "schemaVersion", "width", "length", "height", "visitorSpawn", "visitorYaw", "machines" };
+            else if (targetType == typeof(ArcadeMachinePlacement)) required = new[] { "id", "build", "position", "yaw" };
             else if (targetType == typeof(MachineRuntimeManifestDefinition)) required = new[] { "kind" };
             else if (targetType == typeof(MachineRuntimeObjectInstance)) required = new[] { "id", "displayName", "definitionId", "definitionManifest", "transform", "active" };
             else if (targetType == typeof(MachineRuntimePrefabDependency)) required = new[] { "alias", "definitionId", "definitionManifest" };

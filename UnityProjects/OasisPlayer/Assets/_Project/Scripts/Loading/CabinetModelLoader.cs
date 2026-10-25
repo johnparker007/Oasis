@@ -18,6 +18,7 @@ namespace OasisPlayer.Loading
             var sessionRoot = new GameObject("CabinetRuntimeModel");
             sessionRoot.transform.SetParent(parent, false);
             var gltf = new GltfImport();
+            sessionRoot.AddComponent<RuntimeCabinetImportOwner>().Initialize(gltf);
             var loaded = await gltf.Load(glbPath);
             if (!loaded)
             {
@@ -49,5 +50,12 @@ namespace OasisPlayer.Loading
         {
             if (root != null) Object.Destroy(root);
         }
+    }
+
+    public sealed class RuntimeCabinetImportOwner : MonoBehaviour
+    {
+        private GltfImport _import;
+        public void Initialize(GltfImport import) { _import = import; }
+        private void OnDestroy() { if (_import != null) { _import.Dispose(); _import = null; } }
     }
 }

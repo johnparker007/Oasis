@@ -10,7 +10,7 @@ namespace OasisPlayer.Startup
 
     public sealed class StartupOptions
     {
-        public StartupOptions(StartupMode mode, string buildDirectory, bool fullscreen, int width, int height, string interaction = "buttons")
+        public StartupOptions(StartupMode mode, string buildDirectory, bool fullscreen, int width, int height, string interaction = "", string arcadeManifest = "")
         {
             Mode = mode;
             BuildDirectory = buildDirectory ?? string.Empty;
@@ -18,6 +18,7 @@ namespace OasisPlayer.Startup
             Width = width;
             Height = height;
             Interaction = interaction;
+            ArcadeManifest = arcadeManifest;
         }
 
         public StartupMode Mode { get; }
@@ -26,11 +27,12 @@ namespace OasisPlayer.Startup
         public int Width { get; }
         public int Height { get; }
         public string Interaction { get; }
+        public string ArcadeManifest { get; }
 
         public string SceneName => Mode switch
         {
             StartupMode.MachinePreview => "MachinePreview",
-            StartupMode.Arcade => throw new NotSupportedException("Arcade mode is not implemented in Phase 1."),
+            StartupMode.Arcade => "MachinePreview",
             _ => throw new NotSupportedException($"Unsupported startup mode: {Mode}")
         };
     }
