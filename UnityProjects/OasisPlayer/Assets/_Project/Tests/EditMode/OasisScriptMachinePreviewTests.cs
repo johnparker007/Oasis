@@ -116,6 +116,10 @@ namespace OasisPlayer.Tests
         public void InitializationFaultAbortsStartupAndCleansPartialSceneDefinitionsAndRegistries()
         {
             var driversBefore = UnityEngine.Object.FindObjectsByType<RuntimeBehaviorDriver>(FindObjectsSortMode.None).Length;
+            LogAssert.Expect(LogType.Log, "Cabinet semantic geometry: Colliders: 0, Triggers: 1");
+            LogAssert.Expect(LogType.Log, "Cabinet semantic triggers registered: 1");
+            LogAssert.Expect(LogType.Log, "Oasis cabinet reflections: no reflection receivers are defined for this cabinet.");
+            LogAssert.Expect(LogType.Log, new Regex("^Oasis lamp diagnostic ready:"));
             LogAssert.Expect(LogType.Error, new Regex("Oasis Script fault in Machine 'Preview test': behavior/behavior\\.oasis:1:[0-9]+ OSR1002 .* while handling initialization"));
             var exception = Assert.ThrowsAsync<InvalidOperationException>(() => _loader.LoadAsync(Build("const broken = 1 / 0; on machine.started() { timer.start(\"mustNotRun\", 1); }")));
             StringAssert.Contains("initialization", exception.Message);
@@ -158,6 +162,10 @@ namespace OasisPlayer.Tests
             var source = duringStartup
                 ? "on machine.started() { object.reset(object:missing); } on input.pressed(input:reset) { object.set_active(object:foo, false); }"
                 : "on input.pressed(input:reset) { object.reset(object:missing); } on input.released(input:reset) { object.set_active(object:foo, false); }";
+            LogAssert.Expect(LogType.Log, "Cabinet semantic geometry: Colliders: 0, Triggers: 1");
+            LogAssert.Expect(LogType.Log, "Cabinet semantic triggers registered: 1");
+            LogAssert.Expect(LogType.Log, "Oasis cabinet reflections: no reflection receivers are defined for this cabinet.");
+            LogAssert.Expect(LogType.Log, new Regex("^Oasis lamp diagnostic ready:"));
             LogAssert.Expect(LogType.Error, new Regex("Oasis Script fault in Machine 'Preview test': behavior/behavior\\.oasis:1:[0-9]+ OSR1005 .*missing.* while handling " + Regex.Escape(eventName)));
             var machine = await _loader.LoadAsync(Build(source));
             machine.SetInputState("reset", true);
@@ -224,6 +232,10 @@ namespace OasisPlayer.Tests
                 new MachineInputDefinition { id = "unassigned", name = "No key" },
                 new MachineInputDefinition { id = "unsupported", name = "Bad shortcut", keyboardShortcut = "Ctrl+R" }
             };
+            LogAssert.Expect(LogType.Log, "Cabinet semantic geometry: Colliders: 0, Triggers: 1");
+            LogAssert.Expect(LogType.Log, "Cabinet semantic triggers registered: 1");
+            LogAssert.Expect(LogType.Log, "Oasis cabinet reflections: no reflection receivers are defined for this cabinet.");
+            LogAssert.Expect(LogType.Log, new Regex("^Oasis lamp diagnostic ready:"));
             LogAssert.Expect(LogType.Warning, new Regex("Machine input 'unsupported' has unsupported keyboard shortcut 'Ctrl\\+R'"));
             var machine = await _loader.LoadAsync(build);
             var controls = _spawn.GetComponentInChildren<RuntimeInputDevelopmentControls>();
@@ -258,20 +270,33 @@ namespace OasisPlayer.Tests
         {
             var compiled = OasisScriptCompiler.Compile(source, "behavior/behavior.oasis");
             Assert.True(compiled.Success, string.Join(Environment.NewLine, compiled.Diagnostics));
+            var runtimeDefinition = new MachineRuntimeManifestDefinition { kind = kind };
+            if (kind == "Emulation") { runtimeDefinition.platform = "None"; runtimeDefinition.platformSettingsJson = "{}"; }
             var manifest = new MachineRuntimeManifest
             {
                 machineId = "preview-test", displayName = "Preview test",
-                runtime = new MachineRuntimeManifestDefinition { kind = kind },
+                runtime = runtimeDefinition,
                 anchors = new[] { new MachineRuntimeAnchor { id = "target", displayName = "Target", position = Vector(1, 2, 3), rotationEulerDegrees = Vector(0, 0, 0) } },
                 inputs = new[] { new MachineInputDefinition { id = "reset", name = "Reset" } },
                 objectInstances = new[] { new MachineRuntimeObjectInstance { id = "foo", displayName = "Foo", definitionId = "def", transform = new MachineRuntimeObjectTransform { position = Vector(0, 0, 0), rotationEulerDegrees = Vector(0, 0, 0), scale = Vector(1, 1, 1) } } }
             };
-            var definition = new ResolvedRuntimeObjectDefinition("", "", new Object3DRuntimeManifest
+            var rootNode = new Object3DRuntimeNode
             {
-                definitionId = "def", displayName = "Small test object", modelScale = .5f, upAxis = "Z",
-                collider = new Object3DRuntimeCollider { kind = "Sphere", center = new[] { 0f, 0f, 0f }, radius = .25f },
-                rigidbody = new Object3DRuntimeRigidbody { enabled = true, mass = 1, useGravity = false }
-            });
+                id = "aaaaaaaa-2222-3333-4444-555555555555", name = "Root", children = Array.Empty<Object3DRuntimeNode>(),
+                components = new[]
+                {
+                    new Object3DRuntimeComponent { componentId = "bbbbbbbb-2222-3333-4444-555555555555", kind = "Transform", contractVersion = 1,
+                        transform = new Object3DRuntimeTransform { position = Vector(0, 0, 0), rotationEulerDegrees = Vector(0, 0, 0), scale = Vector(1, 1, 1) } },
+                    new Object3DRuntimeComponent { componentId = "cccccccc-2222-3333-4444-555555555555", kind = "Model", contractVersion = 1,
+                        model = new Object3DRuntimeModel { path = "models/test.glb", scale = .5f, upAxis = "Z" } },
+                    new Object3DRuntimeComponent { componentId = "dddddddd-2222-3333-4444-555555555555", kind = "Collider", contractVersion = 1,
+                        collider = new Object3DRuntimeCollider { kind = "Sphere", center = new[] { 0f, 0f, 0f }, radius = .25f, sourceFrame = "ModelLocal" } },
+                    new Object3DRuntimeComponent { componentId = "eeeeeeee-2222-3333-4444-555555555555", kind = "Rigidbody", contractVersion = 1,
+                        rigidbody = new Object3DRuntimeRigidbody { mode = "Dynamic", mass = 1, useGravity = false } }
+                }
+            };
+            var prefabDefinition = new Object3DRuntimeManifest { schema = RuntimeBuildLoader.ObjectSchema, schemaVersion = RuntimeBuildLoader.ObjectSchemaVersion, definitionId = "def", displayName = "Small test object", root = rootNode };
+            var definition = new ResolvedRuntimeObjectDefinition("", new Dictionary<string, string> { { "models/test.glb", "model" } }, prefabDefinition);
             return new ResolvedRuntimeBuild("", manifest, "", new CabinetRuntimeManifest(), "", Array.Empty<MachineRuntimeFaceReference>(), new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "def", definition } }, compiled.Program);
         }
 

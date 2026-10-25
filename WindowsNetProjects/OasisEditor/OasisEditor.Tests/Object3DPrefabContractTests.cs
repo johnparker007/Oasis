@@ -74,7 +74,7 @@ public sealed class Object3DPrefabContractTests
         var dynamicMesh = Object3DDocument.ReauthorRoot("Dynamic Mesh", new("mesh.glb", 1, "Y"),
             new(new(Object3DColliderKind.Mesh), new(Object3DRigidbodyMode.Dynamic, .5, true)));
         Assert.True(Object3DDocumentStorage.TryRead(Object3DDocumentStorage.Serialize(dynamicMesh), out var loaded, out var error), error);
-        Assert.True(loaded.TryProjectSingleRoot(out _, out _, out var projectionError), projectionError);
+        Assert.Equal(Object3DColliderKind.Mesh, loaded.Physics.Collider.Kind);
     }
 
     [Fact]
@@ -84,29 +84,24 @@ public sealed class Object3DPrefabContractTests
         var child = PoolBall().Root;
         document = document with { Root = document.Root.WithChildren([child]) };
         Assert.True(Object3DDocumentStorage.TryRead(Object3DDocumentStorage.Serialize(document), out _, out var error), error);
-        Assert.False(document.TryProjectSingleRoot(out _, out _, out var projectionError));
-        Assert.Contains("child nodes", projectionError);
     }
 
     [Fact]
-    public void RuntimeProjectionRejectsChildrenAndKinematicOrTriggerStructure()
+    public void RuntimeComponentExportRetainsChildIdentityKinematicModeAndTriggerFrame()
     {
-        var document = PoolBall();
-        Assert.True(document.TryProjectSingleRoot(out var model, out var physics, out var error), error);
-        Assert.Equal(document.Model, model);
-        Assert.Equal(document.Physics, physics);
-
-        var child = new Object3DNodeDefinition(Guid.NewGuid().ToString("D"), "Child", [Object3DComponentDefinition.CreateTransform()], []);
-        Assert.False((document with { Root = document.Root.WithChildren([child]) }).TryProjectSingleRoot(out _, out _, out var childError));
-        Assert.Contains("child nodes", childError);
-
-        var kinematic = document with { Physics = new(Object3DColliderDefinition.None, new(Object3DRigidbodyMode.Kinematic)) };
-        Assert.False(kinematic.TryProjectSingleRoot(out _, out _, out var bodyError));
-        Assert.Contains("kinematic", bodyError);
-
-        var trigger = document with { Physics = new(new(Object3DColliderKind.Sphere, [0, 0, 0], Radius: .1, IsTrigger: true), new(Object3DRigidbodyMode.Static)) };
-        Assert.False(trigger.TryProjectSingleRoot(out _, out _, out var triggerError));
-        Assert.Contains("trigger", triggerError);
+        var document = Object3DDocument.Create("Group");
+        var child = new Object3DNodeDefinition(Guid.NewGuid().ToString("D"), "Child",
+            [Object3DComponentDefinition.CreateTransform(),
+             Object3DComponentDefinition.CreateCollider(new(Object3DColliderKind.Sphere, [0,0,0], Radius: .1, SourceFrame: Object3DColliderSourceFrame.NodeLocal, IsTrigger: true)),
+             Object3DComponentDefinition.CreateRigidbody(new(Object3DRigidbodyMode.Kinematic))], []);
+        document = document with { Root = document.Root.WithChildren([child]) };
+        var runtime = Object3DRuntimeManifest.From(document, document.Id, _ => "models/group.glb");
+        var exportedChild = Assert.Single(runtime.Root.Children);
+        Assert.Equal(child.Id, exportedChild.Id);
+        Assert.Equal("Kinematic", exportedChild.Components.Single(c => c.Rigidbody is not null).Rigidbody!.Mode);
+        var collider = exportedChild.Components.Single(c => c.Collider is not null).Collider!;
+        Assert.Equal("NodeLocal", collider.SourceFrame);
+        Assert.True(collider.IsTrigger);
     }
 
     [Fact]

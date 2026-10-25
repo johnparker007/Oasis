@@ -23,13 +23,12 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     public const string CabinetGlbFileName = "cabinet.glb";
     public const string ObjectsDirectoryName = "objects";
     public const string ObjectManifestFileName = "object.runtime.json";
-    public const string ObjectGlbFileName = "object.glb";
     public const string MachineSchema = "oasis.machine.runtime";
     public const string CabinetSchema = "oasis.cabinet.runtime";
     public const string ObjectSchema = "oasis.object3d.runtime";
-    public const int MachineSchemaVersion = 9;
+    public const int MachineSchemaVersion = 10;
     public const int CabinetSchemaVersion = 5;
-    public const int ObjectSchemaVersion = 1;
+    public const int ObjectSchemaVersion = 2;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -153,6 +152,8 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     {
         var instances = new List<MachineRuntimeObjectInstance>();
         var definitions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var bodyOwners = new Dictionary<string, bool>(StringComparer.Ordinal);
+        var sourceRootScales = new Dictionary<string, MachineVector3>(StringComparer.Ordinal);
         foreach (var instance in machine.ObjectInstances)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -166,15 +167,29 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' reference {reference} is not an Object3D package manifest.");
             if (!Object3DDocumentStorage.TryRead(File.ReadAllText(manifestPath), out var document, out var error))
                 throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}' references invalid Object3D asset {reference}: {error}");
-            if (!document.TryProjectSingleRoot(out _, out _, out var projectionError))
-                throw new InvalidOperationException($"Machine instance '{instance.Id}': {projectionError}");
             try { Object3DValidationService.Validate(document, Path.GetDirectoryName(manifestPath)); }
             catch (InvalidOperationException exception)
             { throw new InvalidOperationException($"Machine Object3D instance '{instance.Id}', Object3D asset '{document.DisplayName}' is invalid: {exception.Message}", exception); }
+            bool HasBody(Object3DNodeDefinition node) => node.Components.Any(c => c.Rigidbody is { Mode: not Object3DRigidbodyMode.Static }) || node.Children.Any(HasBody);
+            bodyOwners[instance.Id] = HasBody(document.Root);
+            sourceRootScales[instance.Id] = document.Root.Transform.Scale;
 
             var definitionId = Guid.Parse(document.Id).ToString("D").ToLowerInvariant();
-            var sourceModel = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(manifestPath)!, document.Model.Path.Replace('/', Path.DirectorySeparatorChar)));
-            var fingerprint = Object3DDocumentStorage.Serialize(document) + "\nmodel-sha256:" + Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(sourceModel)));
+            var sourcePackage = Path.GetDirectoryName(manifestPath)!;
+            var models = new Dictionary<string, (string Source, string Hash)>(StringComparer.OrdinalIgnoreCase);
+            void CollectModels(Object3DNodeDefinition node)
+            {
+                foreach (var component in node.Components.Where(c => c.Model is not null))
+                {
+                    var relative = component.Model!.Path;
+                    var source = Path.GetFullPath(Path.Combine(sourcePackage, relative.Replace('/', Path.DirectorySeparatorChar)));
+                    models[relative] = (source, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(source))).ToLowerInvariant());
+                }
+                foreach (var child in node.Children) CollectModels(child);
+            }
+            CollectModels(document.Root);
+            var fingerprint = Object3DDocumentStorage.Serialize(document) + string.Concat(models.OrderBy(m => m.Key, StringComparer.Ordinal)
+                .Select(m => "\n" + m.Key + ":" + m.Value.Hash));
             if (definitions.TryGetValue(definitionId, out var existingFingerprint))
             {
                 if (!string.Equals(existingFingerprint, fingerprint, StringComparison.Ordinal))
@@ -185,12 +200,29 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 definitions.Add(definitionId, fingerprint);
                 var destination = Path.Combine(stagingRoot, ObjectsDirectoryName, definitionId);
                 Directory.CreateDirectory(destination);
-                File.Copy(sourceModel, Path.Combine(destination, ObjectGlbFileName), true);
-                var runtimeDefinition = Object3DRuntimeManifest.From(document, definitionId);
+                foreach (var model in models.Values)
+                {
+                    var output = Path.Combine(destination, "models", model.Hash + ".glb");
+                    Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+                    if (!File.Exists(output)) File.Copy(model.Source, output, false);
+                }
+                var runtimeDefinition = Object3DRuntimeManifest.From(document, definitionId, path => "models/" + models[path].Hash + ".glb");
                 File.WriteAllText(Path.Combine(destination, ObjectManifestFileName), JsonSerializer.Serialize(runtimeDefinition, JsonOptions));
             }
             var definitionManifest = ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine(ObjectsDirectoryName, definitionId, ObjectManifestFileName));
-            instances.Add(new MachineRuntimeObjectInstance(instance.Id, instance.DisplayName, definitionId, definitionManifest, MachineRuntimeTransform.From(instance.Transform)));
+            instances.Add(new MachineRuntimeObjectInstance(instance.Id, instance.DisplayName, definitionId, definitionManifest, MachineRuntimeTransform.From(instance.Transform), instance.ParentId, instance.Active));
+        }
+        var authored = machine.ObjectInstances.ToDictionary(i => i.Id, StringComparer.Ordinal);
+        foreach (var instance in machine.ObjectInstances.Where(i => bodyOwners[i.Id]))
+        {
+            var parentId = instance.ParentId;
+            while (parentId is not null)
+            {
+                if (bodyOwners[parentId]) throw new InvalidOperationException($"Machine instance '{instance.Id}' and ancestor '{parentId}' both own a Rigidbody; nested bodies are unsupported.");
+                if (authored[parentId].Transform.Scale != MachineVector3.One || sourceRootScales[parentId] != MachineVector3.One)
+                    throw new InvalidOperationException($"Machine instance '{instance.Id}' owns a Rigidbody beneath scaled parent '{parentId}'; scaled body parents are unsupported.");
+                parentId = authored[parentId].ParentId;
+            }
         }
         return instances;
     }
@@ -397,28 +429,32 @@ public sealed record MachineRuntimeTransform(RuntimeVector3 Position, RuntimeVec
 {
     public static MachineRuntimeTransform From(MachineObjectTransform value) => new(RuntimeVector3.From(value.Position), RuntimeVector3.From(value.Rotation), RuntimeVector3.From(value.Scale));
 }
-public sealed record MachineRuntimeObjectInstance(string Id, string DisplayName, string DefinitionId, string DefinitionManifest, MachineRuntimeTransform Transform);
+public sealed record MachineRuntimeObjectInstance(string Id, string DisplayName, string DefinitionId, string DefinitionManifest, MachineRuntimeTransform Transform, string? ParentId = null, bool Active = true);
 public sealed record MachineRuntimeAnchor(string Id, string DisplayName, RuntimeVector3 Position, RuntimeVector3 RotationEulerDegrees)
 {
     public static MachineRuntimeAnchor From(MachineAnchor value) => new(value.Id, value.DisplayName, RuntimeVector3.From(value.Position), RuntimeVector3.From(value.Rotation));
 }
-public sealed record Object3DRuntimeManifest(string Schema, int SchemaVersion, string DefinitionId, string DisplayName, string Model, double ModelScale, string UpAxis, Object3DRuntimeCollider Collider, Object3DRuntimeRigidbody Rigidbody)
+public sealed record Object3DRuntimeManifest(string Schema, int SchemaVersion, string DefinitionId, string DisplayName, Object3DRuntimeNode Root)
 {
-    public static Object3DRuntimeManifest From(Object3DDocument document, string definitionId) => new(MachineRuntimeBuildService.ObjectSchema, MachineRuntimeBuildService.ObjectSchemaVersion, definitionId, document.DisplayName, MachineRuntimeBuildService.ObjectGlbFileName, document.Model.Scale, document.Model.UpAxis, Object3DRuntimeCollider.From(document.Physics.Collider), Object3DRuntimeRigidbody.From(document.Physics.Rigidbody));
+    public static Object3DRuntimeManifest From(Object3DDocument document, string definitionId, Func<string, string> resolveModel) =>
+        new(MachineRuntimeBuildService.ObjectSchema, MachineRuntimeBuildService.ObjectSchemaVersion, definitionId, document.DisplayName, Object3DRuntimeNode.From(document.Root, resolveModel));
 }
-public sealed record Object3DRuntimeCollider(string Kind, double[]? Center = null, double? Radius = null, double[]? Size = null, double? Height = null, string? Axis = null)
+public sealed record Object3DRuntimeNode(string Id, string Name, Object3DRuntimeComponent[] Components, Object3DRuntimeNode[] Children)
 {
-    public static Object3DRuntimeCollider From(Object3DColliderDefinition value) => value.Kind switch
-    {
-        Object3DColliderKind.Sphere => new("Sphere", value.Center, value.Radius),
-        Object3DColliderKind.Box => new("Box", value.Center, Size: value.Size),
-        Object3DColliderKind.Capsule => new("Capsule", value.Center, value.Radius, Height: value.Height, Axis: value.Axis!.Value.ToString()),
-        Object3DColliderKind.Mesh => new("Mesh"),
-        _ => new("None")
-    };
+    public static Object3DRuntimeNode From(Object3DNodeDefinition node, Func<string, string> resolveModel) => new(node.Id, node.Name,
+        node.Components.Select(c => new Object3DRuntimeComponent(c.ComponentId, c.Kind, c.ContractVersion,
+            c.Transform is null ? null : MachineRuntimeTransform.From(c.Transform),
+            c.Model is null ? null : new Object3DRuntimeModel(resolveModel(c.Model.Path), c.Model.Scale, c.Model.UpAxis),
+            c.Collider is null ? null : Object3DRuntimeCollider.From(c.Collider),
+            c.Rigidbody is null ? null : new Object3DRuntimeRigidbody(c.Rigidbody.Mode.ToString(), c.Rigidbody.Mass, c.Rigidbody.UseGravity ?? false))).ToArray(),
+        node.Children.Select(c => From(c, resolveModel)).ToArray());
 }
-public sealed record Object3DRuntimeRigidbody(bool Enabled, double? Mass, bool? UseGravity)
+public sealed record Object3DRuntimeComponent(string ComponentId, string Kind, int ContractVersion, MachineRuntimeTransform? Transform,
+    Object3DRuntimeModel? Model, Object3DRuntimeCollider? Collider, Object3DRuntimeRigidbody? Rigidbody);
+public sealed record Object3DRuntimeModel(string Path, double Scale, string UpAxis);
+public sealed record Object3DRuntimeCollider(string Kind, double[]? Center, double? Radius, double[]? Size, double? Height, string? Axis, string SourceFrame, bool IsTrigger)
 {
-    public static Object3DRuntimeRigidbody From(Object3DRigidbodyDefinition value) => value.Enabled ? new(true, value.Mass, value.UseGravity) : new(false, null, null);
+    public static Object3DRuntimeCollider From(Object3DColliderDefinition value) => new(value.Kind.ToString(), value.Center, value.Radius, value.Size, value.Height, value.Axis?.ToString(), value.SourceFrame.ToString(), value.IsTrigger);
 }
+public sealed record Object3DRuntimeRigidbody(string Mode, double? Mass, bool UseGravity);
 public sealed record CabinetRuntimeManifest(string Schema, int SchemaVersion, string CabinetId, string Glb, double Scale, string UpAxis, IReadOnlyList<CabinetReflectionDefinition> Reflections);

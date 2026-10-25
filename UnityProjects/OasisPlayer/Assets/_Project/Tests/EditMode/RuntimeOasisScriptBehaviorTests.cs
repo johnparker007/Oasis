@@ -513,7 +513,9 @@ namespace OasisPlayer.Tests
                 Assert.True(compiled.Success, string.Join(Environment.NewLine, compiled.Diagnostics));
                 program = compiled.Program;
             }
-            var manifest = new MachineRuntimeManifest { machineId = "adapter-test", displayName = "Adapter test", runtime = new MachineRuntimeManifestDefinition { kind = kind }, anchors = anchors ?? Array.Empty<MachineRuntimeAnchor>(), inputs = new[] { new MachineInputDefinition { id = "reset", name = "Reset" } } };
+            var runtime = new MachineRuntimeManifestDefinition { kind = kind };
+            if (kind == "Emulation") { runtime.platform = "None"; runtime.platformSettingsJson = "{}"; }
+            var manifest = new MachineRuntimeManifest { machineId = "adapter-test", displayName = "Adapter test", runtime = runtime, anchors = anchors ?? Array.Empty<MachineRuntimeAnchor>(), inputs = new[] { new MachineInputDefinition { id = "reset", name = "Reset" } } };
             var machine = new RuntimeMachine(new ResolvedRuntimeBuild("", manifest, "", new CabinetRuntimeManifest(), "", Array.Empty<MachineRuntimeFaceReference>(), new Dictionary<string, ResolvedRuntimeObjectDefinition>(), program), null);
             _machines.Add(machine);
             return machine;

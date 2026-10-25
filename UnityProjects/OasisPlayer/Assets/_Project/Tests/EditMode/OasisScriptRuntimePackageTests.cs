@@ -23,17 +23,22 @@ namespace OasisPlayer.Tests
             File.WriteAllText(Path.Combine(_root, "behavior", "behavior.oasis"), "state score = 0; on machine.started() { timer.stop(\"host-call\"); score = score + 1; }");
         }
         [TearDown] public void TearDown() { if (Directory.Exists(_root)) Directory.Delete(_root, true); }
-        private void WriteMachine(int version = 9, string kind = "Oasis", string source = "behavior/behavior.oasis", MachineInputDefinition[] inputs = null)
+        private void WriteMachine(int version = 10, string kind = "Oasis", string source = "behavior/behavior.oasis", MachineInputDefinition[] inputs = null)
         {
             // JsonUtility escaping keeps path test cases valid JSON on Windows too.
             var runtime = new MachineRuntimeManifestDefinition { kind = kind };
             if (kind == "Emulation") { runtime.platform = "None"; runtime.platformSettingsJson = "{}"; }
             else runtime.behavior = new MachineRuntimeBehavior { kind = "OasisScript", source = source };
             var manifest = new MachineRuntimeManifest { schema = RuntimeBuildLoader.MachineSchema, schemaVersion = version, machineId = "machine", displayName = "Pool", cabinetManifest = "cabinet/cabinet.runtime.json", anchors = Array.Empty<MachineRuntimeAnchor>(), runtime = runtime, inputs = inputs ?? Array.Empty<MachineInputDefinition>() };
-            File.WriteAllText(Path.Combine(_root, "machine.runtime.json"), JsonUtility.ToJson(manifest));
+            var json = JsonUtility.ToJson(manifest);
+            // Mirror the Editor writer's actual Emulation shape: Unity's serializer
+            // expands nullable nested classes, even when the source value is null.
+            if (kind == "Emulation") json = json.Replace(JsonUtility.ToJson(runtime),
+                "{\"kind\":\"Emulation\",\"platform\":\"None\",\"platformSettingsJson\":\"{}\",\"behavior\":null}");
+            File.WriteAllText(Path.Combine(_root, "machine.runtime.json"), json);
         }
         [TestCase("Emulation")] [TestCase("Oasis")]
-        public void Schema9RuntimeKindsLoad(string kind)
+        public void Schema10RuntimeKindsLoad(string kind)
         {
             WriteMachine(kind: kind);
             Assert.True(RuntimeBuildLoader.TryLoad(_root, out var build, out var error), error);
@@ -68,7 +73,7 @@ namespace OasisPlayer.Tests
         }
 
         [Test] public void PreviousSchemaRejected()
-        { WriteMachine(version: 8); Assert.False(RuntimeBuildLoader.TryLoad(_root, out _, out var error)); StringAssert.Contains("schema/version", error); }
+        { WriteMachine(version: 9); Assert.False(RuntimeBuildLoader.TryLoad(_root, out _, out var error)); StringAssert.Contains("schema/version", error); }
         [Test] public void UnknownRuntimeRejected()
         { WriteMachine(kind: "Unknown"); Assert.False(RuntimeBuildLoader.TryLoad(_root, out _, out var error)); StringAssert.Contains("Unknown Machine runtime", error); }
         [TestCase("../outside.oasis")] [TestCase("behavior/../../outside.oasis")] [TestCase("/outside.oasis")]

@@ -1,0 +1,20 @@
+<linker>
+  <assembly fullname="OasisPlayer.RuntimeBuild">
+    <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeManifest" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeManifestDefinition" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeBehavior" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeObjectInstance" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeObjectTransform" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeAnchor" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeFaceReference" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.MachineInputDefinition" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.RuntimeVector3Definition" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.Object3DRuntimeManifest" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.Object3DRuntimeNode" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.Object3DRuntimeComponent" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.Object3DRuntimeTransform" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.Object3DRuntimeModel" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.Object3DRuntimeCollider" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.Object3DRuntimeRigidbody" preserve="all" />
+  </assembly>
+</linker>

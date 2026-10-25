@@ -60,6 +60,14 @@ public sealed class EditorTools(McpEditorSession session, EditorDispatcher ui)
     [McpServerTool(Name = "save_machine"), Description("Save the open Machine through the existing save service, refusing externally changed manifest or behavior source.")]
     public Task<MachineSnapshot> SaveMachine(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.SaveMachine(documentId), cancellationToken);
 
+    [McpServerTool(Name = "add_machine_object"), Description("Place a project Prefab using a stable Machine object ID, optional parent and local transform. One undoable command; does not save.")]
+    public Task<MachineSnapshot> AddMachineObject(Guid documentId, string id, string prefabPath, CancellationToken cancellationToken,
+        string? name = null, MachineObjectTransform? transform = null, string? parentId = null, bool active = true) => ui.Invoke(() => session.AddMachineObject(documentId, id, prefabPath, name, transform, parentId, active), cancellationToken);
+
+    [McpServerTool(Name = "update_machine_object"), Description("Edit root-only placement overrides: local transform, parent, active state and display name. clearParent=true returns to Machine root. Prefab structure remains source-owned.")]
+    public Task<MachineSnapshot> UpdateMachineObject(Guid documentId, string objectId, CancellationToken cancellationToken,
+        MachineObjectTransform? transform = null, string? parentId = null, bool clearParent = false, bool? active = null, string? name = null) => ui.Invoke(() => session.UpdateMachineObject(documentId, objectId, transform, parentId, clearParent, active, name), cancellationToken);
+
     [McpServerTool(Name = "undo_machine"), Description("Undo one command in this Machine document.")]
     public Task<MachineSnapshot> UndoMachine(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.UndoMachine(documentId), cancellationToken);
 

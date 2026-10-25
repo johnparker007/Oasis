@@ -33,17 +33,37 @@ namespace OasisPlayer.RuntimeBuild
 
     [Serializable] public sealed class RuntimeVector3Definition { public float x; public float y; public float z; public Vector3 Value { get { return new Vector3(x, y, z); } } }
     [Serializable] public sealed class MachineRuntimeObjectTransform { public RuntimeVector3Definition position = new RuntimeVector3Definition(); public RuntimeVector3Definition rotationEulerDegrees = new RuntimeVector3Definition(); public RuntimeVector3Definition scale = new RuntimeVector3Definition(); }
-    [Serializable] public sealed class MachineRuntimeObjectInstance { public string id = string.Empty; public string displayName = string.Empty; public string definitionId = string.Empty; public string definitionManifest = string.Empty; public MachineRuntimeObjectTransform transform = new MachineRuntimeObjectTransform(); }
+    [Serializable] public sealed class MachineRuntimeObjectInstance { public string id = string.Empty; public string displayName = string.Empty; public string definitionId = string.Empty; public string definitionManifest = string.Empty; public MachineRuntimeObjectTransform transform = new MachineRuntimeObjectTransform(); public string parentId = string.Empty; public bool active = true; }
     [Serializable] public sealed class MachineRuntimeAnchor { public string id = string.Empty; public string displayName = string.Empty; public RuntimeVector3Definition position = new RuntimeVector3Definition(); public RuntimeVector3Definition rotationEulerDegrees = new RuntimeVector3Definition(); }
-    [Serializable] public sealed class Object3DRuntimeCollider { public string kind = string.Empty; public float[] center = Array.Empty<float>(); public float radius; public float[] size = Array.Empty<float>(); public float height; public string axis = string.Empty; }
-    [Serializable] public sealed class Object3DRuntimeRigidbody { public bool enabled; public float mass; public bool useGravity; }
-    [Serializable] public sealed class Object3DRuntimeManifest { public string schema = string.Empty; public int schemaVersion; public string definitionId = string.Empty; public string displayName = string.Empty; public string model = string.Empty; public float modelScale; public string upAxis = string.Empty; public Object3DRuntimeCollider collider; public Object3DRuntimeRigidbody rigidbody; }
+    [Serializable] public sealed class Object3DRuntimeTransform { public RuntimeVector3Definition position = new RuntimeVector3Definition(); public RuntimeVector3Definition rotationEulerDegrees = new RuntimeVector3Definition(); public RuntimeVector3Definition scale = new RuntimeVector3Definition(); }
+    [Serializable] public sealed class Object3DRuntimeModel { public string path = string.Empty; public float scale; public string upAxis = string.Empty; }
+    [Serializable] public sealed class Object3DRuntimeCollider { public string kind = string.Empty; public float[] center = Array.Empty<float>(); public float radius; public float[] size = Array.Empty<float>(); public float height; public string axis = string.Empty; public string sourceFrame = string.Empty; public bool isTrigger; }
+    [Serializable] public sealed class Object3DRuntimeRigidbody { public string mode = string.Empty; public float mass; public bool useGravity; }
+    [Serializable] public sealed class Object3DRuntimeComponent { public string componentId = string.Empty; public string kind = string.Empty; public int contractVersion; public Object3DRuntimeTransform transform; public Object3DRuntimeModel model; public Object3DRuntimeCollider collider; public Object3DRuntimeRigidbody rigidbody; }
+    [Serializable] public sealed class Object3DRuntimeNode
+    {
+        public string id = string.Empty;
+        public string name = string.Empty;
+        public Object3DRuntimeComponent[] components = Array.Empty<Object3DRuntimeComponent>();
+        public Object3DRuntimeNode[] children = Array.Empty<Object3DRuntimeNode>();
+        public Object3DRuntimeComponent GetComponent(string kind)
+        {
+            if (components == null) return null;
+            for (var i = 0; i < components.Length; i++) if (components[i] != null && components[i].kind == kind) return components[i];
+            return null;
+        }
+        public Object3DRuntimeTransform Transform
+        {
+            get { var component = GetComponent("Transform"); return component != null ? component.transform : null; }
+        }
+    }
+    [Serializable] public sealed class Object3DRuntimeManifest { public string schema = string.Empty; public int schemaVersion; public string definitionId = string.Empty; public string displayName = string.Empty; public Object3DRuntimeNode root; }
 
     public sealed class ResolvedRuntimeObjectDefinition
     {
-        public ResolvedRuntimeObjectDefinition(string manifestPath, string modelPath, Object3DRuntimeManifest manifest) { ManifestPath = manifestPath; ModelPath = modelPath; Manifest = manifest; }
+        public ResolvedRuntimeObjectDefinition(string manifestPath, IReadOnlyDictionary<string, string> modelPaths, Object3DRuntimeManifest manifest) { ManifestPath = manifestPath; ModelPaths = modelPaths ?? throw new ArgumentNullException(nameof(modelPaths)); Manifest = manifest; }
         public string ManifestPath { get; private set; }
-        public string ModelPath { get; private set; }
+        public IReadOnlyDictionary<string, string> ModelPaths { get; private set; }
         public Object3DRuntimeManifest Manifest { get; private set; }
     }
 
@@ -68,6 +88,15 @@ namespace OasisPlayer.RuntimeBuild
         public string id = string.Empty;
         public string name = string.Empty;
         public string keyboardShortcut = string.Empty;
+        public int kind;
+        public string buttonNumber = string.Empty;
+        public bool coinInput;
+        public int? coinChannel;
+        public int? coinValue;
+        public bool inverted;
+        public string rawMfmeShortcut = string.Empty;
+        public string linkedVisualElementId;
+        public string notes = string.Empty;
     }
 
     [Serializable]
@@ -263,8 +292,8 @@ namespace OasisPlayer.RuntimeBuild
         public const string MachineSchema = "oasis.machine.runtime";
         public const string CabinetSchema = "oasis.cabinet.runtime";
         public const string ObjectSchema = "oasis.object3d.runtime";
-        public const int MachineSchemaVersion = 9;
-        public const int ObjectSchemaVersion = 1;
+        public const int MachineSchemaVersion = 10;
+        public const int ObjectSchemaVersion = 2;
 
         public static bool TryLoad(string buildDirectory, out ResolvedRuntimeBuild build, out string error)
         {
@@ -293,7 +322,7 @@ namespace OasisPlayer.RuntimeBuild
             MachineRuntimeManifest machine;
             try
             {
-                machine = JsonUtility.FromJson<MachineRuntimeManifest>(File.ReadAllText(machinePath));
+                machine = RuntimeManifestJsonReader.ReadMachine(File.ReadAllText(machinePath));
             }
             catch (Exception ex)
             {
@@ -355,6 +384,9 @@ namespace OasisPlayer.RuntimeBuild
                 { error = $"Machine anchor at index {i} is invalid or duplicated in {machinePath}."; return false; }
             }
 
+            var objectInstances = machine.objectInstances ?? Array.Empty<MachineRuntimeObjectInstance>();
+            if (!TryValidateObjectInstances(objectInstances, machinePath, out error)) return false;
+
             if (!TryResolveContained(root, root, machine.cabinetManifest, out var cabinetPath, out error))
             {
                 error = $"Invalid cabinet manifest path in {machinePath}: {error}";
@@ -408,28 +440,320 @@ namespace OasisPlayer.RuntimeBuild
             }
 
             var objectDefinitions = new Dictionary<string, ResolvedRuntimeObjectDefinition>(StringComparer.OrdinalIgnoreCase);
-            var objectInstances = machine.objectInstances ?? Array.Empty<MachineRuntimeObjectInstance>();
+            var definitionManifestPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             for (var i = 0; i < objectInstances.Length; i++)
             {
                 var instance = objectInstances[i];
-                if (instance == null || string.IsNullOrWhiteSpace(instance.id) || string.IsNullOrWhiteSpace(instance.definitionId) || instance.transform == null)
-                { error = $"Machine Object3D instance at index {i} is invalid in {machinePath}."; return false; }
-                if (objectDefinitions.ContainsKey(instance.definitionId)) continue;
+                if (objectDefinitions.ContainsKey(instance.definitionId))
+                {
+                    var priorManifest = definitionManifestPaths[instance.definitionId];
+                    string repeatedManifestPath;
+                    if (!TryResolveContained(root, root, instance.definitionManifest, out repeatedManifestPath, out error)
+                        || !string.Equals(priorManifest, repeatedManifestPath, Path.DirectorySeparatorChar == '\\' ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                    { error = $"Object3D definition ID '{instance.definitionId}' is referenced through conflicting manifests in {machinePath}."; return false; }
+                    continue;
+                }
                 if (!TryResolveContained(root, root, instance.definitionManifest, out var objectManifestPath, out error))
                 { error = $"Invalid Object3D manifest path for instance '{instance.id}' in {machinePath}: {error}"; return false; }
                 if (!File.Exists(objectManifestPath)) { error = $"Object3D runtime manifest is missing: {objectManifestPath}"; return false; }
                 Object3DRuntimeManifest objectManifest;
-                try { objectManifest = JsonUtility.FromJson<Object3DRuntimeManifest>(File.ReadAllText(objectManifestPath)); }
+                try { objectManifest = RuntimeManifestJsonReader.ReadObject(File.ReadAllText(objectManifestPath)); }
                 catch (Exception ex) { error = $"Object3D manifest is invalid JSON: {objectManifestPath}. {ex.Message}"; return false; }
-                if (objectManifest == null || objectManifest.schema != ObjectSchema || objectManifest.schemaVersion != ObjectSchemaVersion || objectManifest.definitionId != instance.definitionId || objectManifest.collider == null || objectManifest.rigidbody == null)
-                { error = $"Unsupported or invalid Object3D manifest schema/definition in {objectManifestPath}."; return false; }
-                if (!TryResolveContained(root, Path.GetDirectoryName(objectManifestPath), objectManifest.model, out var modelPath, out error))
-                { error = $"Invalid Object3D model path in {objectManifestPath}: {error}"; return false; }
-                if (!File.Exists(modelPath)) { error = $"Object3D GLB is missing: {modelPath}"; return false; }
-                objectDefinitions.Add(instance.definitionId, new ResolvedRuntimeObjectDefinition(objectManifestPath, modelPath, objectManifest));
+                if (!TryValidateObjectManifest(objectManifest, instance.definitionId, objectManifestPath, root, out var modelPaths, out error)) return false;
+                objectDefinitions.Add(instance.definitionId, new ResolvedRuntimeObjectDefinition(objectManifestPath, modelPaths, objectManifest));
+                definitionManifestPaths.Add(instance.definitionId, objectManifestPath);
             }
+            if (!ValidateObjectBodyParenting(objectInstances, objectDefinitions, out error)) return false;
             build = new ResolvedRuntimeBuild(root, machine, cabinetPath, cabinet, glbPath, machine.faces, objectDefinitions, scriptProgram);
             return true;
+        }
+
+        private static bool ValidateObjectBodyParenting(MachineRuntimeObjectInstance[] instances,
+            Dictionary<string, ResolvedRuntimeObjectDefinition> definitions, out string error)
+        {
+            error = string.Empty;
+            var byId = new Dictionary<string, MachineRuntimeObjectInstance>(StringComparer.Ordinal);
+            for (var i = 0; i < instances.Length; i++) byId[instances[i].id] = instances[i];
+            foreach (var instance in instances)
+            {
+                var definition = definitions[instance.definitionId];
+                if (!HasActiveBody(definition.Manifest.root)) continue;
+                var parentId = instance.parentId;
+                while (!string.IsNullOrEmpty(parentId))
+                {
+                    var parent = byId[parentId];
+                    var parentDefinition = definitions[parent.definitionId];
+                    if (HasActiveBody(parentDefinition.Manifest.root))
+                    {
+                        error = $"Machine Object3D instance '{instance.id}' has an active Rigidbody beneath active Rigidbody instance '{parent.id}'; nested body ownership is unsupported.";
+                        return false;
+                    }
+                    if (!IsUnitScale(parent.transform.scale) || !IsUnitScale(parentDefinition.Manifest.root.Transform.scale))
+                    {
+                        error = $"Machine Object3D instance '{instance.id}' has an active Rigidbody beneath scaled parent instance '{parent.id}'; that hierarchy is unsupported.";
+                        return false;
+                    }
+                    parentId = parent.parentId;
+                }
+            }
+            return true;
+        }
+
+        private static bool HasActiveBody(Object3DRuntimeNode node)
+        {
+            if (node == null) return false;
+            for (var i = 0; i < node.components.Length; i++)
+            {
+                var component = node.components[i];
+                if (component.kind == "Rigidbody" && component.rigidbody.mode != "Static") return true;
+            }
+            for (var i = 0; i < node.children.Length; i++) if (HasActiveBody(node.children[i])) return true;
+            return false;
+        }
+
+        private static bool TryValidateObjectInstances(MachineRuntimeObjectInstance[] instances, string machinePath, out string error)
+        {
+            error = string.Empty;
+            var byId = new Dictionary<string, MachineRuntimeObjectInstance>(StringComparer.Ordinal);
+            for (var i = 0; i < instances.Length; i++)
+            {
+                var instance = instances[i];
+                if (instance == null || !IsCompositionId(instance.id) || string.IsNullOrWhiteSpace(instance.displayName)
+                    || !Guid.TryParse(instance.definitionId, out _) || string.IsNullOrWhiteSpace(instance.definitionManifest)
+                    || instance.transform == null || instance.transform.position == null || instance.transform.rotationEulerDegrees == null || instance.transform.scale == null
+                    || !IsFinite(instance.transform.position) || !IsFinite(instance.transform.rotationEulerDegrees) || !IsPositiveScale(instance.transform.scale)
+                    || !byId.TryAdd(instance.id, instance))
+                {
+                    error = $"Machine Object3D instance at index {i} is invalid or duplicated in {machinePath}.";
+                    return false;
+                }
+            }
+
+            foreach (var instance in instances)
+            {
+                if (string.IsNullOrEmpty(instance.parentId)) continue;
+                if (!byId.ContainsKey(instance.parentId))
+                {
+                    error = $"Machine Object3D instance '{instance.id}' references missing parent '{instance.parentId}' in {machinePath}.";
+                    return false;
+                }
+                if (string.Equals(instance.id, instance.parentId, StringComparison.Ordinal))
+                {
+                    error = $"Machine Object3D instance '{instance.id}' cannot parent itself in {machinePath}.";
+                    return false;
+                }
+            }
+
+            var states = new Dictionary<string, byte>(StringComparer.Ordinal);
+            foreach (var instance in instances)
+                if (!VisitParent(instance, byId, states, machinePath, out error)) return false;
+            return true;
+        }
+
+        private static bool VisitParent(MachineRuntimeObjectInstance instance, Dictionary<string, MachineRuntimeObjectInstance> byId,
+            Dictionary<string, byte> states, string machinePath, out string error)
+        {
+            error = string.Empty;
+            if (states.TryGetValue(instance.id, out var state))
+            {
+                if (state == 1) { error = $"Machine Object3D parent hierarchy contains a cycle at '{instance.id}' in {machinePath}."; return false; }
+                return true;
+            }
+            states[instance.id] = 1;
+            if (!string.IsNullOrEmpty(instance.parentId) && !VisitParent(byId[instance.parentId], byId, states, machinePath, out error)) return false;
+            states[instance.id] = 2;
+            return true;
+        }
+
+        private static bool TryValidateObjectManifest(Object3DRuntimeManifest manifest, string expectedDefinitionId, string manifestPath,
+            string buildRoot, out IReadOnlyDictionary<string, string> modelPaths, out string error)
+        {
+            modelPaths = null;
+            error = string.Empty;
+            if (manifest == null || manifest.schema != ObjectSchema || manifest.schemaVersion != ObjectSchemaVersion
+                || !Guid.TryParse(manifest.definitionId, out _) || !string.Equals(manifest.definitionId, expectedDefinitionId, StringComparison.OrdinalIgnoreCase)
+                || string.IsNullOrWhiteSpace(manifest.displayName) || manifest.root == null)
+            {
+                error = $"Unsupported or invalid Object3D manifest schema/definition in {manifestPath}.";
+                return false;
+            }
+
+            var nodeIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var componentIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var models = new Dictionary<string, string>(StringComparer.Ordinal);
+            var activeNodes = new HashSet<Object3DRuntimeNode>();
+            var visitedNodes = new HashSet<Object3DRuntimeNode>();
+            var packageDirectory = Path.GetDirectoryName(manifestPath);
+            if (!ValidateObjectNode(manifest.root, "root", packageDirectory, nodeIds, componentIds, models, activeNodes, visitedNodes, false, 0, out _, out error)) return false;
+            modelPaths = models;
+            return true;
+        }
+
+        private static bool ValidateObjectNode(Object3DRuntimeNode node, string context, string packageDirectory,
+            HashSet<string> nodeIds, HashSet<string> componentIds, Dictionary<string, string> modelPaths,
+            HashSet<Object3DRuntimeNode> activeNodes, HashSet<Object3DRuntimeNode> visitedNodes, bool hasScaledAncestor, int depth, out int activeBodyCount, out string error)
+        {
+            activeBodyCount = 0;
+            error = string.Empty;
+            if (node == null) { error = $"Object3D {context}: node is null."; return false; }
+            context = $"Object3D node '{node.name}' ({context})";
+            if (depth > 256) { error = $"{context}: hierarchy exceeds the supported depth of 256."; return false; }
+            if (!activeNodes.Add(node)) { error = $"{context}: hierarchy contains a cycle."; return false; }
+            if (!visitedNodes.Add(node)) { error = $"{context}: node occurs more than once; hierarchy must be a tree."; return false; }
+            if (!Guid.TryParse(node.id, out _) || !nodeIds.Add(node.id)) { error = $"{context}: node ID must be a unique stable GUID."; return false; }
+            if (string.IsNullOrWhiteSpace(node.name) || node.components == null || node.children == null)
+            { error = $"{context}: name, components, and children are required."; return false; }
+
+            var kinds = new HashSet<string>(StringComparer.Ordinal);
+            var hasTransform = false;
+            var hasModel = false;
+            Object3DRuntimeCollider collider = null;
+            Object3DRuntimeRigidbody rigidbody = null;
+            for (var i = 0; i < node.components.Length; i++)
+            {
+                var component = node.components[i];
+                if (component == null || !Guid.TryParse(component.componentId, out _) || !componentIds.Add(component.componentId) || string.IsNullOrWhiteSpace(component.kind))
+                { error = $"{context}: component at index {i} has an invalid or duplicated ID."; return false; }
+                if (!kinds.Add(component.kind) || component.contractVersion != 1)
+                { error = $"{context} component '{component.kind}' ({component.componentId}): duplicate or unsupported contract version."; return false; }
+                var payloadCount = (component.transform == null ? 0 : 1) + (component.model == null ? 0 : 1)
+                    + (component.collider == null ? 0 : 1) + (component.rigidbody == null ? 0 : 1);
+                var hasExpectedPayload = false;
+                switch (component.kind)
+                {
+                    case "Transform": hasExpectedPayload = component.transform != null; hasTransform = true; if (component.transform != null && !ValidateTransform(component.transform, context, out error)) return false; break;
+                    case "Model": hasExpectedPayload = component.model != null; hasModel = true; if (component.model != null && !ValidateModel(component.model, context, packageDirectory, modelPaths, out error)) return false; break;
+                    case "Collider": hasExpectedPayload = component.collider != null; collider = component.collider; if (component.collider != null && !ValidateCollider(component.collider, context, out error)) return false; break;
+                    case "Rigidbody": hasExpectedPayload = component.rigidbody != null; rigidbody = component.rigidbody; if (component.rigidbody != null && !ValidateRigidbody(component.rigidbody, context, out error)) return false; break;
+                    default: error = $"{context} component '{component.kind}' ({component.componentId}): unknown component kind."; return false;
+                }
+                if (!hasExpectedPayload || payloadCount != 1)
+                { error = $"{context} component '{component.kind}' ({component.componentId}): payload must match its kind exactly."; return false; }
+            }
+            if (!hasTransform) { error = $"{context}: exactly one Transform component is required."; return false; }
+            if (!hasModel && collider != null && collider.kind != "None" && collider.sourceFrame != "NodeLocal")
+            { error = $"{context} Collider: sourceFrame must be NodeLocal when the node has no Model."; return false; }
+            if (!hasModel && collider != null && collider.kind == "Mesh")
+            { error = $"{context} Mesh Collider requires a Model component."; return false; }
+            var hasActiveBody = rigidbody != null && rigidbody.mode != "Static";
+            if (hasActiveBody && hasScaledAncestor)
+            { error = $"{context} has an active Rigidbody beneath a scaled parent transform; that hierarchy is unsupported."; return false; }
+            if (hasActiveBody) activeBodyCount++;
+            var childHasScaledAncestor = hasScaledAncestor || !IsUnitScale(node.Transform.scale);
+
+            for (var i = 0; i < node.children.Length; i++)
+            {
+                if (!ValidateObjectNode(node.children[i], $"{context}/child[{i}]", packageDirectory, nodeIds, componentIds, modelPaths, activeNodes, visitedNodes, childHasScaledAncestor, depth + 1, out var childBodies, out error)) return false;
+                activeBodyCount += childBodies;
+                if (activeBodyCount > 1) { error = $"{context}: only one non-Static Rigidbody may own a node subtree."; return false; }
+            }
+            activeNodes.Remove(node);
+            return true;
+        }
+
+        private static bool ValidateTransform(Object3DRuntimeTransform transform, string context, out string error)
+        {
+            error = string.Empty;
+            if (transform.position == null || transform.rotationEulerDegrees == null || transform.scale == null
+                || !IsFinite(transform.position) || !IsFinite(transform.rotationEulerDegrees) || !IsPositiveScale(transform.scale))
+            { error = $"{context} Transform must have finite position/rotation and positive finite scale."; return false; }
+            return true;
+        }
+
+        private static bool ValidateModel(Object3DRuntimeModel model, string context, string packageDirectory,
+            Dictionary<string, string> modelPaths, out string error)
+        {
+            error = string.Empty;
+            if (string.IsNullOrWhiteSpace(model.path) || !string.Equals(Path.GetExtension(model.path), ".glb", StringComparison.OrdinalIgnoreCase)
+                || !IsFinitePositive(model.scale) || (model.upAxis != "X" && model.upAxis != "Y" && model.upAxis != "Z"))
+            { error = $"{context} Model has an invalid GLB path, scale, or upAxis."; return false; }
+            if (!TryResolveContained(packageDirectory, packageDirectory, model.path, out var resolvedModelPath, out error))
+            { error = $"{context} Model path '{model.path}' is invalid: {error}"; return false; }
+            if (!File.Exists(resolvedModelPath)) { error = $"{context} Model GLB is missing: {resolvedModelPath}."; return false; }
+            if (modelPaths.TryGetValue(model.path, out var existingPath)
+                && !string.Equals(existingPath, resolvedModelPath, Path.DirectorySeparatorChar == '\\' ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+            { error = $"{context} Model path '{model.path}' resolves ambiguously."; return false; }
+            modelPaths[model.path] = resolvedModelPath;
+            return true;
+        }
+
+        private static bool ValidateCollider(Object3DRuntimeCollider collider, string context, out string error)
+        {
+            error = string.Empty;
+            if (collider.kind != "None" && collider.kind != "Sphere" && collider.kind != "Box" && collider.kind != "Capsule" && collider.kind != "Mesh")
+            { error = $"{context} Collider kind '{collider.kind}' is unsupported."; return false; }
+            if (collider.sourceFrame != "ModelLocal" && collider.sourceFrame != "NodeLocal")
+            { error = $"{context} Collider sourceFrame '{collider.sourceFrame}' is unsupported."; return false; }
+            if (collider.kind == "None")
+            {
+                if (collider.isTrigger || HasPrimitiveDimensions(collider)) { error = $"{context} Collider None cannot define a trigger or dimensions."; return false; }
+                return true;
+            }
+            if (collider.kind == "Sphere")
+            {
+                if (!IsFiniteVector(collider.center) || !IsFinitePositive(collider.radius)) { error = $"{context} Sphere Collider requires a finite center and positive finite radius."; return false; }
+            }
+            else if (collider.kind == "Box")
+            {
+                if (!IsFiniteVector(collider.center) || !IsPositiveVector(collider.size)) { error = $"{context} Box Collider requires a finite center and positive finite size."; return false; }
+            }
+            else if (collider.kind == "Capsule")
+            {
+                if (!IsFiniteVector(collider.center) || !IsFinitePositive(collider.radius) || !IsFinitePositive(collider.height)
+                    || collider.height < collider.radius * 2f || (collider.axis != "X" && collider.axis != "Y" && collider.axis != "Z"))
+                { error = $"{context} Capsule Collider requires finite center, positive radius, height at least twice its radius, and axis X/Y/Z."; return false; }
+            }
+            else if (HasPrimitiveDimensions(collider))
+            { error = $"{context} Mesh Collider cannot define primitive dimensions."; return false; }
+            return true;
+        }
+
+        private static bool ValidateRigidbody(Object3DRuntimeRigidbody rigidbody, string context, out string error)
+        {
+            error = string.Empty;
+            if (rigidbody.mode != "Static" && rigidbody.mode != "Dynamic" && rigidbody.mode != "Kinematic")
+            { error = $"{context} Rigidbody mode '{rigidbody.mode}' is unsupported."; return false; }
+            if (rigidbody.mode == "Dynamic" && !IsFinitePositive(rigidbody.mass))
+            { error = $"{context} Dynamic Rigidbody mass must be positive and finite."; return false; }
+            if (rigidbody.mode != "Dynamic" && rigidbody.mass != 0)
+            { error = $"{context} {rigidbody.mode} Rigidbody cannot specify mass."; return false; }
+            return true;
+        }
+
+        private static bool HasPrimitiveDimensions(Object3DRuntimeCollider collider)
+        {
+            return collider.center != null && collider.center.Length > 0 || collider.size != null && collider.size.Length > 0
+                || collider.radius != 0 || collider.height != 0 || !string.IsNullOrEmpty(collider.axis);
+        }
+
+        private static bool IsFiniteVector(float[] values)
+        {
+            return values != null && values.Length == 3 && IsFinite(values[0]) && IsFinite(values[1]) && IsFinite(values[2]);
+        }
+
+        private static bool IsPositiveVector(float[] values)
+        {
+            return IsFiniteVector(values) && values[0] > 0 && values[1] > 0 && values[2] > 0;
+        }
+
+        private static bool IsPositiveScale(RuntimeVector3Definition value)
+        {
+            return IsFinite(value) && value.x > 0 && value.y > 0 && value.z > 0;
+        }
+
+        private static bool IsUnitScale(RuntimeVector3Definition value)
+        {
+            return value != null && value.x == 1 && value.y == 1 && value.z == 1;
+        }
+
+        private static bool IsFinitePositive(float value)
+        {
+            return IsFinite(value) && value > 0;
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
         }
 
         private static bool LooksLikeJsonObject(string json)

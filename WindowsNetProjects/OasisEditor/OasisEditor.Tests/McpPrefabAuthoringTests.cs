@@ -19,7 +19,7 @@ public sealed class McpPrefabAuthoringTests : IDisposable
     {
         var original = _session.CreatePrefab("Ball");
         Assert.False(original.IsDirty);
-        Assert.False(original.CanBuildSingleRoot);
+        Assert.True(original.CanBuildStructure);
         var noOp = _session.UpdatePrefabNode(original.DocumentId, original.Prefab.Root.Id, name: original.Prefab.Root.Name);
         Assert.False(noOp.IsDirty);
         Assert.False(noOp.CanUndo);
@@ -49,6 +49,23 @@ public sealed class McpPrefabAuthoringTests : IDisposable
         File.WriteAllText(Path.Combine(Path.GetDirectoryName(prefab.Path)!, "user-note.txt"), "Concurrent work");
         Assert.Throws<IOException>(() => _session.SavePrefab(prefab.DocumentId));
         Assert.Equal(bytes, File.ReadAllBytes(prefab.Path));
+    }
+
+    [Fact]
+    public void MachinePlacementUsesCommandsAndRejectsCyclesWithoutLosingHistory()
+    {
+        var prefab = _session.CreatePrefab("Grouping");
+        var machine = _session.OpenMachine(Assert.Single(_session.ListMachineAssets()));
+        _session.AddMachineObject(machine.DocumentId, "parent", prefab.Path);
+        _session.AddMachineObject(machine.DocumentId, "child", prefab.Path, parentId: "parent");
+        Assert.Throws<InvalidOperationException>(() => _session.UpdateMachineObject(machine.DocumentId, "parent", parentId: "child"));
+        Assert.Null(_session.InspectMachine(machine.DocumentId).Machine.ObjectInstances.Single(i => i.Id == "parent").ParentId);
+        var edited = _session.UpdateMachineObject(machine.DocumentId, "child", active: false);
+        Assert.False(edited.Machine.ObjectInstances.Single(i => i.Id == "child").Active);
+        Assert.True(_session.UndoMachine(machine.DocumentId).Machine.ObjectInstances.Single(i => i.Id == "child").Active);
+        var saved = _session.SaveMachine(machine.DocumentId);
+        Assert.False(saved.IsDirty);
+        Assert.Equal("parent", saved.Machine.ObjectInstances.Single(i => i.Id == "child").ParentId);
     }
 
     public void Dispose() => Directory.Delete(_root, true);

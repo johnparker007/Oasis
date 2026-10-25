@@ -202,10 +202,12 @@ Script references use stable Oasis IDs, never Unity/GameObject names. Input-bind
 UI, random and device commands are outside A8.5; Emulation has no script session.
 The added suites have not run in Codex, and no inherited suite pass is assumed.
 
-## Proposed next track P — Prefabs, OasisObjects and algorithmic Pool
+## Active track P — Prefabs, OasisObjects and algorithmic Pool
 
-Planning only; no P phase has started. Evolve the existing Object3D pipeline rather
-than adding a parallel Prefab system. Contracts and inspected merged baseline:
+P1 authoring is merged in PR #745. P2 runtime components and the P3 single-ball
+checkpoint have local implementation/verification evidence and await merge.
+Evolve the existing Object3D pipeline rather than adding a parallel Prefab system.
+Contracts and inspected baseline:
 [13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md).
 Detailed scope, dependencies, coverage, local checks and first-phase prompt:
 [14_PREFAB_AND_POOL_DELIVERY_PLAN.md](14_PREFAB_AND_POOL_DELIVERY_PLAN.md).

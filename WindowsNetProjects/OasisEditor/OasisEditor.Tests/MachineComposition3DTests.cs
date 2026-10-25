@@ -223,6 +223,34 @@ public sealed class MachineComposition3DTests
         Assert.False(tab.IsDirty);
     }
 
+    [Fact]
+    public async Task PrefabNodeAndMachineParentTransformsComposeWithoutReloadingSharedModel()
+    {
+        using var environment = new CompositionEnvironment();
+        var asset = environment.WriteObject(AssetReferenceScope.Project, "Grouped", 1);
+        var path = Path.Combine(environment.ProjectRoot, asset.Path.Replace('/', Path.DirectorySeparatorChar));
+        Assert.True(Object3DDocumentStorage.TryRead(File.ReadAllText(path), out var source, out _));
+        var child = new Object3DNodeDefinition(Guid.NewGuid().ToString("D"), "Offset model",
+            [Object3DComponentDefinition.CreateTransform(new(new(2,0,0), MachineVector3.Zero, MachineVector3.One)),
+             Object3DComponentDefinition.CreateModel(source.Model)], []);
+        source = source with { Root = source.Root.WithChildren([child]) with { Transform = new(new(1,0,0), MachineVector3.Zero, MachineVector3.One) } };
+        File.WriteAllText(path, Object3DDocumentStorage.Serialize(source));
+        var machine = MachineDocument.Create("Tree") with { ObjectInstances =
+        [
+            Instance("parent", asset) with { Transform = new(new(10,0,0), MachineVector3.Zero, MachineVector3.One) },
+            Instance("child", asset) with { ParentId = "parent", Transform = new(new(5,0,0), MachineVector3.Zero, MachineVector3.One) }
+        ] };
+        using var tab = environment.CreateTab(machine);
+        var composition = tab.MachineComposition3D!;
+        await composition.WaitForRefreshAsync();
+        Assert.Equal(11, composition.ObjectVisuals!.Bounds.X, 6);
+        Assert.Equal(9, composition.ObjectVisuals.Bounds.SizeX, 6);
+        Assert.Equal(1, environment.Loader.CountFor("Grouped.glb"));
+        tab.MachineObjectInstanceRows.Single(row => row.Id == "parent").Active = false;
+        await composition.WaitForRefreshAsync();
+        Assert.Empty(composition.ObjectVisuals.Children);
+    }
+
     private static MachineObject3DInstance Instance(string id, AssetReference asset) => new(id, id, asset, MachineObjectTransform.Identity);
 
     private sealed class CompositionEnvironment : IDisposable

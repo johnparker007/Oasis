@@ -29,6 +29,7 @@ public sealed partial class McpEditorSession
         ValidatePrefabPaths(model, Path.GetDirectoryName(file)!);
         var document = new DocumentTabViewModel(EditorDocument.CreateFromFile(file, "Prefab opened through MCP."), object3DDocumentJson: content);
         document.SetProjectAccessor(() => Project);
+        document.SetOpenDocumentsAccessor(() => _machines.Values.Select(m => m.Document).Concat(_prefabs.Values.Select(p => p.Document)).ToArray());
         _prefabs.Add(document.DocumentId, new(document, file, FingerprintPackage(Path.GetDirectoryName(file)!)));
         return InspectPrefab(document.DocumentId);
     }
@@ -61,8 +62,10 @@ public sealed partial class McpEditorSession
     {
         var entry = GetPrefab(documentId);
         var model = entry.Document.GetObject3DDocument();
-        var representable = model.TryProjectSingleRoot(out _, out _, out var error);
-        return new(documentId, entry.Path, model, entry.Document.IsDirty, entry.Document.CommandService.CanUndo, entry.Document.CommandService.CanRedo, representable, error);
+        var error = string.Empty;
+        try { Object3DValidationService.Validate(model, Path.GetDirectoryName(entry.Path)); }
+        catch (InvalidOperationException exception) { error = exception.Message; }
+        return new(documentId, entry.Path, model, entry.Document.IsDirty, entry.Document.CommandService.CanUndo, entry.Document.CommandService.CanRedo, error.Length == 0, error);
     }
 
     public PrefabSnapshot UpdatePrefabNode(Guid documentId, string nodeId, string? name = null, MachineObjectTransform? transform = null,
@@ -167,4 +170,4 @@ public sealed partial class McpEditorSession
 }
 
 public sealed record PrefabSnapshot(Guid DocumentId, string Path, Object3DDocument Prefab, bool IsDirty, bool CanUndo, bool CanRedo,
-    bool CanBuildSingleRoot, string BuildDiagnostic);
+    bool CanBuildStructure, string BuildDiagnostic);
