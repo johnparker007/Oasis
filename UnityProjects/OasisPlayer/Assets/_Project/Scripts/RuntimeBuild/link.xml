@@ -4,6 +4,8 @@
     <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeManifestDefinition" preserve="all" />
     <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeBehavior" preserve="all" />
     <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeObjectInstance" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimePrefabDependency" preserve="all" />
+    <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeGeometrySurface" preserve="all" />
     <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeObjectTransform" preserve="all" />
     <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeAnchor" preserve="all" />
     <type fullname="OasisPlayer.RuntimeBuild.MachineRuntimeFaceReference" preserve="all" />

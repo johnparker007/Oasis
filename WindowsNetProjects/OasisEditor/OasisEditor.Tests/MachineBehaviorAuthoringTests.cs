@@ -35,14 +35,14 @@ public sealed class MachineBehaviorAuthoringTests
     public void MachineValidator_VisitsEveryReferenceLiteral_AndIgnoresBindings()
     {
         const string source = """
-            const objects = [object:ball08, object:missing];
+            const objects = [oasis:ball08, oasis:missing];
             state home = anchor:missing;
             const lampRef = lamp:99;
             const reelRef = reel:2;
             const alphaRef = alpha:3;
             const sevenRef = sevenSegment:4;
-            on trigger.entered(trigger:missing, ball) { object.teleport(ball, anchor:rack); }
-            on input.pressed(input:missing) { object.reset(object:ball08); }
+            on trigger.entered(trigger:missing, ball) { oasis.teleport(ball, anchor:rack); }
+            on input.pressed(input:missing) { oasis.reset(oasis:ball08); }
             """;
         var compilation = OasisScriptCompiler.Compile(source, "behavior.oasis");
         Assert.True(compilation.Success, string.Join(Environment.NewLine, compilation.Diagnostics));
@@ -95,8 +95,8 @@ public sealed class MachineBehaviorAuthoringTests
 
     [Theory]
     [InlineData("on machine.started() {", "OS1")]
-    [InlineData("on machine.started() { object.reset(1); }", "OS2303")]
-    [InlineData("on machine.started() { object.reset(object:ball01); }", "OSM3001")]
+    [InlineData("on machine.started() { oasis.reset(1); }", "OS2303")]
+    [InlineData("on machine.started() { oasis.reset(oasis:ball01); }", "OSM3001")]
     public void InvalidAuthoredSource_SaveAndSaveAsPreserveDiagnosticsAndReopen(string source, string code)
     {
         var root = Path.Combine(Path.GetTempPath(), "oasis-invalid-save-" + Guid.NewGuid().ToString("N"));
@@ -149,7 +149,7 @@ public sealed class MachineBehaviorAuthoringTests
             var manifest = File.ReadAllText(path);
             File.Delete(Path.Combine(root, "behavior.oasis"));
             Directory.CreateDirectory(Path.Combine(root, "behavior.oasis"));
-            tab.MachineBehaviorSource = "on machine.started() { object.reset(1); }";
+            tab.MachineBehaviorSource = "on machine.started() { oasis.reset(1); }";
             var error = Record.Exception(() => service.SaveDocument(tab, path).ApplyTo(tab));
             Assert.True(error is IOException or UnauthorizedAccessException);
             Assert.True(tab.IsDirty);
@@ -165,8 +165,8 @@ public sealed class MachineBehaviorAuthoringTests
     {
         var tab = new DocumentTabViewModel(EditorDocument.CreateMachineStub("Machine"));
         tab.AddMachineBehaviorCommand.Execute(null);
-        tab.MachineBehaviorSource = "on machine.started() { object.reset(1); }";
-        Assert.Equal("on machine.started() { object.reset(1); }", tab.MachineBehaviorSource);
+        tab.MachineBehaviorSource = "on machine.started() { oasis.reset(1); }";
+        Assert.Equal("on machine.started() { oasis.reset(1); }", tab.MachineBehaviorSource);
         var diagnostic = Assert.Single(tab.MachineBehaviorDiagnostics);
         Assert.Equal("OS2303", diagnostic.Code);
         Assert.Equal(1, diagnostic.Line);
@@ -215,7 +215,7 @@ public sealed class MachineBehaviorAuthoringTests
                 ObjectInstances = [new("ball", "Ball", AssetReference.Project("Assets/Object3D/Ball/asset.object3d"), MachineObjectTransform.Identity)]
             };
             File.WriteAllText(manifest, MachineDocumentStorage.Serialize(machine));
-            File.WriteAllText(Path.Combine(root, "behavior.oasis"), "on machine.started() { object.reset(object:ball); }");
+            File.WriteAllText(Path.Combine(root, "behavior.oasis"), "on machine.started() { oasis.reset(oasis:ball); }");
             var tab = new DocumentTabViewModel(EditorDocument.CreateFromFile(manifest, "Machine"), machineDocumentJson: File.ReadAllText(manifest));
             Assert.Empty(tab.MachineBehaviorDiagnostics);
 

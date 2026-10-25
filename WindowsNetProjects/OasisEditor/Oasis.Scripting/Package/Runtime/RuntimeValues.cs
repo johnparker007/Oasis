@@ -42,28 +42,43 @@ namespace Oasis.Scripting
     }
     public sealed class OasisScriptReferenceValue : OasisScriptValue
     {
-        public OasisScriptReferenceValue(OasisScriptType type, string id) : base(type)
+        public OasisScriptReferenceValue(OasisScriptType type, string id, string? sessionId = null, long generation = 0) : this(type, id, sessionId, generation, false) { }
+        private OasisScriptReferenceValue(OasisScriptType type, string id, string? sessionId, long generation, bool allowAuthoredObject) : base(type)
         {
-            if (type.Kind < OasisScriptTypeKind.ObjectRef || type.Kind > OasisScriptTypeKind.SevenSegmentRef) throw new ArgumentException("Expected a reference type.", nameof(type));
+            if (!IsReferenceType(type)) throw new ArgumentException("Expected a reference type.", nameof(type));
             if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("Reference ID is required.", nameof(id));
+            if (type == OasisScriptType.OasisObjectRef && sessionId == null && generation == 0 && !allowAuthoredObject) throw new ArgumentException("Use AuthoredObject for a source ID or OasisObject for a scoped live reference.");
+            if (type == OasisScriptType.OasisObjectRef && (sessionId != null || generation != 0) && (string.IsNullOrWhiteSpace(sessionId) || generation <= 0)) throw new ArgumentException("Live object references require a session and positive generation.");
+            if (type != OasisScriptType.OasisObjectRef && (sessionId != null || generation != 0)) throw new ArgumentException("Only object references may be session scoped.");
             Id = id;
+            SessionId = sessionId;
+            Generation = generation;
         }
+        private static bool IsReferenceType(OasisScriptType type) => type == OasisScriptType.OasisObjectRef || type == OasisScriptType.AnchorRef || type == OasisScriptType.TriggerRef || type == OasisScriptType.InputRef || type == OasisScriptType.LampRef || type == OasisScriptType.ReelRef || type == OasisScriptType.AlphaDisplayRef || type == OasisScriptType.SevenSegmentRef || type == OasisScriptType.PrefabRef || type == OasisScriptType.SurfaceRef;
         public string Id { get; }
-        public static OasisScriptReferenceValue Object(string id) => new OasisScriptReferenceValue(OasisScriptType.ObjectRef, id);
+        public string? SessionId { get; }
+        public long Generation { get; }
+        public bool IsLiveObject => Type == OasisScriptType.OasisObjectRef && !string.IsNullOrWhiteSpace(SessionId) && Generation > 0;
+        public static OasisScriptReferenceValue AuthoredObject(string id) => new OasisScriptReferenceValue(OasisScriptType.OasisObjectRef, id, null, 0, true);
+        public static OasisScriptReferenceValue OasisObject(string id, string sessionId, long generation) => new OasisScriptReferenceValue(OasisScriptType.OasisObjectRef, id, sessionId, generation);
         public static OasisScriptReferenceValue Anchor(string id) => new OasisScriptReferenceValue(OasisScriptType.AnchorRef, id);
         public static OasisScriptReferenceValue Trigger(string id) => new OasisScriptReferenceValue(OasisScriptType.TriggerRef, id);
         public static OasisScriptReferenceValue Input(string id) => new OasisScriptReferenceValue(OasisScriptType.InputRef, id);
-        internal override bool SameValue(OasisScriptValue other) => other is OasisScriptReferenceValue reference && Type.Equals(reference.Type) && Id == reference.Id;
+        public static OasisScriptReferenceValue Prefab(string id) => new OasisScriptReferenceValue(OasisScriptType.PrefabRef, id);
+        public static OasisScriptReferenceValue Surface(string id) => new OasisScriptReferenceValue(OasisScriptType.SurfaceRef, id);
+        internal override bool SameValue(OasisScriptValue other) => other is OasisScriptReferenceValue reference && Type.Equals(reference.Type) && Id == reference.Id && SessionId == reference.SessionId && Generation == reference.Generation;
     }
     public sealed class OasisScriptListValue : OasisScriptValue
     {
         public OasisScriptListValue(OasisScriptType elementType, IEnumerable<OasisScriptValue> values) : base(OasisScriptType.ListOf(elementType))
         {
             var copy = values.ToArray();
+            if (copy.Length > MaximumCount) throw new ArgumentException($"Lists are limited to {MaximumCount} items.", nameof(values));
             if (copy.Any(x => x == null || !x.Type.Equals(elementType))) throw new ArgumentException("List elements must have the declared type.", nameof(values));
             Values = Array.AsReadOnly(copy);
         }
         public IReadOnlyList<OasisScriptValue> Values { get; }
+        public const int MaximumCount = 256;
         internal override bool SameValue(OasisScriptValue other)
         {
             if (!(other is OasisScriptListValue list) || !Type.Equals(list.Type) || Values.Count != list.Values.Count) return false;
@@ -91,11 +106,27 @@ namespace Oasis.Scripting
 
     public sealed class OasisScriptHostResult
     {
-        private OasisScriptHostResult(string? error) { Error = error; }
+        private OasisScriptHostResult(string? error, OasisScriptValue? value = null) { Error = error; Value = value; }
         public string? Error { get; }
+        public OasisScriptValue? Value { get; }
         public bool Success => Error == null;
         public static OasisScriptHostResult Ok { get; } = new OasisScriptHostResult(null);
+        public static OasisScriptHostResult Return(OasisScriptValue value) => new OasisScriptHostResult(null, value ?? throw new ArgumentNullException(nameof(value)));
         public static OasisScriptHostResult Fail(string message) => new OasisScriptHostResult(message ?? "Host command failed.");
+    }
+
+    /// <summary>Optional typed operations and authored object resolution for the runtime host.</summary>
+    public interface IOasisScriptValueHost : IOasisScriptHost
+    {
+        OasisScriptHostResult ResolveObject(string authoredId);
+        OasisScriptHostResult Query(string operation, IReadOnlyList<OasisScriptValue> arguments);
+    }
+
+    /// <summary>Optional lifecycle around one dispatched script event, used to enforce host event budgets.</summary>
+    public interface IOasisScriptDispatchHost
+    {
+        void BeginDispatch();
+        void EndDispatch();
     }
 
     /// <summary>Reference Type distinguishes domains; no CLR/Unity object enters the script.</summary>
@@ -118,14 +149,14 @@ namespace Oasis.Scripting
         public string Name { get; }
         public IReadOnlyList<OasisScriptValue> Arguments { get; }
         private static OasisScriptReferenceValue Require(OasisScriptReferenceValue value, OasisScriptType type)
-        { if (value == null || !value.Type.Equals(type)) throw new ArgumentException("Invalid event reference type."); return value; }
+        { if (value == null || !value.Type.Equals(type) || (type == OasisScriptType.OasisObjectRef && !value.IsLiveObject)) throw new ArgumentException("Invalid or unscoped event reference."); return value; }
         public static OasisScriptEvent MachineStarted() => new OasisScriptEvent("machine.started");
         public static OasisScriptEvent InputPressed(OasisScriptReferenceValue input) => new OasisScriptEvent("input.pressed", Require(input, OasisScriptType.InputRef));
         public static OasisScriptEvent InputReleased(OasisScriptReferenceValue input) => new OasisScriptEvent("input.released", Require(input, OasisScriptType.InputRef));
-        public static OasisScriptEvent TriggerEntered(OasisScriptReferenceValue trigger, OasisScriptReferenceValue obj) => new OasisScriptEvent("trigger.entered", Require(trigger, OasisScriptType.TriggerRef), Require(obj, OasisScriptType.ObjectRef));
-        public static OasisScriptEvent TriggerExited(OasisScriptReferenceValue trigger, OasisScriptReferenceValue obj) => new OasisScriptEvent("trigger.exited", Require(trigger, OasisScriptType.TriggerRef), Require(obj, OasisScriptType.ObjectRef));
-        public static OasisScriptEvent CollisionEntered(OasisScriptReferenceValue obj, OasisScriptReferenceValue other) => new OasisScriptEvent("collision.entered", Require(obj, OasisScriptType.ObjectRef), Require(other, OasisScriptType.ObjectRef));
-        public static OasisScriptEvent CollisionExited(OasisScriptReferenceValue obj, OasisScriptReferenceValue other) => new OasisScriptEvent("collision.exited", Require(obj, OasisScriptType.ObjectRef), Require(other, OasisScriptType.ObjectRef));
+        public static OasisScriptEvent TriggerEntered(OasisScriptReferenceValue trigger, OasisScriptReferenceValue obj) => new OasisScriptEvent("trigger.entered", Require(trigger, OasisScriptType.TriggerRef), Require(obj, OasisScriptType.OasisObjectRef));
+        public static OasisScriptEvent TriggerExited(OasisScriptReferenceValue trigger, OasisScriptReferenceValue obj) => new OasisScriptEvent("trigger.exited", Require(trigger, OasisScriptType.TriggerRef), Require(obj, OasisScriptType.OasisObjectRef));
+        public static OasisScriptEvent CollisionEntered(OasisScriptReferenceValue obj, OasisScriptReferenceValue other) => new OasisScriptEvent("collision.entered", Require(obj, OasisScriptType.OasisObjectRef), Require(other, OasisScriptType.OasisObjectRef));
+        public static OasisScriptEvent CollisionExited(OasisScriptReferenceValue obj, OasisScriptReferenceValue other) => new OasisScriptEvent("collision.exited", Require(obj, OasisScriptType.OasisObjectRef), Require(other, OasisScriptType.OasisObjectRef));
         public static OasisScriptEvent TimerElapsed(string name) => new OasisScriptEvent("timer.elapsed", new OasisScriptStringValue(name));
     }
 

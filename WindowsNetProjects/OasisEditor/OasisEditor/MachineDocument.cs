@@ -18,7 +18,10 @@ public sealed record MachineDocument(
     MachineAnchor[] Anchors,
     MachineBehaviorDefinition? Behavior)
 {
-    public const int CurrentSchemaVersion = 9;
+    public const int CurrentSchemaVersion = 10;
+
+    public MachinePrefabDeclaration[] PrefabDependencies { get; init; } = [];
+    public MachineGeometrySurface[] GeometrySurfaces { get; init; } = [];
 
     [JsonIgnore]
     public EmulationRuntimeDefinition EmulationRuntime => Runtime as EmulationRuntimeDefinition
@@ -71,6 +74,12 @@ public sealed record MachineAnchor(string Id, string DisplayName, MachineVector3
 {
     public static MachineAnchor Create(string id, string displayName = "Anchor") => new(id, displayName, MachineVector3.Zero, MachineVector3.Zero);
 }
+
+/// <summary>A named reusable Object3D Prefab available to Machine behaviour, including spawn-only Prefabs.</summary>
+public sealed record MachinePrefabDeclaration(string Alias, AssetReference PrefabAsset);
+
+/// <summary>A named oriented rectangle authored in Machine coordinates for focused geometry queries.</summary>
+public sealed record MachineGeometrySurface(string Id, MachineVector3 Position, MachineVector3 Rotation, double Width, double Length);
 
 public sealed record MachineSurfaceAssignment(string TargetId, string FaceAssetPath)
 {
@@ -183,6 +192,8 @@ public static class MachineDocumentStorage
             writer.WritePropertyName("surfaceAssignments"); JsonSerializer.Serialize(writer, document.SurfaceAssignments.Select(x => x.Normalized()), Options);
             writer.WritePropertyName("reelAssignments"); JsonSerializer.Serialize(writer, document.ReelAssignments.Select(x => x.Normalized()), Options);
             writer.WritePropertyName("objectInstances"); JsonSerializer.Serialize(writer, document.ObjectInstances, Options);
+            writer.WritePropertyName("prefabDependencies"); JsonSerializer.Serialize(writer, document.PrefabDependencies, Options);
+            writer.WritePropertyName("geometrySurfaces"); JsonSerializer.Serialize(writer, document.GeometrySurfaces, Options);
             writer.WritePropertyName("anchors"); JsonSerializer.Serialize(writer, document.Anchors, Options);
             if (document.Behavior is not null) { writer.WritePropertyName("behavior"); JsonSerializer.Serialize(writer, document.Behavior, Options); }
             writer.WritePropertyName("runtime");
@@ -251,7 +262,13 @@ public static class MachineDocumentStorage
                 definition,
                 root.TryGetProperty("inputDefinitions", out var inputs) ? inputs.Deserialize<List<InputDefinitionModel>>(Options) ?? [] : [],
                 root.GetProperty("anchors").Deserialize<MachineAnchor[]>(Options) ?? throw new InvalidOperationException("Machine Anchors collection is required."),
-                root.TryGetProperty("behavior", out var behavior) ? behavior.Deserialize<MachineBehaviorDefinition>(Options) : null);
+                root.TryGetProperty("behavior", out var behavior) ? behavior.Deserialize<MachineBehaviorDefinition>(Options) : null)
+            {
+                PrefabDependencies = root.TryGetProperty("prefabDependencies", out var dependencies)
+                    ? dependencies.Deserialize<MachinePrefabDeclaration[]>(Options) ?? [] : [],
+                GeometrySurfaces = root.TryGetProperty("geometrySurfaces", out var geometrySurfaces)
+                    ? geometrySurfaces.Deserialize<MachineGeometrySurface[]>(Options) ?? [] : []
+            };
             Validate(document);
             return true;
         }
@@ -291,6 +308,28 @@ public static class MachineDocumentStorage
         }
         if (document.CabinetAsset is not null) _ = new AssetReference(document.CabinetAsset.Scope, document.CabinetAsset.Path);
         foreach (var assignment in document.ReelAssignments) _ = new AssetReference(assignment.ReelAsset.Scope, assignment.ReelAsset.Path);
+        if (document.PrefabDependencies is null) throw new InvalidOperationException("Machine PrefabDependencies collection is required.");
+        if (document.PrefabDependencies.Any(dependency => dependency is null)) throw new InvalidOperationException("Machine PrefabDependencies cannot contain null entries.");
+        if (document.PrefabDependencies.GroupBy(dependency => dependency.Alias, StringComparer.Ordinal).Any(group => group.Count() > 1))
+            throw new InvalidOperationException("Machine Prefab aliases must be unique (case-sensitive).");
+        foreach (var dependency in document.PrefabDependencies)
+        {
+            if (!MachineCompositionId.IsValid(dependency.Alias)) throw new InvalidOperationException($"Machine Prefab alias '{dependency.Alias}' is invalid; use letters, digits, underscore, or hyphen.");
+            if (dependency.PrefabAsset is null) throw new InvalidOperationException($"Machine Prefab alias '{dependency.Alias}' requires an asset reference.");
+            _ = new AssetReference(dependency.PrefabAsset.Scope, dependency.PrefabAsset.Path);
+        }
+        if (document.GeometrySurfaces is null) throw new InvalidOperationException("Machine GeometrySurfaces collection is required.");
+        if (document.GeometrySurfaces.Any(surface => surface is null)) throw new InvalidOperationException("Machine GeometrySurfaces cannot contain null entries.");
+        if (document.GeometrySurfaces.GroupBy(surface => surface.Id, StringComparer.Ordinal).Any(group => group.Count() > 1))
+            throw new InvalidOperationException("Machine geometry surface IDs must be unique (case-sensitive).");
+        foreach (var surface in document.GeometrySurfaces)
+        {
+            if (!MachineCompositionId.IsValid(surface.Id)) throw new InvalidOperationException($"Machine geometry surface ID '{surface.Id}' is invalid; use letters, digits, underscore, or hyphen.");
+            if (surface.Position is null || surface.Rotation is null || !Finite(surface.Position) || !Finite(surface.Rotation))
+                throw new InvalidOperationException($"Machine geometry surface '{surface.Id}' position and rotation must be finite.");
+            if (!double.IsFinite(surface.Width) || surface.Width <= 0 || !double.IsFinite(surface.Length) || surface.Length <= 0)
+                throw new InvalidOperationException($"Machine geometry surface '{surface.Id}' width and length must be positive and finite.");
+        }
     }
 
     internal static void ValidateInstanceParents(MachineObject3DInstance[] objects)

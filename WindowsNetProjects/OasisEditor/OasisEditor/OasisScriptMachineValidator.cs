@@ -27,7 +27,9 @@ public sealed record OasisScriptMachineReferenceIndex(
     IReadOnlySet<string> Lamps,
     IReadOnlySet<string> Reels,
     IReadOnlySet<string> AlphaDisplays,
-    IReadOnlySet<string> SevenSegmentDisplays)
+    IReadOnlySet<string> SevenSegmentDisplays,
+    IReadOnlySet<string>? Prefabs = null,
+    IReadOnlySet<string>? Surfaces = null)
 {
     internal static OasisScriptMachineReferenceIndex FromMachineFields(MachineDocument machine) => new(
         machine.ObjectInstances.Select(value => value.Id).ToHashSet(StringComparer.Ordinal),
@@ -37,7 +39,9 @@ public sealed record OasisScriptMachineReferenceIndex(
         new HashSet<string>(StringComparer.Ordinal),
         machine.ReelAssignments.Select(value => value.MachineReelReference.Id).ToHashSet(StringComparer.Ordinal),
         new HashSet<string>(StringComparer.Ordinal),
-        new HashSet<string>(StringComparer.Ordinal));
+        new HashSet<string>(StringComparer.Ordinal),
+        machine.PrefabDependencies.Select(value => value.Alias).ToHashSet(StringComparer.Ordinal),
+        machine.GeometrySurfaces.Select(value => value.Id).ToHashSet(StringComparer.Ordinal));
 }
 
 public sealed record OasisScriptMachineReferenceIndexBuildResult(
@@ -58,6 +62,7 @@ public sealed class OasisScriptMachineReferenceIndexBuilder
         var lamps = new HashSet<string>(StringComparer.Ordinal);
         var alphas = new HashSet<string>(StringComparer.Ordinal);
         var sevenSegments = new HashSet<string>(StringComparer.Ordinal);
+        var prefabs = baseline.Prefabs?.ToHashSet(StringComparer.Ordinal) ?? new HashSet<string>(StringComparer.Ordinal);
         var diagnostics = new List<OasisScriptMachineDiagnostic>();
 
         var inventory = CabinetTriggerInventory.Unavailable("No Cabinet reference selected.");
@@ -77,7 +82,7 @@ public sealed class OasisScriptMachineReferenceIndexBuilder
         }
 
         return new(new(baseline.Objects, baseline.Anchors, triggers, baseline.Inputs, lamps,
-            baseline.Reels, alphas, sevenSegments), diagnostics, inventory);
+            baseline.Reels, alphas, sevenSegments, prefabs, baseline.Surfaces), diagnostics, inventory);
     }
 
     private CabinetTriggerInventory ResolveCabinet(EditorProject project, string libraryRoot, AssetReference reference, ISet<string> triggers, ICollection<OasisScriptMachineDiagnostic> diagnostics)
@@ -146,7 +151,7 @@ public static class OasisScriptMachineValidator
             if (expression is not OasisScriptReferenceLiteralSyntax literal) return;
             var (set, code, domain) = literal.Type.Kind switch
             {
-                OasisScriptTypeKind.ObjectRef => (references.Objects, "OSM3001", "Object3D instance"),
+                OasisScriptTypeKind.OasisObjectRef => (references.Objects, "OSM3001", "OasisObject"),
                 OasisScriptTypeKind.AnchorRef => (references.Anchors, "OSM3002", "anchor"),
                 OasisScriptTypeKind.TriggerRef => (references.Triggers, "OSM3003", "trigger"),
                 OasisScriptTypeKind.InputRef => (references.Inputs, "OSM3004", "input"),
@@ -154,6 +159,8 @@ public static class OasisScriptMachineValidator
                 OasisScriptTypeKind.ReelRef => (references.Reels, "OSM3006", "reel"),
                 OasisScriptTypeKind.AlphaDisplayRef => (references.AlphaDisplays, "OSM3007", "alpha display"),
                 OasisScriptTypeKind.SevenSegmentRef => (references.SevenSegmentDisplays, "OSM3008", "seven-segment display"),
+                OasisScriptTypeKind.PrefabRef => (references.Prefabs, "OSM3009", "Prefab alias"),
+                OasisScriptTypeKind.SurfaceRef => (references.Surfaces, "OSM3010", "geometry surface"),
                 _ => (null, string.Empty, string.Empty)
             };
             if (set is not null && !set.Contains(literal.Id))
@@ -167,11 +174,16 @@ public static class OasisScriptMachineValidator
         if (node is OasisScriptExpressionSyntax expression) expressionVisitor(expression);
         switch (node)
         {
-            case OasisScriptProgramSyntax value: foreach (var child in value.Declarations) Visit(child, expressionVisitor); break;
+            case OasisScriptProgramSyntax value:
+                foreach (var child in value.Declarations) Visit(child, expressionVisitor);
+                foreach (var function in value.Functions) Visit(function.Body, expressionVisitor);
+                break;
             case OasisScriptVariableDeclarationSyntax value: Visit(value.Initializer, expressionVisitor); break;
             case OasisScriptEventHandlerSyntax value:
                 foreach (var parameter in value.Parameters) Visit(parameter, expressionVisitor);
                 Visit(value.Body, expressionVisitor); break;
+            case OasisScriptReturnStatementSyntax value:
+                if (value.Expression is not null) Visit(value.Expression, expressionVisitor); break;
             case OasisScriptEventFilterSyntax value: Visit(value.Value, expressionVisitor); break;
             case OasisScriptBlockSyntax value: foreach (var child in value.Statements) Visit(child, expressionVisitor); break;
             case OasisScriptLetStatementSyntax value: Visit(value.Initializer, expressionVisitor); break;

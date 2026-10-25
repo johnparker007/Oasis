@@ -439,7 +439,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.runtime.json", SearchOption.AllDirectories).Count());
         Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "*.glb", SearchOption.AllDirectories).Count());
         using var machineJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
-        Assert.Equal(10, machineJson.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(11, machineJson.RootElement.GetProperty("schemaVersion").GetInt32());
         var instances = machineJson.RootElement.GetProperty("objectInstances");
         Assert.Equal(new[] { "cueBall", "ball01", "ball08" }, instances.EnumerateArray().Select(x => x.GetProperty("id").GetString()));
         Assert.Equal(80, instances[2].GetProperty("transform").GetProperty("rotationEulerDegrees").GetProperty("y").GetDouble());
@@ -457,6 +457,81 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.Equal(0.17, components.Single(c => c.GetProperty("kind").GetString() == "Rigidbody").GetProperty("rigidbody").GetProperty("mass").GetDouble());
         Assert.DoesNotContain(setup.Project.ProjectDirectory, runtimeText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Assets/", runtimeText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Build_PrefabDependencyWithoutPlacedInstanceIsPackagedAndScriptAliasValidated()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var paths = new ProjectAssetPathService();
+        var objectManifest = paths.GetObject3DManifestPath(setup.Project, "SpawnOnlyBall");
+        Directory.CreateDirectory(Path.GetDirectoryName(objectManifest)!);
+        File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(objectManifest)!, "ball.glb"), [1, 2, 3]);
+        var definitionId = Guid.NewGuid().ToString("D");
+        var definition = Object3DDocument.ReauthorRoot("Spawn Only Ball", new("ball.glb", 1, "Y"),
+            new(Object3DColliderDefinition.None, new(Object3DRigidbodyMode.Static)), definitionId);
+        File.WriteAllText(objectManifest, Object3DDocumentStorage.Serialize(definition));
+        var reference = AssetReference.Project(paths.ToProjectRelativePath(setup.Project, objectManifest));
+        var machine = setup.Machine with
+        {
+            PrefabDependencies = [new MachinePrefabDeclaration("poolBall", reference)],
+            Runtime = new OasisRuntimeDefinition(),
+            Behavior = MachineBehaviorDefinition.OasisScript()
+        };
+        var machinePath = WriteMachine(setup.Project, machine);
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(machinePath)!, "behavior.oasis"), "const ballPrefab = prefab:poolBall;");
+
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(setup.Project, machinePath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.runtime.json", SearchOption.AllDirectories).Count());
+        using var runtime = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
+        var dependency = Assert.Single(runtime.RootElement.GetProperty("prefabDependencies").EnumerateArray());
+        Assert.Equal("poolBall", dependency.GetProperty("alias").GetString());
+        Assert.Equal(definitionId.ToLowerInvariant(), dependency.GetProperty("definitionId").GetString());
+        Assert.Empty(runtime.RootElement.GetProperty("objectInstances").EnumerateArray());
+
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(machinePath)!, "behavior.oasis"), "const ballPrefab = prefab:missing;");
+        var missing = new MachineRuntimeBuildService().BuildFromMachineDocument(setup.Project, machinePath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(missing.Success);
+        Assert.Contains("OSM3009", missing.ErrorMessage);
+        Assert.Contains("missing", missing.ErrorMessage);
+    }
+
+    [Fact]
+    public void Build_RejectsSamePrefabGuidWithDifferentContentAcrossDependencyAndPlacement()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var paths = new ProjectAssetPathService();
+        var firstPath = paths.GetObject3DManifestPath(setup.Project, "PlacedBall");
+        var secondPath = paths.GetObject3DManifestPath(setup.Project, "SpawnBall");
+        var definitionId = Guid.NewGuid().ToString("D");
+        WritePrefab(firstPath, "Placed Ball", definitionId);
+        WritePrefab(secondPath, "Spawn Ball", definitionId);
+        var placed = AssetReference.Project(paths.ToProjectRelativePath(setup.Project, firstPath));
+        var declared = AssetReference.Project(paths.ToProjectRelativePath(setup.Project, secondPath));
+        var machine = setup.Machine with
+        {
+            ObjectInstances = [new("ball01", "Ball", placed, MachineObjectTransform.Identity)],
+            PrefabDependencies = [new("poolBall", declared)]
+        };
+
+        var result = Build(setup.Project, machine);
+
+        Assert.False(result.Success);
+        Assert.Contains("stable ID collision", result.ErrorMessage);
+        Assert.Contains(definitionId.ToLowerInvariant(), result.ErrorMessage);
+    }
+
+    private static void WritePrefab(string manifest, string displayName, string id)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(manifest)!);
+        File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(manifest)!, "ball.glb"), [1, 2, 3]);
+        var document = Object3DDocument.ReauthorRoot(displayName, new("ball.glb", 1, "Y"),
+            new(Object3DColliderDefinition.None, new(Object3DRigidbodyMode.Static)), id);
+        File.WriteAllText(manifest, Object3DDocumentStorage.Serialize(document));
     }
 
     [Fact]
@@ -493,7 +568,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.Single(Directory.EnumerateFiles(result.BuildRoot!, "*.oasis", SearchOption.AllDirectories));
         var json = File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json"));
         using var manifest = JsonDocument.Parse(json);
-        Assert.Equal(10, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(11, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
         var runtime = manifest.RootElement.GetProperty("runtime");
         Assert.Equal("Oasis", runtime.GetProperty("kind").GetString());
         Assert.False(runtime.TryGetProperty("platform", out _));
@@ -502,7 +577,7 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.True(File.Exists(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.glb")));
 
         // Failed build must retain the previously successful package.
-        File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "behavior.oasis"), "on machine.started() { object.reset(1); }");
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "behavior.oasis"), "on machine.started() { oasis.reset(1); }");
         Assert.False(service.BuildFromMachineDocument(setup.Project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None).Success);
         Assert.Equal(source, File.ReadAllText(Path.Combine(result.BuildRoot!, "behavior", "behavior.oasis")));
         Assert.False(Directory.Exists(result.BuildRoot + ".staging"));
@@ -512,15 +587,15 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
         Assert.True(result.Success, result.ErrorMessage); Assert.False(Directory.Exists(Path.Combine(result.BuildRoot!, "behavior")));
         Assert.Empty(Directory.EnumerateFiles(result.BuildRoot!, "*.oasis", SearchOption.AllDirectories));
         using var emulation = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
-        Assert.Equal(10, emulation.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(11, emulation.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("Emulation", emulation.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
         Assert.False(emulation.RootElement.GetProperty("runtime").TryGetProperty("behavior", out _));
     }
 
     [Theory]
     [InlineData("on machine.started() {", "OS1")]
-    [InlineData("on machine.started() { object.reset(1); }", "OS2303")]
-    [InlineData("on machine.started() { object.reset(object:missing); }", "OSM3001")]
+    [InlineData("on machine.started() { oasis.reset(1); }", "OS2303")]
+    [InlineData("on machine.started() { oasis.reset(oasis:missing); }", "OSM3001")]
     [InlineData("on input.pressed(input:missing) { }", "OSM3004")]
     public void InvalidAuthoredSaveCannotReplaceExistingRuntimePackage(string source, string code)
     {
@@ -588,8 +663,8 @@ public sealed class MachineRuntimeBuildServiceTests : IDisposable
 
     [Theory]
     [InlineData(null, "missing")]
-    [InlineData("on machine.started() { object.reset(1); }", "OS2303")]
-    [InlineData("on machine.started() { object.reset(object:missing); }", "OSM3001")]
+    [InlineData("on machine.started() { oasis.reset(1); }", "OS2303")]
+    [InlineData("on machine.started() { oasis.reset(oasis:missing); }", "OSM3001")]
     public void OasisBuildRevalidatesPersistedSource(string? source, string expectedDiagnostic)
     {
         var setup = CreateCabinetOnlyBuild(); WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);

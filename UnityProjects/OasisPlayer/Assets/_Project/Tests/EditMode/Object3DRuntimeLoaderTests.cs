@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Oasis.Scripting;
 using OasisPlayer.Loading;
 using OasisPlayer.RuntimeBuild;
 using UnityEngine;
@@ -46,7 +47,7 @@ namespace OasisPlayer.Tests
             using (var loader = new Object3DRuntimeLoader(modelLoader)) await loader.LoadAsync(machine, parent.transform);
 
             Assert.AreEqual(1, modelLoader.LoadCount);
-            Assert.AreEqual(3, modelLoader.Definition.InstantiateCount);
+            Assert.AreEqual(1, modelLoader.Definition.InstantiateCount);
             Assert.AreEqual(3, machine.Objects.Count);
             Assert.AreNotSame(machine.GetObject("cueBall").Root, machine.GetObject("ball01").Root);
             foreach (var id in new[] { "cueBall", "ball01", "ball08" })
@@ -98,6 +99,232 @@ namespace OasisPlayer.Tests
             Assert.AreEqual(1, modelLoader.LoadCount);
             Assert.AreEqual(2, machine.Objects.Count);
             Assert.AreNotSame(machine.GetObject("first").Root, machine.GetObject("second").Root);
+        }
+
+        [Test]
+        public async Task PreloadsUnplacedDependencyAndSynchronouslyClonesAndDestroysRuntimeInstance()
+        {
+            var definition = Definition("Sphere", rigidbody: true);
+            definition.Manifest.root.GetComponent("Transform").transform.position = Vector(1, 0, 0);
+            var machine = Machine(Array.Empty<MachineRuntimeObjectInstance>(),
+                new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "def", definition } },
+                new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "ball", definition } });
+            var parent = NewRoot("Machine");
+            var modelLoader = new FakeModelLoader();
+            using (var loader = new Object3DRuntimeLoader(modelLoader))
+            {
+                await loader.LoadAsync(machine, parent.transform);
+                Assert.AreEqual(1, modelLoader.LoadCount);
+                Assert.AreEqual(1, modelLoader.Definition.InstantiateCount);
+                Assert.AreEqual(0, machine.Objects.Count);
+
+                var live = machine.InstantiatePrefab("ball", new RuntimePose(new RuntimeVector3(2, 3, 4), RuntimeVector3.Zero));
+                Assert.AreEqual("@spawn:1", live.Id);
+                Assert.AreEqual("ball", live.DisplayName);
+                Assert.AreEqual(new Vector3(3, 3, 4), live.Root.transform.localPosition);
+                Assert.AreEqual(1, machine.Objects.Count);
+                Assert.AreEqual(1, machine.ObjectNodes.Count);
+                Assert.AreSame(live.Root, live.Rigidbody.gameObject);
+                Assert.AreSame(live.Rigidbody, live.Collider.attachedRigidbody);
+                live.Rigidbody.useGravity = false;
+                live.Root.transform.localPosition = Vector3.zero;
+                live.Rigidbody.linearVelocity = Vector3.one;
+                machine.Commands.ResetObject(live.Id);
+                AssertVector(new Vector3(3, 3, 4), live.Root.transform.localPosition);
+                Assert.AreEqual(Vector3.zero, live.Rigidbody.linearVelocity);
+                Assert.True(machine.DestroyDynamicObject(live.Id));
+                Assert.AreEqual(0, machine.Objects.Count);
+                Assert.AreEqual(0, machine.ObjectNodes.Count);
+                Assert.False(machine.DestroyDynamicObject(live.Id));
+            }
+        }
+
+        [Test]
+        public async Task RuntimeSpawnChildColliderEventsKeepRootObjectIdentity()
+        {
+            var definition = Definition("None");
+            definition.Manifest.root.children = new[] { new Object3DRuntimeNode
+            {
+                id = "collider-child", name = "Collider child", children = Array.Empty<Object3DRuntimeNode>(),
+                components = new[]
+                {
+                    new Object3DRuntimeComponent { componentId = "child-transform", kind = "Transform", contractVersion = 1, transform = new Object3DRuntimeTransform { position = Vector(0, 1, 0), rotationEulerDegrees = Vector(0, 0, 0), scale = Vector(1, 1, 1) } },
+                    new Object3DRuntimeComponent { componentId = "child-collider", kind = "Collider", contractVersion = 1, collider = new Object3DRuntimeCollider { kind = "Sphere", center = new[] { 0f, 0f, 0f }, radius = .5f, sourceFrame = "NodeLocal" } }
+                }
+            } };
+            var machine = Machine(new[] { Instance("target", 0) },
+                new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "def", definition } },
+                new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "ball", definition } });
+            var parent = NewRoot("Machine");
+            using (var loader = new Object3DRuntimeLoader(new FakeModelLoader()))
+            {
+                await loader.LoadAsync(machine, parent.transform);
+                var spawned = machine.InstantiatePrefab("ball", new RuntimePose(RuntimeVector3.Zero, RuntimeVector3.Zero));
+                var events = new List<RuntimeMachineEvent>();
+                machine.Events.Subscribe(events.Add);
+                var otherIdentity = machine.GetObject("target").Root.GetComponent<RuntimeObjectIdentity>();
+                otherIdentity.PublishCollisionEntered(spawned.Nodes[1].Collider);
+                var collision = (RuntimeCollisionEnteredEvent)events[0];
+                Assert.AreEqual("target", collision.ObjectId);
+                Assert.AreEqual(spawned.Id, collision.OtherObjectId);
+                Assert.True(RuntimeOasisScriptBehavior.TryTranslateEvent(machine, collision, out var scriptEvent));
+                var otherRef = (OasisScriptReferenceValue)scriptEvent.Arguments[1];
+                Assert.AreEqual(OasisScriptType.OasisObjectRef, otherRef.Type);
+                Assert.AreEqual(machine.SessionId, otherRef.SessionId);
+                Assert.AreEqual(spawned.Id, otherRef.Id);
+            }
+        }
+
+        [Test]
+        public async Task ScriptHostReferencesAreMachineScopedAndRuntimeSpawnLifecycleIsBoundedToLiveObjects()
+        {
+            var definition = Definition("Sphere");
+            var dependencies = new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "ball", definition } };
+            var machine = Machine(new[] { Instance("authored", 0) },
+                new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "def", definition } }, dependencies);
+            var parent = NewRoot("Machine");
+            using (var loader = new Object3DRuntimeLoader(new FakeModelLoader()))
+            using (var host = new RuntimeMachineOasisScriptHost(machine))
+            {
+                await loader.LoadAsync(machine, parent.transform);
+                var authored = host.ResolveObject("missing");
+                Assert.False(authored.Success);
+                var missingPrefab = host.Query("oasis.instantiate", new OasisScriptValue[]
+                {
+                    OasisScriptReferenceValue.Prefab("missing"), new OasisScriptVec3Value(0, 0, 0), new OasisScriptVec3Value(0, 0, 0)
+                });
+                Assert.False(missingPrefab.Success);
+                Assert.AreEqual(1, machine.Objects.Count);
+                var spawnedValue = host.Query("oasis.instantiate", new OasisScriptValue[]
+                {
+                    OasisScriptReferenceValue.Prefab("ball"), new OasisScriptVec3Value(2, 3, 4), new OasisScriptVec3Value(0, 0, 0)
+                });
+                Assert.True(spawnedValue.Success, spawnedValue.Error);
+                var spawnedRef = (OasisScriptReferenceValue)spawnedValue.Value;
+                Assert.True(spawnedRef.IsLiveObject);
+                Assert.AreEqual(machine.SessionId, spawnedRef.SessionId);
+                Assert.AreEqual(machine.Generation, spawnedRef.Generation);
+
+                Assert.True(host.Query("oasis.is_alive", new OasisScriptValue[] { spawnedRef }).Success);
+                Assert.True(host.SetActive(spawnedRef, false).Success);
+                Assert.False(machine.GetObject(spawnedRef.Id).Root.activeSelf);
+                Assert.False(host.Query("oasis.destroy", new OasisScriptValue[] { machine.GetObjectReference("authored") }).Success);
+
+                var foreignMachine = Machine(Array.Empty<MachineRuntimeObjectInstance>(),
+                    new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "def", definition } });
+                _created.Add(NewRoot("ForeignMachine"));
+                var foreignRef = OasisScriptReferenceValue.OasisObject(spawnedRef.Id, foreignMachine.SessionId, foreignMachine.Generation);
+                Assert.False(host.SetActive(foreignRef, true).Success);
+                foreignMachine.UnloadAssets();
+                var wrongGeneration = OasisScriptReferenceValue.OasisObject(spawnedRef.Id, machine.SessionId, machine.Generation + 1);
+                Assert.False(host.SetActive(wrongGeneration, true).Success);
+
+                Assert.True(host.Query("oasis.destroy", new OasisScriptValue[] { spawnedRef }).Success);
+                Assert.AreEqual(1, machine.Objects.Count);
+                Assert.False(((OasisScriptBoolValue)host.Query("oasis.is_alive", new OasisScriptValue[] { spawnedRef }).Value).Value);
+                Assert.False(host.ResetObject(spawnedRef).Success);
+                Assert.False(host.Query("oasis.destroy", new OasisScriptValue[] { spawnedRef }).Success);
+            }
+        }
+
+        [Test]
+        public async Task HostGeometryQueriesUseMachineSpaceAndRejectUnsupportedSphereDefinitions()
+        {
+            var definition = Definition("Sphere", upAxis: "Y", modelScale: .5f);
+            var dependencies = new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "ball", definition } };
+            var surface = new MachineRuntimeGeometrySurface
+            {
+                id = "playfield", position = Vector(1, 0, 2), rotationEulerDegrees = Vector(0, 90, 0), width = 2, length = 4
+            };
+            var machine = Machine(Array.Empty<MachineRuntimeObjectInstance>(),
+                new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "def", definition } }, dependencies,
+                new[] { new MachineRuntimeAnchor { id = "frame", displayName = "Frame", position = Vector(1, 2, 3), rotationEulerDegrees = Vector(0, 90, 0) } },
+                new[] { surface });
+            var parent = NewRoot("Machine");
+            using (var loader = new Object3DRuntimeLoader(new FakeModelLoader()))
+            using (var host = new RuntimeMachineOasisScriptHost(machine))
+            {
+                await loader.LoadAsync(machine, parent.transform);
+                var radius = host.Query("collider.sphere_radius", new OasisScriptValue[] { OasisScriptReferenceValue.Prefab("ball") });
+                Assert.True(radius.Success, radius.Error);
+                Assert.AreEqual(.125, ((OasisScriptNumberValue)radius.Value).Value, .0001);
+                var framePosition = host.Query("frame.position", new OasisScriptValue[] { OasisScriptReferenceValue.Anchor("frame"), new OasisScriptVec3Value(1, 0, 0) });
+                Assert.True(framePosition.Success, framePosition.Error);
+                var returnedPosition = (OasisScriptVec3Value)framePosition.Value;
+                AssertVector(new Vector3(1, 2, 2), new Vector3((float)returnedPosition.X, (float)returnedPosition.Y, (float)returnedPosition.Z));
+                var contains = host.Query("surface.contains_sphere", new OasisScriptValue[]
+                {
+                    OasisScriptReferenceValue.Surface("playfield"), new OasisScriptVec3Value(1, 0, 2), new OasisScriptNumberValue(.5)
+                });
+                Assert.True(contains.Success, contains.Error);
+                Assert.True(((OasisScriptBoolValue)contains.Value).Value);
+                var outOfBounds = host.Query("surface.contains_sphere", new OasisScriptValue[]
+                {
+                    OasisScriptReferenceValue.Surface("playfield"), new OasisScriptVec3Value(1, 0, 3.51), new OasisScriptNumberValue(.5)
+                });
+                Assert.True(outOfBounds.Success, outOfBounds.Error);
+                Assert.False(((OasisScriptBoolValue)outOfBounds.Value).Value);
+                var tooHigh = host.Query("surface.contains_sphere", new OasisScriptValue[]
+                {
+                    OasisScriptReferenceValue.Surface("playfield"), new OasisScriptVec3Value(1, .6, 2), new OasisScriptNumberValue(.5)
+                });
+                Assert.True(tooHigh.Success, tooHigh.Error);
+                Assert.False(((OasisScriptBoolValue)tooHigh.Value).Value);
+                definition.Manifest.root.GetComponent("Transform").transform.scale = Vector(1, 2, 1);
+                Assert.False(host.Query("collider.sphere_radius", new OasisScriptValue[] { OasisScriptReferenceValue.Prefab("ball") }).Success);
+            }
+        }
+
+        [Test]
+        public async Task SpawnBudgetStopsFurtherClonesWithinOneScriptEvent()
+        {
+            var definition = Definition("None");
+            var machine = Machine(Array.Empty<MachineRuntimeObjectInstance>(),
+                new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "def", definition } },
+                new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "ball", definition } });
+            var parent = NewRoot("Machine");
+            using (var loader = new Object3DRuntimeLoader(new FakeModelLoader()))
+            {
+                await loader.LoadAsync(machine, parent.transform);
+                machine.BeginScriptEvent();
+                for (var i = 0; i < RuntimeMachine.MaxSpawnsPerScriptEvent; i++)
+                    machine.InstantiatePrefab("ball", new RuntimePose(RuntimeVector3.Zero, RuntimeVector3.Zero));
+                var error = Assert.Throws<InvalidOperationException>(() =>
+                    machine.InstantiatePrefab("ball", new RuntimePose(RuntimeVector3.Zero, RuntimeVector3.Zero)));
+                StringAssert.Contains("event spawn limit", error.Message);
+                Assert.AreEqual(RuntimeMachine.MaxSpawnsPerScriptEvent, machine.Objects.Count);
+                machine.EndScriptEvent();
+                var spawnedIds = new List<string>(machine.Objects.Keys);
+                for (var i = 0; i < spawnedIds.Count; i++) Assert.True(machine.DestroyDynamicObject(spawnedIds[i]));
+                Assert.AreEqual(0, machine.Objects.Count);
+            }
+        }
+
+        [Test]
+        public async Task ScriptSessionCanStoreSpawnedReferenceAndDestroyItFromLaterEvent()
+        {
+            var source = "state ball: OasisObjectRef = oasis:authored; state alive: Bool = false; on machine.started() { ball = oasis.instantiate(prefab:ball, vec3(2,3,4), vec3(0,0,0)); alive = oasis.is_alive(ball); } on input.pressed(input:reset) { oasis.destroy(ball); alive = oasis.is_alive(ball); }";
+            var compiled = OasisScriptCompiler.Compile(source, "behavior/behavior.oasis");
+            Assert.True(compiled.Success, string.Join(Environment.NewLine, compiled.Diagnostics));
+            var definition = Definition("None");
+            var machine = Machine(new[] { Instance("authored", 0) },
+                new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "def", definition } },
+                new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "ball", definition } },
+                scriptProgram: compiled.Program);
+            var parent = NewRoot("Machine");
+            using (var loader = new Object3DRuntimeLoader(new FakeModelLoader()))
+            {
+                await loader.LoadAsync(machine, parent.transform);
+                var behavior = RuntimeOasisScriptBehavior.AttachTo(machine);
+                machine.CompleteStartup();
+                Assert.False(behavior.IsFaulted, behavior.LastRuntimeDiagnostic != null ? behavior.LastRuntimeDiagnostic.ToString() : string.Empty);
+                Assert.AreEqual(2, machine.Objects.Count);
+                Assert.AreEqual("ball", machine.GetObject("@spawn:1").DisplayName);
+                Assert.True(machine.SetInputState("reset", true));
+                Assert.False(behavior.IsFaulted, behavior.LastRuntimeDiagnostic != null ? behavior.LastRuntimeDiagnostic.ToString() : string.Empty);
+                Assert.AreEqual(1, machine.Objects.Count);
+                Assert.False(machine.TryGetObject("@spawn:1", out _));
+            }
         }
 
         [Test]
@@ -361,13 +588,17 @@ namespace OasisPlayer.Tests
         private RuntimeMachine Machine(MachineRuntimeObjectInstance[] instances, ResolvedRuntimeObjectDefinition definition)
         {
             var definitions = new Dictionary<string, ResolvedRuntimeObjectDefinition> { { "def", definition } };
-            return Machine(instances, definitions);
+            return Machine(instances, definitions, null);
         }
 
-        private RuntimeMachine Machine(MachineRuntimeObjectInstance[] instances, IReadOnlyDictionary<string, ResolvedRuntimeObjectDefinition> definitions)
+        private RuntimeMachine Machine(MachineRuntimeObjectInstance[] instances, IReadOnlyDictionary<string, ResolvedRuntimeObjectDefinition> definitions,
+            IReadOnlyDictionary<string, ResolvedRuntimeObjectDefinition> prefabDependencies = null, MachineRuntimeAnchor[] anchors = null,
+            MachineRuntimeGeometrySurface[] surfaces = null, OasisScriptProgram scriptProgram = null)
         {
-            var manifest = new MachineRuntimeManifest { anchors = Array.Empty<MachineRuntimeAnchor>(), objectInstances = instances };
-            return new RuntimeMachine(new ResolvedRuntimeBuild("", manifest, "", new CabinetRuntimeManifest(), "", Array.Empty<MachineRuntimeFaceReference>(), definitions), null);
+            var manifest = new MachineRuntimeManifest { anchors = anchors ?? Array.Empty<MachineRuntimeAnchor>(), objectInstances = instances,
+                geometrySurfaces = surfaces ?? Array.Empty<MachineRuntimeGeometrySurface>(), runtime = new MachineRuntimeManifestDefinition { kind = "Oasis" },
+                inputs = new[] { new MachineInputDefinition { id = "reset", name = "Reset" } } };
+            return new RuntimeMachine(new ResolvedRuntimeBuild("", manifest, "", new CabinetRuntimeManifest(), "", Array.Empty<MachineRuntimeFaceReference>(), definitions, scriptProgram, prefabDependencies), null);
         }
 
         private static ResolvedRuntimeObjectDefinition Definition(string kind, bool rigidbody = false, string upAxis = "Y", float modelScale = 1)

@@ -1,14 +1,57 @@
-# Single-ball Pool runtime proving case — A8.5
+# Pool runtime examples
+
+The calculated setup is [algorithmic.oasis](algorithmic.oasis). The original
+[behavior.oasis](behavior.oasis) remains the single-ball regression checkpoint.
+Both use the current `oasis:`/`oasis.*` syntax; obsolete `object:` script syntax is
+rejected. Gameplay remains Machine-owned.
+
+## Calculated fifteen-ball rack and separate cue
+
+Use Machine authored schema 10 / runtime 11 and Prefab authored/runtime schema 2.
+Declare `poolBall` and `cueBall` in the Machine's Prefab dependency table. They may
+reference the same ordinary asset (the verified local setup uses the original
+white ball appearance); the cue is a separate entity. No variants are required.
+The Prefab must have a root-centred Sphere collider and uniform positive root
+scale. Radius is queried from effective collider defaults, including intrinsic
+model scale. Remove authored ball placements: startup creates all sixteen.
+
+Declare `rackOrigin`, `cueStart` and `collectionTray` at measured support-surface
+height, with +Y normal and +Z rack direction. The script adds the collider radius
+and 1.5 mm clearance to the centre height. Declare `playingSurface` as a measured
+oriented rectangle. The verified local table used top Y=0.80154955 m, width=0.778 m,
+length=1.58 m; rack Z=0.15 m, cue Z=-0.35 m and collection Z=-0.65 m. These are
+measured values for that Cabinet, not universal defaults. Keep all six pocket
+identities and the logical `rerack`/`newGame` inputs with R/N development shortcuts.
+
+Five calculated rows create 1+2+3+4+5 balls using diameter + 0.5 mm spacing and
+sqrt(3)/2 row separation. All rack/cue positions are checked before allocation.
+Numbered-ball collection uses fifteen calculated slots across the table; the guard
+is set before teleport. Cue pocketing returns only the cue. Rerack repositions the
+existing entities and clears both velocities; newGame destroys/recreates the set.
+This example leaves the collected balls visible and supported on the playing
+surface; a separate physical collection tray needs its own measured support.
+
+The local disposable project passed actual Player GLB loading, five-row/no-overlap
+checks, two seconds of settled physics, all collection slots and duplicate events,
+cue recovery, all six natural vertical pocket drops, five new games and unload/reload.
+Keyboard focus, rendered Player gameplay, aiming, shots, numbering, full rules and
+scoring remain outside this proving case.
+
+`OasisEditor.Mcp/author_algorithmic_pool.py` authors this setup through commands on
+an explicit disposable current-format PoolTableTest1 project. The hidden Player
+launcher accepts `-Mode Algorithmic` for the actual integration probe. Retain a
+backup before explicitly reauthoring user-local assets; never edit Generated output.
+
+## Single-ball regression checkpoint — A8.5 / P3
 
 Canonical gameplay: [behavior.oasis](behavior.oasis). This initial proving case uses
 one ball, two Machine-space anchors, six coordinate-based pocket trigger IDs and two logical
 inputs. There are no lists, loops, tray counters, multi-ball allocation or cue-ball
 rules in the script; its only mutable state is `collected`, a Bool.
 
-No authored Pool Machine, PoolTable Cabinet/GLB or PoolBall Object3D packages were
-available when this PR was created. No user-local Machine or asset was modified.
-The integration fixture is synthetic test content, not a completed playable asset.
-Connect this file to your actual composition; do not infer asset paths from this guide.
+User-local Cabinet/ball assets are not committed. Both synthetic regression
+fixtures and the actual local Pool copy have been verified; asset paths remain
+project-specific.
 
 ## Exact required composition
 
@@ -16,7 +59,7 @@ IDs are case-sensitive Machine identities, not GameObject display names.
 
 | Domain | Required typed IDs | Authoring source |
 | --- | --- | --- |
-| Object3D instance | `object:ball01` | One Machine instance referencing your actual ball Object3D asset |
+| Object3D instance | `oasis:ball01` | One Machine instance referencing your actual ball Object3D asset |
 | Start anchor | `anchor:rackBall01` | Machine anchor; position and XYZ Euler degrees in Machine space |
 | Collection anchor | `anchor:traySlot01` | Machine anchor on a physically supported collection area |
 | Pocket triggers | `trigger:Pocket_XNeg_Middle`, `trigger:Pocket_XNeg_YNeg`, `trigger:Pocket_XNeg_YPos`, `trigger:Pocket_XPos_Middle`, `trigger:Pocket_XPos_YNeg`, `trigger:Pocket_XPos_YPos` | Existing Cabinet GLB semantic nodes/meshes `OasisTrigger_<id>`; winning node name takes precedence over mesh name |
@@ -189,7 +232,7 @@ On Windows/.NET 9, also verify these authoring fixes before the gameplay checkli
 1. Paste this script into an incomplete Oasis Machine, Save and Save As, then reopen
    each package. Confirm exact source preservation, clean dirty state/path updates,
    and unchanged diagnostic codes/locations. Repeat with a syntax error and a type
-   error, such as `object.reset(1);`. Storage/package failures must still report errors.
+   error, such as `oasis.reset(1);`. Storage/package failures must still report errors.
 2. In an empty Input Map, add `rerack` and `newGame` with explicit IDs; confirm their
    OSM3004 errors clear. Undo each addition and confirm its error returns, then redo
    and confirm it clears. Save/reopen and inspect the IDs and display names.
@@ -226,9 +269,9 @@ strict rejection preserving every runtime package file, explicit input IDs and e
 validation/cancellation/context targeting, and diagnostic updates through undo/redo.
 
 Run the full Oasis.Scripting.Tests and OasisEditor.Tests locally on Windows/.NET 9,
-and Player EditMode tests in Unity 6000.0.47f1. These suites and the actual asset
-manual checklist have not been executed in Codex: AGENTS.md prohibits builds and
-test execution here. Static checks do not establish a passing .NET or Unity suite.
+and Player EditMode tests in Unity 6000.0.47f1. Supported local .NET and focused Unity suites have been executed; the current
+calculated example above records actual runtime evidence. Desktop keyboard/focus
+and complete rendered-gameplay checks remain manual.
 A8.6 fruit-device commands and A8.7 Whac-A-Mole validation remain separate work.
 
 

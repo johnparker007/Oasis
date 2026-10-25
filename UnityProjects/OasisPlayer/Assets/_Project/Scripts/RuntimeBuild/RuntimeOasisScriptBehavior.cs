@@ -57,7 +57,7 @@ namespace OasisPlayer.RuntimeBuild
         {
             // The A7 publisher may already have snapshotted this callback when unload occurs.
             if (IsDisposed || IsFaulted || !_machine.IsActive) return;
-            if (!TryTranslateEvent(value, out var scriptEvent)) return;
+            if (!TryTranslateEvent(_machine, value, out var scriptEvent)) return;
             _session.Dispatch(scriptEvent);
             if (_session.IsFaulted) ReportFault();
         }
@@ -70,8 +70,9 @@ namespace OasisPlayer.RuntimeBuild
             _reportFault("Oasis Script fault in Machine '" + _machineName + "': " + diagnostic.SourceName + ":" + diagnostic.Line + ":" + diagnostic.Column + " " + diagnostic.Code + " " + diagnostic.Message + " while handling " + diagnostic.EventName);
         }
 
-        internal static bool TryTranslateEvent(RuntimeMachineEvent value, out OasisScriptEvent scriptEvent)
+        internal static bool TryTranslateEvent(RuntimeMachine machine, RuntimeMachineEvent value, out OasisScriptEvent scriptEvent)
         {
+            if (machine == null) throw new ArgumentNullException(nameof(machine));
             switch (value)
             {
                 case RuntimeMachineStartedEvent _:
@@ -81,13 +82,17 @@ namespace OasisPlayer.RuntimeBuild
                 case RuntimeInputReleasedEvent input:
                     scriptEvent = OasisScriptEvent.InputReleased(OasisScriptReferenceValue.Input(input.InputId)); break;
                 case RuntimeTriggerEnteredEvent trigger:
-                    scriptEvent = OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger(trigger.TriggerId), OasisScriptReferenceValue.Object(trigger.ObjectId)); break;
+                    if (!machine.TryGetObject(trigger.ObjectId, out _)) { scriptEvent = null; return false; }
+                    scriptEvent = OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger(trigger.TriggerId), machine.GetObjectReference(trigger.ObjectId)); break;
                 case RuntimeTriggerExitedEvent trigger:
-                    scriptEvent = OasisScriptEvent.TriggerExited(OasisScriptReferenceValue.Trigger(trigger.TriggerId), OasisScriptReferenceValue.Object(trigger.ObjectId)); break;
+                    if (!machine.TryGetObject(trigger.ObjectId, out _)) { scriptEvent = null; return false; }
+                    scriptEvent = OasisScriptEvent.TriggerExited(OasisScriptReferenceValue.Trigger(trigger.TriggerId), machine.GetObjectReference(trigger.ObjectId)); break;
                 case RuntimeCollisionEnteredEvent collision:
-                    scriptEvent = OasisScriptEvent.CollisionEntered(OasisScriptReferenceValue.Object(collision.ObjectId), OasisScriptReferenceValue.Object(collision.OtherObjectId)); break;
+                    if (!machine.TryGetObject(collision.ObjectId, out _) || !machine.TryGetObject(collision.OtherObjectId, out _)) { scriptEvent = null; return false; }
+                    scriptEvent = OasisScriptEvent.CollisionEntered(machine.GetObjectReference(collision.ObjectId), machine.GetObjectReference(collision.OtherObjectId)); break;
                 case RuntimeCollisionExitedEvent collision:
-                    scriptEvent = OasisScriptEvent.CollisionExited(OasisScriptReferenceValue.Object(collision.ObjectId), OasisScriptReferenceValue.Object(collision.OtherObjectId)); break;
+                    if (!machine.TryGetObject(collision.ObjectId, out _) || !machine.TryGetObject(collision.OtherObjectId, out _)) { scriptEvent = null; return false; }
+                    scriptEvent = OasisScriptEvent.CollisionExited(machine.GetObjectReference(collision.ObjectId), machine.GetObjectReference(collision.OtherObjectId)); break;
                 case RuntimeTimerElapsedEvent timer:
                     scriptEvent = OasisScriptEvent.TimerElapsed(timer.TimerId); break;
                 default:

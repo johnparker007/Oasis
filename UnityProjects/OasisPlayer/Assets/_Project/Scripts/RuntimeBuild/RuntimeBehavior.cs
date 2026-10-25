@@ -199,10 +199,10 @@ namespace OasisPlayer.RuntimeBuild
         private void OnCollisionExit(Collision collision) { PublishCollisionExited(collision.collider); }
         private void Publish(Collider other, bool entered)
         {
-            if (_machine == null || !_machine.IsActive || other == null) return;
+            if (_machine == null || !_machine.IsActive || other == null || !_machine.TryGetObject(_objectId, out _)) return;
             var identity = other.GetComponentInParent<RuntimeObjectIdentity>();
-            if (identity == null || identity._machine != _machine || identity._objectId == _objectId) return;
-            _machine.Events.Publish(entered ? (RuntimeMachineEvent)new RuntimeCollisionEnteredEvent(_objectId, identity._objectId) : new RuntimeCollisionExitedEvent(_objectId, identity._objectId));
+            if (identity == null || identity._machine != _machine || !_machine.TryGetObjectIdentity(identity, out var otherObjectId) || otherObjectId == _objectId) return;
+            _machine.Events.Publish(entered ? (RuntimeMachineEvent)new RuntimeCollisionEnteredEvent(_objectId, otherObjectId) : new RuntimeCollisionExitedEvent(_objectId, otherObjectId));
         }
     }
 

@@ -9,10 +9,10 @@ namespace Oasis.Scripting
     public enum OasisScriptTokenKind
     {
         End, Identifier, Number, String, Reference,
-        Const, State, Let, On, If, Else, For, In, True, False, And, Or, Not,
+        Const, State, Let, On, If, Else, For, In, Fn, Return, True, False, And, Or, Not,
         LeftParen, RightParen, LeftBrace, RightBrace, LeftBracket, RightBracket,
         Comma, Semicolon, Dot, Plus, Minus, Star, Slash, Percent,
-        Equal, EqualEqual, BangEqual, Less, LessEqual, Greater, GreaterEqual
+        Equal, EqualEqual, BangEqual, Less, LessEqual, Greater, GreaterEqual, Colon, Arrow
     }
 
     public sealed class OasisScriptToken
@@ -28,8 +28,8 @@ namespace Oasis.Scripting
     public sealed class OasisScriptLexer
     {
         private static readonly Dictionary<string, OasisScriptTokenKind> Keywords = new Dictionary<string, OasisScriptTokenKind>(StringComparer.Ordinal)
-        { ["const"] = OasisScriptTokenKind.Const, ["state"] = OasisScriptTokenKind.State, ["let"] = OasisScriptTokenKind.Let, ["on"] = OasisScriptTokenKind.On, ["if"] = OasisScriptTokenKind.If, ["else"] = OasisScriptTokenKind.Else, ["for"] = OasisScriptTokenKind.For, ["in"] = OasisScriptTokenKind.In, ["true"] = OasisScriptTokenKind.True, ["false"] = OasisScriptTokenKind.False, ["and"] = OasisScriptTokenKind.And, ["or"] = OasisScriptTokenKind.Or, ["not"] = OasisScriptTokenKind.Not };
-        private static readonly HashSet<string> ReferencePrefixes = new HashSet<string>(StringComparer.Ordinal) { "object", "anchor", "trigger", "input", "lamp", "reel", "alpha", "sevenSegment" };
+        { ["const"] = OasisScriptTokenKind.Const, ["state"] = OasisScriptTokenKind.State, ["let"] = OasisScriptTokenKind.Let, ["on"] = OasisScriptTokenKind.On, ["if"] = OasisScriptTokenKind.If, ["else"] = OasisScriptTokenKind.Else, ["for"] = OasisScriptTokenKind.For, ["in"] = OasisScriptTokenKind.In, ["fn"] = OasisScriptTokenKind.Fn, ["return"] = OasisScriptTokenKind.Return, ["true"] = OasisScriptTokenKind.True, ["false"] = OasisScriptTokenKind.False, ["and"] = OasisScriptTokenKind.And, ["or"] = OasisScriptTokenKind.Or, ["not"] = OasisScriptTokenKind.Not };
+        private static readonly HashSet<string> ReferencePrefixes = new HashSet<string>(StringComparer.Ordinal) { "oasis", "anchor", "trigger", "input", "lamp", "reel", "alpha", "sevenSegment", "prefab", "surface" };
         private readonly string _text;
         private readonly string _sourceName;
         private readonly List<OasisScriptDiagnostic> _diagnostics = new List<OasisScriptDiagnostic>();
@@ -54,8 +54,9 @@ namespace Oasis.Scripting
                 if (char.IsLetter(Current) || Current == '_') { tokens.Add(LexWord(start, line, column)); continue; }
                 if (char.IsDigit(Current)) { tokens.Add(LexNumber(start, line, column)); continue; }
                 if (Current == '"') { tokens.Add(LexString(start, line, column)); continue; }
-                var kind = Current switch { '(' => OasisScriptTokenKind.LeftParen, ')' => OasisScriptTokenKind.RightParen, '{' => OasisScriptTokenKind.LeftBrace, '}' => OasisScriptTokenKind.RightBrace, '[' => OasisScriptTokenKind.LeftBracket, ']' => OasisScriptTokenKind.RightBracket, ',' => OasisScriptTokenKind.Comma, ';' => OasisScriptTokenKind.Semicolon, '.' => OasisScriptTokenKind.Dot, '+' => OasisScriptTokenKind.Plus, '-' => OasisScriptTokenKind.Minus, '*' => OasisScriptTokenKind.Star, '/' => OasisScriptTokenKind.Slash, '%' => OasisScriptTokenKind.Percent, _ => OasisScriptTokenKind.End };
-                if (Current == '=' && Peek(1) == '=') { Advance(); Advance(); tokens.Add(Token(OasisScriptTokenKind.EqualEqual, start, line, column)); }
+                var kind = Current switch { '(' => OasisScriptTokenKind.LeftParen, ')' => OasisScriptTokenKind.RightParen, '{' => OasisScriptTokenKind.LeftBrace, '}' => OasisScriptTokenKind.RightBrace, '[' => OasisScriptTokenKind.LeftBracket, ']' => OasisScriptTokenKind.RightBracket, ',' => OasisScriptTokenKind.Comma, ';' => OasisScriptTokenKind.Semicolon, '.' => OasisScriptTokenKind.Dot, ':' => OasisScriptTokenKind.Colon, '+' => OasisScriptTokenKind.Plus, '-' => OasisScriptTokenKind.Minus, '*' => OasisScriptTokenKind.Star, '/' => OasisScriptTokenKind.Slash, '%' => OasisScriptTokenKind.Percent, _ => OasisScriptTokenKind.End };
+                if (Current == '-' && Peek(1) == '>') { Advance(); Advance(); tokens.Add(Token(OasisScriptTokenKind.Arrow, start, line, column)); }
+                else if (Current == '=' && Peek(1) == '=') { Advance(); Advance(); tokens.Add(Token(OasisScriptTokenKind.EqualEqual, start, line, column)); }
                 else if (Current == '!' && Peek(1) == '=') { Advance(); Advance(); tokens.Add(Token(OasisScriptTokenKind.BangEqual, start, line, column)); }
                 else if (Current == '<') { Advance(); if (Current == '=') { Advance(); kind = OasisScriptTokenKind.LessEqual; } else kind = OasisScriptTokenKind.Less; tokens.Add(Token(kind, start, line, column)); }
                 else if (Current == '>') { Advance(); if (Current == '=') { Advance(); kind = OasisScriptTokenKind.GreaterEqual; } else kind = OasisScriptTokenKind.Greater; tokens.Add(Token(kind, start, line, column)); }

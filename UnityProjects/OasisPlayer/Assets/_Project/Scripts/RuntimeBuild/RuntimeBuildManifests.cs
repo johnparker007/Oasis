@@ -26,6 +26,8 @@ namespace OasisPlayer.RuntimeBuild
         public string cabinetManifest = string.Empty;
         public MachineRuntimeFaceReference[] faces = Array.Empty<MachineRuntimeFaceReference>();
         public MachineRuntimeObjectInstance[] objectInstances = Array.Empty<MachineRuntimeObjectInstance>();
+        public MachineRuntimePrefabDependency[] prefabDependencies = Array.Empty<MachineRuntimePrefabDependency>();
+        public MachineRuntimeGeometrySurface[] geometrySurfaces = Array.Empty<MachineRuntimeGeometrySurface>();
         public MachineRuntimeAnchor[] anchors;
         public MachineRuntimeManifestDefinition runtime;
         public MachineInputDefinition[] inputs = Array.Empty<MachineInputDefinition>();
@@ -34,6 +36,8 @@ namespace OasisPlayer.RuntimeBuild
     [Serializable] public sealed class RuntimeVector3Definition { public float x; public float y; public float z; public Vector3 Value { get { return new Vector3(x, y, z); } } }
     [Serializable] public sealed class MachineRuntimeObjectTransform { public RuntimeVector3Definition position = new RuntimeVector3Definition(); public RuntimeVector3Definition rotationEulerDegrees = new RuntimeVector3Definition(); public RuntimeVector3Definition scale = new RuntimeVector3Definition(); }
     [Serializable] public sealed class MachineRuntimeObjectInstance { public string id = string.Empty; public string displayName = string.Empty; public string definitionId = string.Empty; public string definitionManifest = string.Empty; public MachineRuntimeObjectTransform transform = new MachineRuntimeObjectTransform(); public string parentId = string.Empty; public bool active = true; }
+    [Serializable] public sealed class MachineRuntimePrefabDependency { public string alias = string.Empty; public string definitionId = string.Empty; public string definitionManifest = string.Empty; }
+    [Serializable] public sealed class MachineRuntimeGeometrySurface { public string id = string.Empty; public RuntimeVector3Definition position; public RuntimeVector3Definition rotationEulerDegrees; public float width; public float length; }
     [Serializable] public sealed class MachineRuntimeAnchor { public string id = string.Empty; public string displayName = string.Empty; public RuntimeVector3Definition position = new RuntimeVector3Definition(); public RuntimeVector3Definition rotationEulerDegrees = new RuntimeVector3Definition(); }
     [Serializable] public sealed class Object3DRuntimeTransform { public RuntimeVector3Definition position = new RuntimeVector3Definition(); public RuntimeVector3Definition rotationEulerDegrees = new RuntimeVector3Definition(); public RuntimeVector3Definition scale = new RuntimeVector3Definition(); }
     [Serializable] public sealed class Object3DRuntimeModel { public string path = string.Empty; public float scale; public string upAxis = string.Empty; }
@@ -264,7 +268,8 @@ namespace OasisPlayer.RuntimeBuild
 
     public sealed class ResolvedRuntimeBuild
     {
-        public ResolvedRuntimeBuild(string buildRoot, MachineRuntimeManifest machine, string cabinetManifestPath, CabinetRuntimeManifest cabinet, string glbPath, MachineRuntimeFaceReference[] faces, IReadOnlyDictionary<string, ResolvedRuntimeObjectDefinition> objectDefinitions, OasisScriptProgram scriptProgram = null)
+        public ResolvedRuntimeBuild(string buildRoot, MachineRuntimeManifest machine, string cabinetManifestPath, CabinetRuntimeManifest cabinet, string glbPath, MachineRuntimeFaceReference[] faces, IReadOnlyDictionary<string, ResolvedRuntimeObjectDefinition> objectDefinitions, OasisScriptProgram scriptProgram = null,
+            IReadOnlyDictionary<string, ResolvedRuntimeObjectDefinition> prefabDependencies = null)
         {
             BuildRoot = buildRoot;
             Machine = machine;
@@ -274,6 +279,7 @@ namespace OasisPlayer.RuntimeBuild
             Faces = faces ?? Array.Empty<MachineRuntimeFaceReference>();
             ObjectDefinitions = objectDefinitions ?? new Dictionary<string, ResolvedRuntimeObjectDefinition>();
             ScriptProgram = scriptProgram;
+            PrefabDependencies = prefabDependencies ?? new Dictionary<string, ResolvedRuntimeObjectDefinition>();
         }
 
         // Session-ready program. A8.4 supplies the real host and event adapter.
@@ -285,6 +291,7 @@ namespace OasisPlayer.RuntimeBuild
         public string GlbPath { get; }
         public IReadOnlyList<MachineRuntimeFaceReference> Faces { get; }
         public IReadOnlyDictionary<string, ResolvedRuntimeObjectDefinition> ObjectDefinitions { get; }
+        public IReadOnlyDictionary<string, ResolvedRuntimeObjectDefinition> PrefabDependencies { get; }
     }
 
     public static class RuntimeBuildLoader
@@ -292,7 +299,7 @@ namespace OasisPlayer.RuntimeBuild
         public const string MachineSchema = "oasis.machine.runtime";
         public const string CabinetSchema = "oasis.cabinet.runtime";
         public const string ObjectSchema = "oasis.object3d.runtime";
-        public const int MachineSchemaVersion = 10;
+        public const int MachineSchemaVersion = 11;
         public const int ObjectSchemaVersion = 2;
 
         public static bool TryLoad(string buildDirectory, out ResolvedRuntimeBuild build, out string error)
@@ -441,9 +448,26 @@ namespace OasisPlayer.RuntimeBuild
 
             var objectDefinitions = new Dictionary<string, ResolvedRuntimeObjectDefinition>(StringComparer.OrdinalIgnoreCase);
             var definitionManifestPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            for (var i = 0; i < objectInstances.Length; i++)
+            var requests = new List<MachineRuntimeObjectInstance>(objectInstances);
+            var aliases = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var dependency in machine.prefabDependencies ?? Array.Empty<MachineRuntimePrefabDependency>())
             {
-                var instance = objectInstances[i];
+                if (dependency == null || !IsCompositionId(dependency.alias) || !aliases.Add(dependency.alias)
+                    || !Guid.TryParse(dependency.definitionId, out _))
+                { error = "Prefab dependency alias/definition ID is invalid or duplicated."; return false; }
+                requests.Add(new MachineRuntimeObjectInstance { id = "prefab:" + dependency.alias, definitionId = dependency.definitionId, definitionManifest = dependency.definitionManifest });
+            }
+            var surfaceIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var surface in machine.geometrySurfaces ?? Array.Empty<MachineRuntimeGeometrySurface>())
+            {
+                if (surface == null || !IsCompositionId(surface.id) || !surfaceIds.Add(surface.id)
+                    || surface.position == null || surface.rotationEulerDegrees == null || !IsFinite(surface.position) || !IsFinite(surface.rotationEulerDegrees)
+                    || !IsFinitePositive(surface.width) || !IsFinitePositive(surface.length))
+                { error = "Geometry surface ID, finite pose and positive dimensions are required; IDs must be unique."; return false; }
+            }
+            for (var i = 0; i < requests.Count; i++)
+            {
+                var instance = requests[i];
                 if (objectDefinitions.ContainsKey(instance.definitionId))
                 {
                     var priorManifest = definitionManifestPaths[instance.definitionId];
@@ -464,7 +488,9 @@ namespace OasisPlayer.RuntimeBuild
                 definitionManifestPaths.Add(instance.definitionId, objectManifestPath);
             }
             if (!ValidateObjectBodyParenting(objectInstances, objectDefinitions, out error)) return false;
-            build = new ResolvedRuntimeBuild(root, machine, cabinetPath, cabinet, glbPath, machine.faces, objectDefinitions, scriptProgram);
+            var declaredPrefabs = new Dictionary<string, ResolvedRuntimeObjectDefinition>(StringComparer.Ordinal);
+            foreach (var dependency in machine.prefabDependencies ?? Array.Empty<MachineRuntimePrefabDependency>()) declaredPrefabs.Add(dependency.alias, objectDefinitions[dependency.definitionId]);
+            build = new ResolvedRuntimeBuild(root, machine, cabinetPath, cabinet, glbPath, machine.faces, objectDefinitions, scriptProgram, declaredPrefabs);
             return true;
         }
 

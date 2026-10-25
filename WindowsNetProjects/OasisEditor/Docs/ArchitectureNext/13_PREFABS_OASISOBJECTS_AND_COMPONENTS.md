@@ -1,8 +1,10 @@
 # Prefabs, OasisObjects and Components — proposed architecture
 
-Status updated 2026-10-25: P1 authoring delivered in PR #745; P2 runtime components
-and the P3 checkpoint are being verified. Later language/lifecycle/variants sections
-remain proposals. Delivery and prerequisites are in [the phased plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md). This extends A1–A8, rather than replacing their delivered runtime boundary.
+Status updated 2026-10-25: P1 authoring is merged in PR #745; P2 runtime components
+and the P3 checkpoint are merged in PR #746. The Pool-required P4 subset and P5
+are implemented and locally verified. Variants, Optional values and physics-step
+kinematic targets remain proposals. Delivery and prerequisites are in
+[the phased plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md). This extends A1–A8.
 
 ## Evidence and current baseline
 

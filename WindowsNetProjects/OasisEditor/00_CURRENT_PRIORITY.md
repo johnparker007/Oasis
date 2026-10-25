@@ -2,9 +2,11 @@
 
 The active workstream evolves the existing Object3D asset/instance pipeline into
 Prefab / OasisObject / Component contracts, followed by algorithmic Pool setup.
-P1 authoring is delivered in PR #745. P2 runtime components and the P3 single-ball
-checkpoint have passed local verification and await merge; P4 spawning/language additions and P5 calculated
-Pool setup follow only after that checkpoint. The user has authorised this sequence.
+P1 authoring is delivered in PR #745; P2 runtime components and the P3 single-ball
+checkpoint are merged in PR #746. The Pool-required P4 lifecycle/language/query
+subset and P5 calculated Pool setup are implemented and locally verified.
+Optional values and physics-step kinematic targets remain deferred with P6–P8.
+The user has authorised this sequence.
 
 Read AGENTS.md, then Docs/ArchitectureNext/00_OVERVIEW.md,
 10_ACTIVE_ROADMAP.md, 13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md and
@@ -16,11 +18,10 @@ Delivered baseline: A1–A7 and A8.1–A8.4; A8.5 initial single-ball Pool scrip
 integration coverage, merged trigger discoverability and authored development
 keyboard bindings. A disposable actual Pool copy with corrected anchors passed
 single-ball physics, all six natural pocket drops, input/trigger/reset on the P1
-runtime baseline and again under P2 with a parented ball and inline child. Original
-user content is still unchanged. Preserve single-ball
-build/load/input/trigger/reset as the P3
-gate before multi-ball work. Existing lists/for/range/arithmetic are delivered;
-spawning, functions, typed live refs and focused geometry queries are proposed.
+runtime baseline and again under P2 with a parented ball and inline child. The calculated 15-ball rack plus separate cue also passed actual Player physics,
+all six natural pocket drops, collection/recovery, repeated new games and unload/reload.
+Preserve the single-ball fixture as regression coverage. Spawning, bounded functions,
+typed lists/live refs and focused geometry queries are implemented.
 
 Gameplay remains Machine-owned behavior.oasis. Preserve A7 commands/timers and
 A8.4 startup/fault/unload semantics; never attach behaviour to Emulation Machines.

@@ -1,6 +1,12 @@
 # Oasis Script language design
 
-> Delivered Object3D/A8 baseline and existing contracts below remain current. The proposed evolution is in [Prefab/OasisObject architecture](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md) and [delivery plan](14_PREFAB_AND_POOL_DELIVERY_PLAN.md); none of P1–P8 is implemented. Proposed variants/functions/spawning are later milestones, not current functionality.
+> Current implementation: Prefab authoring/runtime P1–P3 is merged. P4's Pool-required
+> scoped references, declared dependencies, bounded spawning, typed lists/functions
+> and geometry/frame queries are implemented and being verified with P5. The
+> [calculated Pool example](../../Examples/Pool/algorithmic.oasis) is the executable
+> syntax reference. Optional values, kinematic motion commands, variants and later
+> proving cases remain deferred; illustrative older design sections below are not
+> a promise of those capabilities.
 
 ## Purpose and placement
 
@@ -11,9 +17,9 @@ behaviour. Its canonical source extension is `.oasis`; examples use
 networking, reflection, CLR interop, or host-object dependency, so Editor and Player
 can consume one lexer/parser/type-checker implementation.
 
-Machine authored schema 8 separates Runtime from Behaviour: Oasis requires one
+Machine authored schema 10 separates Runtime from Behaviour: Oasis requires one
 package-local `behavior.oasis`; Emulation forbids behaviour. A8.3 implements source
-packaging (Machine runtime schema 9) and pure interpretation; A8.4 implements the
+packaging (current Machine runtime schema 11) and pure interpretation; A8.4 implements the
 Player-side A7 host adapter. Canonical source is in `Oasis.Scripting/Package/Runtime/`, compiled by
 the .NET project and Player's local UPM package without source duplication.
 

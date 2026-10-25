@@ -28,7 +28,7 @@ public sealed class MachineDocumentTests
     }
 
     [Fact]
-    public void Schema9_RoundTripsCompositionRuntimeAndInputs()
+    public void Schema10_RoundTripsCompositionRuntimeAndInputs()
     {
         var machine = MachineDocument.Create("Machine A") with
         {
@@ -40,7 +40,7 @@ public sealed class MachineDocumentTests
         var json = MachineDocumentStorage.Serialize(machine);
         using (var authored = JsonDocument.Parse(json))
         {
-            Assert.Equal(9, authored.RootElement.GetProperty("schemaVersion").GetInt32());
+            Assert.Equal(10, authored.RootElement.GetProperty("schemaVersion").GetInt32());
             Assert.Empty(authored.RootElement.GetProperty("objectInstances").EnumerateArray());
             Assert.Equal("Emulation", authored.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
             Assert.False(authored.RootElement.GetProperty("runtime").TryGetProperty("$type", out _));
@@ -56,9 +56,9 @@ public sealed class MachineDocumentTests
     [Fact]
     public void WrongSchema_IsRejectedWithoutCompatibilityFallback()
     {
-        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")).Replace("\"schemaVersion\": 9", "\"schemaVersion\": 7");
+        var json = MachineDocumentStorage.Serialize(MachineDocument.Create("Machine")).Replace("\"schemaVersion\": 10", "\"schemaVersion\": 7");
         Assert.False(MachineDocumentStorage.TryRead(json, out _, out var error));
-        Assert.Contains("only version 9", error);
+        Assert.Contains("only version 10", error);
     }
 
     [Fact]
@@ -76,6 +76,34 @@ public sealed class MachineDocumentTests
         Assert.Equal(anchors, result.Anchors);
         Assert.Equal(MachineVector3.Zero, MachineAnchor.Create("anchor1").Position);
         Assert.Equal(MachineVector3.Zero, MachineAnchor.Create("anchor1").Rotation);
+    }
+
+    [Fact]
+    public void Schema10_RoundTripsPrefabDependenciesAndGeometrySurfaces()
+    {
+        var source = MachineDocument.Create("Pool") with
+        {
+            PrefabDependencies = [new("poolBall", AssetReference.Project("Assets/Object3D/PoolBall/asset.object3d"))],
+            GeometrySurfaces = [new("playingSurface", new(1, 2, 3), new(0, 90, 0), 1.2, 2.4)]
+        };
+
+        var json = MachineDocumentStorage.Serialize(source);
+        Assert.True(MachineDocumentStorage.TryRead(json, out var reopened, out var error), error);
+        Assert.Equal(source.PrefabDependencies, reopened.PrefabDependencies);
+        Assert.Equal(source.GeometrySurfaces, reopened.GeometrySurfaces);
+
+        Assert.Throws<InvalidOperationException>(() => MachineDocumentStorage.Serialize(source with
+        {
+            PrefabDependencies = [new("poolBall", AssetReference.Project("Assets/Object3D/A/asset.object3d")), new("poolBall", AssetReference.Library("Object3D/B/asset.object3d"))]
+        }));
+        Assert.Throws<InvalidOperationException>(() => MachineDocumentStorage.Serialize(source with
+        {
+            GeometrySurfaces = [new("playingSurface", new(0, 0, 0), new(0, 0, 0), 0, 1)]
+        }));
+        Assert.Throws<InvalidOperationException>(() => MachineDocumentStorage.Serialize(source with
+        {
+            GeometrySurfaces = [new("playingSurface", new(double.NaN, 0, 0), new(0, 0, 0), 1, 1)]
+        }));
     }
 
     [Theory]

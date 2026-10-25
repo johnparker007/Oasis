@@ -7,6 +7,7 @@ namespace Oasis.Scripting.Tests;
 public sealed class PoolBehaviorTests
 {
     private static readonly string[] Pockets = { "Pocket_XNeg_Middle", "Pocket_XNeg_YNeg", "Pocket_XNeg_YPos", "Pocket_XPos_Middle", "Pocket_XPos_YNeg", "Pocket_XPos_YPos" };
+    private static OasisScriptReferenceValue LiveObject(string id) => OasisScriptReferenceValue.OasisObject(id, "test-session", 1);
 
     private static OasisScriptSession Create(Host host)
     {
@@ -20,7 +21,7 @@ public sealed class PoolBehaviorTests
         Assert.True(session.Dispatch(value), session.LastRuntimeDiagnostic?.ToString());
 
     private static OasisScriptEvent Pocket(string ball = "ball01", int pocket = 0) =>
-        OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger(Pockets[pocket]), OasisScriptReferenceValue.Object(ball));
+        OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger(Pockets[pocket]), LiveObject(ball));
 
     private static bool Collected(OasisScriptSession session)
     {
@@ -77,8 +78,8 @@ public sealed class PoolBehaviorTests
         var host = new Host(); var session = Create(host);
         Dispatch(session, OasisScriptEvent.MachineStarted()); host.Calls.Clear();
         foreach (var pocket in Enumerable.Range(0, 6)) Dispatch(session, Pocket("decoration", pocket));
-        Dispatch(session, OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger("other"), OasisScriptReferenceValue.Object("ball01")));
-        Dispatch(session, OasisScriptEvent.TriggerExited(OasisScriptReferenceValue.Trigger(Pockets[0]), OasisScriptReferenceValue.Object("ball01")));
+        Dispatch(session, OasisScriptEvent.TriggerEntered(OasisScriptReferenceValue.Trigger("other"), LiveObject("ball01")));
+        Dispatch(session, OasisScriptEvent.TriggerExited(OasisScriptReferenceValue.Trigger(Pockets[0]), LiveObject("ball01")));
         Assert.Empty(host.Calls); Assert.False(Collected(session));
         Dispatch(session, Pocket()); Placement(host, "traySlot01", false); Assert.True(Collected(session));
     }

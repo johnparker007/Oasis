@@ -2,6 +2,7 @@
 param(
     [Parameter(Mandatory)][string]$BuildRoot,
     [Parameter(Mandatory)][string]$BridgeExecutable,
+    [ValidateSet('SingleBall','Algorithmic')][string]$Mode = 'SingleBall',
     [string]$UnityExecutable = 'C:\Program Files\Unity\Hub\Editor\6000.0.47f1\Editor\Unity.exe'
 )
 $ErrorActionPreference = 'Stop'
@@ -15,6 +16,7 @@ if (!(Test-Path -LiteralPath (Join-Path $project 'Packages\manifest.json'))) { t
 $session = Join-Path $env:TEMP ('OasisPoolPlayer-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $session | Out-Null
 $env:OASIS_POOL_VERIFY_BUILD = $build
+$env:OASIS_POOL_VERIFY_MODE = $Mode.ToLowerInvariant()
 $env:OASIS_VERIFY_SESSION_DIR = $session
 $env:UNITY_MCP_ALLOW_BATCH = '1'
 $env:UNITY_MCP_LOG_DIR = Join-Path $session 'server'

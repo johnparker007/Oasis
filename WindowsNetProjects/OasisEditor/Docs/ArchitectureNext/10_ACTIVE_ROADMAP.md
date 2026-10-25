@@ -204,8 +204,10 @@ The added suites have not run in Codex, and no inherited suite pass is assumed.
 
 ## Active track P — Prefabs, OasisObjects and algorithmic Pool
 
-P1 authoring is merged in PR #745. P2 runtime components and the P3 single-ball
-checkpoint have local implementation/verification evidence and await merge.
+P1 authoring is merged in PR #745; P2 runtime components and P3 single-ball
+verification are merged in PR #746. The Pool-required P4 subset and P5 are
+implemented and locally verified, including actual 16-ball Player physics and lifecycle.
+Optional values and kinematic target movement remain deferred for later proving cases.
 Evolve the existing Object3D pipeline rather than adding a parallel Prefab system.
 Contracts and inspected baseline:
 [13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md](13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md).
@@ -224,7 +226,7 @@ Detailed scope, dependencies, coverage, local checks and first-phase prompt:
 
 Proposed reprioritisation: defer A8.6 fruit-device commands behind P; expand A8.7
 into P7. A8.5 single-ball implementation is delivered, not replaced or undone;
-actual asset wiring/local verification remains a P3 prerequisite. Keep useful A1–A8
+actual asset wiring/local verification passed at P3 and again for calculated Pool. Keep useful A1–A8
 history above as baseline, not instructions to recreate it. New syntax in document
 13 is illustrative only. No generic emulation-device migration in this track.
 

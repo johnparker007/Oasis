@@ -11,7 +11,7 @@ namespace OasisPlayer.Tests
         [Test]
         public void StrictReaderPreservesEditorExportedInputMetadataAndNullableCoinValues()
         {
-            var manifest = RuntimeManifestJsonReader.ReadMachine("{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":10,\"machineId\":\"machine\",\"displayName\":\"Pool\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"anchors\":[],\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"None\",\"platformSettingsJson\":\"{}\",\"behavior\":null},\"inputs\":[{\"id\":\"coin\",\"kind\":2,\"buttonNumber\":\"3\",\"coinInput\":true,\"coinChannel\":2,\"coinValue\":null,\"inverted\":false,\"rawMfmeShortcut\":\"1\",\"keyboardShortcut\":\"D1\",\"linkedVisualElementId\":null,\"notes\":\"Imported\"}]}");
+            var manifest = RuntimeManifestJsonReader.ReadMachine("{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":11,\"machineId\":\"machine\",\"displayName\":\"Pool\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"anchors\":[],\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"None\",\"platformSettingsJson\":\"{}\",\"behavior\":null},\"inputs\":[{\"id\":\"coin\",\"kind\":2,\"buttonNumber\":\"3\",\"coinInput\":true,\"coinChannel\":2,\"coinValue\":null,\"inverted\":false,\"rawMfmeShortcut\":\"1\",\"keyboardShortcut\":\"D1\",\"linkedVisualElementId\":null,\"notes\":\"Imported\"}]}");
             Assert.IsNull(manifest.runtime.behavior);
             Assert.AreEqual(2, manifest.inputs[0].kind);
             Assert.AreEqual(2, manifest.inputs[0].coinChannel);
@@ -56,7 +56,7 @@ namespace OasisPlayer.Tests
                 Directory.CreateDirectory(Path.Combine(root, "cabinet"));
                 File.WriteAllBytes(Path.Combine(root, "cabinet", "cabinet.glb"), new byte[] { 1, 2, 3 });
                 File.WriteAllText(Path.Combine(root, "cabinet", "cabinet.runtime.json"), "{\"schema\":\"oasis.cabinet.runtime\",\"schemaVersion\":5,\"cabinetId\":\"cabinet\",\"glb\":\"cabinet.glb\",\"scale\":1,\"upAxis\":\"Y\",\"reflections\":[]}");
-                File.WriteAllText(Path.Combine(root, "machine.runtime.json"), "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":10,\"machineId\":\"machine\",\"displayName\":\"machine\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"None\",\"platformSettingsJson\":\"{\\\"programRom1Path\\\":\\\"game.bin\\\"}\",\"behavior\":null},\"inputs\":[],\"anchors\":[],\"faces\":[{\"faceId\":\"face\",\"assetName\":\"Face\",\"cabinetFaceTargetId\":\"target\",\"frontSide\":\"" + frontSide + "\",\"faceRotation\":90,\"faceFlipHorizontal\":true,\"manifest\":\"faces/Face/face.runtime.json\"}]}");
+                File.WriteAllText(Path.Combine(root, "machine.runtime.json"), "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":11,\"machineId\":\"machine\",\"displayName\":\"machine\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"None\",\"platformSettingsJson\":\"{\\\"programRom1Path\\\":\\\"game.bin\\\"}\",\"behavior\":null},\"inputs\":[],\"anchors\":[],\"faces\":[{\"faceId\":\"face\",\"assetName\":\"Face\",\"cabinetFaceTargetId\":\"target\",\"frontSide\":\"" + frontSide + "\",\"faceRotation\":90,\"faceFlipHorizontal\":true,\"manifest\":\"faces/Face/face.runtime.json\"}]}");
 
                 Assert.True(RuntimeBuildLoader.TryLoad(root, out var build, out var error), error);
                 Assert.AreEqual("{\"programRom1Path\":\"game.bin\"}", build.Machine.runtime.platformSettingsJson);
@@ -98,8 +98,8 @@ namespace OasisPlayer.Tests
             }
         }
 
-        [TestCase(9, "Emulation")]
-        [TestCase(10, "Scripted")]
+        [TestCase(10, "Emulation")]
+        [TestCase(11, "Scripted")]
         public void MachineRuntimeJsonRejectsObsoleteSchemaAndUnsupportedRuntime(int schemaVersion, string kind)
         {
             var root = Path.Combine(Application.temporaryCachePath, "OasisRuntimeBuildLoaderTests", System.Guid.NewGuid().ToString("N"));
@@ -111,7 +111,7 @@ namespace OasisPlayer.Tests
                 File.WriteAllText(Path.Combine(root, "machine.runtime.json"), "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":" + schemaVersion + ",\"machineId\":\"machine\",\"displayName\":\"machine\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"runtime\":{\"kind\":\"" + kind + "\",\"platform\":\"Impact\",\"platformSettingsJson\":\"{}\"},\"inputs\":[],\"anchors\":[],\"faces\":[]}");
 
                 Assert.False(RuntimeBuildLoader.TryLoad(root, out _, out var error));
-                StringAssert.Contains(schemaVersion == 9 ? "Unsupported machine manifest" : "Unknown Machine runtime kind", error);
+                StringAssert.Contains(schemaVersion == 10 ? "Unsupported machine manifest" : "Unknown Machine runtime kind", error);
             }
             finally
             {
@@ -135,7 +135,7 @@ namespace OasisPlayer.Tests
                 Directory.CreateDirectory(Path.Combine(root, "cabinet"));
                 File.WriteAllBytes(Path.Combine(root, "cabinet", "cabinet.glb"), new byte[] { 1 });
                 File.WriteAllText(Path.Combine(root, "cabinet", "cabinet.runtime.json"), "{\"schema\":\"oasis.cabinet.runtime\",\"schemaVersion\":5,\"cabinetId\":\"cabinet\",\"glb\":\"cabinet.glb\",\"scale\":1,\"upAxis\":\"Y\",\"reflections\":[]}");
-                File.WriteAllText(Path.Combine(root, "machine.runtime.json"), "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":10,\"machineId\":\"machine\",\"displayName\":\"machine\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"" + platform + "\",\"platformSettingsJson\":\"{}\",\"behavior\":null},\"inputs\":[],\"anchors\":[],\"faces\":[]}");
+                File.WriteAllText(Path.Combine(root, "machine.runtime.json"), "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":11,\"machineId\":\"machine\",\"displayName\":\"machine\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"" + platform + "\",\"platformSettingsJson\":\"{}\",\"behavior\":null},\"inputs\":[],\"anchors\":[],\"faces\":[]}");
 
                 Assert.AreEqual(expected, RuntimeBuildLoader.TryLoad(root, out _, out var error), error);
             }
@@ -170,7 +170,7 @@ namespace OasisPlayer.Tests
                     "{\"componentId\":\"" + colliderId + "\",\"kind\":\"Collider\",\"contractVersion\":1,\"collider\":{\"kind\":\"Sphere\",\"center\":[0,0,0],\"radius\":0.25,\"sourceFrame\":\"ModelLocal\",\"isTrigger\":false}}," +
                     "{\"componentId\":\"" + bodyId + "\",\"kind\":\"Rigidbody\",\"contractVersion\":1,\"rigidbody\":{\"mode\":\"Dynamic\",\"mass\":0.17,\"useGravity\":true}}],\"children\":[]}}";
                 File.WriteAllText(Path.Combine(root, "objects", id, "object.runtime.json"), objectJson);
-                File.WriteAllText(Path.Combine(root, "machine.runtime.json"), "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":10,\"machineId\":\"machine\",\"displayName\":\"Pool\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"None\",\"platformSettingsJson\":\"{}\",\"behavior\":null},\"inputs\":[],\"anchors\":[],\"faces\":[],\"objectInstances\":[{\"id\":\"cueBall\",\"displayName\":\"Cue Ball\",\"definitionId\":\"" + id + "\",\"definitionManifest\":\"objects/" + id + "/object.runtime.json\",\"transform\":{\"position\":{\"x\":1,\"y\":2,\"z\":3},\"rotationEulerDegrees\":{\"x\":10,\"y\":20,\"z\":30},\"scale\":{\"x\":1,\"y\":1,\"z\":1}},\"parentId\":null,\"active\":true}]}");
+                File.WriteAllText(Path.Combine(root, "machine.runtime.json"), "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":11,\"machineId\":\"machine\",\"displayName\":\"Pool\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"None\",\"platformSettingsJson\":\"{}\",\"behavior\":null},\"inputs\":[],\"anchors\":[],\"faces\":[],\"objectInstances\":[{\"id\":\"cueBall\",\"displayName\":\"Cue Ball\",\"definitionId\":\"" + id + "\",\"definitionManifest\":\"objects/" + id + "/object.runtime.json\",\"transform\":{\"position\":{\"x\":1,\"y\":2,\"z\":3},\"rotationEulerDegrees\":{\"x\":10,\"y\":20,\"z\":30},\"scale\":{\"x\":1,\"y\":1,\"z\":1}},\"parentId\":null,\"active\":true}]}");
 
                 Assert.True(RuntimeBuildLoader.TryLoad(root, out var build, out var error), error);
                 Assert.AreEqual("cueBall", build.Machine.objectInstances.Single().id);
@@ -365,6 +365,45 @@ namespace OasisPlayer.Tests
         private const string BodyId = "eeeeeeee-2222-3333-4444-555555555555";
         private const string ChildBodyId = "88888888-2222-3333-4444-555555555555";
 
+        [Test]
+        public void DeclaredOnlyPrefabIsResolvedWithoutAnyPlacedInstance()
+        {
+            var root = NewMinimalBuildRoot();
+            try
+            {
+                WriteObjectAndMachine(root, BasicObjectManifest(TransformComponentJson(), "[]"), "[]");
+                var path = Path.Combine(root, "machine.runtime.json");
+                var text = File.ReadAllText(path).Replace("\"objectInstances\":[]", "\"objectInstances\":[],\"prefabDependencies\":[{\"alias\":\"unplaced\",\"definitionId\":\"" + DefinitionId + "\",\"definitionManifest\":\"objects/" + DefinitionId + "/object.runtime.json\"}]");
+                File.WriteAllText(path, text);
+                Assert.True(RuntimeBuildLoader.TryLoad(root, out var build, out var error), error);
+                Assert.AreEqual(0, build.Machine.objectInstances.Length);
+                Assert.AreSame(build.ObjectDefinitions[DefinitionId], build.PrefabDependencies["unplaced"]);
+                File.WriteAllText(path, text.Replace("\"alias\":\"unplaced\"", "\"alias\":\"bad alias\""));
+                Assert.False(RuntimeBuildLoader.TryLoad(root, out _, out error));
+                StringAssert.Contains("alias", error);
+            }
+            finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+        }
+
+        [Test]
+        public void GeometrySurfaceRequiresPositiveDimensionsAndFiniteFrame()
+        {
+            var root = NewMinimalBuildRoot();
+            try
+            {
+                WriteObjectAndMachine(root, BasicObjectManifest(TransformComponentJson(), "[]"), "[]");
+                var path = Path.Combine(root, "machine.runtime.json");
+                var text = File.ReadAllText(path).Replace("\"objectInstances\":[]", "\"objectInstances\":[],\"geometrySurfaces\":[{\"id\":\"table\",\"position\":{\"x\":0,\"y\":0.8,\"z\":0},\"rotationEulerDegrees\":{\"x\":0,\"y\":15,\"z\":0},\"width\":0.78,\"length\":1.58}]");
+                File.WriteAllText(path, text);
+                Assert.True(RuntimeBuildLoader.TryLoad(root, out var build, out var error), error);
+                Assert.AreEqual("table", build.Machine.geometrySurfaces[0].id);
+                File.WriteAllText(path, text.Replace("\"width\":0.78", "\"width\":0"));
+                Assert.False(RuntimeBuildLoader.TryLoad(root, out _, out error));
+                StringAssert.Contains("Geometry surface", error);
+            }
+            finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+        }
+
         private static string NewMinimalBuildRoot()
         {
             var root = Path.Combine(Application.temporaryCachePath, "OasisRuntimeBuildLoaderTests", System.Guid.NewGuid().ToString("N"));
@@ -378,7 +417,7 @@ namespace OasisPlayer.Tests
         private static void WriteObjectAndMachine(string root, string objectManifest, string objectInstances)
         {
             File.WriteAllText(Path.Combine(root, "objects", DefinitionId, "object.runtime.json"), objectManifest);
-            File.WriteAllText(Path.Combine(root, "machine.runtime.json"), "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":10,\"machineId\":\"machine\",\"displayName\":\"Machine\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"None\",\"platformSettingsJson\":\"{}\",\"behavior\":null},\"inputs\":[],\"anchors\":[],\"faces\":[],\"objectInstances\":" + objectInstances + "}");
+            File.WriteAllText(Path.Combine(root, "machine.runtime.json"), "{\"schema\":\"oasis.machine.runtime\",\"schemaVersion\":11,\"machineId\":\"machine\",\"displayName\":\"Machine\",\"cabinetManifest\":\"cabinet/cabinet.runtime.json\",\"runtime\":{\"kind\":\"Emulation\",\"platform\":\"None\",\"platformSettingsJson\":\"{}\",\"behavior\":null},\"inputs\":[],\"anchors\":[],\"faces\":[],\"objectInstances\":" + objectInstances + "}");
         }
 
         private static string BasicObjectManifest() => BasicObjectManifest("{" + "\"id\":\"" + NodeId + "\",\"name\":\"Root\",\"components\":[" + TransformComponentJson() + "],\"children\":[]}");

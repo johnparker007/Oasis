@@ -38,7 +38,7 @@ namespace OasisPlayer.Tests
         [Test]
         public async Task OasisStartupRunsOnceWithObjectsAnchorsInputsTriggersAndDriversAvailable()
         {
-            var build = Build("on machine.started() { object.teleport(object:foo, anchor:target); timer.start(\"ready\", 0.5); } on input.pressed(input:reset) { object.teleport_pose(object:foo, vec3(9,8,7), vec3(0,0,0)); } on trigger.entered(trigger:PocketLeftCorner, ball) { object.teleport(ball, anchor:target); }");
+            var build = Build("on machine.started() { oasis.teleport(oasis:foo, anchor:target); timer.start(\"ready\", 0.5); } on input.pressed(input:reset) { oasis.teleport_pose(oasis:foo, vec3(9,8,7), vec3(0,0,0)); } on trigger.entered(trigger:PocketLeftCorner, ball) { oasis.teleport(ball, anchor:target); }");
             var machine = await _loader.LoadAsync(build);
             Assert.True(_loader.HasOasisBehavior);
             Assert.IsNull(_loader.OasisBehaviorFault);
@@ -66,7 +66,7 @@ namespace OasisPlayer.Tests
         [Test]
         public async Task LoaderUnloadAndReloadCreateIndependentStateAndDetachOldSubscription()
         {
-            var build = Build("state n = 0; on machine.started() { n = n + 1; object.teleport_pose(object:foo, vec3(n,0,0), vec3(0,0,0)); } on input.pressed(input:reset) { n = n + 1; object.teleport_pose(object:foo, vec3(n,0,0), vec3(0,0,0)); timer.start(\"active\", 1); }");
+            var build = Build("state n = 0; on machine.started() { n = n + 1; oasis.teleport_pose(oasis:foo, vec3(n,0,0), vec3(0,0,0)); } on input.pressed(input:reset) { n = n + 1; oasis.teleport_pose(oasis:foo, vec3(n,0,0), vec3(0,0,0)); timer.start(\"active\", 1); }");
             var first = await _loader.LoadAsync(build);
             var firstRoot = first.GetObject("foo").Root;
             first.SetInputState("reset", true);
@@ -93,12 +93,12 @@ namespace OasisPlayer.Tests
         public async Task EmulationDoesNotAttachScriptsAndOasisReplacementClearsPreviousPreview()
         {
             // Even a constructed Emulation build carrying a program cannot create a hybrid session.
-            var emulation = Build("on machine.started() { object.set_active(object:foo, false); }", "Emulation");
+            var emulation = Build("on machine.started() { oasis.set_active(oasis:foo, false); }", "Emulation");
             var first = await _loader.LoadAsync(emulation);
             var oldRoot = first.GetObject("foo").Root;
             Assert.False(_loader.HasOasisBehavior);
             Assert.True(oldRoot.activeSelf);
-            var second = await _loader.LoadAsync(Build("on machine.started() { object.teleport(object:foo, anchor:target); }"));
+            var second = await _loader.LoadAsync(Build("on machine.started() { oasis.teleport(oasis:foo, anchor:target); }"));
             Assert.False(first.IsActive);
             Assert.True(oldRoot == null);
             Assert.AreEqual(1, _cabinet.UnloadCount);
@@ -160,8 +160,8 @@ namespace OasisPlayer.Tests
         {
             var eventName = duringStartup ? "machine.started" : "input.pressed";
             var source = duringStartup
-                ? "on machine.started() { object.reset(object:missing); } on input.pressed(input:reset) { object.set_active(object:foo, false); }"
-                : "on input.pressed(input:reset) { object.reset(object:missing); } on input.released(input:reset) { object.set_active(object:foo, false); }";
+                ? "on machine.started() { oasis.reset(oasis:missing); } on input.pressed(input:reset) { oasis.set_active(oasis:foo, false); }"
+                : "on input.pressed(input:reset) { oasis.reset(oasis:missing); } on input.released(input:reset) { oasis.set_active(oasis:foo, false); }";
             LogAssert.Expect(LogType.Log, "Cabinet semantic geometry: Colliders: 0, Triggers: 1");
             LogAssert.Expect(LogType.Log, "Cabinet semantic triggers registered: 1");
             LogAssert.Expect(LogType.Log, "Oasis cabinet reflections: no reflection receivers are defined for this cabinet.");
@@ -200,7 +200,7 @@ namespace OasisPlayer.Tests
         [Test]
         public async Task PreviewCreatesOneKeyboardOwnerAndRestoresAuthoredBindingsAfterReload()
         {
-            var build = Build("on input.pressed(input:reset) { object.teleport(object:foo, anchor:target); }");
+            var build = Build("on input.pressed(input:reset) { oasis.teleport(oasis:foo, anchor:target); }");
             build.Machine.inputs[0].keyboardShortcut = "R";
             var first = await _loader.LoadAsync(build);
             var owners = _spawn.GetComponentsInChildren<RuntimeInputDevelopmentControls>();
