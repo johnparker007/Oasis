@@ -11,7 +11,7 @@ namespace OasisEditor.Automation;
 
 public sealed partial class McpEditorSession
 {
-    private readonly Dictionary<Guid, (DocumentTabViewModel Document, string Path, string Hash)> _machines = [];
+    private readonly Dictionary<Guid, (DocumentTabViewModel Document, string Path, string Hash, string? BehaviorHash)> _machines = [];
 
     public static IReadOnlyList<string> ListRecentProjects() => new RecentProjectsStore().Load();
 
@@ -36,7 +36,7 @@ public sealed partial class McpEditorSession
         if (File.Exists(behavior) && new FileInfo(behavior).Length > 256 * 1024) throw new InvalidDataException("Behavior source exceeds 256 KiB inspection limit.");
         var document = new DocumentTabViewModel(EditorDocument.CreateFromFile(file, "Machine inspected through MCP."), machineDocumentJson: content);
         document.SetProjectAccessor(() => Project);
-        _machines.Add(document.DocumentId, (document, file, Hash(file)));
+        _machines.Add(document.DocumentId, (document, file, Hash(file), HashOptional(behavior)));
         return InspectMachine(document.DocumentId);
     }
 
@@ -45,13 +45,17 @@ public sealed partial class McpEditorSession
         var entry = GetMachine(documentId);
         var model = entry.Document.GetMachineDocument();
         return new(documentId, entry.Path, model, entry.Document.MachineBehaviorSource,
-            entry.Document.MachineBehaviorDiagnostics.Select(d => d.ToString() ?? "").Take(100).ToArray());
+            entry.Document.MachineBehaviorDiagnostics.Select(d => d.ToString() ?? "").Take(100).ToArray(),
+            entry.Document.IsDirty, entry.Document.CommandService.CanUndo, entry.Document.CommandService.CanRedo);
     }
 
     public MachineRuntimeBuildResult BuildMachine(Guid documentId, CancellationToken cancellationToken)
     {
         var entry = GetMachine(documentId);
-        if (!File.Exists(entry.Path) || Hash(entry.Path) != entry.Hash) throw new IOException("Machine changed on disk; reopen in a fresh session.");
+        if (entry.Document.IsDirty) throw new InvalidOperationException("Machine has unsaved edits; save it before building.");
+        var behaviorPath = Confine(Path.Combine(Path.GetDirectoryName(entry.Path)!, MachineBehaviorDefinition.CanonicalSourcePath));
+        if (!File.Exists(entry.Path) || Hash(entry.Path) != entry.Hash || HashOptional(behaviorPath) != entry.BehaviorHash)
+            throw new IOException("Machine package changed on disk; reopen in a fresh session.");
         // This first inspection/build slice deliberately accepts project-only dependencies.
         // Validate the tree before the existing build pipeline follows model/asset references.
         ValidateMachineAssets(entry.Document.GetMachineDocument());
@@ -117,8 +121,9 @@ public sealed partial class McpEditorSession
         finally { source.RootVisual = null; view.DataContext = null; view.RaiseEvent(new RoutedEventArgs(FrameworkElement.UnloadedEvent)); }
     }
 
-    private (DocumentTabViewModel Document, string Path, string Hash) GetMachine(Guid id) =>
+    private (DocumentTabViewModel Document, string Path, string Hash, string? BehaviorHash) GetMachine(Guid id) =>
         _machines.TryGetValue(id, out var machine) ? machine : throw new ArgumentException("Unknown Machine session document ID.");
 }
 
-public sealed record MachineSnapshot(Guid DocumentId, string Path, MachineDocument Machine, string BehaviorSource, IReadOnlyList<string> BehaviorDiagnostics);
+public sealed record MachineSnapshot(Guid DocumentId, string Path, MachineDocument Machine, string BehaviorSource, IReadOnlyList<string> BehaviorDiagnostics,
+    bool IsDirty, bool CanUndo, bool CanRedo);

@@ -11,7 +11,7 @@
                     <Border Margin="0,4,0,0" Padding="10" Background="{DynamicResource ToolBarBackgroundBrush}" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="4">
                         <StackPanel MinWidth="190">
                             <CheckBox Content="Cabinet visual" IsChecked="{Binding ShowCabinetVisual}"/>
-                            <CheckBox Margin="0,6,0,0" Content="Object3D instances" IsChecked="{Binding ShowObjects}"/>
+                            <CheckBox Margin="0,6,0,0" Content="Prefab instances" IsChecked="{Binding ShowObjects}"/>
                             <CheckBox Margin="0,6,0,0" Content="Anchors" IsChecked="{Binding ShowAnchors}"/>
                             <CheckBox Margin="0,6,0,0" Content="Cabinet collision" IsChecked="{Binding ShowCabinetCollision}"/>
                             <CheckBox Margin="18,6,0,0" Content="Colliders" IsEnabled="{Binding ShowCabinetCollision}" IsChecked="{Binding ShowColliders}"/>

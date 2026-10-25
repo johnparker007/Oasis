@@ -55,5 +55,105 @@ public sealed class McpMachineInspectionTests : IDisposable
         Assert.Throws<UnauthorizedAccessException>(() => _session.OpenMachine(path));
     }
 
+    [Fact]
+    public void AnchorEditUsesUndoableCommandAndNoOpDoesNotDirtyDocument()
+    {
+        var path = ConfigureMachineWithAnchor();
+        var opened = _session.OpenMachine(path);
+        var anchor = Assert.Single(opened.Machine.Anchors);
+        Assert.False(opened.IsDirty);
+
+        var noOp = _session.UpdateMachineAnchor(opened.DocumentId, anchor.Id, anchor.Position);
+        Assert.False(noOp.IsDirty);
+        Assert.False(noOp.CanUndo);
+
+        var edited = _session.UpdateMachineAnchor(opened.DocumentId, anchor.Id, new MachineVector3(1.25, -2, 3));
+        Assert.True(edited.IsDirty);
+        Assert.True(edited.CanUndo);
+        Assert.Equal(new MachineVector3(1.25, -2, 3), Assert.Single(edited.Machine.Anchors).Position);
+
+        var undone = _session.UndoMachine(opened.DocumentId);
+        Assert.Equal(anchor.Position, Assert.Single(undone.Machine.Anchors).Position);
+        Assert.True(undone.CanRedo);
+        var redone = _session.RedoMachine(opened.DocumentId);
+        Assert.Equal(new MachineVector3(1.25, -2, 3), Assert.Single(redone.Machine.Anchors).Position);
+    }
+
+    [Fact]
+    public void SaveMachinePersistsAnchorAndBehaviorForReopen()
+    {
+        var path = ConfigureMachineWithAnchor();
+        var opened = _session.OpenMachine(path);
+        _session.UpdateMachineAnchor(opened.DocumentId, "pool_spawn", new MachineVector3(0.5, 1.25, 0));
+
+        var saved = _session.SaveMachine(opened.DocumentId);
+        Assert.False(saved.IsDirty);
+        Assert.True(saved.CanUndo);
+        Assert.Equal("// original behavior\n", File.ReadAllText(Path.Combine(Path.GetDirectoryName(path)!, "behavior.oasis")));
+
+        var reopenedSession = new McpEditorSession(_root);
+        reopenedSession.OpenProject(Path.Combine(_root, "Probe", "Probe.oasisproj"));
+        var reopened = reopenedSession.OpenMachine(path);
+        Assert.Equal(new MachineVector3(0.5, 1.25, 0), Assert.Single(reopened.Machine.Anchors).Position);
+        Assert.Equal("// original behavior\n", reopened.BehaviorSource);
+    }
+
+    [Fact]
+    public void SaveMachineRefusesExternalManifestOrBehaviorChanges()
+    {
+        var manifestPath = ConfigureMachineWithAnchor();
+        var opened = _session.OpenMachine(manifestPath);
+        _session.UpdateMachineAnchor(opened.DocumentId, "pool_spawn", new MachineVector3(1, 0, 0));
+        File.AppendAllText(manifestPath, " ");
+        Assert.Throws<IOException>(() => _session.SaveMachine(opened.DocumentId));
+
+        // Use a fresh document/session baseline for the sidecar case.
+        var sidecarPath = ConfigureMachineWithAnchor("Secondary");
+        var freshSession = new McpEditorSession(_root);
+        freshSession.OpenProject(Path.Combine(_root, "Probe", "Probe.oasisproj"));
+        var sidecarOpened = freshSession.OpenMachine(sidecarPath);
+        freshSession.UpdateMachineAnchor(sidecarOpened.DocumentId, "pool_spawn", new MachineVector3(1, 0, 0));
+        File.AppendAllText(Path.Combine(Path.GetDirectoryName(sidecarPath)!, "behavior.oasis"), "// external\n");
+        Assert.Throws<IOException>(() => freshSession.SaveMachine(sidecarOpened.DocumentId));
+    }
+
+    [Fact]
+    public void BuildMachineRefusesUnsavedEditsAndExternalBehaviorChanges()
+    {
+        var path = ConfigureMachineWithAnchor();
+        var opened = _session.OpenMachine(path);
+        _session.UpdateMachineAnchor(opened.DocumentId, "pool_spawn", new MachineVector3(1, 0, 0));
+        Assert.Throws<InvalidOperationException>(() => _session.BuildMachine(opened.DocumentId, default));
+
+        _session.SaveMachine(opened.DocumentId);
+        File.AppendAllText(Path.Combine(Path.GetDirectoryName(path)!, "behavior.oasis"), "// external\n");
+        Assert.Throws<IOException>(() => _session.BuildMachine(opened.DocumentId, default));
+    }
+
+    private string ConfigureMachineWithAnchor(string? machineName = null)
+    {
+        var path = machineName is null
+            ? Assert.Single(_session.ListMachineAssets())
+            : CreateAdditionalMachine(machineName);
+        var machine = MachineDocument.Create(Path.GetFileName(Path.GetDirectoryName(path)!)) with
+        {
+            Anchors = [MachineAnchor.Create("pool_spawn", "Pool Spawn")],
+            Runtime = new OasisRuntimeDefinition(),
+            Behavior = MachineBehaviorDefinition.OasisScript()
+        };
+        File.WriteAllText(path, MachineDocumentStorage.Serialize(machine));
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "behavior.oasis"), "// original behavior\n");
+        return path;
+    }
+
+    private string CreateAdditionalMachine(string name)
+    {
+        var source = Assert.Single(_session.ListMachineAssets());
+        var target = Path.Combine(Path.GetDirectoryName(source)!, "..", name, "asset.machine");
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        File.Copy(source, target);
+        return Path.GetFullPath(target);
+    }
+
     public void Dispose() => Directory.Delete(_root, true);
 }

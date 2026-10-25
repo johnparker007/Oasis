@@ -8,6 +8,40 @@ namespace OasisEditor.Mcp;
 [McpServerToolType]
 public sealed class EditorTools(McpEditorSession session, EditorDispatcher ui)
 {
+    [McpServerTool(Name = "create_prefab"), Description("Create and initially save a transform-only Prefab in the existing Object3D asset family.")]
+    public Task<PrefabSnapshot> CreatePrefab(string name, CancellationToken cancellationToken, string? modelSource = null) => ui.Invoke(() => session.CreatePrefab(name, modelSource), cancellationToken);
+
+    [McpServerTool(Name = "open_prefab", ReadOnly = true), Description("Open a current-schema Prefab at Assets/Object3D/<Name>/asset.object3d in the project.")]
+    public Task<PrefabSnapshot> OpenPrefab(string path, CancellationToken cancellationToken) => ui.Invoke(() => session.OpenPrefabDocument(path), cancellationToken);
+
+    [McpServerTool(Name = "inspect_prefab", ReadOnly = true), Description("Inspect the Prefab node/component tree, stable IDs, dirty/history state and current build projection diagnostics.")]
+    public Task<PrefabSnapshot> InspectPrefab(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.InspectPrefab(documentId), cancellationToken);
+
+    [McpServerTool(Name = "update_prefab_node"), Description("Atomically edit a Prefab node's name, local transform or one supported component, or remove one component kind. Validation precedes one undoable command. Model paths are package-relative.")]
+    public Task<PrefabSnapshot> UpdatePrefabNode(Guid documentId, string nodeId, CancellationToken cancellationToken, string? name = null, MachineObjectTransform? transform = null, Object3DComponentDefinition? component = null, string? removeComponentKind = null) => ui.Invoke(() => session.UpdatePrefabNode(documentId, nodeId, name, transform, component, removeComponentKind), cancellationToken);
+
+    [McpServerTool(Name = "add_prefab_child"), Description("Add a transform-only child with new stable node/component IDs through the document command history.")]
+    public Task<PrefabSnapshot> AddPrefabChild(Guid documentId, string parentNodeId, string name, CancellationToken cancellationToken) => ui.Invoke(() => session.AddPrefabChild(documentId, parentNodeId, name), cancellationToken);
+
+    [McpServerTool(Name = "reparent_prefab_node"), Description("Move a Prefab node beneath a parent at an optional sibling index. Rejects cycles and moving the root.")]
+    public Task<PrefabSnapshot> ReparentPrefabNode(Guid documentId, string nodeId, string parentNodeId, CancellationToken cancellationToken, int? index = null) => ui.Invoke(() => session.ReparentPrefabNode(documentId, nodeId, parentNodeId, index), cancellationToken);
+
+    [McpServerTool(Name = "remove_prefab_node"), Description("Remove a non-root node subtree through one undoable command.")]
+    public Task<PrefabSnapshot> RemovePrefabNode(Guid documentId, string nodeId, CancellationToken cancellationToken) => ui.Invoke(() => session.RemovePrefabNode(documentId, nodeId), cancellationToken);
+
+    [McpServerTool(Name = "prefab_history"), Description("Undo one Prefab command, or redo when redo=true.")]
+    public Task<PrefabSnapshot> PrefabHistory(Guid documentId, CancellationToken cancellationToken, bool redo = false) => ui.Invoke(() => session.PrefabHistory(documentId, redo), cancellationToken);
+
+    [McpServerTool(Name = "save_prefab"), Description("Save validated Prefab nodes/components, refusing external authored package changes. Source models must exist inside their package.")]
+    public Task<PrefabSnapshot> SavePrefab(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.SavePrefab(documentId), cancellationToken);
+
+    [McpServerTool(Name = "capture_prefab", ReadOnly = true), Description("Capture the actual offscreen Prefab hierarchy/viewport/Inspector without desktop input.")]
+    public async Task<CallToolResult> CapturePrefab(Guid documentId, CancellationToken cancellationToken, int width = 1400, int height = 900, string theme = "System")
+    {
+        if (!Enum.TryParse<ThemePreference>(theme, true, out var preference) || !Enum.IsDefined(preference)) throw new ArgumentException("Use System, Light, or Dark theme.");
+        var capture = await ui.Invoke(() => session.CapturePrefabAsync(documentId, width, height, preference), cancellationToken);
+        return new CallToolResult { Content = [ImageContentBlock.FromBytes(await capture, "image/png")] };
+    }
     [McpServerTool(Name = "list_recent_projects", ReadOnly = true), Description("Read the editor's recent-project list. Listing does not grant workspace access; use a server configured for the intended project or a disposable copy.")]
     public Task<IReadOnlyList<string>> RecentProjects(CancellationToken cancellationToken) => ui.Invoke(McpEditorSession.ListRecentProjects, cancellationToken);
 
@@ -19,6 +53,18 @@ public sealed class EditorTools(McpEditorSession session, EditorDispatcher ui)
 
     [McpServerTool(Name = "inspect_machine", ReadOnly = true), Description("Read an open Machine's configuration and Oasis script diagnostics; document IDs belong to this session.")]
     public Task<MachineSnapshot> InspectMachine(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.InspectMachine(documentId), cancellationToken);
+
+    [McpServerTool(Name = "update_machine_anchor"), Description("Edit an existing Machine anchor's position and/or XYZ Euler rotation through one undoable command. Does not save.")]
+    public Task<MachineSnapshot> UpdateMachineAnchor(Guid documentId, string anchorId, CancellationToken cancellationToken, MachineVector3? position = null, MachineVector3? rotation = null) => ui.Invoke(() => session.UpdateMachineAnchor(documentId, anchorId, position, rotation), cancellationToken);
+
+    [McpServerTool(Name = "save_machine"), Description("Save the open Machine through the existing save service, refusing externally changed manifest or behavior source.")]
+    public Task<MachineSnapshot> SaveMachine(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.SaveMachine(documentId), cancellationToken);
+
+    [McpServerTool(Name = "undo_machine"), Description("Undo one command in this Machine document.")]
+    public Task<MachineSnapshot> UndoMachine(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.UndoMachine(documentId), cancellationToken);
+
+    [McpServerTool(Name = "redo_machine"), Description("Redo one command in this Machine document.")]
+    public Task<MachineSnapshot> RedoMachine(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.RedoMachine(documentId), cancellationToken);
 
     [McpServerTool(Name = "build_machine"), Description("Build the persisted Machine for Oasis Player through the existing validated build pipeline. Writes/replaces Generated build output; use a disposable project. Currently requires project-local assets; returns success/buildRoot/errorMessage. Does not launch Player.")]
     public Task<MachineRuntimeBuildResult> BuildMachine(Guid documentId, CancellationToken cancellationToken) => ui.Invoke(() => session.BuildMachine(documentId, cancellationToken), cancellationToken);
