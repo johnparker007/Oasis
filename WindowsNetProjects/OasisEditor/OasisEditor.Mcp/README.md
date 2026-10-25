@@ -4,7 +4,7 @@ An opt-in, local **stdio MCP server** using the official C# SDK. It runs an isol
 editor automation session on a WPF STA dispatcher. It never attaches to an existing
 editor, activates a user window, or opens the normal launcher.
 
-The first slice supports a repeatable project → Panel2D → MFME FML → save/reopen
+The server supports a repeatable project → Panel2D → MFME FML → edit → save/reopen
 workflow. It reuses the editor's project scaffolder, importer, document command
 history, validation and save service. It does not implement Face/Cabinet/Machine
 assembly or runtime export yet. Existing ArchitectureNext priorities are unchanged.
@@ -56,6 +56,10 @@ changes and undo history are session-local, and no confirmation dialog is shown.
 | `open_panel2d` | Validate/reopen a persisted package and obtain a new session document ID. |
 | `import_fml` | Import a workspace FML through the document's undoable import command. |
 | `inspect_panel2d` | Read dirty state, undo/redo availability, total element count and a page of elements. |
+| `inspect_panel_element` | Read a single element by ID, including visibility, lock and selection state. |
+| `select_panel_elements` | Replace transient selection by stable IDs; an empty array clears it. |
+| `update_panel_element` | Atomically edit supported properties through one undoable editor command. |
+| `set_panel_view` | Set transient zoom and pan without dirtying the document. |
 | `save_panel2d` | Save the session document, rejecting external manifest changes. |
 | `undo`, `redo` | Apply the document's existing command history. |
 | `capture_panel2d` | Return a native MCP PNG image of the actual WPF Panel2D edit view. |
@@ -71,8 +75,36 @@ Panel manifests use the current package convention:
 `Assets/Panel2D/<Name>/asset.panel2d`. Only one project can be opened per MCP process;
 connect a new session to switch projects. Reopening yields new document IDs.
 Inspection defaults to 50 elements and accepts a maximum of 200 per page.
+Panel snapshots also include `selectedElementIds` and `view` (zoom/pan). Element
+snapshots include `isVisible`, `isTransformLocked` and `isSelected`.
 Import warning/error and copied-file lists are bounded to the first 100 entries;
 `copiedAssetCount` gives the full copied-file count.
+
+## Element editing
+
+`update_panel_element` takes `documentId`, `elementId` and an `edit` object:
+
+```json
+{"documentId":"<session document ID>","elementId":"<element ID>","edit":{"name":"Prize display","x":120,"y":80,"width":160,"height":40,"isVisible":true}}
+```
+
+Supported fields are `name`, `x`, `y`, `width`, `height`, `isVisible` and
+`isTransformLocked`. Omitted or null fields remain unchanged. A combined update is
+one undo step; invalid fields reject the entire edit. Same-value updates add no
+history, do not dirty a clean document and preserve redo. Names must not be blank;
+positions must be finite and dimensions positive and finite. Transform-locked
+elements require a separate unlock call before geometry changes, even if the
+proposed geometry edit also requests unlocking. Rename/visibility changes are
+allowed while the transform is locked. IDs, types and asset paths cannot be
+rewritten through this tool. Edits do not auto-save.
+
+`select_panel_elements` takes an array `elementIds` (maximum 200). All IDs are
+validated in the specified document before selection changes. Selection is visible
+in captures but never stored as authored content or recorded in undo history.
+
+`set_panel_view` takes `zoom` (0.01–64, where 1 is 100%) and optional `panX`/`panY`
+(default zero) in view coordinates. These settings are transient and do not add
+undo history or dirty the document.
 
 ## Capture behavior
 
@@ -85,8 +117,14 @@ Project-relative images resolve against the active project during capture.
 
 This is **a view render**, not a desktop screenshot or complete editor-window grab.
 It excludes shell chrome, menus, native dialogs, popups and unrelated windows.
-It uses the current viewport (initially 100%); content outside it is clipped as in
-the editor. A Windows desktop-capable environment is still required. Rendered
+Use `framing="current"` (default) for the session viewport, `framing="fit"` to fit
+the panel, or `framing="element"` with `elementId` to centre and fit an element with
+a small margin. Element framing uses its geometry even when it is hidden; hidden
+artwork remains hidden. Fit uses the editor's existing logical bounds/background
+and image-pixel scaling. Zoom limits still apply to extremely small/large elements.
+Captures restore the previous zoom/pan afterward and never dirty the document.
+Content outside the chosen viewport is clipped as in the editor. A Windows
+desktop-capable environment is still required. Rendered
 images can support visual checks but do not establish mouse/keyboard usability.
 
 ## File behavior and boundaries
@@ -111,7 +149,8 @@ images can support visual checks but do not establish mouse/keyboard usability.
 
 ## Verification
 
-Session behavior tests are in `OasisEditor.Tests/McpEditorSessionTests.cs`:
+Session behavior tests are in `OasisEditor.Tests/McpEditorSessionTests.cs` and
+`McpPanelEditingTests.cs`:
 
 ```powershell
 dotnet test OasisEditor.Tests/OasisEditor.Tests.csproj -c Release
@@ -129,5 +168,9 @@ python OasisEditor.Mcp/smoke_test.py --server C:\absolute\path\OasisEditor.Mcp.e
 
 The smoke checks tool discovery, path rejection, create/save/inspection, PNG capture
 in three themes, invalid-FML diagnostics and persisted reopening in a fresh process.
-With `--fml` it also verifies nonempty import and undo/redo counts. No FML, ROMs,
+With `--fml` it also verifies nonempty import, element selection/editing, undo/redo,
+fit and element framing, viewport restoration and persistence of edited properties.
+`check_headless_startup.py --server <exe>` separately checks that startup/idle opens
+no visible windows and the process exits on stdin EOF; it uses only Python's
+standard library and sends no desktop input. No FML, ROMs,
 imported user content or screenshot artifacts are stored in this repository.

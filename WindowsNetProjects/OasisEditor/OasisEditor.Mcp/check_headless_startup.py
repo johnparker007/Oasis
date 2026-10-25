@@ -72,7 +72,7 @@ def check(server):
             response(1)
             send({"method": "notifications/initialized"})
             send({"id": 2, "method": "tools/list"})
-            assert len(response(2)["tools"]) == 11
+            assert {"create_project", "capture_panel2d", "update_panel_element", "select_panel_elements"} <= {t["name"] for t in response(2)["tools"]}
             # Give the application's queued WPF startup event time to execute.
             for _ in range(20):
                 assert not visible_windows(process.pid), "MCP process opened a visible window after initialization"
