@@ -103,7 +103,23 @@ internal sealed class FaceArtworkRebuildService
             using var bitmap = SKBitmap.Decode(basePath);
             if (bitmap is null) return FaceArtworkProcessingResult.Failure($"Base artwork could not be decoded: '{basePath}'.");
             var artworkOverride = artwork.Override;
-            if (artworkOverride is not { Enabled: true }) { WriteVerified(bitmap, outputPath); return FaceArtworkProcessingResult.Success; }
+            if (artworkOverride is not { Enabled: true })
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+                if (!string.Equals(basePath, outputPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    var temporary = $"{outputPath}.{Guid.NewGuid():N}.tmp";
+                    try
+                    {
+                        File.Copy(basePath, temporary);
+                        using (var verification = SKBitmap.Decode(temporary))
+                            if (verification is null) throw new InvalidDataException("Copied Base artwork could not be decoded.");
+                        File.Move(temporary, outputPath, true);
+                    }
+                    finally { if (File.Exists(temporary)) File.Delete(temporary); }
+                }
+                return FaceArtworkProcessingResult.Success;
+            }
             if (!artworkOverride.IsValid()) return FaceArtworkProcessingResult.Failure("The enabled Artwork Override recipe is invalid.");
             var overridePath = FaceArtworkGeneratedPathService.Resolve(artworkOverride.AssetPath, projectDirectory);
             using var rawOverlay = SKBitmap.Decode(overridePath);
@@ -168,6 +184,11 @@ internal sealed class FaceArtworkRebuildService
         var size = FaceSourceShapeTransformService.EstimateRegisteredImageOutputSize(source.Width, source.Height, normalized);
         if (size.Width > MaximumOutputDimension || size.Height > MaximumOutputDimension || (long)size.Width * size.Height > MaximumOutputPixels)
             throw new InvalidOperationException($"Rectified Artwork Override size {size.Width} x {size.Height} exceeds the safe generation limit.");
+        // An identity registration must preserve source pixels, including fully transparent edges.
+        if (normalized.TopLeft.X == 0 && normalized.TopLeft.Y == 0
+            && normalized.TopRight.X == 1 && normalized.TopRight.Y == 0
+            && normalized.BottomRight.X == 1 && normalized.BottomRight.Y == 1
+            && normalized.BottomLeft.X == 0 && normalized.BottomLeft.Y == 1) return source.Copy();
         var quad = new[] { normalized.TopLeft, normalized.TopRight, normalized.BottomRight, normalized.BottomLeft }
             .Select(point => new FacePointModel { X = point.X * source.Width, Y = point.Y * source.Height }).ToArray();
         return PerspectiveRasterizer.Rectify(source, quad, size.Width, size.Height);

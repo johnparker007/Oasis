@@ -3,7 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:sk="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
              xmlns:local="clr-namespace:OasisEditor.Views"
              mc:Ignorable="d"
              d:DesignHeight="450"
@@ -13,7 +12,7 @@
                 Background="{DynamicResource EditorBackgroundBrush}"
                 BorderBrush="{DynamicResource BorderSubtleBrush}"
                 BorderThickness="1">
-            <sk:SKElement x:Name="EditSkiaSurface"
+            <local:EditorSkiaSurface x:Name="EditSkiaSurface"
                           PaintSurface="OnEditSkiaSurfacePaintSurface"
                           MouseDown="OnEditSkiaSurfaceMouseDown"
                           MouseMove="OnEditSkiaSurfaceMouseMove"

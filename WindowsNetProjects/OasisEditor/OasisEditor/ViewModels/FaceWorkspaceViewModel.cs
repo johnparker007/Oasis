@@ -447,8 +447,20 @@ public sealed class FaceWorkspaceViewModel : INotifyPropertyChanged
         if(_destination==FaceWorkspaceDestination.ArtworkOverride)RequestOverrideAlignmentPreview();
     }
 
+    private bool _liveOverridePreview;
+    internal void SetLiveOverridePreview(bool enabled)
+    {
+        _liveOverridePreview = enabled;
+        if (enabled) { _overridePreviewCancellation?.Cancel(); _overridePreviewGeneration++; SetOverridePreviewLoading(false); }
+    }
+    internal void ReportLiveOverridePreviewLoading(bool loading)
+    {
+        if (_liveOverridePreview) SetOverridePreviewLoading(loading);
+    }
+
     private async void RequestOverrideAlignmentPreview()
     {
+        if (_liveOverridePreview) return;
         var value=ArtworkOverride;var path=_document.GetArtworkAssetAbsolutePath(value?.AssetPath);var key=CurrentOverridePreviewKey();
         if(value is null||string.IsNullOrWhiteSpace(path)||key is null||!File.Exists(path))return;
         if(string.Equals(_overridePreviewKey,key,StringComparison.Ordinal))return;

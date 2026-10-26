@@ -11,7 +11,7 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
 {
     private static readonly ConcurrentDictionary<string, SKImage?> CachedLampImages = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<TextLayoutCacheKey, IReadOnlyList<PixelTextLine>> TextLayoutCache = new();
-    private static readonly ConcurrentDictionary<TextVisualCacheKey, SKImage> TextVisualCache = new();
+    private static readonly ConcurrentDictionary<TextVisualCacheKey, SKPicture> TextVisualCache = new();
     private const int MaxTextVisualCacheEntries = 2048;
 
     public PanelElementKind Kind => PanelElementKind.Lamp;
@@ -121,7 +121,10 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
                 _diagnosticsTextVisualCacheHits++;
             }
 
-            context.Canvas.DrawImage(visual, bounds.Left, bounds.Top);
+            context.Canvas.Save();
+            context.Canvas.Translate(bounds.Left, bounds.Top);
+            context.Canvas.DrawPicture(visual);
+            context.Canvas.Restore();
         }
         finally
         {
@@ -188,12 +191,12 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         }
     }
 
-    private static SKImage BuildTextLampVisual(TextVisualCacheKey visualKey, string displayText, double fontSize, SKColor fillColor, SKColor textColor, string? fontName, string? fontStyle)
+    private static SKPicture BuildTextLampVisual(TextVisualCacheKey visualKey, string displayText, double fontSize, SKColor fillColor, SKColor textColor, string? fontName, string? fontStyle)
     {
-        using var surface = SKSurface.Create(new SKImageInfo(visualKey.Width, visualKey.Height));
-        var canvas = surface.Canvas;
-        canvas.Clear(SKColors.Transparent);
         var localBounds = SKRect.Create(0f, 0f, visualKey.Width, visualKey.Height);
+        using var recorder = new SKPictureRecorder();
+        var canvas = recorder.BeginRecording(localBounds);
+        canvas.ClipRect(localBounds);
 
         using var paint = new SKPaint { Color = fillColor, Style = SKPaintStyle.Fill, IsAntialias = true };
         canvas.DrawRect(localBounds, paint);
@@ -215,7 +218,7 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
         var lines = GetOrCreateTextLayout(cacheKey, displayText, wrapWidth, textPaint);
         if (lines.Count == 0)
         {
-            return surface.Snapshot();
+            return recorder.EndRecording();
         }
 
         var totalTextHeight = lines.Count * lineHeight;
@@ -235,7 +238,7 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
             _diagnosticsTextDrawCount++;
         }
 
-        return surface.Snapshot();
+        return recorder.EndRecording();
     }
 
     internal static List<PixelTextLine> WrapTextToPixelWidth(string text, double maxWidth, SKPaint paint)

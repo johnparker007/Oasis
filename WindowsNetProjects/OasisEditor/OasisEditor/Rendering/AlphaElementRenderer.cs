@@ -7,7 +7,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
     private const int BrightnessBucketMaximum = 31;
     private const int MaxVisualCacheEntries = 4096;
     private static readonly Dictionary<string, Lazy<AlphaSkiaDefinition?>> DefinitionsByType = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly Dictionary<AlphaVisualCacheKey, SKImage> VisualCache = new();
+    private static readonly Dictionary<AlphaVisualCacheKey, SKPicture> VisualCache = new();
     private static readonly object VisualCacheGate = new();
     [ThreadStatic]
     private static int _diagnosticsCacheHits;
@@ -112,11 +112,15 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
             var key = new AlphaVisualCacheKey(displayType, cellPixelWidth, cellPixelHeight, mask, brightnessBucket, onColor, offColor, showDecimalPoint, showCommaTail);
             var visual = GetOrCreateVisual(key, definition);
             var cellRect = SKRect.Create(originX + (cellIndex * scaledPitch), originY, scaledCellWidth, scaledCellHeight);
-            canvas.DrawImage(visual, cellRect);
+            canvas.Save();
+            canvas.Translate(cellRect.Left, cellRect.Top);
+            canvas.Scale(cellRect.Width / key.Width, cellRect.Height / key.Height);
+            canvas.DrawPicture(visual);
+            canvas.Restore();
         }
     }
 
-    private static SKImage GetOrCreateVisual(AlphaVisualCacheKey key, AlphaSkiaDefinition definition)
+    private static SKPicture GetOrCreateVisual(AlphaVisualCacheKey key, AlphaSkiaDefinition definition)
     {
         lock (VisualCacheGate)
         {
@@ -138,12 +142,12 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
         }
     }
 
-    private static SKImage BuildVisual(AlphaVisualCacheKey key, AlphaSkiaDefinition definition)
+    private static SKPicture BuildVisual(AlphaVisualCacheKey key, AlphaSkiaDefinition definition)
     {
-        using var surface = SKSurface.Create(new SKImageInfo(key.Width, key.Height));
-        var canvas = surface.Canvas;
-        canvas.Clear(SKColors.Transparent);
         var bounds = SKRect.Create(0f, 0f, key.Width, key.Height);
+        using var recorder = new SKPictureRecorder();
+        var canvas = recorder.BeginRecording(bounds);
+        canvas.ClipRect(bounds);
         using var paint = new SKPaint { Style = SKPaintStyle.Fill, IsAntialias = true };
         var scale = Math.Min(bounds.Width / definition.Width, bounds.Height / definition.Height);
         var offsetX = (bounds.Width - (definition.Width * scale)) * 0.5f;
@@ -172,7 +176,7 @@ internal sealed class AlphaElementRenderer : IPanelElementRenderer
             canvas.DrawPath(definition.CommaTail, paint);
         }
         canvas.Restore();
-        return surface.Snapshot();
+        return recorder.EndRecording();
     }
 
     private static AlphaSkiaDefinition? GetDefinition(string displayType)

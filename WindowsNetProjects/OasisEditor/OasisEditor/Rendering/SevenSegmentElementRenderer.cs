@@ -7,7 +7,7 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
 {
     private const int MaxVisualCacheEntries = 2048;
     private static readonly Lazy<SevenSegmentSkiaDefinition?> Definition = new(LoadDefinition);
-    private static readonly Dictionary<SegmentVisualCacheKey, SKImage> VisualCache = new();
+    private static readonly Dictionary<SegmentVisualCacheKey, SKPicture> VisualCache = new();
     private static readonly object VisualCacheGate = new();
     [ThreadStatic]
     private static int _diagnosticsCacheHits;
@@ -65,10 +65,13 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
         var brightnessBucket = (int)Math.Round(Math.Clamp(litAmount, 0d, 1d) * 4d);
         var cacheKey = new SegmentVisualCacheKey(width, height, segmentMask, brightnessBucket, onColor, offColor);
         var visual = GetOrCreateVisual(cacheKey, definition);
-        canvas.DrawImage(visual, bounds.Left, bounds.Top);
+        canvas.Save();
+        canvas.Translate(bounds.Left, bounds.Top);
+        canvas.DrawPicture(visual);
+        canvas.Restore();
     }
 
-    private static SKImage GetOrCreateVisual(SegmentVisualCacheKey cacheKey, SevenSegmentSkiaDefinition definition)
+    private static SKPicture GetOrCreateVisual(SegmentVisualCacheKey cacheKey, SevenSegmentSkiaDefinition definition)
     {
         lock (VisualCacheGate)
         {
@@ -90,11 +93,12 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
         }
     }
 
-    private static SKImage BuildVisual(SegmentVisualCacheKey cacheKey, SevenSegmentSkiaDefinition definition)
+    private static SKPicture BuildVisual(SegmentVisualCacheKey cacheKey, SevenSegmentSkiaDefinition definition)
     {
-        using var surface = SKSurface.Create(new SKImageInfo(cacheKey.Width, cacheKey.Height));
-        var canvas = surface.Canvas;
         var bounds = SKRect.Create(0f, 0f, cacheKey.Width, cacheKey.Height);
+        using var recorder = new SKPictureRecorder();
+        var canvas = recorder.BeginRecording(bounds);
+        canvas.ClipRect(bounds);
         var backgroundColor = ScaleBrightness(cacheKey.OnColor, 0.04d);
         using var backgroundPaint = new SKPaint { Color = backgroundColor, Style = SKPaintStyle.Fill, IsAntialias = true };
         canvas.DrawRoundRect(bounds, 2f, 2f, backgroundPaint);
@@ -122,7 +126,7 @@ internal sealed class SevenSegmentElementRenderer : IPanelElementRenderer
             canvas.DrawPath(definition.DecimalPoint, paint);
         }
         canvas.Restore();
-        return surface.Snapshot();
+        return recorder.EndRecording();
     }
 
     private static SevenSegmentSkiaDefinition? LoadDefinition()

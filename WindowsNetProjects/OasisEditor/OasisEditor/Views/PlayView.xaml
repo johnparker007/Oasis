@@ -1,6 +1,6 @@
 <UserControl x:Class="OasisEditor.Views.PlayView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:sk="clr-namespace:SkiaSharp.Views.WPF;assembly=SkiaSharp.Views.WPF"
+             xmlns:local="clr-namespace:OasisEditor.Views"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -20,7 +20,7 @@
                 BorderBrush="{DynamicResource BorderSubtleBrush}"
                 BorderThickness="1">
             <Grid>
-                <sk:SKElement x:Name="PlaySkiaSurface"
+                <local:EditorSkiaSurface x:Name="PlaySkiaSurface"
                               PaintSurface="OnPlaySkiaSurfacePaintSurface"
                               MouseDown="OnPlaySkiaSurfaceMouseDown"
                               MouseMove="OnPlaySkiaSurfaceMouseMove"
