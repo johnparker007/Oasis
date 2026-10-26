@@ -32,7 +32,7 @@ Example Codex `config.toml` entry (replace paths for your checkout):
 
 ```toml
 [mcp_servers.oasis_editor]
-command = 'C:\path\to\OasisEditor.Mcp\bin\Release\net9.0-windows\OasisEditor.Mcp.exe'
+command = 'C:\path\to\OasisEditor.Mcp\bin\Release\net9.0-windows10.0.19041.0\OasisEditor.Mcp.exe'
 args = ['--workspace', 'C:\OasisAutomation']
 tool_timeout_sec = 120
 
