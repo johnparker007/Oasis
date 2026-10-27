@@ -5,12 +5,13 @@ using Xunit;
 
 namespace OasisEditor.Avalonia.Tests;
 
+[Collection("Avalonia headless UI")]
 public sealed class WorkspaceViewTests
 {
     [Fact]
     public void RealWorkspaceSelectionAndInspectorEditShareHistoryAndRenderInBothThemes()
     {
-        Program.BuildHeadless().SetupWithoutStarting();
+            HeadlessTestHost.Initialize();
         var folder = Path.Combine(Path.GetTempPath(), "OasisAvaloniaUi-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
         try

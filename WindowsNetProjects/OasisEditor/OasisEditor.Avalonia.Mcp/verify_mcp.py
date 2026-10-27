@@ -102,9 +102,26 @@ def main():
         client = Client(dll, root)
         try:
             names = {tool["name"] for tool in client.request("tools/list", {})["tools"]}
-            assert {"capture_workspace", "update_element", "history", "create_project", "create_face", "import_fml"} <= names
+            assert {"capture_workspace", "update_element", "history", "create_project", "create_face", "import_fml",
+                    "list_machines", "open_machine", "inspect_machine", "set_machine_platform_setting",
+                    "set_machine_interaction", "set_machine_behavior_source", "apply_recovered_fml_inputs", "save_machine"} <= names
             created = client.state("create_project", name="Panel Authoring")
             assert any(a["type"] == "Machine" for a in created["assets"])
+            machine_path = client.state("list_machines")["machines"][0]["manifestPath"]
+            machine = client.state("open_machine", path=machine_path)
+            assert machine["document"]["schemaVersion"] == 11
+            client.state("set_machine_name", displayName="MCP-authored Machine")
+            client.state("set_machine_runtime", kind="Emulation", platform="Impact")
+            changed_machine = client.state("set_machine_platform_setting", propertyPath="ProgramRom1Path", valueJson='"Roms/verified.bin"')
+            assert changed_machine["document"]["runtime"]["platformSettings"]["programRom1Path"] == "Roms/verified.bin"
+            client.state("machine_history")
+            client.state("machine_history", redo=True)
+            saved_machine = client.state("save_machine")
+            assert not saved_machine["dirty"]
+            client.capture(args.output / "workspace-machine-dark.png", "Dark")
+            reloaded_machine = client.state("open_machine", path=machine_path)["document"]
+            assert reloaded_machine["displayName"] == "MCP-authored Machine"
+            print("Headless Machine create/open/settings/history/save/reopen and rendered capture passed.")
             client.state("create_panel2d", name="Control panel")
             first = client.state("add_rectangle")["selectedId"]
             client.state("update_element", id=first, name="Artwork registration", x=0, y=0, width=680, height=420)
