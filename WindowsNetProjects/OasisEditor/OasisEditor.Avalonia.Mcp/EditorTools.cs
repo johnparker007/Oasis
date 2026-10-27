@@ -15,7 +15,7 @@ public sealed partial class EditorTools(AuthoringSession session, FaceAuthoringS
         assets = session.ProjectFilePath is null ? [] : session.ListAssets(), sourceShapes = session.SourceShapes,
         recoveredInputDefinitions = session.ImportedInputDefinitions,
         face = new { faces.FacePath, faces.FaceTitle, faces.IsDirty, faces.CanUndo, faces.CanRedo, faces.SelectedId, elements = faces.Elements, faces.ArtworkPath, faces.LogicalWidth, faces.LogicalHeight },
-        rendering = new { supported = "Panel2D geometry, artwork images and text; Face artwork and editable bounds", deferred = "3D, emulation previews, specialist lamp/reel/display rendering" }
+        rendering = new { supported = "Panel2D and Face specialist rendering; native emulation preview; Cabinet, Prefab and Machine GPU scenes", deferred = "Native desktop interaction checks on macOS and Linux" }
     };
     private object Act(Action action) { action(); capture.View.ShowPanel(); return Snapshot(); }
     private object ActFace(Action action) { action(); capture.View.ShowFace(); return Snapshot(); }
@@ -53,8 +53,8 @@ public sealed partial class EditorTools(AuthoringSession session, FaceAuthoringS
     [McpServerTool(Name = "save_panel2d"), Description("Atomically save using shared full Panel2D DTOs. Refuses files changed externally or paths replaced by links.")]
     public Task<object> Save(CancellationToken cancellationToken) => ui.Invoke(() => Act(session.Save), cancellationToken);
 
-    [McpServerTool(Name = "capture_workspace", ReadOnly = true), Description("Render the actual Avalonia docking workspace and 2D viewport to a PNG with headless Skia. No desktop capture, focus or native window. Themes System/Light/Dark.")]
+    [McpServerTool(Name = "capture_workspace", ReadOnly = true), Description("Render the actual Avalonia docking workspace and active 2D or offscreen GPU 3D viewport to a PNG. No desktop capture, focus or native window. Themes System/Light/Dark.")]
     public Task<CallToolResult> Capture(CancellationToken cancellationToken, int width = 1400, int height = 900, string theme = "Dark")
-        => ui.Invoke(() => new CallToolResult { Content = [ImageContentBlock.FromBytes(capture.Capture(width, height, theme), "image/png"),
-            .. capture.CaptureFloatingWindows().Select(png => ImageContentBlock.FromBytes(png, "image/png"))] }, cancellationToken);
+        => ui.InvokeAsync(async () => { await capture.View.WaitForSceneAsync(); return new CallToolResult { Content = [ImageContentBlock.FromBytes(capture.Capture(width, height, theme), "image/png"),
+            .. capture.CaptureFloatingWindows().Select(png => ImageContentBlock.FromBytes(png, "image/png"))] }; }, cancellationToken);
 }

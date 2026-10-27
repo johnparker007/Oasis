@@ -18,6 +18,8 @@
           <Color x:Key="ElementFallback">#575F68</Color>
           <Color x:Key="ElementOutline">#9199A2</Color>
           <Color x:Key="SelectionColor">#59A8EB</Color>
+          <Color x:Key="SceneColliderColor">#6645A8F0</Color>
+          <Color x:Key="SceneTriggerColor">#66EF75B4</Color>
         </ResourceDictionary>
         <ResourceDictionary x:Key="Light">
           <SolidColorBrush x:Key="WorkspaceBrush">#CBCBCB</SolidColorBrush>
@@ -31,6 +33,8 @@
           <Color x:Key="ElementFallback">#9CA9B8</Color>
           <Color x:Key="ElementOutline">#485868</Color>
           <Color x:Key="SelectionColor">#146EAF</Color>
+          <Color x:Key="SceneColliderColor">#662A76B8</Color>
+          <Color x:Key="SceneTriggerColor">#66AC2870</Color>
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>

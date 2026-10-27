@@ -270,7 +270,7 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
     }
 
-    private static MachineRuntimeState CreateRuntimeState(RuntimeOutputSnapshot outputs)
+    internal static MachineRuntimeState CreateRuntimeState(RuntimeOutputSnapshot outputs)
     {
         var state = new MachineRuntimeState { FruitMachinePlatform = outputs.Platform };
         foreach (var (id, value) in outputs.LampIntensities)

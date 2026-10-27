@@ -84,7 +84,7 @@ public sealed partial class WorkspaceView
     private (EditorProject Project, string MachinePath) GetBuildInputs()
     {
         if (!_machineActive) throw new InvalidOperationException("Open a Machine before building or exporting for Oasis Player.");
-        if (_session.IsDirty || Faces.IsDirty || Machines.IsDirty) throw new InvalidOperationException("Save or undo all open document changes before building or exporting.");
+        if (HasUnsavedChanges) throw new InvalidOperationException("Save or undo all open document changes before building or exporting.");
         if (!Machines.IsProjectCurrent) throw new InvalidOperationException("The Machine is no longer bound to the active project. Reopen it before building.");
         Machines.EnsureSavedSourceUnchanged();
         var projectFile = _session.ProjectFilePath ?? throw new InvalidOperationException("Open an Oasis project before building.");
@@ -133,6 +133,7 @@ public sealed partial class WorkspaceView
         var settingsPath = LibrarySettingsPath();
         Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
         File.WriteAllText(settingsPath, Path.GetFullPath(path));
+        SetSceneLibraryRoot(path);
         SetStatus($"Oasis Library folder set to {Path.GetFullPath(path)}.");
     }
 
