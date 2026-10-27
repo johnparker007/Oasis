@@ -57,6 +57,8 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         _session = session; Faces = faces ?? new FaceAuthoringSession(session); Machines = new MachineAuthoringSession(session);
         _viewport = new PanelViewport(session, Faces, () => _faceActive);
         _viewport.CommandFailed += SetStatus;
+        _viewport.SelectedSourceRegion=()=>_selectedSource;
+        _viewport.SourceRegionSelected+=id=>{_selectedSource=id;_session.Select(null);Refresh();};
         _hierarchy.ItemsSource = _rows;
         this.Bind(BackgroundProperty, this.GetResourceObservable("WorkspaceBrush"));
         _hierarchy.SelectionChanged += (_, _) =>
@@ -131,13 +133,17 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         InitializeReels(create);
         InitializeLibrary(projectPanel,file);
         InitializeFaceReels(create);
+        InitializeFaceComponents(create);
+        InitializePanelComponents(create);
         InitializePreview(file);
+        MenuAction(file,"Face generation settings…",async()=>{if(!_faceActive){SetStatus("Open a Face asset first.");return;}if(TopLevel.GetTopLevel(this) is Window owner && await FaceGenerationSettingsDialog.ShowAsync(owner,Faces)) Refresh();});
         var edit = new MenuItem { Header = "_Edit" };
         MenuAction(edit, "Undo", () => Try(UndoActive)); MenuAction(edit, "Redo", () => Try(RedoActive));
         MenuAction(edit, "Duplicate", () => Try(() => { RequirePanel(); session.DuplicateSelected(); }));
         MenuAction(edit, "Delete", () => Try(DeleteActive));
         MenuAction(edit, "Bring forward", () => Try(() => { RequirePanel(); session.MoveSelectionInOrder(true); }));
         MenuAction(edit, "Send backward", () => Try(() => { RequirePanel(); session.MoveSelectionInOrder(false); }));
+        InitializeClipboardUi(edit, tools);
         var windowMenu = new MenuItem { Header = "_Window" };
         MenuAction(windowMenu, "Save workspace", () => Try(SaveWorkspace));
         MenuAction(windowMenu, "Restore workspace", () => Try(RestoreWorkspace));
@@ -357,7 +363,8 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
             else _session.UpdateElement(selected.Id, _fields["Name"].Text, Number("X"), Number("Y"), Number("Width"), Number("Height"), _visible.IsChecked == true, _locked.IsChecked == true);
         })));
         if (selected.AssetPath is not null) _inspector.Children.Add(new TextBlock { Text = selected.AssetPath, TextWrapping = TextWrapping.Wrap, Opacity = .65 });
-        if(_faceActive)AppendFaceReelInspector(selected.Id);
+        if(_faceActive) { AppendFaceReelInspector(selected.Id); AppendFaceComponentInspector(selected.Id); }
+        else AppendPanelComponentInspector(selected.Id);
     }
     private void Heading(string text) => _inspector.Children.Add(new TextBlock { Text = text, FontWeight = FontWeight.SemiBold });
     private double Number(string name) => double.TryParse(_fields[name].Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && double.IsFinite(value)

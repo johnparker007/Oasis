@@ -286,8 +286,7 @@ public sealed partial class FaceAuthoringSession
     }
 
     private static bool ArtworkRecipeChanged(FaceDocumentFile previous,FaceDocumentFile next)
-        => System.Text.Json.JsonSerializer.Serialize(previous.Artwork)!=System.Text.Json.JsonSerializer.Serialize(next.Artwork)
-        || System.Text.Json.JsonSerializer.Serialize(previous.GenerationSettings)!=System.Text.Json.JsonSerializer.Serialize(next.GenerationSettings);
+        => System.Text.Json.JsonSerializer.Serialize(previous.Artwork)!=System.Text.Json.JsonSerializer.Serialize(next.Artwork);
 
     public bool Save()
     {

@@ -14,7 +14,7 @@ using OasisEditor.Rendering;
 namespace OasisEditor.Avalonia;
 
 /// <summary>Skia-backed Avalonia viewport. Drawing and hit testing use the same document transform.</summary>
-public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession? faces = null, Func<bool>? isFace = null) : Control, IDisposable
+public sealed partial class PanelViewport(AuthoringSession session, FaceAuthoringSession? faces = null, Func<bool>? isFace = null) : Control, IDisposable
 {
     private bool FaceActive => isFace?.Invoke() == true;
     private IReadOnlyList<ElementSnapshot> Elements => FaceActive ? faces!.Elements.Select(WorkspaceView.ToViewportElement).ToArray() : session.Elements;
@@ -124,8 +124,10 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
             var regionPen = new Pen(Brush("SelectionColor"), 1.5, DashStyle.Dash);
             foreach (var shape in session.SourceShapes)
             {
-                var points = shape.Points.Select(p => new Point(p.X * _zoom + _pan.X, p.Y * _zoom + _pan.Y)).ToArray();
+                var regionPoints = _regionDrag?.Id == shape.Id ? _regionPreview! : shape.Points;
+                var points = regionPoints.Select(p => new Point(p.X * _zoom + _pan.X, p.Y * _zoom + _pan.Y)).ToArray();
                 for (var i = 0; i < points.Length; i++) context.DrawLine(regionPen, points[i], points[(i + 1) % points.Length]);
+                foreach(var corner in points) DrawSourceCorner(context,corner,shape.Id==SelectedSourceRegion?.Invoke());
                 var label = new FormattedText(shape.Name, System.Globalization.CultureInfo.InvariantCulture,
                     FlowDirection.LeftToRight, Typeface.Default, 11, Brush("SelectionColor"));
                 context.DrawText(label, points[0] + new Vector(4, -18));
@@ -328,6 +330,7 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
                 e.Handled = true;
                 return;
             }
+            if(BeginRegionDrag(position)){e.Pointer.Capture(this);e.Handled=true;return;}
             var hit = Elements.LastOrDefault(item => item.Visible && new Rect(item.X, item.Y, item.Width, item.Height).Contains(documentPoint));
             var toggle = (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta | KeyModifiers.Shift)) != 0;
             if (FaceActive) faces!.Select(hit?.Id);
@@ -344,6 +347,7 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
     }
     protected override void OnPointerMoved(PointerEventArgs e)
     {
+        if(_regionDrag is not null){MoveRegionDrag(e.GetPosition(this));return;}
         if (_press is not Point start) return;
         var delta = e.GetPosition(this) - start;
         if (_drag is null) { _pan = _originalPan + delta; _fit = false; }
@@ -356,6 +360,7 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
         {
             _previewInput = null; PreviewInputRequested?.Invoke(input, false); e.Pointer.Capture(null); e.Handled = true; return;
         }
+        if(_regionDrag is not null){CommitRegionDrag();_press=null;e.Pointer.Capture(null);e.Handled=true;InvalidateVisual();return;}
         var drag = _drag; var offset = _preview; var resizing = _resizing;
         _press = null; _drag = null; _preview = default; e.Pointer.Capture(null);
         try
@@ -377,6 +382,7 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
     {
         if (_previewInput is { } input) { _previewInput = null; PreviewInputRequested?.Invoke(input, false); }
+        _regionDrag=null;_regionPreview=null;
         _press = null; _drag = null; _preview = default; InvalidateVisual();
     }
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
