@@ -22,9 +22,11 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
 {
     private readonly AuthoringSession _session;
     public FaceAuthoringSession Faces { get; }
+    public MachineAuthoringSession Machines { get; }
     private bool _faceActive;
-    public bool HasUnsavedChanges => _session.IsDirty || Faces.IsDirty;
-    public string ActiveTitle => _faceActive ? Faces.FaceTitle : _session.PanelTitle;
+    private bool _machineActive;
+    public bool HasUnsavedChanges => _session.IsDirty || Faces.IsDirty || Machines.IsDirty;
+    public string ActiveTitle => _machineActive ? Machines.MachineTitle : _faceActive ? Faces.FaceTitle : _session.PanelTitle;
     public event Action? StateChanged;
     private readonly PanelViewport _viewport;
     private readonly ListBox _hierarchy = new() { SelectionMode = SelectionMode.Multiple | SelectionMode.Toggle };
@@ -41,16 +43,17 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     private readonly WorkspaceDockFactory _factory;
     private readonly DockControl _dock;
     partial void AddFaceWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
-    partial void AddMachineWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
     private readonly Dictionary<string, TextBox> _fields = [];
     private CheckBox? _visible, _locked;
     private bool _refreshing;
     private string? _lastDocument, _selectedSource;
     private object? _inspected;
 
+    partial void AddMachineWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
+
     public WorkspaceView(AuthoringSession session, FaceAuthoringSession? faces = null)
     {
-        _session = session; Faces = faces ?? new FaceAuthoringSession(session);
+        _session = session; Faces = faces ?? new FaceAuthoringSession(session); Machines = new MachineAuthoringSession(session);
         _viewport = new PanelViewport(session, Faces, () => _faceActive);
         _viewport.CommandFailed += SetStatus;
         _hierarchy.ItemsSource = _rows;
@@ -87,6 +90,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         creation.Children.Add(assetName);
         creation.Children.Add(ActionButton("New panel", () => Try(() => { _session.CreatePanel(assetName.Text ?? ""); _faceActive = false; Refresh(); })));
         creation.Children.Add(ActionButton("New Face", () => Try(() => { Faces.CreateFace(assetName.Text ?? ""); _faceActive = true; Refresh(); })));
+        creation.Children.Add(ActionButton("New Machine", () => Try(() => { Machines.CreateMachine(assetName.Text ?? ""); _faceActive = false; _machineActive = true; Refresh(); })));
         Grid.SetRow(creation, 3); projectPanel.Children.Add(creation);
 
         var scene = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
@@ -158,7 +162,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
                 else if (e.Key == Key.Delete) { Try(DeleteActive); e.Handled = true; }
             }
         };
-        session.Changed += Refresh; Faces.Changed += Refresh; Refresh();
+        session.Changed += Refresh; Faces.Changed += Refresh; Machines.Changed += Refresh; Refresh();
     }
 
     internal IReadOnlyList<ElementSnapshot> ActiveElements => _faceActive ? Faces.Elements.Select(ToViewportElement).ToArray() : _session.Elements;
@@ -169,29 +173,34 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     { if (_faceActive) Faces.Select(ids.FirstOrDefault()); else _session.SelectElements(ids); }
     private void RequirePanel() { if (_faceActive) throw new InvalidOperationException("Choose a Panel2D asset for this command."); }
     private void RequireFace() { if (!_faceActive) throw new InvalidOperationException("Choose a Face asset for this command."); }
-    private void SaveActive() { if (_faceActive) Faces.Save(); else _session.Save(); }
-    private void UndoActive() { if (_faceActive) Faces.Undo(); else _session.Undo(); }
-    private void RedoActive() { if (_faceActive) Faces.Redo(); else _session.Redo(); }
+    private void SaveActive() { if (_machineActive) Machines.Save(); else if (_faceActive) Faces.Save(); else _session.Save(); }
+    private void UndoActive() { if (_machineActive) Machines.Undo(); else if (_faceActive) Faces.Undo(); else _session.Undo(); }
+    private void RedoActive() { if (_machineActive) Machines.Redo(); else if (_faceActive) Faces.Redo(); else _session.Redo(); }
     private void DeleteActive()
     { if (_faceActive) Faces.DeleteSelected(); else if (_selectedSource is { } id) { _selectedSource = null; _session.DeleteSourceShape(id); } else _session.DeleteSelected(); }
 
     public void OpenAsset(AssetSummary asset)
     {
+        if (_machineActive && Machines.IsDirty && asset.Type != "Machine")
+            throw new InvalidOperationException("Save or undo Machine edits before changing the active document.");
         var path = _session.ResolveAsset(asset.ManifestPath);
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         if (asset.Type == "Panel2D")
-        { if (!string.Equals(_session.PanelPath, path, comparison)) _session.OpenPanel(asset.ManifestPath); _faceActive = false; }
+        { if (!string.Equals(_session.PanelPath, path, comparison)) _session.OpenPanel(asset.ManifestPath); _faceActive = false; _machineActive = false; }
         else if (asset.Type == "Face")
-        { if (!string.Equals(Faces.FacePath, path, comparison)) Faces.OpenFace(asset.ManifestPath); _faceActive = true; }
+        { if (!string.Equals(Faces.FacePath, path, comparison)) Faces.OpenFace(asset.ManifestPath); _faceActive = true; _machineActive = false; }
+        else if (asset.Type == "Machine")
+        { if (!string.Equals(Machines.MachinePath, path, comparison)) Machines.OpenMachine(asset.ManifestPath); _faceActive = false; _machineActive = true; }
         else { SetStatus($"{asset.Type} / {asset.Name} — authoring for this asset type is still available in the WPF Editor."); return; }
         _selectedSource = null; _inspected = null; Refresh();
     }
-    public void ShowPanel() { _faceActive = false; Refresh(); }
-    public void ShowFace() { _faceActive = true; _selectedSource = null; Refresh(); }
+    public void ShowPanel() { _faceActive = false; _machineActive = false; Refresh(); }
+    public void ShowFace() { _faceActive = true; _machineActive = false; _selectedSource = null; Refresh(); }
+    public void ShowMachine() { _faceActive = false; _machineActive = true; Refresh(); }
     public void OpenProject(string path)
-    { if (Faces.IsDirty) throw new InvalidOperationException("Save or undo Face edits before changing project."); _session.OpenProject(path); }
+    { if (Faces.IsDirty || Machines.IsDirty) throw new InvalidOperationException("Save or undo document edits before changing project."); _session.OpenProject(path); Machines.OpenProject(path); _machineActive = false; }
     public void CreateProject(string name)
-    { if (Faces.IsDirty) throw new InvalidOperationException("Save or undo Face edits before changing project."); _session.CreateProject(name); }
+    { if (Faces.IsDirty || Machines.IsDirty) throw new InvalidOperationException("Save or undo document edits before changing project."); _session.CreateProject(name); Machines.OpenProject(_session.ProjectFilePath!); _machineActive = false; }
     public void SetStatus(string text) => _status.Text = text;
     public void Try(Action action)
     {
@@ -273,7 +282,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         try
         {
             if (!Faces.IsProjectCurrent) { _faceActive = false; Faces.Close(); }
-            var elements = ActiveElements;
+            var elements = _machineActive ? [] : ActiveElements;
             if (!_rows.Select(e => e.Id).SequenceEqual(elements.Select(e => e.Id))) { _rows.Clear(); foreach (var e in elements) _rows.Add(e); }
             else for (var i = 0; i < elements.Count; i++) if (_rows[i] != elements[i]) _rows[i] = elements[i];
             _hierarchy.SelectedItems?.Clear();
@@ -281,15 +290,15 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
             var shapes = _faceActive ? [] : _session.SourceShapes;
             _sources.ItemsSource = shapes; _sources.SelectedItem = shapes.FirstOrDefault(s => s.Id == _selectedSource);
             RefreshAssets(); _project.Text = _session.ProjectName ?? "Open or create an Oasis project";
-            var title = _faceActive ? Faces.FaceTitle : _session.PanelTitle;
-            var path = _faceActive ? Faces.FacePath : _session.PanelPath;
-            var dirty = _faceActive ? Faces.IsDirty : _session.IsDirty;
-            _mode.Text = _faceActive ? "Artwork + bounds" : "Panel 2D";
+            var title = _machineActive ? Machines.MachineTitle : _faceActive ? Faces.FaceTitle : _session.PanelTitle;
+            var path = _machineActive ? Machines.MachinePath : _faceActive ? Faces.FacePath : _session.PanelPath;
+            var dirty = _machineActive ? Machines.IsDirty : _faceActive ? Faces.IsDirty : _session.IsDirty;
+            _mode.Text = _machineActive ? "Machine settings" : _faceActive ? "Artwork + bounds" : "Panel 2D";
             _document.Title = string.IsNullOrEmpty(title) ? "Authoring" : title + (dirty ? " *" : "");
-            _save.IsEnabled = dirty; _undo.IsEnabled = _faceActive ? Faces.CanUndo : _session.CanUndo; _redo.IsEnabled = _faceActive ? Faces.CanRedo : _session.CanRedo;
-            RefreshInspector();
+            _save.IsEnabled = dirty; _undo.IsEnabled = _machineActive ? Machines.CanUndo : _faceActive ? Faces.CanUndo : _session.CanUndo; _redo.IsEnabled = _machineActive ? Machines.CanRedo : _faceActive ? Faces.CanRedo : _session.CanRedo;
+            if (_machineActive) RefreshMachineInspector(); else RefreshInspector();
             SetStatus(path is null ? "Open or create a Panel2D or Face asset.  •  3D authoring is deferred."
-                : $"{(_faceActive ? "Face" : "Panel2D")}  •  {elements.Count} elements  •  {SelectedIds.Count} selected  •  {(dirty ? "Unsaved changes" : "Saved")}  •  {path}");
+                : $"{(_machineActive ? "Machine" : _faceActive ? "Face" : "Panel2D")}  •  {(dirty ? "Unsaved changes" : "Saved")}  •  {path}");
             if (_lastDocument != path) { _lastDocument = path; _viewport.ClearImages(); _viewport.RequestFit(); }
             _viewport.InvalidateVisual();
         }
@@ -355,7 +364,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     }
     public void Dispose()
     {
-        _session.Changed -= Refresh; Faces.Changed -= Refresh;
+        _session.Changed -= Refresh; Faces.Changed -= Refresh; Machines.Changed -= Refresh;
         if (_dock.Layout is IRootDock root) root.ExitWindows.Execute(null);
         _viewport.Dispose();
     }

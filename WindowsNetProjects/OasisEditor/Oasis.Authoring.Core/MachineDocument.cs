@@ -289,6 +289,18 @@ public static class MachineDocumentStorage
         if (document.SchemaVersion != MachineDocument.CurrentSchemaVersion) throw new InvalidOperationException("Only the current Machine schema can be written.");
         if (!Guid.TryParse(document.Id, out _)) throw new InvalidOperationException("Machine ID must be a stable GUID.");
         if (string.IsNullOrWhiteSpace(document.DisplayName)) throw new InvalidOperationException("Machine display name is required.");
+        if (document.InputDefinitions is null || document.InputDefinitions.Any(input => input is null))
+            throw new InvalidOperationException("Machine InputDefinitions collection and entries are required.");
+        if (document.InputDefinitions.GroupBy(input => input.Id, StringComparer.Ordinal).Any(group => group.Count() > 1))
+            throw new InvalidOperationException("Machine input IDs must be unique (case-sensitive).");
+        foreach (var input in document.InputDefinitions)
+        {
+            if (string.IsNullOrWhiteSpace(input.Id) || string.IsNullOrWhiteSpace(input.Name))
+                throw new InvalidOperationException("Each Machine input requires a stable ID and display name.");
+            if (!Enum.IsDefined(input.Kind)) throw new InvalidOperationException($"Machine input '{input.Id}' has an unknown kind.");
+            if (input.CoinChannel is < 0 || input.CoinValue is < 0)
+                throw new InvalidOperationException($"Machine input '{input.Id}' coin channel and value cannot be negative.");
+        }
         ValidateInteraction(document);
         RuntimeDefinitionValidation.Validate(document.DisplayName, document.Runtime, document.Behavior);
         if (document.SurfaceAssignments.GroupBy(x => x.TargetId, StringComparer.Ordinal).Any(x => x.Count() > 1)) throw new InvalidOperationException("Machine surface target assignments must be unique.");

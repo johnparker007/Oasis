@@ -5,6 +5,7 @@ using Xunit;
 
 namespace OasisEditor.Avalonia.Tests;
 
+[Collection("Avalonia headless UI")]
 public sealed class WorkspaceViewTests
 {
     [Fact]
