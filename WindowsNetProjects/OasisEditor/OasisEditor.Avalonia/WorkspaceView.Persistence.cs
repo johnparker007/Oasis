@@ -40,7 +40,7 @@ public sealed partial class WorkspaceView
                     SceneView.Camera.Distance, SceneView.Camera.Yaw, SceneView.Camera.Pitch, SceneView.Camera.FieldOfView),
                 SceneView.ShowVisuals, SceneView.ShowColliders, SceneView.ShowTriggers,
                 _sceneKind == "Reel" && Reels.IsProjectCurrent ? AssetRelative(Reels.FilePath) : null,IsLibraryScene?"Library":"Project"),
-                string.IsNullOrWhiteSpace(SceneLibraryRoot)?null:SceneLibraryRoot,_browseLibrary);
+                string.IsNullOrWhiteSpace(SceneLibraryRoot)?null:SceneLibraryRoot,_browseLibrary,CaptureDocumentList());
     }
 
     public void ConfigureWorkspacePersistence(string path, bool restore = true)
@@ -130,6 +130,7 @@ public sealed partial class WorkspaceView
         {
             var project = WorkspacePathPolicy.ResolveConfined(_session.WorkspacePath, state.Project, requireExists: true);
             var probe = new AuthoringSession(_session.WorkspacePath); probe.OpenProject(project);
+            PreflightDocumentList(state,probe);
             if (state.Panel is not null) probe.OpenPanel(state.Panel);
             if (state.Face is not null) new FaceAuthoringSession(probe).OpenFace(state.Face);
             if (state.Machine is not null) new MachineAuthoringSession(probe).OpenMachine(state.Machine);
@@ -137,12 +138,13 @@ public sealed partial class WorkspaceView
             if (sceneMode == "Prefab") {var asset=new PrefabAuthoringSession(probe);if(state.Scene3D!.Scope=="Library")asset.OpenLibrary(state.LibraryRoot!,state.Scene3D.Prefab!);else asset.Open(state.Scene3D.Prefab!);}
             if (sceneMode == "Reel") {var asset=new ReelAuthoringSession(probe);if(state.Scene3D!.Scope=="Library")asset.OpenLibrary(state.LibraryRoot!,state.Scene3D.Reel!);else asset.Open(state.Scene3D.Reel!);}
         }
-        else if (state.Panel is not null || state.Face is not null || state.Machine is not null || sceneMode is not null)
+        else if (state.Panel is not null || state.Face is not null || state.Machine is not null || sceneMode is not null || state.Documents?.Length > 0)
             throw new InvalidDataException("Saved documents require a project.");
         if (state.Project is not null)
         {
-            Faces.Close();
+            Faces.CloseAllDocuments();
             OpenProject(state.Project);
+            RestoreDocumentList(state);
             if (state.Machine is not null) Machines.OpenMachine(state.Machine);
             if (state.Panel is not null)
             {
@@ -156,7 +158,7 @@ public sealed partial class WorkspaceView
                 Faces.Select(Faces.Elements.Any(e => e.Id == state.FaceSelection) ? state.FaceSelection : null);
             }
         }
-        else { Faces.Close(); _session.CloseProject(); Clear3DForProjectChange(); }
+        else { Faces.CloseAllDocuments(); _session.CloseProject(); Machines.CloseProject(); Clear3DForProjectChange(); }
         SceneLibraryRoot=state.LibraryRoot??string.Empty;RestartLibraryWatcher();_libraryTask=RefreshLibraryAsync();SetAssetBrowserSource(state.LibraryBrowser);
         var restored = WorkspaceLayoutState.Restore(state.Layout, known);
         ReplaceLayout(restored);

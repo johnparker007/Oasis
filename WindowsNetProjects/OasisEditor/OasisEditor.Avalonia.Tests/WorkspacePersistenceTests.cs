@@ -234,7 +234,7 @@ public sealed class WorkspacePersistenceTests
                 Assert.Equal(before.Project, view.InspectWorkspaceState().Project);
                 Assert.Equal(ThemeVariant.Light, Application.Current!.RequestedThemeVariant);
                 Assert.True(capture.Capture(theme: "Light").Length > 5000);
-                view.ApplyWorkspaceState(view.InspectWorkspaceState() with { Project = null, Panel = null, Face = null });
+                view.ApplyWorkspaceState(view.InspectWorkspaceState() with { Project = null, Panel = null, Face = null, Documents = null });
                 Assert.Null(session.ProjectFilePath); Assert.Empty(session.Elements); Assert.Empty(view.Faces.Elements);
             }
             finally { Directory.Delete(folder, recursive: true); }

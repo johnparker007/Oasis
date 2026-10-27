@@ -21,6 +21,7 @@ public sealed class CabinetAuthoringSession : ThreeDAuthoringSessionBase
     {
         EnsureCanReplaceDocument();
         var manifest = ResolveManifest(manifestPath);
+        if (RestoreRetainedAsset(manifest)) { Changed?.Invoke(); return; }
         var json = File.ReadAllText(manifest);
         if (!CabinetDocumentStorage.TryRead(json, out var document)) throw new InvalidDataException("Invalid Cabinet3D manifest.");
         var candidate = Clone(document);
@@ -39,6 +40,7 @@ public sealed class CabinetAuthoringSession : ThreeDAuthoringSessionBase
         EnsureCanReplaceDocument();
         var root = Path.GetFullPath(explicitLibraryRoot);
         var manifest = ResolveLibraryManifest(root, libraryRelativeManifest);
+        if (RestoreRetainedAsset(manifest)) { Changed?.Invoke(); return; }
         var json = File.ReadAllText(manifest);
         if (!CabinetDocumentStorage.TryRead(json, out var document)) throw new InvalidDataException("Invalid Cabinet3D manifest.");
         var candidate = Clone(document);

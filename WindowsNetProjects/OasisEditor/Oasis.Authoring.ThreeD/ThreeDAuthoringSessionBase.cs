@@ -5,7 +5,7 @@ using System.Buffers.Binary;
 
 namespace OasisEditor;
 
-public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession, string assetFolder, string manifestName, string? libraryAssetFolder = null)
+public abstract partial class ThreeDAuthoringSessionBase(AuthoringSession projectSession, string assetFolder, string manifestName, string? libraryAssetFolder = null)
 {
     private readonly Dictionary<string, string> _packageHashes = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
     private string? _boundProjectRoot;
@@ -178,12 +178,13 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
 
     protected void EnsureCanReplaceDocument()
     {
-        if (IsDirty) throw new InvalidOperationException("Save or undo the current 3D asset edits before replacing the open document.");
+        if (!RetainDocuments && IsDirty) throw new InvalidOperationException("Save or undo the current 3D asset edits before replacing the open document.");
     }
 
     protected void SetOpen(string manifest, string payload, IReadOnlyDictionary<string, string> packageHashes, string? libraryRoot = null)
     {
         EnsureCanReplaceDocument();
+        RetainCurrentAsset();
         var root = ProjectRoot;
         ManifestPath = manifest;
         _boundProjectRoot = root;
@@ -198,6 +199,7 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
     protected void SetCreated(string manifest, string payload, IReadOnlyDictionary<string, string> packageHashes)
     {
         EnsureCanReplaceDocument();
+        RetainCurrentAsset();
         var root = ProjectRoot;
         ManifestPath = manifest;
         PackageDirectory = Path.GetDirectoryName(manifest)!;
@@ -211,7 +213,8 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
 
     public void Close()
     {
-        EnsureCanReplaceDocument();
+        if (IsDirty) throw new InvalidOperationException("Save or undo asset edits before closing.");
+        if (ManifestPath is {} path) _retainedAssets.Remove(path);
         ManifestPath = null;
         PackageDirectory = null;
         _boundProjectRoot = null;

@@ -4,7 +4,7 @@ using System.Text;
 namespace OasisEditor;
 
 /// <summary>Portable, single-document authoring session for a reusable physical Reel asset.</summary>
-public sealed class ReelAuthoringSession
+public sealed partial class ReelAuthoringSession
 {
     private readonly AuthoringSession _projectSession;
     private readonly Dictionary<string, string> _packageHashes = new(PathComparer);
@@ -198,7 +198,8 @@ public sealed class ReelAuthoringSession
 
     public void Close()
     {
-        EnsureCanReplaceDocument();
+        if (IsDirty) throw new InvalidOperationException("Save or undo Reel edits before closing.");
+        if (_filePath is {} path) _retainedReels.Remove(path);
         _filePath = null;
         _boundProjectRoot = null;
         _boundProjectFile = null;
@@ -222,6 +223,8 @@ public sealed class ReelAuthoringSession
 
     private void SetOpen(string manifest, ReelDocument document, string payload, IReadOnlyDictionary<string, string> hashes, string root, string? libraryRoot)
     {
+        if (RestoreRetainedReel(manifest)) return;
+        RetainCurrentReel();
         _filePath = manifest;
         _document = document;
         _savedPayload = Payload(document);
@@ -255,7 +258,7 @@ public sealed class ReelAuthoringSession
 
     private void EnsureCanReplaceDocument()
     {
-        if (IsDirty) throw new InvalidOperationException("Save or undo the current Reel edits before replacing the open document.");
+        if (!RetainDocuments && IsDirty) throw new InvalidOperationException("Save or undo the current Reel edits before replacing the open document.");
     }
 
     private string ResolveManifest(string path, string root)

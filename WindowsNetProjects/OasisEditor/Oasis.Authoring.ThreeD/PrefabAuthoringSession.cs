@@ -19,6 +19,7 @@ public sealed class PrefabAuthoringSession : ThreeDAuthoringSessionBase
     {
         EnsureCanReplaceDocument();
         var manifest = ResolveManifest(manifestPath);
+        if (RestoreRetainedAsset(manifest)) { Changed?.Invoke(); return; }
         var json = File.ReadAllText(manifest);
         if (!Object3DDocumentStorage.TryRead(json, out var document, out var error)) throw new InvalidDataException(error);
         var candidate = Clone(document);
@@ -37,6 +38,7 @@ public sealed class PrefabAuthoringSession : ThreeDAuthoringSessionBase
         EnsureCanReplaceDocument();
         var root = Path.GetFullPath(explicitLibraryRoot);
         var manifest = ResolveLibraryManifest(root, libraryRelativeManifest);
+        if (RestoreRetainedAsset(manifest)) { Changed?.Invoke(); return; }
         var json = File.ReadAllText(manifest);
         if (!Object3DDocumentStorage.TryRead(json, out var document, out var error)) throw new InvalidDataException(error);
         var candidate = Clone(document);

@@ -17,6 +17,7 @@ public sealed partial class AuthoringSession
     /// <summary>Creates the full standard Oasis project in this session's workspace and opens it.</summary>
     public string CreateProject(string name)
     {
+        if (HasRetainedChanges) throw new InvalidOperationException("Save or undo all Panel edits before changing project.");
         EnsureCanReplaceDocument();
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         var projectName = name.Trim();

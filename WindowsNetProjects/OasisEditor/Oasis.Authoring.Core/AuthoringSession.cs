@@ -75,6 +75,7 @@ public sealed partial class AuthoringSession
 
     public void OpenProject(string path)
     {
+        if (HasRetainedChanges) throw new InvalidOperationException("Save or undo all Panel edits before changing project.");
         EnsureCanReplaceDocument();
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         WorkspacePathPolicy.RejectRootReparsePoints(_workspacePath, requireExists: true);
@@ -296,7 +297,7 @@ public sealed partial class AuthoringSession
 
     private void EnsureCanReplaceDocument()
     {
-        if (IsDirty) throw new InvalidOperationException("Save or undo the current Panel2D edits before replacing the open document.");
+        if (!RetainDocuments && IsDirty) throw new InvalidOperationException("Save or undo the current Panel2D edits before replacing the open document.");
     }
 
     private string RequireProject() => _projectDirectory ?? throw new InvalidOperationException("Open an Oasis project first.");

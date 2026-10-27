@@ -36,11 +36,13 @@ public sealed partial class FaceAuthoringSession
         var manifest = Path.Combine(package, ProjectAssetPathService.FaceManifestFileName);
         Directory.CreateDirectory(package);
         WriteAtomic(manifest, FaceDocumentStorage.Serialize(result.Document), overwrite: false);
+        RetainCurrentFace();
         _projectFileAtOpen = projectFile;
         _projectRootAtOpen = projectRoot;
         _facePath = manifest;
         _packageDirectory = package;
         _savedPackageFiles = FingerprintPackage(projectRoot, package);
+        _savedGeneratedFiles = FingerprintGeneratedFaceFiles(projectRoot, safeName);
         var file = FaceDocumentStorage.ToFile(result.Document);
         _savedPayload = FaceDocumentStorage.SerializePayload(file);
         ResetHistory(file);

@@ -77,7 +77,7 @@ public sealed partial class WorkspaceView
             case EditorAssetType.Object3D:if(!SameScenePath(Prefabs.FilePath,asset.ManifestPath)||!Prefabs.IsDirty)Prefabs.OpenLibrary(SceneLibraryRoot,reference.Path);_sceneKind="Prefab";_selectedSceneNodeId=Prefabs.Document.Root.Id;break;
             default:throw new InvalidDataException("Unsupported Library asset type.");
         }
-        _faceActive=_machineActive=false;await ReloadSceneAsync();Refresh();
+        _faceActive=_machineActive=false;await ReloadSceneAsync();RestoreDocumentCamera();Refresh();
     }
     public LibraryCopyResult CopyProjectAssetToLibrary(string projectManifest,string? packageName=null)
     {

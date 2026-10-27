@@ -25,7 +25,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     public MachineAuthoringSession Machines { get; }
     private bool _faceActive;
     private bool _machineActive;
-    public bool HasUnsavedChanges => _session.IsDirty || Faces.IsDirty || Machines.IsDirty || Cabinets?.IsDirty == true || Prefabs?.IsDirty == true || Reels?.IsDirty == true;
+    public bool HasUnsavedChanges => _session.HasRetainedChanges || Faces.HasRetainedChanges || Machines.HasRetainedChanges || Cabinets?.HasRetainedChanges == true || Prefabs?.HasRetainedChanges == true || Reels?.HasRetainedChanges == true;
     public string ActiveTitle => _sceneKind == "Reel" ? Reels.Document.DisplayName : _sceneKind == "Cabinet3D" ? Path.GetFileName(Path.GetDirectoryName(Cabinets.FilePath)) ?? "Cabinet" : _sceneKind == "Prefab" ? Prefabs.Document.DisplayName : _machineActive ? Machines.MachineTitle : _faceActive ? Faces.FaceTitle : _session.PanelTitle;
     public event Action? StateChanged;
     private readonly PanelViewport _viewport;
@@ -136,7 +136,9 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         InitializeFaceComponents(create);
         InitializePanelComponents(create);
         InitializePreview(file);
+        InitializeLifecycleMenus(file);
         MenuAction(file,"Face generation settings…",async()=>{if(!_faceActive){SetStatus("Open a Face asset first.");return;}if(TopLevel.GetTopLevel(this) is Window owner && await FaceGenerationSettingsDialog.ShowAsync(owner,Faces)) Refresh();});
+        InitializeDocumentTabs(scene,file);
         var edit = new MenuItem { Header = "_Edit" };
         MenuAction(edit, "Undo", () => Try(UndoActive)); MenuAction(edit, "Redo", () => Try(RedoActive));
         MenuAction(edit, "Duplicate", () => Try(() => { RequirePanel(); session.DuplicateSelected(); }));
@@ -197,7 +199,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         if (asset.Type == "Reel") { _sceneTask = SceneAction(() => OpenReelAsync(asset.ManifestPath)); return; }
         if (asset.Type == "Cabinet3D") { _sceneTask = SceneAction(() => OpenCabinet3DAsync(asset.ManifestPath)); return; }
         if (asset.Type == "Object3D") { _sceneTask = SceneAction(() => OpenPrefab3DAsync(asset.ManifestPath)); return; }
-        if (_machineActive && Machines.IsDirty && asset.Type != "Machine")
+        if (!Machines.RetainDocuments && _machineActive && Machines.IsDirty && asset.Type != "Machine")
             throw new InvalidOperationException("Save or undo Machine edits before changing the active document.");
         var path = _session.ResolveAsset(asset.ManifestPath);
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
@@ -214,9 +216,9 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     public void ShowFace() { SceneView.SuspendRendering(); _sceneKind = null; _faceActive = true; _machineActive = false; _selectedSource = null; _sceneCancellation.Cancel(); Refresh(); }
     public void ShowMachine() { _sceneKind = "Machine"; _faceActive = false; _machineActive = true; Refresh(); QueueSceneReload(); }
     public void OpenProject(string path)
-    { if (Faces.IsDirty || Machines.IsDirty || Cabinets.IsDirty || Prefabs.IsDirty || Reels.IsDirty) throw new InvalidOperationException("Save or undo document edits before changing project."); _session.OpenProject(path); Clear3DForProjectChange(); Machines.OpenProject(path); _machineActive = false; Refresh(); }
+    { if (HasUnsavedChanges) throw new InvalidOperationException("Save or undo document edits before changing project."); var probe=new AuthoringSession(_session.WorkspacePath); probe.OpenProject(path); Faces.CloseAllDocuments(); _session.OpenProject(path); Clear3DForProjectChange(); _documentViews.Clear(); Machines.OpenProject(path); _machineActive = false; Refresh(); }
     public void CreateProject(string name)
-    { if (Faces.IsDirty || Machines.IsDirty || Cabinets.IsDirty || Prefabs.IsDirty || Reels.IsDirty) throw new InvalidOperationException("Save or undo document edits before changing project."); _session.CreateProject(name); Clear3DForProjectChange(); Machines.OpenProject(_session.ProjectFilePath!); _machineActive = false; Refresh(); }
+    { if (HasUnsavedChanges) throw new InvalidOperationException("Save or undo document edits before changing project."); var probe=new AuthoringSession(_session.WorkspacePath); var path=probe.CreateProject(name); Faces.CloseAllDocuments(); _session.OpenProject(path); Clear3DForProjectChange(); _documentViews.Clear(); Machines.OpenProject(_session.ProjectFilePath!); _machineActive = false; Refresh(); }
     public void SetStatus(string text) => _status.Text = text;
     public void Try(Action action)
     {
@@ -301,6 +303,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         try
         {
             if (!Faces.IsProjectCurrent) { _faceActive = false; Faces.Close(); }
+            RefreshDocumentTabs();
             UpdateSceneModeUI();
             if (Is3DActive) { Refresh3DWorkspaceChrome(); return; }
             var elements = _machineActive ? [] : ActiveElements;
