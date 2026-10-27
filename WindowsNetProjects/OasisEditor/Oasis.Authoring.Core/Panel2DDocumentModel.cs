@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace OasisEditor;
 
-internal sealed class Panel2DDocumentModel
+public sealed class Panel2DDocumentModel
 {
     public string Title { get; init; } = string.Empty;
     public string Summary { get; init; } = string.Empty;
@@ -11,12 +11,12 @@ internal sealed class Panel2DDocumentModel
     public IReadOnlyList<PanelFaceSourceShapeModel> FaceSourceShapes { get; init; } = [];
 }
 
-internal enum PanelFaceSourceShapeType
+public enum PanelFaceSourceShapeType
 {
     PerspectiveRectangle
 }
 
-internal sealed class PanelFaceSourceShapeModel
+public sealed class PanelFaceSourceShapeModel
 {
     public string Id { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
@@ -32,7 +32,7 @@ internal sealed class PanelFaceSourceShapeModel
     public double Height => new[] { TopLeft.Y, TopRight.Y, BottomRight.Y, BottomLeft.Y }.Max() - Y;
 }
 
-internal sealed class PanelElementModel
+public sealed class PanelElementModel
 {
     public string ObjectId { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
@@ -55,6 +55,7 @@ internal sealed class PanelElementModel
     public string? OnColorHex { get; init; }
     public string? OffColorHex { get; init; }
     public string? TextColorHex { get; init; }
+    public string? DisplayColorHex { get; init; }
     public string? DisplayText { get; init; }
     public string? TextBoxFontName { get; init; }
     public string? TextBoxFontStyle { get; init; }
@@ -100,7 +101,7 @@ public sealed class ReelLampSlotModel
     public double Intensity { get; init; }
 }
 
-internal sealed class PanelElementImportSourceModel
+public sealed class PanelElementImportSourceModel
 {
     public string Format { get; init; } = string.Empty;
     public string? Reference { get; init; }
