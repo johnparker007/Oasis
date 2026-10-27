@@ -150,6 +150,13 @@ public sealed class Portable3DCompositionTests : IDisposable
         var intrinsic = Portable3DTransform.CreateIntrinsic(cabinet.Model);
         var expectedWorldCorners = loadedTarget.Corners.Select(point => Vector3.Transform(point, intrinsic)).ToArray();
 
+        Assert.Equal(cabinet, result.CabinetDocument);
+        Assert.Single(result.CabinetFaceTargets);
+        Assert.Equal(2, result.ReflectionTargets.Count);
+        Assert.Equal(intrinsic, result.CabinetIntrinsicTransform);
+        var unassigned = await new Portable3DCompositionService().ComposeCabinetAsync(project, cabinet, manifestPath);
+        Assert.Empty(unassigned.FacePlanes);
+        Assert.Single(unassigned.CabinetFaceTargets);
         Assert.Equal("cabinet", plane.OwnerId);
         Assert.Equal("screen", plane.TargetId);
         Assert.Equal("screen", plane.SourceTarget.Id);

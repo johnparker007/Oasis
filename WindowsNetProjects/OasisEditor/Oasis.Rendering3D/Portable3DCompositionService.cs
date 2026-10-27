@@ -165,6 +165,10 @@ public sealed class Portable3DCompositionService
         }
         scene.AddDiagnostics(load.Diagnostics);
         var intrinsic = Portable3DTransform.CreateIntrinsic(cabinet.Model);
+        scene.CabinetDocument = cabinet;
+        scene.CabinetFaceTargets = load.FaceTargets;
+        scene.ReflectionTargets = load.ReflectionTargets;
+        scene.CabinetIntrinsicTransform = intrinsic;
         scene.AddScene(load, "cabinet", "cabinet", intrinsic, modelPath);
 
         if (machine is null) return;
@@ -393,6 +397,10 @@ public sealed record Portable3DCompositionResult(
     IReadOnlyList<string> Diagnostics)
 {
     public IReadOnlyList<PortableFacePlaneGeometry> CabinetFaceBindings => FacePlanes;
+    public CabinetDocument? CabinetDocument { get; init; }
+    public IReadOnlyList<CabinetFaceTarget> CabinetFaceTargets { get; init; } = [];
+    public IReadOnlyList<CabinetReflectionReceiverTarget> ReflectionTargets { get; init; } = [];
+    public Matrix4x4 CabinetIntrinsicTransform { get; init; } = Matrix4x4.Identity;
 }
 
 internal sealed class CompositionBuilder(PortableGlbSceneLoader loader)
@@ -403,6 +411,10 @@ internal sealed class CompositionBuilder(PortableGlbSceneLoader loader)
     public List<GlbMaterialData> Materials { get; } = [];
     public List<PortableFacePlaneGeometry> FacePlanes { get; } = [];
     public List<Portable3DAnchorPose> Anchors { get; } = [];
+    public CabinetDocument? CabinetDocument { get; set; }
+    public IReadOnlyList<CabinetFaceTarget> CabinetFaceTargets { get; set; } = [];
+    public IReadOnlyList<CabinetReflectionReceiverTarget> ReflectionTargets { get; set; } = [];
+    public Matrix4x4 CabinetIntrinsicTransform { get; set; } = Matrix4x4.Identity;
     public List<string> Diagnostics { get; } = [];
     private BoundingBox3 _bounds = BoundingBox3.Empty;
 
@@ -454,5 +466,11 @@ internal sealed class CompositionBuilder(PortableGlbSceneLoader loader)
     public void Include(IEnumerable<Vector3> positions) { foreach (var position in positions) Include(position); }
     public void AddDiagnostics(IEnumerable<string> diagnostics) => Diagnostics.AddRange(diagnostics);
     public Portable3DCompositionResult Build() => new(Meshes.ToArray(), Materials.ToArray(), FacePlanes.ToArray(), Anchors.ToArray(), _bounds,
-        Diagnostics.Distinct(StringComparer.Ordinal).ToArray());
+        Diagnostics.Distinct(StringComparer.Ordinal).ToArray())
+    {
+        CabinetDocument = CabinetDocument,
+        CabinetFaceTargets = CabinetFaceTargets,
+        ReflectionTargets = ReflectionTargets,
+        CabinetIntrinsicTransform = CabinetIntrinsicTransform
+    };
 }
