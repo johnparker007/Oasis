@@ -437,7 +437,11 @@ internal static class FaceArtworkRecipeEditor
                 }
                 faces.RebuildArtwork(); saved = true; dirtyRegistration = false; dirtyCalibration = false;
                 current = faces.CurrentArtwork!; registration = current.Geometry.PerspectiveRegistration;
-                canvas.Registration = registration; status.Text = "Artwork stages rebuilt.";
+                calibration = current.ProcessingPipeline.Operations.OfType<ArtworkCalibrationOperationModel>().FirstOrDefault() ?? calibration;
+                canvas.Registration = registration;
+                canvas.SetPreview(isCalibrationStage ? calibrationPath : sourceImagePath);
+                canvas.Calibration = isCalibrationStage ? calibration : null;
+                status.Text = "Artwork stages rebuilt.";
             }
             catch (Exception ex) when (ex is IOException or ArgumentException or InvalidOperationException or UnauthorizedAccessException)
             { status.Text = ex.Message; }

@@ -22,7 +22,7 @@ without saving or discarding pending edits/history. Workspace persistence includ
 their bounds, panes, selection and cameras. Face Build/illumination/source switching, interactive image registration/calibration,
 override lifecycle and remaining Panel asset/Label inspector fields are also available.
 Recent-project welcome, live input diagnostics, Output logging/filtering and guarded
-project package context actions are also ported. Current combined validation: 212
+project package context actions are also ported. Current combined validation: 214
 Avalonia tests and 1,449 WPF regressions; four background MCP verifiers and inspected
 Dark/Light images. Native desktop/platform verification remains separate work. Preserve its
 working authoring features while extracting shared services. Do not substitute

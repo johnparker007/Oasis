@@ -434,7 +434,7 @@ Reproduce the latest background loop with:
 python OasisEditor.Avalonia.Mcp/verify_port_gap_workflows.py --output <directory>
 ```
 
-The combined changes pass 212/212 Avalonia tests and 1,449/1,449 WPF regressions.
+The combined changes pass 214/214 Avalonia tests and 1,449/1,449 WPF regressions.
 All four MCP verifiers pass, including real Face runtime textures/manifests,
 rollback, guarded package actions, welcome and actual calibration-dialog captures,
 retained/floating assets and GPU scenes. Dark/Light images were inspected. Linux x64
@@ -443,3 +443,7 @@ execution/packaging, dialogs, physical clipboard/focus/input and mixed-DPI behav
 remain unverified. Existing Skia warnings remain. Capsule/Mesh collider previews
 and animated/skinned GLB evaluation are shared WPF/static-renderer limitations.
 A source audit found no additional substantial unported WPF authoring workflow.
+
+If a failed Face build cannot restore generated files (for example, another process
+holds an output open), its recovery backup is retained and the error reports the
+path. Applying registration immediately reloads the rendered calibration input.
