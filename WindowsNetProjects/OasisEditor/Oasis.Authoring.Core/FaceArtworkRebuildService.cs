@@ -1,7 +1,9 @@
 using System.IO;
 using SkiaSharp;
 
-namespace OasisEditor;
+using OasisEditor;
+
+namespace OasisEditor.FacePipeline;
 
 internal sealed record FaceArtworkProcessingResult(bool Succeeded, string? ErrorMessage)
 {

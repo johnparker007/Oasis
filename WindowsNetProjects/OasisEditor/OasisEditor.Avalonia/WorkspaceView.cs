@@ -42,7 +42,6 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     private Document _document;
     private readonly WorkspaceDockFactory _factory;
     private readonly DockControl _dock;
-    partial void AddFaceWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
     private readonly Dictionary<string, TextBox> _fields = [];
     private CheckBox? _visible, _locked;
     private bool _refreshing;
@@ -50,6 +49,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     private object? _inspected;
 
     partial void AddMachineWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
+    partial void AddFaceWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
 
     public WorkspaceView(AuthoringSession session, FaceAuthoringSession? faces = null)
     {

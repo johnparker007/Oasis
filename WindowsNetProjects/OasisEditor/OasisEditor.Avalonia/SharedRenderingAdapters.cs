@@ -3,13 +3,6 @@ using SkiaSharp;
 
 namespace OasisEditor;
 
-public enum CpuImageProcessingMode { Auto, Maximum, Custom }
-public sealed class ProcessingPreferences
-{
-    public CpuImageProcessingMode CpuMode { get; init; } = CpuImageProcessingMode.Auto;
-    public int CustomMaximumWorkers { get; init; } = 1;
-}
-
 /// <summary>Portable transform shape consumed by the existing Skia renderer sources.</summary>
 public readonly record struct PanelViewportTransform(double Zoom, double PanX, double PanY,
     double ScaleY = double.NaN, double RasterMagnification = double.NaN, double ScaleX = double.NaN)

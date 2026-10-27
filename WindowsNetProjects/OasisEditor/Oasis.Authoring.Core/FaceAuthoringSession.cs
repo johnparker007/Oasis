@@ -31,6 +31,7 @@ public sealed partial class FaceAuthoringSession
     private string? _facePath;
     private string? _savedPayload;
     private Dictionary<string, string> _savedPackageFiles = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, string> _savedGeneratedFiles = new(StringComparer.OrdinalIgnoreCase);
     private int _historyIndex;
     private string? _selectedId;
 
@@ -39,6 +40,8 @@ public sealed partial class FaceAuthoringSession
 
     public string? FacePath => _facePath;
     public string FaceTitle => Current?.Title ?? string.Empty;
+    public FaceArtworkModel? CurrentArtwork => Current is null ? null : FaceDocumentStorage.ToModel(Current).Artwork;
+    public FaceDocumentModel? CurrentDocument => Current is null ? null : FaceDocumentStorage.ToModel(Current);
     /// <summary>Full read-only native model for renderers; authored session state remains the source of truth.</summary>
     public FaceDocumentModel? Document => Current is null ? null : FaceDocumentStorage.ToModel(Current);
     internal int RenderRevision => Current is null ? 0 : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Current);
@@ -100,6 +103,7 @@ public sealed partial class FaceAuthoringSession
         _facePath = resolvedPath;
         _packageDirectory = Path.GetDirectoryName(resolvedPath)!;
         _savedPackageFiles = FingerprintPackage(projectRoot, _packageDirectory);
+        _savedGeneratedFiles = FingerprintGeneratedFaceFiles(projectRoot, faceName);
         _savedPayload = FaceDocumentStorage.SerializePayload(file);
         ResetHistory(file);
         _selectedId = null;
@@ -132,6 +136,7 @@ public sealed partial class FaceAuthoringSession
         _facePath = manifestPath;
         _packageDirectory = packageDirectory;
         _savedPackageFiles = FingerprintPackage(projectRoot, packageDirectory);
+        _savedGeneratedFiles = FingerprintGeneratedFaceFiles(projectRoot, safeName);
         _savedPayload = FaceDocumentStorage.SerializePayload(file);
         ResetHistory(file);
         _selectedId = null;
@@ -262,6 +267,8 @@ public sealed partial class FaceAuthoringSession
     {
         if (!CanUndo) return;
         _historyIndex--;
+        try { RebuildCurrentArtworkForHistory(); }
+        catch { _historyIndex++; throw; }
         KeepSelection();
         Changed?.Invoke();
     }
@@ -270,6 +277,8 @@ public sealed partial class FaceAuthoringSession
     {
         if (!CanRedo) return;
         _historyIndex++;
+        try { RebuildCurrentArtworkForHistory(); }
+        catch { _historyIndex--; throw; }
         KeepSelection();
         Changed?.Invoke();
     }
@@ -292,6 +301,7 @@ public sealed partial class FaceAuthoringSession
         _history[_historyIndex] = savedFile;
         _savedPayload = FaceDocumentStorage.SerializePayload(savedFile);
         _savedPackageFiles = FingerprintPackage(projectRoot, packageDirectory);
+        _savedGeneratedFiles = FingerprintGeneratedFaceFiles(projectRoot, Path.GetFileName(packageDirectory));
         Changed?.Invoke();
         return true;
     }
@@ -361,6 +371,7 @@ public sealed partial class FaceAuthoringSession
         _projectRootAtOpen = null;
         _savedPayload = null;
         _savedPackageFiles = new(StringComparer.OrdinalIgnoreCase);
+        _savedGeneratedFiles = new(StringComparer.OrdinalIgnoreCase);
     }
 
     private static FaceElementSnapshot ProjectElement(FaceElementFile element)

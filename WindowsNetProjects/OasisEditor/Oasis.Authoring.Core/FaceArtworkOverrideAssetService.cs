@@ -1,7 +1,9 @@
 using System.IO;
 using SkiaSharp;
 
-namespace OasisEditor;
+using OasisEditor;
+
+namespace OasisEditor.FacePipeline;
 
 internal static class FaceArtworkOverrideAssetService
 {
@@ -16,9 +18,8 @@ internal static class FaceArtworkOverrideAssetService
         var directory = Path.Combine(project.AssetsDirectory, "Faces", safeFace, "ArtworkOverride");
         Directory.CreateDirectory(directory);
         var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
-        var destination = Path.Combine(directory, $"override{extension}");
-        if (!Path.GetFullPath(sourcePath).Equals(Path.GetFullPath(destination), StringComparison.OrdinalIgnoreCase))
-            File.Copy(sourcePath, destination, true);
+        var destination = Path.Combine(directory, $"override-{Guid.NewGuid():N}{extension}");
+        File.Copy(sourcePath, destination, false);
         return Create(destination, project, width, height, alignment);
     }
 
