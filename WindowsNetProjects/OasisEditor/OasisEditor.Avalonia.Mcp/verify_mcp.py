@@ -1,6 +1,6 @@
 """Exercise the real headless MCP host. Requires Python's standard library only.
 
-Build OasisEditor.Avalonia.Mcp first. Outputs PNGs to --output (never committed).
+Build OasisEditor.Avalonia.Mcp first. --host accepts a self-contained apphost; --dll accepts a framework-dependent assembly. Outputs PNGs to --output (never committed).
 Optional --project/--panel capture an existing project read-only; no authored writes.
 """
 import argparse
@@ -18,8 +18,10 @@ import zlib
 
 class Client:
     def __init__(self, dll, workspace):
+        # A DLL uses the developer/runtime host; a published apphost runs its bundled runtime directly.
+        command = ["dotnet", str(dll)] if Path(dll).suffix.lower() == ".dll" else [str(dll)]
         self.process = subprocess.Popen(
-            ["dotnet", str(dll), "--workspace", str(workspace)],
+            [*command, "--workspace", str(workspace)],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         self.responses = queue.Queue()
@@ -136,7 +138,7 @@ def main():
     parser.add_argument("--fml", type=Path, help="Import a disposable copy of an actual FML; never modifies the source")
     parser.add_argument("--copy-project", type=Path, help="Copy an existing disposable Oasis project into the isolated MCP workspace and run the production Machine build/export")
     parser.add_argument("--machine", default="Assets/Machines/RefactorTest6/asset.machine", help="Machine path inside --copy-project")
-    parser.add_argument("--dll",type=Path,default=Path(__file__).resolve().parent / "bin/Debug/net9.0/OasisEditor.Avalonia.Mcp.dll")
+    parser.add_argument("--dll","--host",dest="dll",type=Path,default=Path(__file__).resolve().parent / "bin/Debug/net9.0/OasisEditor.Avalonia.Mcp.dll")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     dll = args.dll.resolve()

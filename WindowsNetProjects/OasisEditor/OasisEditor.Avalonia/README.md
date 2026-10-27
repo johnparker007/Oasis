@@ -557,3 +557,43 @@ python3 WindowsNetProjects/OasisEditor/OasisEditor.Avalonia.Mcp/verify_backgroun
 
 Select an adapter appropriate for the machine; do not force the WSL D3D12 driver
 for ordinary Linux desktop distributions that use other native graphics drivers.
+
+## End-user packages without a separate .NET install
+
+Developer builds and the earlier framework-dependent MCP packages require the .NET
+runtime. An `.exe`/apphost alone does not imply that the runtime is bundled. The
+repository previously had no self-contained desktop release profile; source alone
+did not establish that an existing Windows binary was install-free. End users do
+not need an SDK or development tools, even for a framework-dependent application.
+
+Both the desktop Editor and its headless MCP host now have a machine-neutral
+`SelfContained` publish profile. Specify the target RID and ship the entire folder
+(or package it in an installer/archive), including native libraries, fonts and
+component definitions. These profiles bundle the runtime, preserve reflection/JSON
+metadata, and deliberately avoid trimming, Native AOT and single-file extraction.
+Normal OS graphics/font libraries and compatible drivers are still required.
+
+```bash
+dotnet publish WindowsNetProjects/OasisEditor/OasisEditor.Avalonia -c Release -r linux-x64 -p:PublishProfile=SelfContained -o /tmp/oasis-editor-linux
+# Use -r win-x64 for the Windows folder package.
+dotnet publish WindowsNetProjects/OasisEditor/OasisEditor.Avalonia.Mcp -c Release -r linux-x64 -p:PublishProfile=SelfContained -o /tmp/oasis-mcp-linux
+python3 WindowsNetProjects/OasisEditor/OasisEditor.Avalonia.Mcp/verify_background_ui.py --host /tmp/oasis-mcp-linux/OasisEditor.Avalonia.Mcp --output /tmp/oasis-self-contained-captures
+```
+
+Desktop folder publishing succeeded for Linux x64 and Windows x64. Matching
+self-contained MCP apphosts passed the background UI and main Reel/Library,
+authoring/build/export workflows on both systems with `dotnet` absent from PATH
+and runtime-search roots pointed at nonexistent locations. Windows host tracing
+confirmed that CoreCLR loaded from the published application folder. Linux also
+retained its verified RTX 3060 renderer. Native desktop launching was not performed
+while the user was working. Bundled-runtime patches ship through application
+releases, so release builds should use an up-to-date supported SDK/runtime.
+
+Native AOT is a separate optimization/compatibility project; self-contained publishing
+already avoids a separate runtime installation. Avalonia supports AOT, but this Editor has unverified
+reflection-based JSON/native settings and third-party docking/control metadata.
+Oasis scripting itself is an interpreter, with no runtime assembly/code generation
+found in the audited implementation. AOT has not been published or validated here;
+it must preserve all authoring/save/load workflows before becoming a release mode.
+
+Deployment references: [Microsoft publishing modes](https://learn.microsoft.com/en-us/dotnet/core/deploying/) and [Avalonia Native AOT](https://docs.avaloniaui.net/docs/deployment/native-aot).

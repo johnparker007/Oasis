@@ -1,6 +1,6 @@
 """Verify compact layouts, UTF-8 paths and saved floating workspaces in a headless MCP host.
 
-Use --dll to run the Release/published artifact rather than the development build.
+Use --dll for a published assembly or --host for its self-contained apphost.
 Never launches a desktop window or changes personal settings.
 """
 import argparse
@@ -24,7 +24,7 @@ def captures(client, directory, prefix, theme, width=960, height=640):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output",type=Path,required=True)
-    parser.add_argument("--dll",type=Path,default=Path(__file__).resolve().parent / "bin/Debug/net9.0/OasisEditor.Avalonia.Mcp.dll")
+    parser.add_argument("--dll","--host",dest="dll",type=Path,default=Path(__file__).resolve().parent / "bin/Debug/net9.0/OasisEditor.Avalonia.Mcp.dll")
     parser.add_argument("--expected-renderer",help="Require this renderer/device substring; prevents silently validating a software fallback.")
     args=parser.parse_args();args.output.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="OasisBackgroundUI-") as temporary:
