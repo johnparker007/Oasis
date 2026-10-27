@@ -13,7 +13,7 @@ public sealed class OutputPaneControl : UserControl, IDisposable
 {
     private readonly OutputLogService _service;
     private readonly ListBox _entries = new() { SelectionMode = SelectionMode.Multiple };
-    private readonly TextBox _search = new() { PlaceholderText = "Filter output", MinWidth = 180, HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly TextBox _search = new() { PlaceholderText = "Filter output", Width = 210, HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly CheckBox _infoFilter, _warningFilter, _errorFilter;
     private bool _disposed, _syncingControls;
 
@@ -32,13 +32,14 @@ public sealed class OutputPaneControl : UserControl, IDisposable
         copy.Click += async (_, _) => await CopySelectionAsync();
         var clear = new Button { Content = "Clear", MinWidth = 64 };
         clear.Click += (_, _) => _service.Clear();
-        var toolbar = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto,Auto"), ColumnSpacing = 8, Margin = new Thickness(8, 6) };
+        var toolbar = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 6) };
         toolbar.Children.Add(_search);
         Grid.SetColumn(filters, 1); toolbar.Children.Add(filters);
         Grid.SetColumn(copy, 2); toolbar.Children.Add(copy);
         Grid.SetColumn(clear, 3); toolbar.Children.Add(clear);
-        var logPath = new TextBlock { Text = service.DiskLogPath is null ? "Disk logging off" : service.DiskLogPath, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Opacity = .65 };
+        var logPath = new TextBlock { Text = service.DiskLogPath is null ? "Disk logging off" : service.DiskLogPath, MaxWidth = 240, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Opacity = .65 };
         Grid.SetColumn(logPath, 4); toolbar.Children.Add(logPath);
+        foreach (var control in toolbar.Children) control.Margin = new Thickness(0, 0, 8, 4);
 
         _entries.ItemsSource = _service.FilteredEntries;
         _entries.ItemTemplate = new FuncDataTemplate<OutputLogItem>((item, _) => CreateRow(item));

@@ -446,7 +446,7 @@ internal sealed class WorkspaceDockFactory(Control hierarchy, Control project, C
         ToolDock ProjectPane()
         {
             var projectTool = new Tool { Id = "Project", Title = "Project", Context = project, CanClose = false };
-            var dock = new ToolDock { Proportion = .25, ActiveDockable = projectTool, VisibleDockables = CreateList<IDockable>(projectTool), CanClose = false };
+            var dock = new ToolDock { Proportion = .25, MinHeight = 230, ActiveDockable = projectTool, VisibleDockables = CreateList<IDockable>(projectTool), CanClose = false };
             if (output is not null) dock.VisibleDockables.Add(new Tool { Id = "Output", Title = "Output", Context = output, CanClose = false });
             return dock;
         }

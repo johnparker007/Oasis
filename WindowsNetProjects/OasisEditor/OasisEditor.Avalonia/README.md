@@ -447,3 +447,11 @@ A source audit found no additional substantial unported WPF authoring workflow.
 If a failed Face build cannot restore generated files (for example, another process
 holds an output open), its recovery backup is retained and the error reports the
 path. Applying registration immediately reloads the rendered calibration input.
+
+## Compact workspace verification
+
+The Project/Output dock keeps enough height for asset rows and creation actions at
+960×640, including after restoring a schema-1 workspace. Output filters/actions wrap
+within narrow panes. The main and floating 3D toolbars scroll horizontally so their
+last visibility control remains reachable. Actual headless pointer/key tests are
+separate from physical keyboard, native clipboard and OS focus verification.

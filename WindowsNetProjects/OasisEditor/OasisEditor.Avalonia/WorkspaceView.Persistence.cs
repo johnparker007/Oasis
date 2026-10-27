@@ -253,6 +253,9 @@ public sealed partial class WorkspaceView
         foreach (var pane in WorkspaceLayoutState.LeafMap(layout).Values)
             if (pane.Context is null && contexts.TryGetValue(pane.Id, out var context)) pane.Context = context;
         _factory.InitLayout(layout);
+        // Dock container size constraints are runtime layout rules, absent from schema-1 snapshots.
+        if (WorkspaceLayoutState.LeafMap(layout).TryGetValue("Project", out var projectPane) && projectPane.Owner is IDock projectDock)
+            projectDock.MinHeight = Math.Max(230, double.IsNaN(projectDock.MinHeight) ? 0 : projectDock.MinHeight);
         foreach (var floating in layout.Windows ?? []) _factory.InitDockWindow(floating, layout, new Dock.Avalonia.Controls.HostWindow());
         _dock.Layout = layout;
         _document = (Document)WorkspaceLayoutState.LeafMap(layout)["Authoring"];

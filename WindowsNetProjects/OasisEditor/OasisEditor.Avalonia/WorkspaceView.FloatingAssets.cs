@@ -31,7 +31,7 @@ public sealed partial class WorkspaceView
         foreach(var item in file.Items.OfType<MenuItem>().Where(m=>!allowed.Contains(m.Header?.ToString()??"")).ToArray())file.Items.Remove(item);
         foreach(var item in create.Items.OfType<MenuItem>().Where(m=>m.Header?.ToString() is "Reel…" or "Generate Face from selected source…").ToArray())create.Items.Remove(item);
         foreach(var item in windowMenu.Items.OfType<MenuItem>().Where(m=>m.Header?.ToString() is "Save workspace" or "Restore workspace").ToArray())windowMenu.Items.Remove(item);
-        if(_sceneToolbarBorder is {} sceneBar)
+        if(_sceneToolbarBorder is {} sceneBar && sceneBar.Child is not ScrollViewer)
         {
             var sceneTools=sceneBar.Child;sceneBar.Child=null;
             sceneBar.Child=new ScrollViewer{Content=sceneTools,HorizontalScrollBarVisibility=global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
