@@ -26,8 +26,10 @@ project package context actions are also ported. Current combined validation: 22
 Avalonia tests and 1,449 WPF regressions; five Release-published background MCP verifiers and inspected
 Dark/Light images. Native Linux WSL builds/publishing now pass with 223 tests and
 one explicit Windows-sharing skip; all five MCP workflows and inspected UI captures
-pass on Mesa GLES/llvmpipe. Native desktop, hardware-accelerated Linux and macOS
-verification remain separate work. Preserve its
+pass on Mesa GLES/llvmpipe. WSL hardware rendering also passes seven focused
+renderer checks and all five MCP workflows on D3D12 / NVIDIA RTX 3060; an explicit
+renderer check rejects software fallback. Native desktop and macOS verification
+remain separate work. Preserve its
 working authoring features while extracting shared services. Do not substitute
 mock data or scripted emulation previews for real systems.
 

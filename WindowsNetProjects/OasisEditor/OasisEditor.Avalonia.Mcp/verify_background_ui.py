@@ -25,6 +25,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output",type=Path,required=True)
     parser.add_argument("--dll",type=Path,default=Path(__file__).resolve().parent / "bin/Debug/net9.0/OasisEditor.Avalonia.Mcp.dll")
+    parser.add_argument("--expected-renderer",help="Require this renderer/device substring; prevents silently validating a software fallback.")
     args=parser.parse_args();args.output.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="OasisBackgroundUI-") as temporary:
         root=Path(temporary);client=Client(args.dll.resolve(),root)
@@ -46,6 +47,11 @@ def main():
             for theme in ("Dark","Light"): captures(client,args.output,"compact-reel",theme)
             scene=client.state("inspect_reel")["scene"]
             assert scene.get("gpu",{}).get("triangles",0)>0 and not scene.get("renderingError"),scene
+            device=scene["gpu"].get("device","")
+            if args.expected_renderer:
+                assert args.expected_renderer.casefold() in device.casefold(), f"Expected {args.expected_renderer!r}; actual renderer: {device}"
+            (args.output / "renderer.json").write_text(json.dumps(scene["gpu"],indent=2),encoding="utf-8")
+            print("Verified renderer: " + device)
             client.state("activate_document",kind="Panel2D",path=panel)
             client.state("show_output")
             for theme in ("Dark","Light"): captures(client,args.output,"compact-output",theme)
