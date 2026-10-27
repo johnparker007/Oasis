@@ -1,13 +1,10 @@
 using SkiaSharp;
-using System.Collections.Concurrent;
-using System.IO;
 
 namespace OasisEditor.Rendering;
 
 internal sealed class ReelElementRenderer : IPanelElementRenderer
 {
     private const double LegacyReelPositionsPerRevolution = 96d;
-    private static readonly ConcurrentDictionary<string, SKImage?> CachedStripImages = new(StringComparer.OrdinalIgnoreCase);
 
     public PanelElementKind Kind => PanelElementKind.Reel;
 
@@ -143,42 +140,7 @@ internal sealed class ReelElementRenderer : IPanelElementRenderer
 
     private static bool TryGetStripImage(string? assetPath, out SKImage stripImage)
     {
-        stripImage = default!;
-        if (!TryResolveAssetPath(assetPath, out var resolvedPath))
-        {
-            return false;
-        }
-
-        var cached = CachedStripImages.GetOrAdd(resolvedPath, LoadImage);
-        if (cached is null)
-        {
-            return false;
-        }
-
-        stripImage = cached;
-        return true;
-    }
-
-    private static SKImage? LoadImage(string resolvedPath)
-    {
-        if (!File.Exists(resolvedPath))
-        {
-            return null;
-        }
-
-        using var codec = SKCodec.Create(resolvedPath);
-        if (codec is null)
-        {
-            return null;
-        }
-
-        using var bitmap = SKBitmap.Decode(codec);
-        return bitmap is null ? null : SKImage.FromBitmap(bitmap);
-    }
-
-    private static bool TryResolveAssetPath(string? assetPath, out string resolvedPath)
-    {
-        return ProjectAssetPathResolver.TryResolveAssetPath(assetPath, out resolvedPath);
+        return SkiaPanelImageLoader.TryGetImage(assetPath, out stripImage);
     }
 
     private static SKColor Lerp(SKColor from, SKColor to, double t)

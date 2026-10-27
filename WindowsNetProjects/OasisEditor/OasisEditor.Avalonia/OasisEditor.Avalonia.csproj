@@ -4,11 +4,13 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Oasis.Authoring.Core/Oasis.Authoring.Core.csproj" />
     <ProjectReference Include="../Oasis.Scripting/Oasis.Scripting.csproj" />
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
     <PackageReference Include="Avalonia.Headless" Version="12.1.4" />
@@ -16,5 +18,52 @@
     <PackageReference Include="Dock.Avalonia" Version="12.1.0.12" />
     <PackageReference Include="Dock.Model.Mvvm" Version="12.1.0.12" />
     <PackageReference Include="Dock.Avalonia.Themes.Fluent" Version="12.1.0.12" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="../OasisEditor/MfmeFonts/*.ttf">
+      <Link>MfmeFonts/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="../Assets/SegmentDisplays/*.json">
+      <Link>Assets/SegmentDisplays/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="../OasisEditor/MfmeFonts/*.ttf">
+      <Link>MfmeFonts/%(Filename)%(Extension)</Link>
+    </AvaloniaResource>
+    <Compile Include="../OasisEditor/Rendering/IPanel2DRenderer.cs" Link="SharedRendering/IPanel2DRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/IPanelElementRenderer.cs" Link="SharedRendering/IPanelElementRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/PanelElementRenderContext.cs" Link="SharedRendering/PanelElementRenderContext.cs" />
+    <Compile Include="../OasisEditor/Rendering/Panel2DRenderer.cs" Link="SharedRendering/Panel2DRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/Panel2DRendererFactory.cs" Link="SharedRendering/Panel2DRendererFactory.cs" />
+    <Compile Include="../OasisEditor/Rendering/BackgroundElementRenderer.cs" Link="SharedRendering/BackgroundElementRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/ImageElementRenderer.cs" Link="SharedRendering/ImageElementRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/LampElementRenderer.cs" Link="SharedRendering/LampElementRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/ReelElementRenderer.cs" Link="SharedRendering/ReelElementRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/SevenSegmentElementRenderer.cs" Link="SharedRendering/SevenSegmentElementRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/AlphaElementRenderer.cs" Link="SharedRendering/AlphaElementRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/VfdDotMatrixElementRenderer.cs" Link="SharedRendering/VfdDotMatrixElementRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/LabelElementRenderer.cs" Link="SharedRendering/LabelElementRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/SkiaPanelImageLoader.cs" Link="SharedRendering/SkiaPanelImageLoader.cs" />
+    <Compile Include="../OasisEditor/Rendering/SkiaColorParser.cs" Link="SharedRendering/SkiaColorParser.cs" />
+    <Compile Include="../OasisEditor/Rendering/MfmeTypefaceResolver.cs" Link="SharedRendering/MfmeTypefaceResolver.cs" />
+    <Compile Include="../OasisEditor/Rendering/RuntimeTextLayout.cs" Link="SharedRendering/RuntimeTextLayout.cs" />
+    <Compile Include="../OasisEditor/Rendering/Face2DRenderer.cs" Link="SharedRendering/Face2DRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/FaceCompositor.cs" Link="SharedRendering/FaceCompositor.cs" />
+    <Compile Include="../OasisEditor/Rendering/FaceTexturePreviewRenderer.cs" Link="SharedRendering/FaceTexturePreviewRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/FaceTrayDebugOverlayRenderer.cs" Link="SharedRendering/FaceTrayDebugOverlayRenderer.cs" />
+    <Compile Include="../OasisEditor/Rendering/SkiaRenderDiagnostics.cs" Link="SharedRendering/SkiaRenderDiagnostics.cs" />
+    <Compile Include="../OasisEditor/MachineRuntimeState.cs" Link="SharedRendering/MachineRuntimeState.cs" />
+    <Compile Include="../OasisEditor/ProjectAssetPathResolver.cs" Link="SharedRendering/ProjectAssetPathResolver.cs" />
+    <Compile Include="../OasisEditor/InternalReelOffsetResolver.cs" Link="SharedRendering/InternalReelOffsetResolver.cs" />
+    <Compile Include="../OasisEditor/PlatformReelDirectionResolver.cs" Link="SharedRendering/PlatformReelDirectionResolver.cs" />
+    <Compile Include="../OasisEditor/FaceRuntimeStateResolver.cs" Link="SharedRendering/FaceRuntimeStateResolver.cs" />
+    <Compile Include="../OasisEditor/ImageProcessingExecutionPolicy.cs" Link="SharedRendering/ImageProcessingExecutionPolicy.cs" />
+    <Compile Include="../OasisEditor/FaceArtworkPerformanceTrace.cs" Link="SharedRendering/FaceArtworkPerformanceTrace.cs" />
+    <Compile Include="../OasisEditor/BitmapPixelBuffer.cs" Link="SharedRendering/BitmapPixelBuffer.cs" />
+    <Compile Include="../OasisEditor/PanelElementValidation.cs" Link="SharedRendering/PanelElementValidation.cs" />
+    <Compile Include="../OasisEditor/SegmentDisplays/SegmentDisplayCanonicalGeometry.cs" Link="SharedRendering/SegmentDisplayCanonicalGeometry.cs" />
   </ItemGroup>
 </Project>

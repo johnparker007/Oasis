@@ -8,6 +8,80 @@ namespace OasisEditor.Avalonia.Tests;
 public sealed class AuthoringSessionTests
 {
     [Fact]
+    public void RenderDocumentRetainsFullSpecialistModelInsteadOfViewportProjection()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "OasisRenderModel-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            var project = Path.Combine(folder, "Render.oasisproj");
+            File.WriteAllText(project, """{"name":"Render model","version":9,"layout":{"assets":"Assets","generated":"Generated"}}""");
+            var session = new AuthoringSession(folder);
+            session.OpenProject(project);
+            var manifest = session.CreatePanel("Panel");
+            var reel = new PanelElementFile
+            {
+                ObjectId = "reel-main", Name = "Main reel", Kind = "reel", X = 13, Y = 17, Width = 90, Height = 160,
+                AssetPath = "Assets/Reels/Main.png", SecondaryAssetPath = "Assets/Reels/Transmission.png", IsVisible = true,
+                IsReversed = true, Stops = 96, VisibleScale = .64, BandOffset = -.125, ReelLampsEnabled = true,
+                ReelLamps = [new PanelElementReelLampFile { Position = "middle", LampNumber = 17, LocalVerticalCenter = .43, Radius = .1, Intensity = .8 }],
+                IsOpaqueReel = true, ReelLampTransmissionMaskAssetPath = "Assets/Reels/Transmission.png",
+                SourceComponentIndex = 4, SourceElementIndex = 12, SharedSourceSetId = "shared-reel", SharedSourceSetCount = 3,
+                SourceBlend = true,
+                Native = new PanelElementNativeFile { TextBoxFontName = "MFME", TextBoxFontStyle = "Bold", TextBoxFontSize = "12", DisplayColorHex = "#FFB000" }
+            };
+            File.WriteAllText(manifest, Panel2DDocumentStorage.Serialize("Panel", "Full renderer state", [reel]));
+            session.OpenProject(project);
+            session.OpenPanel(manifest);
+
+            var model = Assert.Single(session.RenderDocument!.Elements);
+            Assert.Equal(PanelElementKind.Reel, model.Kind);
+            Assert.Equal("Assets/Reels/Main.png", model.AssetPath);
+            Assert.Equal("Assets/Reels/Transmission.png", model.SecondaryAssetPath);
+            Assert.Equal("MFME", model.TextBoxFontName);
+            Assert.Equal("Bold", model.TextBoxFontStyle);
+            Assert.Equal("12", model.TextBoxFontSize);
+            Assert.Equal("#FFB000", model.DisplayColorHex);
+            Assert.True(model.IsReversed);
+            Assert.Equal(96, model.Stops);
+            Assert.Equal(.64, model.VisibleScale);
+            Assert.Equal(-.125, model.BandOffset);
+            Assert.True(model.ReelLampsEnabled);
+            Assert.Equal(17, Assert.Single(model.ReelLamps).LampNumber);
+            Assert.Equal(.43, model.ReelLamps[0].LocalVerticalCenter);
+            Assert.True(model.IsOpaqueReel);
+            Assert.Equal("Assets/Reels/Transmission.png", model.ReelLampTransmissionMaskAssetPath);
+            Assert.Equal(4, model.SourceComponentIndex);
+            Assert.Equal(12, model.SourceElementIndex);
+            Assert.Equal("shared-reel", model.SharedSourceSetId);
+            Assert.Equal(3, model.SharedSourceSetCount);
+            Assert.True(model.SourceBlend);
+        }
+        finally { Directory.Delete(folder, recursive: true); }
+    }
+
+    [Fact]
+    public void RuntimeOutputSnapshotCopiesLiveValuesAndProducesAStableFrameFingerprint()
+    {
+        var levels = new[] { 1d, .5d };
+        IReadOnlyDictionary<string, IReadOnlyList<double>> brightness = new Dictionary<string, IReadOnlyList<double>>
+        { ["display:1"] = levels };
+        var lamps = new Dictionary<string, double> { ["lamp:1"] = .25 };
+        var snapshot = new RuntimeOutputSnapshot(lampIntensities: lamps, segmentBrightness: brightness);
+        var fingerprint = snapshot.Fingerprint;
+
+        levels[0] = 0;
+        lamps["lamp:1"] = 0;
+
+        Assert.Equal(.25, snapshot.LampIntensities["lamp:1"]);
+        Assert.Equal(1, snapshot.SegmentBrightness["display:1"][0]);
+        Assert.Equal(fingerprint, new RuntimeOutputSnapshot(
+            lampIntensities: new Dictionary<string, double> { ["lamp:1"] = .25 },
+            segmentBrightness: new Dictionary<string, IReadOnlyList<double>> { ["display:1"] = new[] { 1d, .5d } }).Fingerprint);
+        Assert.NotEqual(fingerprint, new RuntimeOutputSnapshot(lampIntensities: new Dictionary<string, double> { ["lamp:1"] = 1 }).Fingerprint);
+    }
+
+    [Fact]
     public void ProjectPathsResolveAgainstTheExplicitWorkspace()
     {
         using var project = new TestProject();
