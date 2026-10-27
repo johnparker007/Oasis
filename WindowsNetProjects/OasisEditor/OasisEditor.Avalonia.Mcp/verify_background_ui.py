@@ -43,9 +43,9 @@ def main():
                 assert captures(client,args.output,"compact-panel",theme)==1
                 captures(client,args.output,"large-panel",theme,1920,1200)
             reel=client.state("create_reel",name="Roue Ω — compact GPU preview")
-            scene=client.state("inspect_reel")["scene"]
-            assert scene["gpu"]["triangles"]>0 and not scene.get("renderingError"),scene
             for theme in ("Dark","Light"): captures(client,args.output,"compact-reel",theme)
+            scene=client.state("inspect_reel")["scene"]
+            assert scene.get("gpu",{}).get("triangles",0)>0 and not scene.get("renderingError"),scene
             client.state("activate_document",kind="Panel2D",path=panel)
             client.state("show_output")
             for theme in ("Dark","Light"): captures(client,args.output,"compact-output",theme)
