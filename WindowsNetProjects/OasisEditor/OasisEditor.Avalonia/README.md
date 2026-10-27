@@ -29,11 +29,14 @@ workflows. No authored schemas or Player files change in this migration.
   interaction and input authoring, and cabinet/Face/reel/prefab/anchor/surface
   assignments. Recovered FML input definitions remain separate until intentionally
   applied to Machine history. ROM and platform values stay explicit; no game mapping
-  is guessed and native emulation is not previewed.
+  is guessed.
 - Blank native Face creation; full current-schema Face loading; lamp-window creation;
   element/emitter name, geometry, visibility, locking and lamp-ID editing; deletion,
   history and save. The viewport shows actual artwork, lamps, buttons, displays, reel
-  mounts and editable bounds; native machine emulation remains separate.
+  mounts and editable bounds.
+  The specialist views reuse the production Skia lamp, reel, segment/alpha/VFD and
+  Face compositor renderers, with bundled fonts/display definitions and cache
+  invalidation for changed artwork and live output snapshots.
 - Face artwork import and override import; saved perspective registration, sampled or
   manual calibration, spatial/tonal processing and override alignment; rebuild
   Correction Input, Base and Output; recipe undo/redo restores generated pixels.
@@ -55,6 +58,17 @@ workflows. No authored schemas or Player files change in this migration.
   selection. Restore validates layout and content before replacing clean documents;
   unsaved edits and external settings changes are protected. Reset Layout keeps
   document contents. Offscreen windows are moved back to a connected screen.
+- Real Fabric/Amber preview uses the production backend and current Machine settings.
+  Play/pause/resume/reset/stop/throttle controls feed actual native lamp, reel and
+  display outputs into Panel2D/Face views. Authored keyboard and visual input links
+  use logical press/release and the separate native coin protocol. Focus loss,
+  pause, reset and shutdown release held inputs; key repeat does not repeat coins.
+  Source changes stop preview, and startup rejects unsaved or externally changed
+  Machine sources. One native preview is allowed per process.
+- Native library paths and the retained Machine are included in workspace settings.
+  Restoring a workspace never resumes emulation. Windows desktop playback can be
+  explicitly enabled; headless MCP always consumes actual PCM silently. Other
+  platforms need matching native providers; audible playback currently uses WASAPI.
 
 New sessions accept current schemas and reject unrecognized fields rather than
 silently discarding data. Full DTO metadata is retained through editing.
@@ -81,6 +95,12 @@ adds elements/images/regions/lamps. Create Face starts blank; Generate Face buil
 Face from the selected saved source region. File includes artwork and override import,
 registration/processing and rebuild commands.
 File also creates/opens Machines; Project creates Panels, Faces and Machines.
+
+File > Emulation preview configures Fabric and platform provider libraries. Open a
+saved configured Machine, then use Play/Pause/Stop or the preview menu. Select a
+Panel/Face to view live outputs. Machine inputs opens the authored input controls;
+configured shortcuts and linked Panel/Face buttons also route inputs. New Panel
+element IDs use the native GUID format required by existing visual input links.
 
 Wheel zooms, middle drag pans, drag moves selection and the bottom-right handle
 resizes a single element. Ctrl/Cmd-click toggles selection. Ctrl/Cmd+S saves;
@@ -109,13 +129,19 @@ Project/Panel tools cover project creation/open, asset inspection, panel creatio
 element/image/FML import, multi-selection, move/duplicate/reorder/delete, source-region
 editing, undo/redo and save. Face tools cover create/open, select, add lamp, edit,
 delete, history, generation, artwork/override import, recipe updates, rebuild and
-inspection. `capture_workspace` returns a real Headless + Skia PNG of
 inspection. Machine tools author settings, inputs, behavior and save. Layout tools
 inspect/save/restore/reset the real model. `capture_workspace` returns a real
 Headless + Skia PNG of the same controls. It creates no OS windows and never captures the desktop or sends
 system input, with additional images for floating panes. Sizes are 960–1920 by
 640–1200; themes System/Light/Dark. The existing
 WPF MCP connection and user settings remain unchanged.
+
+`start_preview`, `inspect_preview`, `control_preview` and `preview_input` control
+only the native backend owned by that headless session. The optional
+`verify_native_preview.py --help` client verifies a saved Emulation Machine with
+explicit native libraries and optional Panel/Face captures, without authored writes.
+It tests lifecycle and an optional exact non-coin input ID; it never invents game
+mappings or claims credit/spin/payout from boot or audio/output counters.
 
 ```powershell
 python WindowsNetProjects/OasisEditor/OasisEditor.Avalonia.Mcp/verify_mcp.py --output <capture-directory>
@@ -134,13 +160,18 @@ including source-shape Face generation, artwork import/registration/calibration,
 override processing, pixel-restoring undo, renderer pixel checks and workspace
 roundtrips; all 1,448 WPF regression tests; actual MCP project/Face/Machine
 history/save/reopen and rendered captures. The generated artwork capture was
-visually checked. No native emulation was executed for this migration.
+visually checked. The integrated preview also passed actual native Impact execution:
+512 lamp channels, eight reels, 32 display cells, nonzero PCM, authored service-door
+delivery, pause/resume/reset/stop/restart and inspected headless Panel/Face captures.
+The reference game reports its native error display; credited play is not verified.
 
-Next: build/export, real Fabric/Amber preview, multi-document tabs, and Reel/library UI.
+Next: build/export, multi-document tabs, and Reel/library UI.
 Machine 3D rendering remains explicitly deferred until its renderer is selected and
 proved portable.
 
-Not yet verified: Mac/Linux execution/packaging; native docking/floating, OS dialogs,
+Framework-dependent Linux x64 and Apple Silicon macOS publication succeeds, including
+matching Skia libraries. Execution and distribution packaging on those systems remain
+unverified, as do native docking/floating, OS dialogs,
 clipboard, physical input/focus and mixed-DPI monitors; specialist visual parity,
-audio or native emulation in Avalonia. Headless images verify that backend's layout,
+audible playback and credited gameplay. Headless images verify that backend's layout,
 not these desktop/platform behaviours.
