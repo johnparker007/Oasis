@@ -342,6 +342,7 @@ internal static class Panel2DDocumentStorage
             OnColorHex = normalized.OnColorHex,
             OffColorHex = normalized.OffColorHex,
             TextColorHex = normalized.TextColorHex,
+            DisplayColorHex = normalized.Native?.DisplayColorHex,
             DisplayText = normalized.DisplayText,
             TextBoxFontName = normalized.TextBoxFontName,
             TextBoxFontStyle = normalized.TextBoxFontStyle,
@@ -438,7 +439,8 @@ internal static class Panel2DDocumentStorage
                 visibleScale: element.VisibleScale,
                 bandOffset: element.BandOffset,
                 hasBorder: element.HasBorder ? true : null,
-                importSource: importSource)
+                importSource: importSource,
+                displayColorHex: element.DisplayColorHex)
         });
     }
     public static string SerializeLayout(IReadOnlyList<PanelElementFile> elements)
@@ -815,7 +817,8 @@ internal static class Panel2DDocumentStorage
         double? visibleScale,
         double? bandOffset,
         bool? hasBorder,
-        PanelElementImportSourceFile? importSource)
+        PanelElementImportSourceFile? importSource,
+        string? displayColorHex = null)
     {
         if (assetPath is null
             && secondaryAssetPath is null
@@ -828,6 +831,7 @@ internal static class Panel2DDocumentStorage
             && textColorHex is null
             && onColorHex is null
             && offColorHex is null
+            && displayColorHex is null
             && reversed is null
             && stops is null
             && visibleScale is null
@@ -851,7 +855,7 @@ internal static class Panel2DDocumentStorage
             TextColorHex = textColorHex,
             OnColorHex = onColorHex,
             OffColorHex = offColorHex,
-            DisplayColorHex = onColorHex,
+            DisplayColorHex = displayColorHex ?? onColorHex,
             Reversed = reversed,
             Stops = stops,
             VisibleScale = visibleScale,
@@ -902,7 +906,7 @@ internal static class Panel2DDocumentStorage
     private static string NormalizeLampFontSize(string? value) => string.IsNullOrWhiteSpace(value) ? "8" : value.Trim();
 }
 
-internal enum PanelElementKind
+public enum PanelElementKind
 {
     Unknown = 0,
     Rectangle,

@@ -9,7 +9,6 @@ namespace OasisEditor.Rendering;
 
 internal sealed class LampElementRenderer : IPanelElementRenderer
 {
-    private static readonly ConcurrentDictionary<string, SKImage?> CachedLampImages = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<TextLayoutCacheKey, IReadOnlyList<PixelTextLine>> TextLayoutCache = new();
     private static readonly ConcurrentDictionary<TextVisualCacheKey, SKPicture> TextVisualCache = new();
     private const int MaxTextVisualCacheEntries = 2048;
@@ -361,42 +360,7 @@ internal sealed class LampElementRenderer : IPanelElementRenderer
 
     private static bool TryGetLampImage(string? assetPath, out SKImage image)
     {
-        image = default!;
-        if (!TryResolveAssetPath(assetPath, out var resolvedPath))
-        {
-            return false;
-        }
-
-        var cached = CachedLampImages.GetOrAdd(resolvedPath, LoadImage);
-        if (cached is null)
-        {
-            return false;
-        }
-
-        image = cached;
-        return true;
-    }
-
-    private static SKImage? LoadImage(string resolvedPath)
-    {
-        if (!File.Exists(resolvedPath))
-        {
-            return null;
-        }
-
-        using var codec = SKCodec.Create(resolvedPath);
-        if (codec is null)
-        {
-            return null;
-        }
-
-        using var bitmap = SKBitmap.Decode(codec);
-        return bitmap is null ? null : SKImage.FromBitmap(bitmap);
-    }
-
-    private static bool TryResolveAssetPath(string? assetPath, out string resolvedPath)
-    {
-        return ProjectAssetPathResolver.TryResolveAssetPath(assetPath, out resolvedPath);
+        return SkiaPanelImageLoader.TryGetImage(assetPath, out image);
     }
 
     private static SKColor Lerp(SKColor from, SKColor to, double t)

@@ -20,7 +20,7 @@ public sealed record FaceElementSnapshot(
     int? LampId);
 
 /// <summary>Portable editing session for one authored Face package in an open Oasis project.</summary>
-public sealed class FaceAuthoringSession
+public sealed partial class FaceAuthoringSession
 {
     private readonly AuthoringSession _project;
     private readonly ProjectAssetPathService _assetPaths = new();
@@ -39,6 +39,9 @@ public sealed class FaceAuthoringSession
 
     public string? FacePath => _facePath;
     public string FaceTitle => Current?.Title ?? string.Empty;
+    /// <summary>Full read-only native model for renderers; authored session state remains the source of truth.</summary>
+    public FaceDocumentModel? Document => Current is null ? null : FaceDocumentStorage.ToModel(Current);
+    internal int RenderRevision => Current is null ? 0 : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Current);
     public string? SelectedId => _selectedId;
     public bool IsDirty => Current is not null && FaceDocumentStorage.SerializePayload(Current) != _savedPayload;
     public bool CanUndo => Current is not null && _historyIndex > 0;
