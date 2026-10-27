@@ -116,7 +116,7 @@ public sealed class GlbCabinetSemanticGeometryValidator
         return JsonDocument.Parse(Encoding.UTF8.GetString(reader.ReadBytes(jsonLength)));
     }
 
-    internal static void Validate(Scene scene, string cabinetAssetPath, CancellationToken cancellationToken)
+    public static void Validate(Scene scene, string cabinetAssetPath, CancellationToken cancellationToken = default)
     {
         foreach (var node in scene.VisualChildren)
         {

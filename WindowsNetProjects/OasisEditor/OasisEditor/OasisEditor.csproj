@@ -14,6 +14,7 @@
     <ProjectReference Include="..\Oasis.Scripting\Oasis.Scripting.csproj" />
     <ProjectReference Include="..\Oasis.Authoring.Core\Oasis.Authoring.Core.csproj" />
     <ProjectReference Include="..\Oasis.RuntimeBuild\Oasis.RuntimeBuild.csproj" />
+    <ProjectReference Include="..\Oasis.Rendering3D\Oasis.Rendering3D.csproj" />
   </ItemGroup>
 
   <ItemGroup>
