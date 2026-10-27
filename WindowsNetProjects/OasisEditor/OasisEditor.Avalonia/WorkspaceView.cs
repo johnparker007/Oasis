@@ -126,6 +126,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         MenuAction(file, "Import FML layout…", async () => await ImportFml());
         AddFaceWorkflowMenus(file, create);
         AddMachineWorkflowMenus(file, create);
+        InitializePreview(file);
         var edit = new MenuItem { Header = "_Edit" };
         MenuAction(edit, "Undo", () => Try(UndoActive)); MenuAction(edit, "Redo", () => Try(RedoActive));
         MenuAction(edit, "Duplicate", () => Try(() => { RequirePanel(); session.DuplicateSelected(); }));
@@ -364,6 +365,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     }
     public void Dispose()
     {
+        DisposePreview();
         _session.Changed -= Refresh; Faces.Changed -= Refresh; Machines.Changed -= Refresh;
         if (_dock.Layout is IRootDock root) root.ExitWindows.Execute(null);
         _viewport.Dispose();

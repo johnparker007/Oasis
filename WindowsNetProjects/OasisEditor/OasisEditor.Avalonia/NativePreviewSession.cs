@@ -27,7 +27,7 @@ public sealed class NativePreviewSession : IAsyncDisposable
     public async Task StartAsync(MachineDocument machine, NativeEmulationPreferences preferences, bool audible = false,
         Func<bool>? sourceCurrent = null, CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
@@ -42,14 +42,14 @@ public sealed class NativePreviewSession : IAsyncDisposable
             {
                 BackendCreated?.Invoke(backend, Clone(copy));
                 // Loading a real native provider may be slow; never block the UI thread.
-                await Task.Run(() => backend.StartAsync(request, cancellationToken), cancellationToken);
+                await Task.Run(() => backend.StartAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
                 if (sourceCurrent?.Invoke() == false)
                     throw new InvalidOperationException("The project changed while preview was starting. Preview stopped.");
             }
             catch (Exception error)
             {
                 LastError = error.Message;
-                await StopCore();
+                await StopCore().ConfigureAwait(false);
                 throw;
             }
         }
@@ -58,18 +58,18 @@ public sealed class NativePreviewSession : IAsyncDisposable
 
     public async Task ControlAsync(string action, CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (action == "stop") { await StopCore(); return; }
+            if (action == "stop") { await StopCore().ConfigureAwait(false); return; }
             var backend = RequireCurrent();
             switch (action)
             {
-                case "pause": await ReleaseAllCore(); await backend.PauseAsync(cancellationToken); break;
-                case "resume": await backend.ResumeAsync(cancellationToken); break;
-                case "reset": await ReleaseAllCore(); await backend.ResetAsync(cancellationToken); break;
-                case "throttle": await backend.SetThrottleEnabledAsync(true, cancellationToken); break;
-                case "unthrottle": await backend.SetThrottleEnabledAsync(false, cancellationToken); break;
+                case "pause": await ReleaseAllCore().ConfigureAwait(false); await backend.PauseAsync(cancellationToken).ConfigureAwait(false); break;
+                case "resume": await backend.ResumeAsync(cancellationToken).ConfigureAwait(false); break;
+                case "reset": await ReleaseAllCore().ConfigureAwait(false); await backend.ResetAsync(cancellationToken).ConfigureAwait(false); break;
+                case "throttle": await backend.SetThrottleEnabledAsync(true, cancellationToken).ConfigureAwait(false); break;
+                case "unthrottle": await backend.SetThrottleEnabledAsync(false, cancellationToken).ConfigureAwait(false); break;
                 default: throw new ArgumentException("Use pause, resume, reset, throttle, unthrottle or stop.", nameof(action));
             }
         }
@@ -78,7 +78,7 @@ public sealed class NativePreviewSession : IAsyncDisposable
 
     public async Task<CoinInputResult?> SetInputAsync(string id, bool pressed, CancellationToken cancellationToken = default)
     {
-        await _gate.WaitAsync(cancellationToken);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var backend = RequireCurrent();
@@ -90,17 +90,17 @@ public sealed class NativePreviewSession : IAsyncDisposable
                 if (_pressed.ContainsKey(id)) return null; // Key repeat must not insert repeated coins.
                 if (input.CoinInput)
                 {
-                    var result = await backend.InsertCoinAsync(input, cancellationToken);
+                    var result = await backend.InsertCoinAsync(input, cancellationToken).ConfigureAwait(false);
                     if (result == CoinInputResult.Accepted) _pressed[id] = input;
                     return result;
                 }
-                await backend.SetInputStateAsync(input, true, cancellationToken);
+                await backend.SetInputStateAsync(input, true, cancellationToken).ConfigureAwait(false);
                 _pressed[id] = input;
             }
             else if (_pressed.TryGetValue(id, out var held))
             {
-                if (held.CoinInput) await backend.ReleaseCoinAsync(held, cancellationToken);
-                else await backend.SetInputStateAsync(held, false, cancellationToken);
+                if (held.CoinInput) await backend.ReleaseCoinAsync(held, cancellationToken).ConfigureAwait(false);
+                else await backend.SetInputStateAsync(held, false, cancellationToken).ConfigureAwait(false);
                 _pressed.TryRemove(id, out _);
             }
             return null;
@@ -110,8 +110,8 @@ public sealed class NativePreviewSession : IAsyncDisposable
 
     public async Task ReleaseInputsAsync()
     {
-        await _gate.WaitAsync();
-        try { await ReleaseAllCore(); }
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try { await ReleaseAllCore().ConfigureAwait(false); }
         finally { _gate.Release(); }
     }
     private async Task ReleaseAllCore()
@@ -122,8 +122,8 @@ public sealed class NativePreviewSession : IAsyncDisposable
         {
             try
             {
-                if (pair.Value.CoinInput) await backend.ReleaseCoinAsync(pair.Value, CancellationToken.None);
-                else await backend.SetInputStateAsync(pair.Value, false, CancellationToken.None);
+                if (pair.Value.CoinInput) await backend.ReleaseCoinAsync(pair.Value, CancellationToken.None).ConfigureAwait(false);
+                else await backend.SetInputStateAsync(pair.Value, false, CancellationToken.None).ConfigureAwait(false);
             }
             finally { _pressed.TryRemove(pair.Key, out _); }
         }
@@ -140,16 +140,16 @@ public sealed class NativePreviewSession : IAsyncDisposable
         {
             if (backend is not null)
             {
-                try { await ReleaseAllCore(); }
-                finally { try { await backend.StopAsync(CancellationToken.None); } finally { await backend.DisposeAsync(); } }
+                try { await ReleaseAllCore().ConfigureAwait(false); }
+                finally { try { await backend.StopAsync(CancellationToken.None).ConfigureAwait(false); } finally { await backend.DisposeAsync().ConfigureAwait(false); } }
             }
         }
         finally { _backend = null; _machine = null; _sourceCurrent = null; _pressed.Clear(); Cleared?.Invoke(); }
     }
     public async ValueTask DisposeAsync()
     {
-        await _gate.WaitAsync();
-        try { if (_disposed) return; _disposed = true; await StopCore(); }
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try { if (_disposed) return; _disposed = true; await StopCore().ConfigureAwait(false); }
         finally { _gate.Release(); }
     }
     private static MachineDocument Clone(MachineDocument machine)
