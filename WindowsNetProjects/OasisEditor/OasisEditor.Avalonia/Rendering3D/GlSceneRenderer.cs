@@ -18,6 +18,7 @@ public sealed unsafe class GlSceneRenderer : IDisposable
     private readonly FrontFace _frontFace;
     private readonly GenerateMipmap _mipmap;
     private readonly GetError _getError;
+    private readonly ClearDepthFloat? _clearDepthFloat;
     // Live Face materials retain geometry arrays, so output changes do not re-upload vertices.
     private readonly Dictionary<(float[] Vertices, int[] Indices), MeshBuffers> _meshes = [];
     private readonly Dictionary<SceneTexture, int> _textures = new(ReferenceEqualityComparer.Instance);
@@ -36,6 +37,7 @@ public sealed unsafe class GlSceneRenderer : IDisposable
             _uniform3 = Load<Uniform3>("glUniform3f"); _uniform4 = Load<Uniform4>("glUniform4f");
             _blend = Load<BlendSeparate>("glBlendFuncSeparate"); _frontFace = Load<FrontFace>("glFrontFace");
             _mipmap = Load<GenerateMipmap>("glGenerateMipmap"); _getError = Load<GetError>("glGetError");
+            if (_context.IsGles) _clearDepthFloat = Load<ClearDepthFloat>("glClearDepthf");
             InitializeProgram();
         }
         catch { _context.Dispose(); throw; }
@@ -78,7 +80,9 @@ public sealed unsafe class GlSceneRenderer : IDisposable
             using var current = _context.MakeCurrent();
             EnsureFramebuffer(width, height); Prune(scene);
             _gl.BindFramebuffer(0x8D40, _framebuffer); _gl.Viewport(0, 0, width, height);
-            _gl.DepthMask(1); _gl.ClearColor(background.X, background.Y, background.Z, 1); _gl.ClearDepth(1);
+            _gl.DepthMask(1); _gl.ClearColor(background.X, background.Y, background.Z, 1);
+            // Mesa can expose the desktop glClearDepth symbol in a GLES context even though it is invalid there.
+            if (_clearDepthFloat is not null) _clearDepthFloat(1); else _gl.ClearDepth(1);
             _gl.Clear(0x4000 | 0x0100); _gl.Enable(0x0B71); _gl.DepthFunc(0x0203);
             _gl.UseProgram(_program);
             var vp = camera.View * camera.Projection(width / (float)height);
@@ -262,6 +266,7 @@ public sealed unsafe class GlSceneRenderer : IDisposable
     [UnmanagedFunctionPointer(CallingConvention.Winapi)] private delegate void FrontFace(int mode);
     [UnmanagedFunctionPointer(CallingConvention.Winapi)] private delegate void GenerateMipmap(int target);
     [UnmanagedFunctionPointer(CallingConvention.Winapi)] private delegate int GetError();
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)] private delegate void ClearDepthFloat(float depth);
     private const string VertexShader = """
         in vec3 aPosition; in vec3 aNormal; in vec2 aUv;
         uniform mat4 uModel; uniform mat4 uViewProjection;
