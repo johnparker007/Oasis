@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>Oasis.Authoring.Core</AssemblyName>
-    <RootNamespace>OasisEditor</RootNamespace>
+    <RootNamespace>OasisEditor.Avalonia</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="SkiaSharp" Version="3.119.4" />

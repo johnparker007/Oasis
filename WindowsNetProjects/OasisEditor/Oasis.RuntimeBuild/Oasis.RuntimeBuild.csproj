@@ -11,27 +11,4 @@
     <PackageReference Include="SharpGLTF.Toolkit" Version="1.0.6" />
     <PackageReference Include="SkiaSharp" Version="3.119.4" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="../OasisEditor/MachineRuntimeBuildService.cs" Link="MachineRuntimeBuildService.cs" />
-    <Compile Include="../OasisEditor/OasisPlayerLaunchService.cs" Link="OasisPlayerLaunchService.cs" />
-    <Compile Include="../OasisEditor/FaceRuntimeExportService.cs" Link="FaceRuntimeExportService.cs" />
-    <Compile Include="../OasisEditor/FaceRuntimeTextureGenerator.cs" Link="FaceRuntimeTextureGenerator.cs" />
-    <Compile Include="../OasisEditor/FaceRuntimeCompositionContext.cs" Link="FaceRuntimeCompositionContext.cs" />
-    <Compile Include="../OasisEditor/Object3DDocument.cs" Link="Object3DDocument.cs" />
-    <Compile Include="../OasisEditor/ReelDocument.cs" Link="ReelDocument.cs" />
-    <Compile Include="../OasisEditor/OasisScriptMachineValidator.cs" Link="OasisScriptMachineValidator.cs" />
-    <Compile Include="../OasisEditor/Progress/IEditorProgressReporter.cs" Link="Progress/IEditorProgressReporter.cs" />
-    <Compile Include="../OasisEditor/Progress/NoOpEditorProgressReporter.cs" Link="Progress/NoOpEditorProgressReporter.cs" />
-    <Compile Include="../OasisEditor/Features/CabinetEditor/Models/CabinetDocument.cs" Link="Cabinet/CabinetDocument.cs" />
-    <Compile Include="../OasisEditor/Features/CabinetEditor/Models/CabinetDocumentStorage.cs" Link="Cabinet/CabinetDocumentStorage.cs" />
-    <Compile Include="../OasisEditor/Features/CabinetEditor/Models/CabinetModelReference.cs" Link="Cabinet/CabinetModelReference.cs" />
-    <Compile Include="../OasisEditor/Features/CabinetEditor/Models/CabinetReflectionReceiverTarget.cs" Link="Cabinet/CabinetReflectionReceiverTarget.cs" />
-    <Compile Include="../OasisEditor/Features/CabinetEditor/Models/CabinetFaceTarget.cs" Link="Cabinet/CabinetFaceTarget.cs" />
-    <Compile Include="../OasisEditor/Features/CabinetEditor/Services/ICabinetFaceTargetDetector.cs" Link="Cabinet/ICabinetFaceTargetDetector.cs" />
-    <Compile Include="../OasisEditor/Features/CabinetEditor/Services/GlbCabinetFaceTargetDetector.cs" Link="Cabinet/GlbCabinetFaceTargetDetector.cs" />
-    <Compile Include="../OasisEditor/Features/CabinetEditor/Services/CabinetSemanticGeometry.cs" Link="Cabinet/CabinetSemanticGeometry.cs" />
-    <Compile Include="../OasisEditor/Features/CabinetEditor/Services/GlbCabinetSemanticGeometryValidator.cs" Link="Cabinet/GlbCabinetSemanticGeometryValidator.cs" />
-    <Compile Include="../OasisEditor/Features/CabinetEditor/Services/GlbCabinetReflectionReceiverDiscovery.cs" Link="Cabinet/GlbCabinetReflectionReceiverDiscovery.cs" />
-    <Compile Include="../OasisEditor/Features/CabinetEditor/Services/CabinetTriggerInventory.cs" Link="Cabinet/CabinetTriggerInventory.cs" />
-  </ItemGroup>
 </Project>

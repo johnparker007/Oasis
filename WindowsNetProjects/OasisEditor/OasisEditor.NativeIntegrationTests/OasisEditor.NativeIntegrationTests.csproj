@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
@@ -12,7 +12,8 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\OasisEditor\OasisEditor.csproj" />
+    <ProjectReference Include="..\Oasis.Emulation\Oasis.Emulation.csproj" />
+    <ProjectReference Include="..\Oasis.Authoring.Core\Oasis.Authoring.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="NativeProbe\fabric_layout_probe.c" CopyToOutputDirectory="PreserveNewest" />

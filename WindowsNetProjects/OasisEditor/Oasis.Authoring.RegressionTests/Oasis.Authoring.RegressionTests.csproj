@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>Oasis.Authoring.RegressionTests</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Oasis.Authoring.Core\Oasis.Authoring.Core.csproj" />
+    <ProjectReference Include="..\Oasis.RuntimeBuild\Oasis.RuntimeBuild.csproj" />
+    <ProjectReference Include="..\Oasis.Rendering3D\Oasis.Rendering3D.csproj" />
+    <ProjectReference Include="..\Oasis.Authoring.Assets\Oasis.Authoring.Assets.csproj" />
+    <ProjectReference Include="..\Oasis.Authoring.ThreeD\Oasis.Authoring.ThreeD.csproj" />
+    <ProjectReference Include="..\Oasis.Rendering2D\Oasis.Rendering2D.csproj" />
+    <ProjectReference Include="..\Oasis.Emulation\Oasis.Emulation.csproj" />
+    <ProjectReference Include="..\OasisEditor\OasisEditor.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\Assets\MfmeFonts\*" Link="MfmeFonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Examples\Pool\behavior.oasis" Link="Pool\behavior.oasis" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

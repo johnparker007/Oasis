@@ -1,3 +1,5 @@
+The canonical Editor is the portable Avalonia application at `WindowsNetProjects/OasisEditor/OasisEditor`, with MCP host `OasisEditor.Mcp` and tests `OasisEditor.Tests`. The former WPF Editor and MCP host are retired. Shared authoring and runtime projects are `Oasis.Authoring.Core`, `Oasis.Emulation`, `Oasis.Rendering2D`, `Oasis.RuntimeBuild` and `Oasis.Rendering3D`; Oasis Player remains under `UnityProjects/OasisPlayer`. See the [Editor overview](WindowsNetProjects/OasisEditor/README.md), [current priority](WindowsNetProjects/OasisEditor/00_CURRENT_PRIORITY.md) and [ArchitectureNext](WindowsNetProjects/OasisEditor/Docs/ArchitectureNext/00_OVERVIEW.md).
+
 # Objectives
 - Enable creation and playing of 3d arcade environments.
 - Support multiplayer rooms as well as single player mode, including offline play. 

@@ -38,9 +38,9 @@ cue recovery, all six natural vertical pocket drops, five new games and unload/r
 Keyboard focus, rendered Player gameplay, aiming, shots, numbering, full rules and
 scoring remain outside this proving case.
 
-`OasisEditor.Mcp/author_algorithmic_pool.py` authors this setup through commands on
-an explicit disposable current-format PoolTableTest1 project. The hidden Player
-launcher accepts `-Mode Algorithmic` for the actual integration probe. Retain a
+The original WPF-only `author_algorithmic_pool.py` helper is retired. Author this
+composition through the canonical Editor or its MCP tools against a disposable
+current-format project. The Player launcher at `Tools/Player/Start-PoolPlayerVerification.ps1` accepts `-Mode Algorithmic` for the actual integration probe. Retain a
 backup before explicitly reauthoring user-local assets; never edit Generated output.
 
 ## Single-ball regression checkpoint — A8.5 / P3

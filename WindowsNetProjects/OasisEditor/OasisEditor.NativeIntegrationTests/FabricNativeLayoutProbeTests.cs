@@ -5,7 +5,7 @@ namespace OasisEditor.NativeIntegrationTests;
 
 public sealed class FabricNativeLayoutProbeTests
 {
-    [NativeFact("FABRIC_LAYOUT_PROBE_EXE")]
+    [WindowsNativeFact("FABRIC_LAYOUT_PROBE_EXE")]
     public void NativeCLayoutsMatchManagedX64Assertions()
     {
         var probe = NativePrerequisites.RequireFile("FABRIC_LAYOUT_PROBE_EXE");

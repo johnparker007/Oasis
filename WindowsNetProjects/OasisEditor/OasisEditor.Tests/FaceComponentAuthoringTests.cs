@@ -1,83 +1,144 @@
+using OasisEditor;
+using OasisEditor.FacePipeline;
 using Xunit;
 
-namespace OasisEditor.Tests;
+namespace OasisEditor.Avalonia.Tests;
 
-public sealed class FaceComponentAuthoringTests
+public sealed class FaceComponentAuthoringTests : IDisposable
 {
+    private readonly string _workspace = Path.Combine(Path.GetTempPath(), "OasisFaceComponentTests", Guid.NewGuid().ToString("N"));
+
+    public FaceComponentAuthoringTests() => Directory.CreateDirectory(_workspace);
+
     [Fact]
-    public void EveryConcreteElementType_HasExplicitSubsystemClassification()
+    public void CreatesAndEditsButtonAndDisplaysWithNativeMetadataAndHistory()
     {
-        Assert.Equal(FaceElementCategory.Artwork, FaceElementClassification.GetCategory(new FaceArtworkElement()));
-        Assert.Equal(FaceElementCategory.Illumination, FaceElementClassification.GetCategory(new FaceLampWindowElement()));
-        Assert.Equal(FaceElementCategory.Illumination, FaceElementClassification.GetCategory(new FaceLampEmitterElement()));
-        Assert.Equal(FaceElementCategory.Component, FaceElementClassification.GetCategory(new FaceReelMount()));
-        Assert.Equal(FaceElementCategory.Component, FaceElementClassification.GetCategory(new FaceButtonElement()));
-        Assert.Equal(FaceElementCategory.Component, FaceElementClassification.GetCategory(new FaceSevenSegmentDisplayElement()));
-        Assert.Equal(FaceElementCategory.Component, FaceElementClassification.GetCategory(new FaceAlphaDisplayElement()));
+        var project = new AuthoringSession(_workspace);
+        project.CreateProject("Components");
+        var session = new FaceAuthoringSession(project);
+        var path = session.CreateFace("MachineFace");
+        var buttonId = session.AddButton("Start", 12, 20, 70, 36, "start");
+        var sevenId = session.AddSevenSegmentDisplay("Credits", 100, 20, displayIndex: 2, digitCount: 4);
+        var alphaId = session.AddAlphaDisplay("Message", 100, 90, displayIndex: 1, digitCount: 12);
+        Assert.Equal(alphaId, session.SelectedId);
+        Assert.Equal(alphaId, session.Elements.Last().Id);
+
+        Assert.True(session.UpdateFaceComponent(buttonId, new FaceComponentUpdateOptions { InputId = "coin_in", Name = "Coin" }));
+        Assert.True(session.UpdateFaceComponent(sevenId, new FaceComponentUpdateOptions
+        {
+            OnColorHex = "#FFAA00", OffColorHex = "#101010", ShowDecimalPoint = true, DigitCount = 5
+        }));
+        Assert.True(session.UpdateFaceComponent(alphaId, new FaceComponentUpdateOptions
+        {
+            SegmentDisplayType = "alphanumeric", ShowCommaTail = true, IsReversed = true, ShowDecimalPoint = true
+        }));
+        Assert.True(session.CanUndo);
+        session.Undo();
+        Assert.False(Assert.IsType<FaceAlphaDisplayElement>(session.Document!.Elements.Single(item => item.ObjectId == alphaId)).IsReversed);
+        session.Redo();
+        session.Save();
+
+        var reopened = new FaceAuthoringSession(project);
+        reopened.OpenFace(path);
+        var button = Assert.IsType<FaceButtonElement>(reopened.Document!.Elements.Single(item => item.ObjectId == buttonId));
+        var seven = Assert.IsType<FaceSevenSegmentDisplayElement>(reopened.Document.Elements.Single(item => item.ObjectId == sevenId));
+        var alpha = Assert.IsType<FaceAlphaDisplayElement>(reopened.Document.Elements.Single(item => item.ObjectId == alphaId));
+        Assert.Equal(MachineInputReference.FromInputId("coin_in"), button.LinkedInputReference);
+        Assert.Equal("Coin", button.Name);
+        Assert.Equal(MachineObjectReference.SevenSegmentDisplay(2), seven.LinkedMachineObjectReference);
+        Assert.Equal(5, seven.DigitCount);
+        Assert.Equal("#FFAA00", seven.OnColorHex);
+        Assert.True(seven.ShowDecimalPoint);
+        Assert.Equal(MachineObjectReference.AlphaDisplay(1), alpha.LinkedMachineObjectReference);
+        Assert.Equal("alphanumeric", alpha.SegmentDisplayType);
+        Assert.True(alpha.ShowCommaTail);
+        Assert.True(alpha.IsReversed);
+        Assert.Equal(12, alpha.DigitCount);
     }
 
     [Fact]
-    public void NativeComponents_AreUndoableAndRoundTripWithAuthoredProvenance()
+    public void ComponentEditEnforcesKindsValidationLocksAndExplicitClears()
     {
-        var document=new DocumentTabViewModel(EditorDocument.CreateFaceStub("Native"));
-        foreach(var kind in Enum.GetValues<FaceComponentKind>())
-            document.CommandService.Execute(FaceMutationCommands.CreateAddComponentCommand(document.DocumentId,document,FaceComponentFactory.Create(kind,10,20)));
+        var project = new AuthoringSession(_workspace);
+        project.CreateProject("Validation");
+        var session = new FaceAuthoringSession(project);
+        session.CreateFace("ValidationFace");
+        var button = session.AddButton("Button", 0, 0);
+        var seven = session.AddSevenSegmentDisplay("Display", 10, 10);
 
-        Assert.Equal(4,document.GetFaceElements().Count);
-        Assert.Equal(FaceSubsystemOrigin.Authored,document.GetFaceDocument().Provenance.Components.Origin);
-        Assert.False(document.GetFaceDocument().Provenance.Components.IsLocallyModified);
-        Assert.True(FaceDocumentStorage.TryRead(document.GetFaceDocumentJson(),out var file));
-        var reopened=FaceDocumentStorage.ToModel(file);
-        Assert.Contains(reopened.Elements,e=>e is FaceReelMount);
-        Assert.Contains(reopened.Elements,e=>e is FaceButtonElement);
-        Assert.Contains(reopened.Elements,e=>e is FaceSevenSegmentDisplayElement);
-        Assert.Contains(reopened.Elements,e=>e is FaceAlphaDisplayElement);
+        Assert.Throws<ArgumentOutOfRangeException>(() => session.AddAlphaDisplay("Invalid", 0, 0, digitCount: 0));
+        Assert.Throws<ArgumentException>(() => session.AddButton("Bad ID", 0, 0, inputId: "bad id"));
+        Assert.Throws<ArgumentException>(() => session.UpdateFaceComponent(seven,
+            new FaceComponentUpdateOptions { LogicalReference = MachineObjectReference.AlphaDisplay(1) }));
+        Assert.Throws<ArgumentException>(() => session.UpdateFaceComponent(button,
+            new FaceComponentUpdateOptions { OnColorHex = "not-a-colour" }));
 
-        Assert.True(document.CommandService.TryUndo());
-        Assert.Equal(3,document.GetFaceElements().Count);
-        Assert.True(document.CommandService.TryRedo());
-        Assert.Equal(4,document.GetFaceElements().Count);
+        session.UpdateFaceComponent(seven, new FaceComponentUpdateOptions { OnColorHex = "#FFFFFF", Locked = true });
+        Assert.Throws<InvalidOperationException>(() => session.UpdateFaceComponent(seven, new FaceComponentUpdateOptions { X = 20 }));
+        Assert.Throws<ArgumentException>(() => session.UpdateFaceComponent(seven,
+            new FaceComponentUpdateOptions { OnColorHex = "#000000", ClearOnColorHex = true }));
+        Assert.True(session.UpdateFaceComponent(seven, new FaceComponentUpdateOptions { ClearOnColorHex = true }));
+        Assert.Null(Assert.IsType<FaceSevenSegmentDisplayElement>(session.Document!.Elements.Single(item => item.ObjectId == seven)).OnColorHex);
     }
 
     [Fact]
-    public void EditingDerivedComponent_MarksOnlyComponentsLocallyModified_AndUndoRestoresProvenance()
+    public void GenerationSettingsAreValidatedUndoableAndPersisted()
     {
-        var document=new DocumentTabViewModel(EditorDocument.CreateFaceStub("Derived"));
-        var derived=new FaceSubsystemProvenanceModel { Origin=FaceSubsystemOrigin.Derived,SourceDocumentPath="main.panel2d" };
-        var face=FaceDocumentCopy.WithElementsAndComponents(document.GetFaceDocument(),[new FaceReelMount { ObjectId="reel",Name="Reel",Width=50,Height=80 }],derived);
-        document.SetFaceDocument(face);
-        var original=Assert.IsType<FaceReelMount>(document.GetFaceElements()[0]);
-        var moved=FaceElementModelCloner.Clone(original,x:25);
-        document.CommandService.Execute(FaceMutationCommands.CreateUpdateElementCommand(document.DocumentId,document,"reel",moved,"Move reel"));
+        var project = new AuthoringSession(_workspace);
+        project.CreateProject("Generation");
+        var session = new FaceAuthoringSession(project);
+        var root = Path.GetDirectoryName(project.ProjectFilePath)!;
+        var package = Path.Combine(root, "Assets", "Faces", "GenerationFace");
+        Directory.CreateDirectory(package);
+        var path = Path.Combine(package, ProjectAssetPathService.FaceManifestFileName);
+        File.WriteAllText(path, FaceDocumentStorage.Serialize(new FaceDocumentModel
+        {
+            Id = "generation-face",
+            Title = "GenerationFace",
+            BuildState = FaceBuildStateFactory.CreateGeneratedState(artwork: true, mask: true, trays: true,
+                runtimeAssetsCurrent: true, runtimeAssetsConfigured: true)
+        }));
+        session.OpenFace(path);
+        var settings = new FaceGenerationSettingsModel
+        {
+            MaskExtractionThreshold = 77,
+            TrayBoundsInflationPercent = 18,
+            TrayBoundsPaddingPixels = 4.5,
+            ClampTrayBoundsToLampWindow = true,
+            PostWarpSharpeningEnabled = false,
+            PostWarpSharpeningAmount = .8,
+            PostWarpSharpeningRadiusPixels = 1.4,
+            PostWarpSharpeningThreshold = 31
+        };
+        Assert.True(session.UpdateGenerationSettings(settings));
+        Assert.False(session.UpdateGenerationSettings(settings));
+        var stale = session.Document!.BuildState;
+        Assert.Equal(FaceBuildStatus.Current, stale.Get(FaceGeneratedProduct.ArtworkCorrectionInput).Status);
+        Assert.Equal(FaceBuildStatus.Stale, stale.Get(FaceGeneratedProduct.BaseArtwork).Status);
+        Assert.Equal(FaceBuildStatus.Stale, stale.Get(FaceGeneratedProduct.ArtworkOutput).Status);
+        Assert.Equal(FaceBuildStatus.Stale, stale.Get(FaceGeneratedProduct.LampMask).Status);
+        Assert.Equal(FaceBuildStatus.Stale, stale.Get(FaceGeneratedProduct.Trays).Status);
+        Assert.Equal(FaceBuildStatus.Stale, stale.Get(FaceGeneratedProduct.RuntimeAssets).Status);
+        session.Undo();
+        Assert.Equal(FaceGenerationSettingsModel.Default.MaskExtractionThreshold, session.Document!.GenerationSettings.MaskExtractionThreshold);
+        session.Redo();
+        session.Save();
 
-        Assert.True(document.GetFaceDocument().Provenance.Components.IsLocallyModified);
-        Assert.False(document.GetFaceDocument().Provenance.Artwork.IsLocallyModified);
-        Assert.False(document.GetFaceDocument().Provenance.Illumination.IsLocallyModified);
-        Assert.True(document.CommandService.TryUndo());
-        Assert.Equal(0,document.GetFaceElements()[0].X);
-        Assert.False(document.GetFaceDocument().Provenance.Components.IsLocallyModified);
+        var reopened = new FaceAuthoringSession(project);
+        reopened.OpenFace(path);
+        Assert.Equal(settings.MaskExtractionThreshold, reopened.Document!.GenerationSettings.MaskExtractionThreshold);
+        Assert.Equal(settings.TrayBoundsInflationPercent, reopened.Document.GenerationSettings.TrayBoundsInflationPercent);
+        Assert.Equal(settings.TrayBoundsPaddingPixels, reopened.Document.GenerationSettings.TrayBoundsPaddingPixels);
+        Assert.Equal(settings.ClampTrayBoundsToLampWindow, reopened.Document.GenerationSettings.ClampTrayBoundsToLampWindow);
+        Assert.Equal(settings.PostWarpSharpeningEnabled, reopened.Document.GenerationSettings.PostWarpSharpeningEnabled);
+        Assert.Equal(settings.PostWarpSharpeningAmount, reopened.Document.GenerationSettings.PostWarpSharpeningAmount);
+        Assert.Equal(settings.PostWarpSharpeningRadiusPixels, reopened.Document.GenerationSettings.PostWarpSharpeningRadiusPixels);
+        Assert.Equal(settings.PostWarpSharpeningThreshold, reopened.Document.GenerationSettings.PostWarpSharpeningThreshold);
+        Assert.Throws<ArgumentOutOfRangeException>(() => reopened.UpdateGenerationSettings(new FaceGenerationSettingsModel { TrayBoundsPaddingPixels = -1 }));
     }
 
-    [Fact]
-    public void ComponentsOnlyRebuild_PreservesArtworkAndIllumination_AndIsUndoable()
+    public void Dispose()
     {
-        var document=new DocumentTabViewModel(EditorDocument.CreateFaceStub("Derived"));
-        var artwork=new FaceArtworkElement{ObjectId="art",Name="Image artwork",Width=800,Height=600};
-        var lamp=new FaceLampWindowElement{ObjectId="lamp",Name="Lamp",Width=20,Height=20};
-        var local=new FaceButtonElement{ObjectId="local",Name="Local",Width=30,Height=20};
-        var provenance=new FaceSubsystemProvenanceModel{Origin=FaceSubsystemOrigin.Derived,SourceDocumentPath="main.panel2d",IsLocallyModified=true};
-        document.SetFaceDocument(FaceDocumentCopy.WithElementsAndComponents(document.GetFaceDocument(),[artwork,lamp,local],provenance));
-
-        document.CommandService.Execute(FaceMutationCommands.CreateRebuildComponentsCommand(document.DocumentId,document,
-            [new FaceReelMount{ObjectId="derived",Name="Derived Reel",Width=50,Height=80}],"main.panel2d"));
-
-        Assert.Contains(document.GetFaceElements(),e=>e.ObjectId=="art");
-        Assert.Contains(document.GetFaceElements(),e=>e.ObjectId=="lamp");
-        Assert.DoesNotContain(document.GetFaceElements(),e=>e.ObjectId=="local");
-        Assert.Contains(document.GetFaceElements(),e=>e.ObjectId=="derived");
-        Assert.False(document.GetFaceDocument().Provenance.Components.IsLocallyModified);
-        Assert.True(document.CommandService.TryUndo());
-        Assert.Contains(document.GetFaceElements(),e=>e.ObjectId=="local");
-        Assert.True(document.GetFaceDocument().Provenance.Components.IsLocallyModified);
+        if (Directory.Exists(_workspace)) Directory.Delete(_workspace, recursive: true);
     }
 }

@@ -2,10 +2,10 @@ namespace OasisEditor.NativeIntegrationTests;
 
 internal static class NativePrerequisites
 {
-    internal static string? GetSkipReason(IEnumerable<string> prerequisites)
+    internal static string? GetSkipReason(IEnumerable<string> prerequisites, bool requiresWindows = false)
     {
-        if (!OperatingSystem.IsWindows())
-            return "Fabric native integration tests require Windows.";
+        if (requiresWindows && !OperatingSystem.IsWindows())
+            return "This native integration test requires Windows.";
 
         foreach (var prerequisite in prerequisites)
         {

@@ -12,6 +12,15 @@ public sealed class NativeFactAttribute : FactAttribute
 }
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class WindowsNativeFactAttribute : FactAttribute
+{
+    public WindowsNativeFactAttribute(params string[] prerequisites)
+    {
+        Skip = NativePrerequisites.GetSkipReason(prerequisites, requiresWindows: true);
+    }
+}
+
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 public sealed class NativeTheoryAttribute : TheoryAttribute
 {
     public NativeTheoryAttribute(params string[] prerequisites)
