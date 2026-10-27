@@ -126,15 +126,20 @@ public sealed partial class WorkspaceView
 
     private async Task ChooseLibraryRootAsync()
     {
-        if (TopLevel.GetTopLevel(this)?.StorageProvider is not { CanPickFolder: true } storage) throw new InvalidOperationException("This platform does not provide folder selection.");
-        var folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Choose the Oasis Asset Library folder", AllowMultiple = false });
-        var path = folders.FirstOrDefault()?.TryGetLocalPath();
-        if (string.IsNullOrWhiteSpace(path)) return;
-        var settingsPath = LibrarySettingsPath();
-        Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
-        File.WriteAllText(settingsPath, Path.GetFullPath(path));
-        SetSceneLibraryRoot(path);
-        SetStatus($"Oasis Library folder set to {Path.GetFullPath(path)}.");
+        try
+        {
+            if (TopLevel.GetTopLevel(this)?.StorageProvider is not { CanPickFolder: true } storage) throw new InvalidOperationException("This platform does not provide folder selection.");
+            var folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Choose the Oasis Asset Library folder", AllowMultiple = false });
+            var path = folders.FirstOrDefault()?.TryGetLocalPath();
+            if (string.IsNullOrWhiteSpace(path)) return;
+            SetSceneLibraryRoot(path); // Validate pending Library edits and the root before persisting preferences.
+            var settingsPath = LibrarySettingsPath();
+            Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
+            File.WriteAllText(settingsPath, Path.GetFullPath(path));
+            SetStatus($"Oasis Library folder set to {Path.GetFullPath(path)}.");
+        }
+        catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        {SetStatus(error.Message);}
     }
 
     private static string GetLibraryRoot()
