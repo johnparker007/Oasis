@@ -14,6 +14,31 @@ application composes the portable authoring, emulation, rendering and build serv
 For MCP setup and tool guidance, see [`OasisEditor.Mcp/README.md`](../OasisEditor.Mcp/README.md).
 Historical Player emulation notes are retained in [`Docs/NativeIntegration`](../Docs/NativeIntegration/).
 
+## Consolidation verification — 2026-10-27
+
+The canonical solution builds on Windows, and native Linux builds pass in an isolated
+WSL Ubuntu 24.04 source copy. The current suites reported:
+
+| Suite | Windows | Linux |
+| --- | --- | --- |
+| Editor session/headless UI | 224 passed | 223 passed, 1 Windows-sharing skip |
+| Preserved portable regressions | 640 passed | 640 passed |
+| Rendering3D | 9 passed | 9 passed |
+| Scripting | 165 passed | 165 passed |
+| Native prerequisites/integration | 1 passed, 8 prerequisite skips | 1 passed, 8 prerequisite skips |
+
+All five canonical MCP verifiers passed on both systems, including production
+build/export, Reel/Library authoring, floating documents, workspace restoration and
+actual rendered captures. Representative Dark/Light 2D and 3D images were inspected.
+Linux hardware verification required and reported the D3D12 NVIDIA RTX 3060 renderer.
+Self-contained desktop and MCP packages published under their canonical names for
+Windows x64 and Linux x64; MCP build/export and background-UI workflows passed with
+`dotnet` absent from PATH and runtime-search roots pointed at nonexistent locations.
+No visible application or Player was launched. Existing compiler warnings remain;
+macOS, native desktop interaction, audible playback and configured native gameplay
+were not reverified by these checks. WPF UI-only fixtures are retired; reusable
+domain/rendering/emulation tests now live in `Oasis.Authoring.RegressionTests`.
+
 > The verification sections below preserve detailed evidence from earlier migration
 > runs, before the WPF retirement and project consolidation. All outcomes and counts
 > are historical records, not validation of the current consolidated checkout. Re-run
