@@ -266,8 +266,9 @@ public sealed partial class FaceAuthoringSession
     public void Undo()
     {
         if (!CanUndo) return;
+        var previous = Current!;
         _historyIndex--;
-        try { RebuildCurrentArtworkForHistory(); }
+        try { if(ArtworkRecipeChanged(previous,Current!))RebuildCurrentArtworkForHistory(); }
         catch { _historyIndex++; throw; }
         KeepSelection();
         Changed?.Invoke();
@@ -276,12 +277,17 @@ public sealed partial class FaceAuthoringSession
     public void Redo()
     {
         if (!CanRedo) return;
+        var previous = Current!;
         _historyIndex++;
-        try { RebuildCurrentArtworkForHistory(); }
+        try { if(ArtworkRecipeChanged(previous,Current!))RebuildCurrentArtworkForHistory(); }
         catch { _historyIndex--; throw; }
         KeepSelection();
         Changed?.Invoke();
     }
+
+    private static bool ArtworkRecipeChanged(FaceDocumentFile previous,FaceDocumentFile next)
+        => System.Text.Json.JsonSerializer.Serialize(previous.Artwork)!=System.Text.Json.JsonSerializer.Serialize(next.Artwork)
+        || System.Text.Json.JsonSerializer.Serialize(previous.GenerationSettings)!=System.Text.Json.JsonSerializer.Serialize(next.GenerationSettings);
 
     public bool Save()
     {

@@ -290,6 +290,17 @@ def main():
             client.capture(args.output / "workspace-face-light.png", "Light")
             reopened = client.state("open_face", path=face["facePath"])["face"]
             assert len(reopened["elements"]) == 3  # imported artwork plus two authored lamp windows
+            if args.reel_library:
+                mount=client.state("add_face_reel_mount",name="Authored Reel",x=60,y=60,width=150,height=240,reelIndex=0)["face"]["selectedId"]
+                client.state("update_face_reel_mount",id=mount,options={"stops":24,"visibleScale":0.8,"bandOffset":0.1,"isReversed":True,"isOpaqueReel":True,"topLampNumber":7})
+                client.state("import_face_reel_symbol_band",id=mount,path=str(artwork))
+                client.state("generate_face_reel_transmission_mask",id=mount)
+                reel=client.state("inspect_face_reel_mount",id=mount)["reelMount"]
+                assert reel["stops"]==24 and reel["isOpaqueReel"] and reel["reelLampTransmissionMaskAssetPath"]
+                client.state("face_history");client.state("face_history",redo=True);client.state("save_face")
+                client.capture(args.output/"workspace-face-reel-dark.png","Dark")
+                client.capture(args.output/"workspace-face-reel-light.png","Light")
+                print("Face Reel mount settings, real image import, transmission-mask generation, history/save and rendered captures passed.")
             workspace_path = str(root / "editor.workspace.json")
             saved_workspace = client.state("save_workspace", path=workspace_path)
             client.state("reset_layout")
