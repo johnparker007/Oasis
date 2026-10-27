@@ -4,10 +4,12 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Oasis.Authoring.Core/Oasis.Authoring.Core.csproj" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
     <PackageReference Include="Avalonia.Headless" Version="12.1.4" />
@@ -15,5 +17,13 @@
     <PackageReference Include="Dock.Avalonia" Version="12.1.0.12" />
     <PackageReference Include="Dock.Model.Mvvm" Version="12.1.0.12" />
     <PackageReference Include="Dock.Avalonia.Themes.Fluent" Version="12.1.0.12" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../OasisEditor/Emulation/Fabric/**/*.cs" Link="SharedEmulation/Fabric/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../OasisEditor/Emulation/EmulationBackendAbstractions.cs" Link="SharedEmulation/EmulationBackendAbstractions.cs" />
+    <Compile Include="../OasisEditor/Emulation/EmulationAudio.cs" Link="SharedEmulation/EmulationAudio.cs" />
+    <Compile Include="../OasisEditor/Emulation/NAudioEmulationAudioSink.cs" Link="SharedEmulation/NAudioEmulationAudioSink.cs" />
+    <Compile Include="../OasisEditor/Emulation/PcmFrameRingBuffer.cs" Link="SharedEmulation/PcmFrameRingBuffer.cs" />
+    <Compile Include="../OasisEditor/Emulation/PcmRingWaveProvider.cs" Link="SharedEmulation/PcmRingWaveProvider.cs" />
   </ItemGroup>
 </Project>
