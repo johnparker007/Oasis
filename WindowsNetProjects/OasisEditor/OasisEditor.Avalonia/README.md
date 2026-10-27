@@ -35,6 +35,11 @@ extracted. No authored schemas or Player files change in this migration.
   manifest changes; Face save fingerprints the authored package. Dirty replacement
   and close guards include both retained documents. One Panel and one Face may be
   retained, with one active view. Imported images remain after undo for redo.
+- Workspace persistence saves docking topology (including pinned/floating panes),
+  proportions, theme, window placement, asset search, project/document paths and
+  selection. Restore validates layout and content before replacing clean documents;
+  unsaved edits and external settings changes are protected. Reset Layout keeps
+  document contents. Offscreen windows are moved back to a connected screen.
 
 New sessions accept current schemas and reject unrecognized fields rather than
 silently discarding data. Full DTO metadata is retained through editing.
@@ -64,6 +69,13 @@ Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z undo/redo; Ctrl/Cmd+D duplicates, Ctrl/Cmd+A sel
 all panel elements, and Delete removes selection outside text fields. Source regions
 expose four corners in Inspector. Save or undo pending edits before replacement.
 
+Window provides Save Workspace, Restore Workspace and Reset Layout. The desktop
+application restores settings from the local application-data folder
+`Oasis/AvaloniaEditor/workspace.json` at startup and saves on a clean close. Invalid
+or externally changed settings are preserved. A deliberately minimized window is
+reopened normally. Headless MCP sessions never read/write those personal settings;
+their `save_workspace`/`restore_workspace` tools require an explicit workspace path.
+
 Native-picker imports can read the explicitly selected external file; the UI stages
 it under Generated before calling the confined session API. MCP imports require
 sources inside the explicit workspace. User-owned source files are never modified.
@@ -77,9 +89,11 @@ dotnet <absolute-path>/OasisEditor.Avalonia.Mcp.dll --workspace <existing-direct
 Project/Panel tools cover project creation/open, asset inspection, panel creation/open,
 element/image/FML import, multi-selection, move/duplicate/reorder/delete, source-region
 editing, undo/redo and save. Face tools cover create/open, select, add lamp, edit,
-delete, history and save. `capture_workspace` returns a real Headless + Skia PNG of
+delete, history and save. Layout tools inspect/save/restore/reset the real model.
+`capture_workspace` returns a real Headless + Skia PNG of
 the same controls. It creates no OS windows and never captures the desktop or sends
-system input. Sizes are 960–1920 by 640–1200; themes System/Light/Dark. The existing
+system input, with additional images for floating panes. Sizes are 960–1920 by
+640–1200; themes System/Light/Dark. The existing
 WPF MCP connection and user settings remain unchanged.
 
 ```powershell
@@ -103,7 +117,7 @@ emulation was executed for this migration.
 
 Next: Face generation from source regions, artwork import/registration/processing,
 specialist 2D renderers, remaining inspectors and Machine settings, build/export,
-real Fabric/Amber preview, multi-document tabs, saved layouts and Reel/library UI.
+real Fabric/Amber preview, multi-document tabs and Reel/library UI.
 3D remains explicitly deferred until its renderer is selected and proved portable.
 
 Not yet verified: Mac/Linux execution/packaging; native docking/floating, OS dialogs,
