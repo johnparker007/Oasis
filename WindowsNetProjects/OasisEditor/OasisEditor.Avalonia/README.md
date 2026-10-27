@@ -20,6 +20,12 @@ are unchanged by this migration.
   GPU preview, stable native IDs, history, atomic saves and workspace restoration.
   Reel symbol-band artwork remains a Face property; the native Reel asset stores
   its physical diameter and width.
+- Face Reel mount creation and editing for logical Reel references, symbol-band images,
+  stops, scale, offset, reversal, reel lamps, opacity and transmission masks. Image import
+  copies into the actual Face package; opaque imports generate a mask, and an explicit
+  generation action builds a new mask from the existing band without copying it again.
+  Native metadata, history and IDs are preserved. Reel-only undo/redo keeps unchanged
+  artwork recipes intact, even when the original derivation source is unavailable.
 - Project Assets / Oasis Library browsing and search, explicit Library folder setup,
   background catalog refresh, malformed-package diagnostics and scoped asset choices.
   Shared Cabinet/Reel/Prefab assets open in the same authoring views, with an explicit
@@ -216,6 +222,9 @@ images, source regions and Faces, checks history/save/reopen, and captures multi
 themes/sizes. Optional `--fml <layout.fml>` imports a disposable real-layout copy.
 Optional `--project <existing.oasisproj> --panel <asset.panel2d> --face <asset.face>`
 adds read-only existing-content captures. Never commit captures/private assets/ROMs.
+`--reel-library` adds native Reel/Library copy, shared editing, scoped assignment,
+restoration, Face symbol-band/mask authoring and actual GPU capture checks (verified
+on Windows; the host needs a functioning native graphics backend).
 With `--project`, `--cabinet <relative manifest>`, `--prefab <relative manifest>`
 and `--scene-machine <relative manifest>` capture the real GPU views in both themes
 and with semantic overlays. `--library-root <directory>` resolves Library references.
@@ -253,6 +262,12 @@ Machine using Library Cabinet/Reel assignments also ran real Fabric/Amber output
 (512 lamps, eight reels, 32 display cells and nonzero silently consumed PCM).
 
 Separate future migration work includes multi-document tabs.
+The final Reel/Library checks also include actual symbol-band import, generated
+transmission masks, metadata history and 2D/mounted-3D captures on a copied real Face.
+The copied native Impact Machine rebuilt and ran real outputs with those saved assets.
+The Reel/Library authoring regression suite passes 154/154 Avalonia checks, with
+1,449/1,449 WPF and 9/9 portable 3D checks passing. Builds retain existing shared
+Skia deprecation/nullability warnings. No native desktop interaction is claimed.
 The scene is a static authoring preview: GLB skinning/animation and Capsule/Mesh
 collider visualization remain unsupported as described above.
 

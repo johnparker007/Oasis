@@ -130,6 +130,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         Initialize3DAuthoring(hierarchy, scene, tools, file);
         InitializeReels(create);
         InitializeLibrary(projectPanel,file);
+        InitializeFaceReels(create);
         InitializePreview(file);
         var edit = new MenuItem { Header = "_Edit" };
         MenuAction(edit, "Undo", () => Try(UndoActive)); MenuAction(edit, "Redo", () => Try(RedoActive));
@@ -325,7 +326,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         var shape = !_faceActive ? _session.SourceShapes.FirstOrDefault(s => s.Id == _selectedSource) : null;
         var selected = ActiveElements.FirstOrDefault(e => SelectedIds.Contains(e.Id));
         object key = shape is not null ? (object)shape : SelectedIds.Count > 1 ? string.Join("|", SelectedIds)
-            : _faceActive ? (object?)Faces.Elements.FirstOrDefault(e => e.Id == selected?.Id) ?? "none" : (object?)selected ?? "none";
+            : _faceActive ? (Faces.Elements.FirstOrDefault(e => e.Id == selected?.Id),Faces.RenderRevision) : (object?)selected ?? "none";
         if (Equals(_inspected, key)) return;
         _inspected = key; _inspector.Children.Clear(); _fields.Clear();
         if (shape is not null)
@@ -356,6 +357,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
             else _session.UpdateElement(selected.Id, _fields["Name"].Text, Number("X"), Number("Y"), Number("Width"), Number("Height"), _visible.IsChecked == true, _locked.IsChecked == true);
         })));
         if (selected.AssetPath is not null) _inspector.Children.Add(new TextBlock { Text = selected.AssetPath, TextWrapping = TextWrapping.Wrap, Opacity = .65 });
+        if(_faceActive)AppendFaceReelInspector(selected.Id);
     }
     private void Heading(string text) => _inspector.Children.Add(new TextBlock { Text = text, FontWeight = FontWeight.SemiBold });
     private double Number(string name) => double.TryParse(_fields[name].Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && double.IsFinite(value)

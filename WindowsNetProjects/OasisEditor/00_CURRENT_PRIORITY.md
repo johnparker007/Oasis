@@ -12,7 +12,8 @@ the supported 3D content, MCP surface and platform verification limits. Multi-do
 tabs remain separate future scope. The user has additionally authorized the remaining
 Reel and Library workflows. Native physical Reel authoring/preview and Library
 browsing, shared editing, package copying and scoped asset choices are implemented.
-Face reel-mount symbol-band/lamp authoring is the final Reel migration slice.
+Face reel-mount symbol-band/lamp/mask authoring is also implemented through the UI
+and MCP, with native save/history and real-asset background capture verification.
 WPF retains its other asset editors and 3D UI. Preserve its
 working authoring features while extracting shared services. Do not substitute
 mock data or scripted emulation previews for real systems.
