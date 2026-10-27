@@ -365,12 +365,6 @@ public sealed class FaceTrayModel
     public IReadOnlyList<string> Diagnostics { get; init; } = [];
 }
 
-public sealed class FacePointModel
-{
-    public double X { get; init; }
-    public double Y { get; init; }
-}
-
 public sealed class FaceLayerModel
 {
     public string Id { get; init; } = Guid.NewGuid().ToString("N");

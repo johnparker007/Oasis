@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Oasis.Scripting\Oasis.Scripting.csproj" />
+    <ProjectReference Include="..\Oasis.Authoring.Core\Oasis.Authoring.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
