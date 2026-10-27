@@ -27,7 +27,8 @@ public sealed record WorkspaceFloatingWindow(WorkspaceWindowState Bounds, Worksp
 public sealed record WorkspaceState(int Version, string Theme, WorkspaceDockNode Layout,
     string? Project = null, string? Panel = null, string? Face = null, string ActiveDocument = "Panel2D",
     string[]? PanelSelection = null, string? FaceSelection = null, string? AssetSearch = null,
-    WorkspaceWindowState? MainWindow = null, string? SourceSelection = null, WorkspaceViewportState? Viewport = null);
+    WorkspaceWindowState? MainWindow = null, string? SourceSelection = null, WorkspaceViewportState? Viewport = null,
+    string? Machine = null, NativeEmulationPreferences? Emulation = null);
 
 /// <summary>Allow-listed layout data. Never deserializes arbitrary CLR types, views, contexts or commands.</summary>
 public static class WorkspaceLayoutState

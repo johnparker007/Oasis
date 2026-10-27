@@ -19,6 +19,7 @@ public sealed partial class WorkspaceView
     private string? _previewSource;
     private volatile bool _previewSourceCurrent;
     private bool _previewStopping;
+    private int _previewCheckTicks;
     private Window? _previewInputs;
     partial void ConnectPreviewRendering(IEmulationBackend backend, MachineDocument machine);
     partial void ClearPreviewRendering();
@@ -38,6 +39,12 @@ public sealed partial class WorkspaceView
         _previewTimer.Tick += async (_, _) =>
         {
             if (Preview.Backend is null) return;
+            if (++_previewCheckTicks % 30 == 0)
+            {
+                try { Machines.EnsureSavedSourceUnchanged(); }
+                catch (Exception error) when (error is IOException or InvalidOperationException or UnauthorizedAccessException)
+                { _previewSourceCurrent = false; SetStatus(error.Message); }
+            }
             if (!_previewSourceCurrent && !_previewStopping)
             {
                 _previewStopping = true;
@@ -47,6 +54,9 @@ public sealed partial class WorkspaceView
             else RefreshPreviewRendering();
         };
         _previewTimer.Start();
+        _viewport.PreviewIsActive = () => Preview.Backend is not null;
+        _viewport.ResolvePreviewInput = ResolvePreviewPointerInput;
+        _viewport.PreviewInputRequested += async (id, pressed) => await PreviewAction(() => Preview.SetInputAsync(id, pressed), false);
         AddHandler(KeyDownEvent, PreviewKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, PreviewKeyUp, RoutingStrategies.Tunnel);
         LostFocus += async (_, _) => await PreviewAction(Preview.ReleaseInputsAsync, report: false);
@@ -64,6 +74,7 @@ public sealed partial class WorkspaceView
         if (Program.IsHeadless && audible) throw new InvalidOperationException("Headless preview consumes diagnostic PCM silently.");
         if (HasUnsavedChanges || !Machines.IsProjectCurrent) throw new InvalidOperationException("Save the current project documents before previewing.");
         var machine = Machines.Document ?? throw new InvalidOperationException("Open a configured Machine first.");
+        Machines.EnsureSavedSourceUnchanged();
         _previewSource = PreviewSource(); _previewSourceCurrent = true;
         await Preview.StartAsync(machine, NativePreviewPreferences, audible, () => _previewSourceCurrent, cancellationToken);
         SetStatus($"{machine.DisplayName}: {Preview.State} ({(audible ? "audio enabled" : "silent diagnostic audio")}).");
@@ -73,7 +84,8 @@ public sealed partial class WorkspaceView
     {
         var audio = (Preview.Backend as FabricEmulationBackend)?.AudioSink as DiagnosticAudioSink;
         return new(Preview.State.ToString(), Preview.Machine?.DisplayName, Preview.Audible,
-            Preview.Backend?.IsThrottleEnabled ?? true, Preview.LastError, audio?.Frames ?? 0, audio?.NonZeroSamples ?? 0);
+            Preview.Backend?.IsThrottleEnabled ?? true, Preview.LastError ?? (Preview.Backend as FabricEmulationBackend)?.LastFailure?.Message,
+            audio?.Frames ?? 0, audio?.NonZeroSamples ?? 0);
     }
     private string? PreviewSource() => !Machines.IsProjectCurrent || Machines.Document is not { } machine ? null
         : _session.ProjectFilePath + "\n" + Machines.MachinePath + "\n" + MachineDocumentStorage.Serialize(machine);
@@ -109,6 +121,24 @@ public sealed partial class WorkspaceView
         try { var gesture = KeyGesture.Parse(shortcut); return gesture.Key == e.Key && gesture.KeyModifiers == e.KeyModifiers; }
         catch (FormatException) { return false; }
         catch (ArgumentException) { return false; }
+    }
+    internal string? ResolvePreviewPointerInput(Point point)
+    {
+        var inputs = Preview.Machine?.InputDefinitions;
+        if (inputs is null) return null;
+        if (_faceActive && Faces.Document is { } face)
+        {
+            foreach (var button in face.Elements.OfType<FaceButtonElement>().Reverse())
+                if (button.IsVisible && new Rect(button.X, button.Y, button.Width, button.Height).Contains(point)
+                    && FaceInputTargetResolver.TryGetInputReference(button, out var reference))
+                    return inputs.FirstOrDefault(i => MachineInputReference.FromInputId(i.Id).Id == reference.Id)?.Id;
+        }
+        else
+        {
+            var hit = _session.Elements.LastOrDefault(e => e.Visible && new Rect(e.X, e.Y, e.Width, e.Height).Contains(point));
+            if (hit is not null && Guid.TryParse(hit.Id, out var id)) return inputs.FirstOrDefault(i => i.LinkedVisualElementId == id)?.Id;
+        }
+        return null;
     }
     private void ShowPreviewInputs()
     {
@@ -162,5 +192,6 @@ public sealed partial class WorkspaceView
         if (TopLevel.GetTopLevel(this) is Window window) window.Deactivated -= PreviewWindowDeactivated;
         _previewInputs?.Close();
         Preview.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        ClearPreviewRendering();
     }
 }

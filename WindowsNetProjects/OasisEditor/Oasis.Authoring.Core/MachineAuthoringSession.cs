@@ -259,6 +259,22 @@ public sealed class MachineAuthoringSession
         return resolved;
     }
 
+    /// <summary>Verify the exact saved source before a build or preview, without writing files.</summary>
+    public void EnsureSavedSourceUnchanged()
+    {
+        var current = RequireDocument();
+        if (IsDirty) throw new InvalidOperationException("Save the Machine before building or previewing.");
+        var path = ResolveManifest(machinePath!, RequireProject());
+        if (!string.Equals(HashFile(path), diskHash, StringComparison.Ordinal))
+            throw new IOException("The Machine manifest changed outside this session. Reopen it before building or previewing.");
+        if (current.Behavior is not null)
+        {
+            var behaviorPath = WorkspacePathPolicy.ResolveConfined(Path.GetDirectoryName(path)!, current.Behavior.Source);
+            if (!string.Equals(HashFile(behaviorPath), behaviorDiskHash, StringComparison.Ordinal))
+                throw new IOException("The Machine behavior changed outside this session. Reopen it before building or previewing.");
+        }
+    }
+
     private void Commit(MachineDocument updated, string? updatedBehaviorSource = null)
     {
         if (document?.Behavior is null && updated.Behavior is not null && machinePath is not null && projectDirectory is not null)

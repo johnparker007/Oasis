@@ -12,6 +12,9 @@ public sealed class NativePreviewSession : IAsyncDisposable
     private MachineDocument? _machine;
     private IEmulationBackend? _backend;
     private bool _disposed;
+    private static NativePreviewSession? _nativeOwner;
+    private readonly bool _usesNativeBackend;
+    private bool _ownsNativeLease;
     public IEmulationBackend? Backend => _backend;
     public EmulationBackendState State => _backend?.State ?? EmulationBackendState.Stopped;
     public MachineDocument? Machine => _machine is null ? null : Clone(_machine);
@@ -20,7 +23,7 @@ public sealed class NativePreviewSession : IAsyncDisposable
     public string? LastError { get; private set; }
     public bool Audible { get; private set; }
 
-    public NativePreviewSession() : this(CreateBackend) { }
+    public NativePreviewSession() : this(CreateBackend) { _usesNativeBackend = true; }
     public NativePreviewSession(Func<NativeEmulationPreferences, FruitMachinePlatformType, bool, IEmulationBackend> factory)
         => _factory = factory;
 
@@ -35,11 +38,17 @@ public sealed class NativePreviewSession : IAsyncDisposable
             if (sourceCurrent?.Invoke() == false) throw new InvalidOperationException("Save the current Machine and project before previewing.");
             var copy = Clone(machine);
             var request = CreateLaunchRequest(copy);
-            var backend = _factory(preferences, request.Platform, audible);
-            _sourceCurrent = sourceCurrent; _machine = copy; Audible = audible; LastError = null;
-            _backend = backend;
+            if (_usesNativeBackend)
+            {
+                if (Interlocked.CompareExchange(ref _nativeOwner, this, null) is not null)
+                    throw new InvalidOperationException("A native preview is already running in this process. Stop it before starting another.");
+                _ownsNativeLease = true;
+            }
             try
             {
+                var backend = _factory(preferences, request.Platform, audible);
+                _sourceCurrent = sourceCurrent; _machine = copy; Audible = audible; LastError = null;
+                _backend = backend;
                 BackendCreated?.Invoke(backend, Clone(copy));
                 // Loading a real native provider may be slow; never block the UI thread.
                 await Task.Run(() => backend.StartAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
@@ -118,6 +127,7 @@ public sealed class NativePreviewSession : IAsyncDisposable
     {
         var backend = _backend;
         if (backend is null) { _pressed.Clear(); return; }
+        var failures = new List<Exception>();
         foreach (var pair in _pressed.ToArray())
         {
             try
@@ -125,8 +135,10 @@ public sealed class NativePreviewSession : IAsyncDisposable
                 if (pair.Value.CoinInput) await backend.ReleaseCoinAsync(pair.Value, CancellationToken.None).ConfigureAwait(false);
                 else await backend.SetInputStateAsync(pair.Value, false, CancellationToken.None).ConfigureAwait(false);
             }
+            catch (Exception error) { failures.Add(error); }
             finally { _pressed.TryRemove(pair.Key, out _); }
         }
+        if (failures.Count != 0) throw new AggregateException("One or more held inputs could not be released.", failures);
     }
     private IEmulationBackend RequireCurrent()
     {
@@ -144,7 +156,12 @@ public sealed class NativePreviewSession : IAsyncDisposable
                 finally { try { await backend.StopAsync(CancellationToken.None).ConfigureAwait(false); } finally { await backend.DisposeAsync().ConfigureAwait(false); } }
             }
         }
-        finally { _backend = null; _machine = null; _sourceCurrent = null; _pressed.Clear(); Cleared?.Invoke(); }
+        finally
+        {
+            _backend = null; _machine = null; _sourceCurrent = null; _pressed.Clear();
+            if (_ownsNativeLease) { Interlocked.CompareExchange(ref _nativeOwner, null, this); _ownsNativeLease = false; }
+            Cleared?.Invoke();
+        }
     }
     public async ValueTask DisposeAsync()
     {
