@@ -1,18 +1,19 @@
 # Agent project context
 
-Recorded on 2026-10-27 from the user's project handoff and existing priority document. This is a starting point for investigation, not a fresh verification report. Update changing status here or in the current priority document rather than duplicating it in agent rules.
+Recorded on 2026-10-27 from the user's project handoff and existing priority document. The canonical Editor cutover was documented afterward. This is a starting point for investigation, not a fresh verification report. Update changing status here or in the current priority document rather than duplicating it in agent rules.
 
 ## Source documents
 
 - Current workstream: `WindowsNetProjects/OasisEditor/00_CURRENT_PRIORITY.md`.
-- Fabric/Amber integration: `WindowsNetProjects/OasisEditor/OasisEditor.Mcp/PLAYER_FABRIC_IMPACT.md`.
+- Historical Fabric/Amber integration: `WindowsNetProjects/OasisEditor/Docs/NativeIntegration/PLAYER_FABRIC_IMPACT.md`.
 - Architecture entry point: `WindowsNetProjects/OasisEditor/Docs/ArchitectureNext/00_OVERVIEW.md`.
 
 Paths above are relative to the repository root. Follow the current priority document for relevant roadmap and runtime-contract sections.
 
 ## Existing work to inspect before extending
 
-- Editor MCP supports substantial authoring, inspection, export, and capture operations.
+- The canonical Editor (`WindowsNetProjects/OasisEditor/OasisEditor`) and MCP host (`OasisEditor.Mcp`) support substantial authoring, inspection, export and capture operations.
+- Shared services are organized into `Oasis.Authoring.Core`, `Oasis.Emulation`, `Oasis.Rendering2D`, `Oasis.RuntimeBuild` and `Oasis.Rendering3D`. The former WPF Editor and WPF MCP host are retired.
 - PoolTableTest1 uses Oasis scripts and a ball prefab to generate a rack of 15 balls plus a cue ball.
 - Player has basic arcade placement, walking, machine interaction profiles, and pool aiming/shooting.
 - Player supports exported Fabric configuration and the Amber JPM Impact core, using the Editor implementation as the reference.

@@ -1,36 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>OasisEditor.Avalonia.Tests</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../Oasis.Authoring.Assets/Oasis.Authoring.Assets.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Oasis.Authoring.Core\Oasis.Authoring.Core.csproj" />
     <ProjectReference Include="..\OasisEditor\OasisEditor.csproj" />
     <ProjectReference Include="..\Oasis.RuntimeBuild\Oasis.RuntimeBuild.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="..\OasisEditor\MfmeFonts\*.ttf" Link="MfmeFonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\OasisEditor\MfmeFonts\*.TTF" Link="MfmeFonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\OasisEditor\Views\ProjectSettingsView.xaml" Link="Views\ProjectSettingsView.xaml" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\OasisEditor\Views\ImpactRuntimeSettingsView.xaml" Link="Views\ImpactRuntimeSettingsView.xaml" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\OasisEditor\Views\Mpu5FabricSettingsView.xaml" Link="Views\Mpu5FabricSettingsView.xaml" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\OasisEditor\Views\DocumentEditorView.xaml" Link="Views\DocumentEditorView.xaml" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\OasisEditor\Views\MachineCompositionGraphView.xaml" Link="Views\MachineCompositionGraphView.xaml" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\OasisEditor\App.xaml" Link="App.xaml" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="..\Examples\Pool\behavior.oasis" Link="Pool\behavior.oasis" CopyToOutputDirectory="PreserveNewest" />
+    <ProjectReference Include="..\Oasis.Authoring.ThreeD\Oasis.Authoring.ThreeD.csproj" />
   </ItemGroup>
 </Project>

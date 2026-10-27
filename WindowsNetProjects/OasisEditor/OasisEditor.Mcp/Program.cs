@@ -1,64 +1,58 @@
-using System.IO;
-using System.Windows;
-using System.Windows.Threading;
+using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using OasisEditor.Automation;
 
-namespace OasisEditor.Mcp;
+namespace OasisEditor.Avalonia.Mcp;
 
 internal static class Program
 {
     [STAThread]
     private static int Main(string[] args)
     {
-        if (args.Length != 2 || args[0] != "--workspace")
+        if (args.Length != 2 || args[0] != "--workspace" || !Directory.Exists(args[1]))
         {
-            Console.Error.WriteLine("Usage: OasisEditor.Mcp --workspace <existing-directory>. Runs an isolated stdio session; no visible windows.");
+            Console.Error.WriteLine("Usage: OasisEditor.Mcp --workspace <existing-directory>. Headless stdio session; no desktop windows.");
             return 2;
         }
-        // Keep legacy decoder diagnostics away from the MCP protocol stream.
         Console.SetOut(Console.Error);
         try
         {
-            var app = App.CreateAutomationHost();
-            app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            app.InitializeComponent();
-            var themes = new ApplicationThemeService();
-            themes.EnsureFluentThemeResources(app);
-            themes.ApplyTheme(app, ThemePreference.System);
-            var session = new McpEditorSession(args[1]);
-            var dispatcher = Dispatcher.CurrentDispatcher;
+            global::OasisEditor.Avalonia.Program.BuildHeadless().SetupWithoutStarting();
+            var session = new AuthoringSession(args[1]);
+            var faces = new FaceAuthoringSession(session);
+            using var capture = new WorkspaceCapture(session, faces);
             var builder = Host.CreateApplicationBuilder();
+            builder.Logging.ClearProviders();
+            builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
             builder.Logging.SetMinimumLevel(LogLevel.Warning);
-            builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
             builder.Services.AddSingleton(session);
-            builder.Services.AddSingleton(new EditorDispatcher(dispatcher));
+            builder.Services.AddSingleton(faces);
+            builder.Services.AddSingleton(capture);
+            builder.Services.AddSingleton<EditorDispatcher>();
             builder.Services.AddMcpServer().WithStdioServerTransport().WithTools<EditorTools>();
             using var host = builder.Build();
+            using var stop = new CancellationTokenSource();
             Exception? failure = null;
             var run = Task.Run(async () =>
             {
                 try { await host.RunAsync(); }
-                catch (Exception exception) { failure = exception; }
-                finally { dispatcher.BeginInvokeShutdown(DispatcherPriority.Normal); }
+                catch (Exception e) { failure = e; }
+                finally { Dispatcher.UIThread.Post(stop.Cancel); }
             });
-            Dispatcher.Run();
+            Dispatcher.UIThread.MainLoop(stop.Token);
             run.GetAwaiter().GetResult();
             if (failure is not null) throw failure;
             return 0;
         }
-        catch (Exception exception)
-        {
-            Console.Error.WriteLine(exception);
-            return 1;
-        }
+        catch (Exception e) { Console.Error.WriteLine(e); return 1; }
     }
 }
 
-public sealed class EditorDispatcher(Dispatcher dispatcher)
+public sealed class EditorDispatcher
 {
-    public Task<T> Invoke<T>(Func<T> action, CancellationToken cancellationToken) =>
-        dispatcher.InvokeAsync(action, DispatcherPriority.Normal, cancellationToken).Task;
+    public async Task<T> InvokeAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken)
+        => await await Dispatcher.UIThread.InvokeAsync(action, DispatcherPriority.Normal, cancellationToken);
+    public async Task<T> Invoke<T>(Func<T> action, CancellationToken cancellationToken)
+        => await Dispatcher.UIThread.InvokeAsync(action, DispatcherPriority.Normal, cancellationToken);
 }

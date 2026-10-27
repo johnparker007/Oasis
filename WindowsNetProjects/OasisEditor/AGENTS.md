@@ -15,32 +15,16 @@ Read additional planning/task documents only when directed by `00_CURRENT_PRIORI
 
 ## Project Overview
 
-Oasis Editor is a WPF desktop application for creating and editing slot machine content.
+Oasis Editor is the portable Avalonia desktop application for authoring arcade machines and assets. The canonical application, MCP host and test projects are `OasisEditor`, `OasisEditor.Mcp` and `OasisEditor.Tests`. The former WPF Editor is retired; historical native-integration notes are kept under `Docs/NativeIntegration/`.
 
-The editor supports:
-
-- Panel2D assets
-- Face assets
-- Cabinet3D assets
-- Machine assembly
-- Export to a Unity-based runtime
-
-The editor is moving to a folder-as-asset storage model. Current implementation details and active workstreams are described in the current planning documents rather than this file.
+The Editor supports Panel2D, Face, Reel, Cabinet3D, Prefab and Machine authoring, native emulation preview, and Player build/export. Shared services are organized into `Oasis.Authoring.Core`, `Oasis.Emulation`, `Oasis.Rendering2D`, `Oasis.RuntimeBuild` and `Oasis.Rendering3D`.
 
 ## Environment Constraints
 
-Determine the execution environment before running verification.
+The canonical Editor is portable and targets .NET 9. Check project target frameworks and the installed SDK before building. Do not attempt builds or tests unsupported by the current environment.
 
-Restricted cloud or non-Windows agents without the Windows/.NET/WPF toolchain:
-
-- Do not attempt WPF builds, launch the application, or run Windows-dependent tests.
-- Describe the verification required in a supported local environment.
-
-Local Windows agents with the required SDK, WindowsDesktop reference pack and runtime:
-
-- May build OasisEditor and run existing managed tests using supported local tools.
-- May launch and interact with the editor when desktop automation is available and the user permits desktop use.
-- When the user is using the PC, perform background work only; do not activate windows, capture the desktop, or send mouse/keyboard input without agreement.
+- Desktop interaction and native emulation checks are separate from source/build validation. Report the exact checks performed and limitations.
+- Do not activate windows, capture the desktop, or send mouse/keyboard input while the user is working without explicit agreement.
 - Use disposable projects for UI verification; preserve user content and uncommitted work.
 - Prefer existing tooling and cached dependencies. Obtain approval before software installation or substantial configuration changes.
 - Capture actual UI evidence before claiming visual verification. Accessibility text alone does not verify layout, rendering or theme quality.
@@ -48,6 +32,8 @@ Local Windows agents with the required SDK, WindowsDesktop reference pack and ru
 - Do not change Unity packages or configuration merely to experiment with automation without approval.
 
 Do not create `BuildAndTestAttempt`-style Markdown files.
+
+Do not describe the retired WPF application as an available authoring surface. Preserve its implementation notes only under `Docs/NativeIntegration/` when relevant.
 
 All architectural, command/undo, theme, language compatibility and current-priority rules remain in force.
 
@@ -64,7 +50,7 @@ Avoid reading archived plans, generated documentation, build outputs, logs, gene
 ## Architecture Principles
 
 - Keep business logic UI-independent.
-- Do not place business logic in WPF views or code-behind.
+- Do not place business logic in desktop views or code-behind.
 - Prefer small, focused, testable classes.
 - Extend existing patterns where appropriate.
 - Keep changes minimal and task-focused.

@@ -1,0 +1,882 @@
+using OasisEditor.FacePipeline;
+using OasisEditor.Progress;
+using OasisEditor.Features.CabinetEditor.Models;
+using System.Text;
+using System.Text.Json;
+using SkiaSharp;
+using Xunit;
+
+namespace OasisEditor.Tests;
+
+public sealed class MachineRuntimeBuildServiceTests : IDisposable
+{
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "OasisMachineBuild_" + Guid.NewGuid().ToString("N"));
+
+    [Fact]
+    public void BuildFromMachineDocument_RejectsUnsupportedEmulationPlatformBeforeCreatingOutput()
+    {
+        var project = Project();
+        var machine = MachineDocument.Create("Unsupported Platform") with
+        {
+            Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.MPU4, new System6NativeRomSettings())
+        };
+        var manifestPath = new ProjectAssetPathService().GetMachineManifestPath(project, "UnsupportedPlatform");
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, manifestPath, machine, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("Unsupported Platform", result.ErrorMessage);
+        Assert.Contains("Emulation", result.ErrorMessage);
+        Assert.Contains("MPU4", result.ErrorMessage);
+        Assert.False(Directory.Exists(new MachineRuntimeBuildService().GetBuildRoot(project, "UnsupportedPlatform")));
+    }
+
+    [Fact]
+    public void BuildFromMachineDocument_MissingCabinetReportsMachineContext()
+    {
+        var project = Project();
+        var machine = MachineDocument.Create("Bonanza") with { CabinetAsset = AssetReference.Project("Assets/Cabinet3D/Missing/asset.cabinet3d") };
+        var path = WriteMachine(project, machine);
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(result.Success);
+        Assert.Contains("Bonanza", result.ErrorMessage);
+        Assert.Contains("missing Cabinet", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void BuildFromMachineDocument_RequiresCanonicalMachinePackage()
+    {
+        var project = Project();
+        var path = Path.Combine(_root, "loose.machine");
+        var machine = MachineDocument.Create("Loose");
+        File.WriteAllText(path, MachineDocumentStorage.Serialize(machine));
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(project, path, machine, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(result.Success);
+        Assert.Contains("Assets/Machines", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void BuildRootUsesMachinePackageName_NotEditableDisplayName()
+    {
+        var project = Project();
+        var service = new MachineRuntimeBuildService();
+        var firstManifest = new ProjectAssetPathService().GetMachineManifestPath(project, "PartyTimeSlave1");
+        var secondManifest = new ProjectAssetPathService().GetMachineManifestPath(project, "PartyTimeSlave2");
+        var firstMachine = MachineDocument.Create("Party Time");
+        var secondMachine = MachineDocument.Create("Party Time");
+        var firstAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(firstManifest, EditorAssetType.Machine);
+        var secondAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(secondManifest, EditorAssetType.Machine);
+
+        var firstRoot = service.GetBuildRoot(project, firstAssetName!);
+        var secondRoot = service.GetBuildRoot(project, secondAssetName!);
+
+        Assert.Equal(firstMachine.DisplayName, secondMachine.DisplayName);
+        Assert.NotEqual(firstRoot, secondRoot);
+        Assert.EndsWith(Path.Combine("Builds", "PartyTimeSlave1"), firstRoot);
+        Assert.EndsWith(Path.Combine("Builds", "PartyTimeSlave2"), secondRoot);
+        Assert.DoesNotContain("Party Time", firstRoot);
+        firstMachine = firstMachine with { DisplayName = "Renamed Party Time" };
+        Assert.Equal("Renamed Party Time", firstMachine.DisplayName);
+        Assert.Equal(firstRoot, service.GetBuildRoot(project, firstAssetName!));
+    }
+
+    [Fact]
+    public void RuntimeFaceMapping_SparseSettingsUseDefaultsForUnconfiguredTarget()
+    {
+        var cabinet = CabinetDocument.FromModelPath("cabinet.glb") with
+        {
+            SurfaceTargetSettings = [new CabinetSurfaceTargetSettings("bottomGlass", CabinetSurfaceTargetSettings.InvertedFrontSide, 90, true)]
+        };
+
+        var top = MachineRuntimeBuildService.CreateRuntimeFaceReference(cabinet, "top-id", "TopGlass", "topGlass", "faces/top/face.runtime.json");
+        var bottom = MachineRuntimeBuildService.CreateRuntimeFaceReference(cabinet, "bottom-id", "BottomGlass", "bottomGlass", "faces/bottom/face.runtime.json");
+
+        Assert.Equal(CabinetSurfaceTargetSettings.NormalFrontSide, top.FrontSide);
+        Assert.Equal(0, top.FaceRotation);
+        Assert.False(top.FaceFlipHorizontal);
+        Assert.Equal(CabinetSurfaceTargetSettings.InvertedFrontSide, bottom.FrontSide);
+        Assert.Equal(90, bottom.FaceRotation);
+        Assert.True(bottom.FaceFlipHorizontal);
+    }
+
+    [Fact]
+    public void RuntimeFaceMapping_EmptySettingsUseDefaultsForEveryTarget()
+    {
+        var cabinet = CabinetDocument.FromModelPath("cabinet.glb");
+        foreach (var targetId in new[] { "topGlass", "bottomGlass" })
+        {
+            var reference = MachineRuntimeBuildService.CreateRuntimeFaceReference(cabinet, targetId + "-face", targetId, targetId, "face.runtime.json");
+            Assert.Equal(CabinetSurfaceTargetSettings.NormalFrontSide, reference.FrontSide);
+            Assert.Equal(0, reference.FaceRotation);
+            Assert.False(reference.FaceFlipHorizontal);
+        }
+    }
+
+    [Fact]
+    public void TargetValidationUsesDetectedGlbTargets_NotSparseSettings()
+    {
+        Directory.CreateDirectory(_root);
+        var glb = Path.Combine(_root, "cabinet.glb");
+        WriteTwoTargetGlb(glb);
+
+        MachineRuntimeBuildService.ValidateFaceAssignmentTargets("Machine",
+            [new("topGlass", "Assets/Faces/Top/asset.face"), new("bottomGlass", "Assets/Faces/Bottom/asset.face")],
+            glb, "Assets/Cabinet3D/Cabinet/asset.cabinet3d", CancellationToken.None);
+        var exception = Assert.Throws<InvalidOperationException>(() => MachineRuntimeBuildService.ValidateFaceAssignmentTargets(
+            "Machine", [new("doesNotExist", "Assets/Faces/Missing/asset.face")], glb, "Assets/Cabinet3D/Cabinet/asset.cabinet3d", CancellationToken.None));
+        Assert.Contains("not a valid detected OasisFace_* target", exception.Message);
+        Assert.DoesNotContain("override", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void TargetValidationAllowsNoDetectedTargetsOnlyWhenMachineHasNoAssignments()
+    {
+        Directory.CreateDirectory(_root);
+        var glb = Path.Combine(_root, "cabinet.glb");
+        WriteTwoTargetGlb(glb, "Cabinet_topGlass", "Cabinet_bottomGlass");
+
+        MachineRuntimeBuildService.ValidateFaceAssignmentTargets(
+            "Empty Machine", [], glb, "Assets/Cabinet3D/Cabinet/asset.cabinet3d", CancellationToken.None);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => MachineRuntimeBuildService.ValidateFaceAssignmentTargets(
+            "Assigned Machine", [new("topGlass", "Assets/Faces/Top/asset.face")], glb,
+            "Assets/Cabinet3D/Cabinet/asset.cabinet3d", CancellationToken.None));
+        Assert.Contains("Assigned Machine", exception.Message);
+        Assert.Contains("topGlass", exception.Message);
+        Assert.Contains("no valid OasisFace_* targets", exception.Message);
+    }
+
+    [Fact]
+    public void TargetValidationRejectsAssignmentWhenOnlyAnotherTargetIsDetected()
+    {
+        Directory.CreateDirectory(_root);
+        var glb = Path.Combine(_root, "cabinet.glb");
+        WriteTwoTargetGlb(glb, "Cabinet_topGlass", "OasisFace_bottomGlass");
+
+        var exception = Assert.Throws<InvalidOperationException>(() => MachineRuntimeBuildService.ValidateFaceAssignmentTargets(
+            "Machine", [new("topGlass", "Assets/Faces/Top/asset.face")], glb,
+            "Assets/Cabinet3D/Cabinet/asset.cabinet3d", CancellationToken.None));
+        Assert.Contains("topGlass", exception.Message);
+        Assert.Contains("bottomGlass", exception.Message);
+    }
+
+    [Fact]
+    public void Build_CabinetWithoutPhysicsSemanticsStillBuilds()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true), ("COL_Legacy", false, false), ("TRG_Legacy", false, false)]);
+
+        var result = Build(setup.Project, setup.Machine);
+
+        Assert.True(result.Success, result.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData("OasisCollider_Test")]
+    [InlineData("OasisTrigger_Test")]
+    public void Build_PhysicsSemanticPositionGeometryNeedsNeitherUvNorMaterial(string semanticName)
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [(semanticName, true, true)]);
+
+        var result = Build(setup.Project, setup.Machine);
+
+        Assert.True(result.Success, result.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData("OasisCollider_Broken", "Collider")]
+    [InlineData("OasisTrigger_Broken", "Trigger")]
+    public void Build_PhysicsSemanticWithoutMeshFailsWithSemanticContext(string semanticName, string kind)
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [(semanticName, false, false)]);
+
+        var result = Build(setup.Project, setup.Machine);
+
+        Assert.False(result.Success);
+        Assert.Contains(setup.CabinetReference.ToString(), result.ErrorMessage);
+        Assert.Contains(semanticName, result.ErrorMessage);
+        Assert.Contains(kind, result.ErrorMessage);
+        Assert.Contains("does not reference a mesh", result.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData("OasisCollider_NoPosition", "Collider")]
+    [InlineData("OasisTrigger_NoPosition", "Trigger")]
+    public void Build_PhysicsSemanticPrimitiveWithoutPositionFailsClearly(string semanticName, string kind)
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [(semanticName, true, false)]);
+
+        var result = Build(setup.Project, setup.Machine);
+
+        Assert.False(result.Success);
+        Assert.Contains(semanticName, result.ErrorMessage);
+        Assert.Contains(kind, result.ErrorMessage);
+        Assert.Contains("POSITION", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void Build_CopiesCabinetGlbByteForByteWithAllSemanticIdentities()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb,
+        [
+            ("Cabinet", true, true),
+            ("OasisFace_Test", true, true),
+            ("OasisCollider_Test", true, true),
+            ("OasisTrigger_Test", true, true)
+        ]);
+        var sourceBytes = File.ReadAllBytes(setup.Glb);
+
+        var result = Build(setup.Project, setup.Machine);
+
+        Assert.True(result.Success, result.ErrorMessage);
+        var builtGlb = Path.Combine(result.BuildRoot!, MachineRuntimeBuildService.CabinetDirectoryName, MachineRuntimeBuildService.CabinetGlbFileName);
+        Assert.Equal(sourceBytes, File.ReadAllBytes(builtGlb));
+        var builtBytes = Encoding.UTF8.GetString(File.ReadAllBytes(builtGlb));
+        Assert.Contains("OasisFace_Test", builtBytes);
+        Assert.Contains("OasisCollider_Test", builtBytes);
+        Assert.Contains("OasisTrigger_Test", builtBytes);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void Build_ResolvesReferencedReelAssetIntoFaceRuntimeDimensions(bool oasis)
+    {
+        var setup = CreateReelBuild([0], [(0, "Standard", 290d, 70d)]);
+        var machine = WithRuntimeBehavior(setup.Project, setup.Machine, oasis);
+        var result = Build(setup.Project, machine);
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal(new[] { (70d, 145d) }, ReadRuntimeReelDimensions(result.BuildRoot!));
+    }
+
+    [Fact]
+    public void Build_MultipleLogicalReelsCanShareOneAsset()
+    {
+        var setup = CreateReelBuild([0, 1, 2], [(0, "Standard", 290d, 70d), (1, "Standard", 290d, 70d), (2, "Standard", 290d, 70d)]);
+        var result = Build(setup.Project, setup.Machine);
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal(new[] { (70d, 145d), (70d, 145d), (70d, 145d) }, ReadRuntimeReelDimensions(result.BuildRoot!));
+    }
+
+    [Fact]
+    public void Build_DifferentLogicalReelsResolveDifferentAssets()
+    {
+        var setup = CreateReelBuild([0, 3], [(0, "Standard", 290d, 70d), (3, "Small", 230d, 60d)]);
+        var result = Build(setup.Project, setup.Machine);
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal(new[] { (70d, 145d), (60d, 115d) }, ReadRuntimeReelDimensions(result.BuildRoot!));
+    }
+
+    [Fact]
+    public void Build_MissingLogicalAssignmentNamesMachineAndReel()
+    {
+        var setup = CreateReelBuild([3], []);
+        var result = Build(setup.Project, setup.Machine);
+        Assert.False(result.Success);
+        Assert.Contains("Reel Machine", result.ErrorMessage);
+        Assert.Contains("reel:3", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Build_MissingReelAssetNamesMachineLogicalReelAndPath()
+    {
+        var setup = CreateReelBuild([3], []);
+        const string missing = "Assets/Reels/Small/asset.reel";
+        var machine = setup.Machine with { ReelAssignments = [new(MachineObjectReference.Reel(3), AssetReference.Project(missing))] };
+        var result = Build(setup.Project, machine);
+        Assert.False(result.Success);
+        Assert.Contains("Reel Machine", result.ErrorMessage);
+        Assert.Contains("reel:3", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(missing, result.ErrorMessage);
+    }
+
+    [Fact]
+    public void Build_InvalidReferencedReelFailsButUnusedBrokenReelIsIgnored()
+    {
+        var setup = CreateReelBuild([0], [(0, "Standard", 290d, 70d)]);
+        var unused = new ProjectAssetPathService().GetReelManifestPath(setup.Project, "Broken");
+        Directory.CreateDirectory(Path.GetDirectoryName(unused)!);
+        File.WriteAllText(unused, "{ broken");
+        Assert.True(Build(setup.Project, setup.Machine).Success);
+
+        var standard = new ProjectAssetPathService().GetReelManifestPath(setup.Project, "Standard");
+        File.WriteAllText(standard, "{ \"version\": 99 }");
+        var invalid = Build(setup.Project, setup.Machine);
+        Assert.False(invalid.Success);
+        Assert.Contains("invalid", invalid.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Assets/Reels/Standard/asset.reel", invalid.ErrorMessage);
+    }
+
+    [Fact]
+    public void Build_LibraryCabinetProjectFaceAndLibraryReelIsSelfContained()
+    {
+        var setup = CreateLibraryBuild();
+        var machineJson = MachineDocumentStorage.Serialize(setup.Machine);
+        var result = Build(setup.Project, setup.Machine, setup.LibraryRoot);
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.True(File.Exists(Path.Combine(result.BuildRoot!, MachineRuntimeBuildService.CabinetDirectoryName, MachineRuntimeBuildService.CabinetGlbFileName)));
+        Assert.Equal(new[] { (70d, 145d) }, ReadRuntimeReelDimensions(result.BuildRoot!));
+        var output = string.Join("\n", Directory.EnumerateFiles(result.BuildRoot!, "*.json", SearchOption.AllDirectories).Select(File.ReadAllText));
+        Assert.DoesNotContain(setup.LibraryRoot, output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\"scope\"", output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(setup.LibraryRoot, machineJson, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Build_LibraryFailuresAreContextualAndUnusedMalformedPackagesAreIgnored()
+    {
+        var setup = CreateLibraryBuild();
+        Directory.CreateDirectory(Path.Combine(setup.LibraryRoot, "Reels", "Broken"));
+        File.WriteAllText(Path.Combine(setup.LibraryRoot, "Reels", "Broken", "asset.reel"), "broken");
+        Directory.CreateDirectory(Path.Combine(setup.LibraryRoot, "Cabinets", "Broken"));
+        File.WriteAllText(Path.Combine(setup.LibraryRoot, "Cabinets", "Broken", "asset.cabinet3d"), "broken");
+        Assert.True(Build(setup.Project, setup.Machine, setup.LibraryRoot).Success);
+
+        File.Delete(Path.Combine(setup.LibraryRoot, "Reels", "Standard", "asset.reel"));
+        var missingReel = Build(setup.Project, setup.Machine, setup.LibraryRoot);
+        Assert.False(missingReel.Success); Assert.Contains("Reel Machine", missingReel.ErrorMessage); Assert.Contains("reel:0", missingReel.ErrorMessage, StringComparison.OrdinalIgnoreCase); Assert.Contains("Library: Reels/Standard/asset.reel", missingReel.ErrorMessage);
+        File.WriteAllText(Path.Combine(setup.LibraryRoot, "Reels", "Standard", "asset.reel"), "broken");
+        Assert.Contains("invalid", Build(setup.Project, setup.Machine, setup.LibraryRoot).ErrorMessage!, StringComparison.OrdinalIgnoreCase);
+
+        var cabinet = Path.Combine(setup.LibraryRoot, "Cabinets", "Cabinet", "asset.cabinet3d");
+        File.Delete(cabinet);
+        var missingCabinet = Build(setup.Project, setup.Machine, setup.LibraryRoot);
+        Assert.False(missingCabinet.Success); Assert.Contains("Reel Machine", missingCabinet.ErrorMessage); Assert.Contains("Library: Cabinets/Cabinet/asset.cabinet3d", missingCabinet.ErrorMessage);
+        File.WriteAllText(cabinet, "broken");
+        Assert.Contains("invalid Cabinet", Build(setup.Project, setup.Machine, setup.LibraryRoot).ErrorMessage!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("C:/outside.glb", "invalid Cabinet")]
+    [InlineData("../outside.glb", "invalid Cabinet")]
+    public void Build_LibraryCabinetRejectsUnsafeModelPath(string modelPath, string expected)
+    {
+        var setup = CreateLibraryBuild();
+        var manifest = Path.Combine(setup.LibraryRoot, "Cabinets", "Cabinet", "asset.cabinet3d");
+        var json = CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb"));
+        File.WriteAllText(manifest, json.Replace("cabinet.glb", modelPath.Replace("\\", "\\\\")));
+        var result = Build(setup.Project, setup.Machine, setup.LibraryRoot);
+        Assert.False(result.Success); Assert.Contains(expected, result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Build_LibraryCabinetRejectsReflectionMaskEscapingPackage()
+    {
+        var setup = CreateLibraryBuild();
+        var manifest = Path.Combine(setup.LibraryRoot, "Cabinets", "Cabinet", "asset.cabinet3d");
+        var disabled = CabinetReflectionSettings.RoughPlastic with { Enabled = false };
+        var cabinet = CabinetDocument.FromModelPath("cabinet.glb") with { Reflections = [new("mask", "unused", 0, [], disabled, "../mask.png")] };
+        File.WriteAllText(manifest, CabinetDocumentStorage.Serialize(cabinet));
+        var result = Build(setup.Project, setup.Machine, setup.LibraryRoot);
+        Assert.False(result.Success); Assert.Contains("escapes the Cabinet asset directory", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void Build_SameMachineIsPortableAcrossEquivalentLibraryRoots()
+    {
+        var setup = CreateLibraryBuild();
+        var secondRoot = Path.Combine(_root, "LibraryB");
+        CopyDirectory(setup.LibraryRoot, secondRoot);
+        var jsonBefore = MachineDocumentStorage.Serialize(setup.Machine);
+        Assert.True(Build(setup.Project, setup.Machine, setup.LibraryRoot).Success);
+        Assert.True(Build(setup.Project, setup.Machine, secondRoot).Success);
+        Assert.Equal(jsonBefore, MachineDocumentStorage.Serialize(setup.Machine));
+        Assert.DoesNotContain(setup.LibraryRoot, jsonBefore, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(secondRoot, jsonBefore, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void Build_ObjectInstancesShareOneDefinitionAndPreserveTransforms(bool oasis)
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var paths = new ProjectAssetPathService();
+        var objectManifest = paths.GetObject3DManifestPath(setup.Project, "PoolBall");
+        Directory.CreateDirectory(Path.GetDirectoryName(objectManifest)!);
+        File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(objectManifest)!, "ball.glb"), [1, 2, 3]);
+        var id = Guid.NewGuid().ToString("D");
+        var definition = new Object3DDocument(Object3DDocument.CurrentSchemaVersion, id, "Pool Ball", new("ball.glb", 0.5, "Z"),
+            new(new(Object3DColliderKind.Sphere, [1, 2, 3], 0.25), new(true, 0.17, true)));
+        File.WriteAllText(objectManifest, Object3DDocumentStorage.Serialize(definition));
+        var reference = AssetReference.Project(paths.ToProjectRelativePath(setup.Project, objectManifest));
+        var machine = setup.Machine with { ObjectInstances =
+        [
+            new("cueBall", "Cue Ball", reference, new(new(1, 2, 3), new(10, 20, 30), new(1, 1, 1))),
+            new("ball01", "Ball 1", reference, new(new(4, 5, 6), new(40, 50, 60), new(2, 2, 2))),
+            new("ball08", "Ball 8", reference, new(new(7, 8, 9), new(70, 80, 90), new(3, 3, 3)))
+        ],
+            PrefabDependencies = [new("poolBall", reference)],
+            GeometrySurfaces = [new("playingSurface", MachineVector3.Zero, MachineVector3.Zero, 1.2, 2.4)],
+            Interaction = new MachineInteractionDefinition("Pool", "poolBall", "playingSurface")
+        };
+
+        machine = WithRuntimeBehavior(setup.Project, machine, oasis);
+        var result = Build(setup.Project, machine);
+
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.runtime.json", SearchOption.AllDirectories).Count());
+        Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "*.glb", SearchOption.AllDirectories).Count());
+        using var machineJson = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
+        Assert.Equal(13, machineJson.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("Pool", machineJson.RootElement.GetProperty("interaction").GetProperty("kind").GetString());
+        Assert.Equal("poolBall", machineJson.RootElement.GetProperty("interaction").GetProperty("cuePrefabAlias").GetString());
+        Assert.Equal("playingSurface", machineJson.RootElement.GetProperty("interaction").GetProperty("playingSurfaceId").GetString());
+        var instances = machineJson.RootElement.GetProperty("objectInstances");
+        Assert.Equal(new[] { "cueBall", "ball01", "ball08" }, instances.EnumerateArray().Select(x => x.GetProperty("id").GetString()));
+        Assert.Equal(80, instances[2].GetProperty("transform").GetProperty("rotationEulerDegrees").GetProperty("y").GetDouble());
+        Assert.Equal(3, instances[2].GetProperty("transform").GetProperty("scale").GetProperty("x").GetDouble());
+        Assert.All(instances.EnumerateArray(), x => Assert.Equal(id.ToLowerInvariant(), x.GetProperty("definitionId").GetString()));
+        var runtimePath = Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.runtime.json", SearchOption.AllDirectories).Single();
+        var runtimeText = File.ReadAllText(runtimePath);
+        using var runtime = JsonDocument.Parse(runtimeText);
+        Assert.Equal(2, runtime.RootElement.GetProperty("schemaVersion").GetInt32());
+        var components = runtime.RootElement.GetProperty("root").GetProperty("components").EnumerateArray().ToArray();
+        var model = components.Single(c => c.GetProperty("kind").GetString() == "Model").GetProperty("model");
+        Assert.StartsWith("models/", model.GetProperty("path").GetString());
+        Assert.Equal(0.5, model.GetProperty("scale").GetDouble());
+        Assert.Equal("Sphere", components.Single(c => c.GetProperty("kind").GetString() == "Collider").GetProperty("collider").GetProperty("kind").GetString());
+        Assert.Equal(0.17, components.Single(c => c.GetProperty("kind").GetString() == "Rigidbody").GetProperty("rigidbody").GetProperty("mass").GetDouble());
+        Assert.DoesNotContain(setup.Project.ProjectDirectory, runtimeText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Assets/", runtimeText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Build_PrefabDependencyWithoutPlacedInstanceIsPackagedAndScriptAliasValidated()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var paths = new ProjectAssetPathService();
+        var objectManifest = paths.GetObject3DManifestPath(setup.Project, "SpawnOnlyBall");
+        Directory.CreateDirectory(Path.GetDirectoryName(objectManifest)!);
+        File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(objectManifest)!, "ball.glb"), [1, 2, 3]);
+        var definitionId = Guid.NewGuid().ToString("D");
+        var definition = Object3DDocument.ReauthorRoot("Spawn Only Ball", new("ball.glb", 1, "Y"),
+            new(Object3DColliderDefinition.None, new(Object3DRigidbodyMode.Static)), definitionId);
+        File.WriteAllText(objectManifest, Object3DDocumentStorage.Serialize(definition));
+        var reference = AssetReference.Project(paths.ToProjectRelativePath(setup.Project, objectManifest));
+        var machine = setup.Machine with
+        {
+            PrefabDependencies = [new MachinePrefabDeclaration("poolBall", reference)],
+            Runtime = new OasisRuntimeDefinition(),
+            Behavior = MachineBehaviorDefinition.OasisScript()
+        };
+        var machinePath = WriteMachine(setup.Project, machine);
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(machinePath)!, "behavior.oasis"), "const ballPrefab = prefab:poolBall;");
+
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(setup.Project, machinePath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal(1, Directory.EnumerateFiles(Path.Combine(result.BuildRoot!, "objects"), "object.runtime.json", SearchOption.AllDirectories).Count());
+        using var runtime = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
+        var dependency = Assert.Single(runtime.RootElement.GetProperty("prefabDependencies").EnumerateArray());
+        Assert.Equal("poolBall", dependency.GetProperty("alias").GetString());
+        Assert.Equal(definitionId.ToLowerInvariant(), dependency.GetProperty("definitionId").GetString());
+        Assert.Empty(runtime.RootElement.GetProperty("objectInstances").EnumerateArray());
+
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(machinePath)!, "behavior.oasis"), "const ballPrefab = prefab:missing;");
+        var missing = new MachineRuntimeBuildService().BuildFromMachineDocument(setup.Project, machinePath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(missing.Success);
+        Assert.Contains("OSM3009", missing.ErrorMessage);
+        Assert.Contains("missing", missing.ErrorMessage);
+    }
+
+    [Fact]
+    public void Build_RejectsSamePrefabGuidWithDifferentContentAcrossDependencyAndPlacement()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var paths = new ProjectAssetPathService();
+        var firstPath = paths.GetObject3DManifestPath(setup.Project, "PlacedBall");
+        var secondPath = paths.GetObject3DManifestPath(setup.Project, "SpawnBall");
+        var definitionId = Guid.NewGuid().ToString("D");
+        WritePrefab(firstPath, "Placed Ball", definitionId);
+        WritePrefab(secondPath, "Spawn Ball", definitionId);
+        var placed = AssetReference.Project(paths.ToProjectRelativePath(setup.Project, firstPath));
+        var declared = AssetReference.Project(paths.ToProjectRelativePath(setup.Project, secondPath));
+        var machine = setup.Machine with
+        {
+            ObjectInstances = [new("ball01", "Ball", placed, MachineObjectTransform.Identity)],
+            PrefabDependencies = [new("poolBall", declared)]
+        };
+
+        var result = Build(setup.Project, machine);
+
+        Assert.False(result.Success);
+        Assert.Contains("stable ID collision", result.ErrorMessage);
+        Assert.Contains(definitionId.ToLowerInvariant(), result.ErrorMessage);
+    }
+
+    private static void WritePrefab(string manifest, string displayName, string id)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(manifest)!);
+        File.WriteAllBytes(Path.Combine(Path.GetDirectoryName(manifest)!, "ball.glb"), [1, 2, 3]);
+        var document = Object3DDocument.ReauthorRoot(displayName, new("ball.glb", 1, "Y"),
+            new(Object3DColliderDefinition.None, new(Object3DRigidbodyMode.Static)), id);
+        File.WriteAllText(manifest, Object3DDocumentStorage.Serialize(document));
+    }
+
+    [Fact]
+    public void Build_MissingAndWrongTypeObjectDependenciesFailWithInstanceContext()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var missing = setup.Machine with { ObjectInstances = [new("cueBall", "Cue", AssetReference.Project("Assets/Object3D/Missing/asset.object3d"), MachineObjectTransform.Identity)] };
+        var missingResult = Build(setup.Project, missing);
+        Assert.False(missingResult.Success);
+        Assert.Contains("cueBall", missingResult.ErrorMessage);
+        Assert.Contains("missing Object3D", missingResult.ErrorMessage);
+
+        var wrong = setup.Machine with { ObjectInstances = [new("cueBall", "Cue", setup.CabinetReference, MachineObjectTransform.Identity)] };
+        var wrongResult = Build(setup.Project, wrong);
+        Assert.False(wrongResult.Success);
+        Assert.Contains("cueBall", wrongResult.ErrorMessage);
+        Assert.Contains("not an Object3D", wrongResult.ErrorMessage);
+    }
+
+    [Fact]
+    public void OasisBuildPackagesOneSourceAndEmulationRebuildRemovesStaleBehavior()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var machine = setup.Machine with { Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript() };
+        var path = WriteMachine(setup.Project, machine);
+        var source = "state score = 0; on machine.started() { score = score + 1; }";
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "behavior.oasis"), source);
+        var service = new MachineRuntimeBuildService();
+        var result = service.BuildFromMachineDocument(setup.Project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.Equal(source, File.ReadAllText(Path.Combine(result.BuildRoot!, "behavior", "behavior.oasis")));
+        Assert.Single(Directory.EnumerateFiles(result.BuildRoot!, "*.oasis", SearchOption.AllDirectories));
+        var json = File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json"));
+        using var manifest = JsonDocument.Parse(json);
+        Assert.Equal(13, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("Buttons", manifest.RootElement.GetProperty("interaction").GetProperty("kind").GetString());
+        var runtime = manifest.RootElement.GetProperty("runtime");
+        Assert.Equal("Oasis", runtime.GetProperty("kind").GetString());
+        Assert.False(runtime.TryGetProperty("platform", out _));
+        Assert.Equal("behavior/behavior.oasis", runtime.GetProperty("behavior").GetProperty("source").GetString());
+        Assert.DoesNotContain(setup.Project.ProjectDirectory, json);
+        Assert.True(File.Exists(Path.Combine(result.BuildRoot!, "cabinet", "cabinet.glb")));
+
+        // Failed build must retain the previously successful package.
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "behavior.oasis"), "on machine.started() { oasis.reset(1); }");
+        Assert.False(service.BuildFromMachineDocument(setup.Project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None).Success);
+        Assert.Equal(source, File.ReadAllText(Path.Combine(result.BuildRoot!, "behavior", "behavior.oasis")));
+        Assert.False(Directory.Exists(result.BuildRoot + ".staging"));
+
+        WriteMachine(setup.Project, machine with { Runtime = EmulationRuntimeDefinition.Create(FruitMachinePlatformType.None), Behavior = null });
+        result = service.BuildFromMachineDocument(setup.Project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.True(result.Success, result.ErrorMessage); Assert.False(Directory.Exists(Path.Combine(result.BuildRoot!, "behavior")));
+        Assert.Empty(Directory.EnumerateFiles(result.BuildRoot!, "*.oasis", SearchOption.AllDirectories));
+        using var emulation = JsonDocument.Parse(File.ReadAllText(Path.Combine(result.BuildRoot!, "machine.runtime.json")));
+        Assert.Equal(13, emulation.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal("Emulation", emulation.RootElement.GetProperty("runtime").GetProperty("kind").GetString());
+        Assert.False(emulation.RootElement.GetProperty("runtime").TryGetProperty("behavior", out _));
+    }
+
+    [Fact]
+    public void ImpactBuildPackagesFabricConfigurationAndProjectRelativeRomsWithoutHostPaths()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var romDirectory = Path.Combine(setup.Project.ProjectDirectory, "Assets", "ROMs");
+        Directory.CreateDirectory(romDirectory);
+        var program1 = Path.Combine(romDirectory, "program-1.bin");
+        var program2 = Path.Combine(romDirectory, "program-2.bin");
+        var sound1 = Path.Combine(_root, "external-sound.bin");
+        File.WriteAllBytes(program1, [1, 2, 3]);
+        File.WriteAllBytes(program2, [4, 5, 6, 7]);
+        File.WriteAllBytes(sound1, [8, 9]);
+        var settings = new System6NativeRomSettings
+        {
+            ProgramRom1Path = Path.GetRelativePath(setup.Project.ProjectDirectory, program1),
+            ProgramRom2Path = Path.GetRelativePath(setup.Project.ProjectDirectory, program2),
+            SoundRom1Path = sound1,
+            PercentSwitchValue = 7
+        };
+        var machine = setup.Machine with
+        {
+            Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.Impact, settings)
+        };
+
+        var result = Build(setup.Project, machine);
+
+        Assert.True(result.Success, result.ErrorMessage);
+        var root = result.BuildRoot!;
+        var program1Path = Path.Combine(root, "emulation", "roms", "program-0.bin");
+        var program2Path = Path.Combine(root, "emulation", "roms", "program-1.bin");
+        var sound1Path = Path.Combine(root, "emulation", "roms", "sound-0.bin");
+        Assert.Equal(File.ReadAllBytes(program1), File.ReadAllBytes(program1Path));
+        Assert.Equal(File.ReadAllBytes(program2), File.ReadAllBytes(program2Path));
+        Assert.Equal(File.ReadAllBytes(sound1), File.ReadAllBytes(sound1Path));
+        Assert.Equal(FabricAmberSystem6Configuration.FromSystem6(settings).ToNativeBytes(),
+            File.ReadAllBytes(Path.Combine(root, "emulation", "impact.config.bin")));
+
+        var machineJson = File.ReadAllText(Path.Combine(root, "machine.runtime.json"));
+        using var manifest = JsonDocument.Parse(machineJson);
+        var runtime = manifest.RootElement.GetProperty("runtime");
+        var fabric = runtime.GetProperty("fabric");
+        Assert.Equal("amber", fabric.GetProperty("backendKind").GetString());
+        Assert.Equal("jpm-system6", fabric.GetProperty("machineIdentifier").GetString());
+        Assert.Equal("emulation/impact.config.bin", fabric.GetProperty("configuration").GetString());
+        var roms = fabric.GetProperty("roms").EnumerateArray().ToArray();
+        Assert.Collection(roms,
+            rom => { Assert.Equal(1, rom.GetProperty("role").GetInt32()); Assert.Equal(0, rom.GetProperty("slot").GetInt32()); Assert.Equal("emulation/roms/program-0.bin", rom.GetProperty("path").GetString()); },
+            rom => { Assert.Equal(1, rom.GetProperty("role").GetInt32()); Assert.Equal(1, rom.GetProperty("slot").GetInt32()); Assert.Equal("emulation/roms/program-1.bin", rom.GetProperty("path").GetString()); },
+            rom => { Assert.Equal(2, rom.GetProperty("role").GetInt32()); Assert.Equal(0, rom.GetProperty("slot").GetInt32()); Assert.Equal("emulation/roms/sound-0.bin", rom.GetProperty("path").GetString()); });
+        Assert.DoesNotContain(setup.Project.ProjectDirectory, machineJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(sound1, machineJson, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ImpactBuildRejectsMissingProgramRomAndGappedRomSlots()
+    {
+        var setup = CreateCabinetOnlyBuild();
+        WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var romDirectory = Path.Combine(setup.Project.ProjectDirectory, "Assets", "ROMs");
+        Directory.CreateDirectory(romDirectory);
+        var program1 = Path.Combine(romDirectory, "program-1.bin");
+        var program3 = Path.Combine(romDirectory, "program-3.bin");
+        File.WriteAllBytes(program1, [1]);
+        File.WriteAllBytes(program3, [3]);
+        var service = new MachineRuntimeBuildService();
+        var manifestPath = WriteMachine(setup.Project, setup.Machine with
+        {
+            Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.Impact, new System6NativeRomSettings())
+        });
+
+        var missing = service.BuildFromMachineDocument(setup.Project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(missing.Success);
+        Assert.Contains("Program ROM 1", missing.ErrorMessage);
+
+        var missingFileSettings = new System6NativeRomSettings { ProgramRom1Path = "Assets/ROMs/missing.bin" };
+        WriteMachine(setup.Project, setup.Machine with { Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.Impact, missingFileSettings) });
+        var missingFile = service.BuildFromMachineDocument(setup.Project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(missingFile.Success);
+        Assert.Contains("program ROM 1 was not found", missingFile.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+
+        var gappedSettings = new System6NativeRomSettings
+        {
+            ProgramRom1Path = Path.GetRelativePath(setup.Project.ProjectDirectory, program1),
+            ProgramRom3Path = Path.GetRelativePath(setup.Project.ProjectDirectory, program3)
+        };
+        WriteMachine(setup.Project, setup.Machine with { Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.Impact, gappedSettings) });
+        var gapped = service.BuildFromMachineDocument(setup.Project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(gapped.Success);
+        Assert.Contains("program ROM slots must be contiguous", gapped.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+
+        var invalidConfiguration = new System6NativeRomSettings
+        {
+            ProgramRom1Path = Path.GetRelativePath(setup.Project.ProjectDirectory, program1),
+            PercentSwitchValue = 16
+        };
+        WriteMachine(setup.Project, setup.Machine with { Runtime = new EmulationRuntimeDefinition(FruitMachinePlatformType.Impact, invalidConfiguration) });
+        var invalid = service.BuildFromMachineDocument(setup.Project, manifestPath, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(invalid.Success);
+        Assert.Contains("Impact Amber configuration is invalid", invalid.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData(null, "missing")]
+    [InlineData("on machine.started() { oasis.reset(1); }", "OS2303")]
+    [InlineData("on machine.started() { oasis.reset(oasis:missing); }", "OSM3001")]
+    public void OasisBuildRevalidatesPersistedSource(string? source, string expectedDiagnostic)
+    {
+        var setup = CreateCabinetOnlyBuild(); WriteSemanticGlb(setup.Glb, [("Cabinet", true, true)]);
+        var machine = setup.Machine with { Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript() };
+        var path = WriteMachine(setup.Project, machine);
+        if (source is not null) File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "behavior.oasis"), source);
+        var service = new MachineRuntimeBuildService();
+        var result = service.BuildFromMachineDocument(setup.Project, path, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(result.Success); Assert.Contains(machine.DisplayName, result.ErrorMessage); Assert.Contains("behavior.oasis", result.ErrorMessage); Assert.Contains(expectedDiagnostic, result.ErrorMessage);
+        if (source is not null) Assert.Contains("behavior.oasis:1:", result.ErrorMessage);
+        Assert.False(Directory.Exists(service.GetBuildRoot(setup.Project, machine.DisplayName)));
+    }
+
+    [Fact]
+    public void BuildRejectsPreviousAuthoredSchemaEvenThroughDocumentOverload()
+    {
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(Project(), "asset.machine",
+            MachineDocument.Create("Previous") with { SchemaVersion = 7 }, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(result.Success); Assert.Contains("current Machine schema", result.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData(true)] [InlineData(false)]
+    public void BuildRejectsUnsupportedRuntimeBehaviorCombination(bool oasis)
+    {
+        var machine = MachineDocument.Create("Invalid") with
+        {
+            Runtime = oasis ? new OasisRuntimeDefinition() : EmulationRuntimeDefinition.Create(FruitMachinePlatformType.None),
+            Behavior = oasis ? null : MachineBehaviorDefinition.OasisScript()
+        };
+        var result = new MachineRuntimeBuildService().BuildFromMachineDocument(Project(), "asset.machine", machine, NoOpEditorProgressReporter.Instance, CancellationToken.None);
+        Assert.False(result.Success); Assert.Contains("Invalid", result.ErrorMessage); Assert.Contains(oasis ? "requires" : "must not", result.ErrorMessage);
+    }
+
+    private (EditorProject Project, MachineDocument Machine, string LibraryRoot) CreateLibraryBuild()
+    {
+        var local = CreateReelBuild([0], [(0, "Standard", 290d, 70d)]);
+        var library = Path.Combine(_root, "LibraryA");
+        CopyDirectory(Path.GetDirectoryName(new ProjectAssetPathService().GetCabinet3DManifestPath(local.Project, "Cabinet"))!, Path.Combine(library, "Cabinets", "Cabinet"));
+        CopyDirectory(Path.GetDirectoryName(new ProjectAssetPathService().GetReelManifestPath(local.Project, "Standard"))!, Path.Combine(library, "Reels", "Standard"));
+        return (local.Project, local.Machine with
+        {
+            CabinetAsset = AssetReference.Library("Cabinets/Cabinet/asset.cabinet3d"),
+            ReelAssignments = [new(MachineObjectReference.Reel(0), AssetReference.Library("Reels/Standard/asset.reel"))]
+        }, library);
+    }
+
+    private static void CopyDirectory(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        { var target = Path.Combine(destination, Path.GetRelativePath(source, file)); Directory.CreateDirectory(Path.GetDirectoryName(target)!); File.Copy(file, target); }
+    }
+
+    private (EditorProject Project, MachineDocument Machine) CreateReelBuild(int[] logicalReels, (int Logical, string Asset, double Diameter, double Width)[] assignments)
+    {
+        var project = Project();
+        var paths = new ProjectAssetPathService();
+        var cabinetManifest = paths.GetCabinet3DManifestPath(project, "Cabinet");
+        Directory.CreateDirectory(Path.GetDirectoryName(cabinetManifest)!);
+        WriteTwoTargetGlb(Path.Combine(Path.GetDirectoryName(cabinetManifest)!, "cabinet.glb"), "OasisFace_glass", "unused");
+        File.WriteAllText(cabinetManifest, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb")));
+        var faceManifest = paths.GetFaceManifestPath(project, "Glass");
+        Directory.CreateDirectory(Path.GetDirectoryName(faceManifest)!);
+        var maskPath = Path.Combine(Path.GetDirectoryName(faceManifest)!, "mask.png");
+        using (var bitmap = new SKBitmap(2, 2))
+        {
+            bitmap.Erase(SKColors.White);
+            using var image = SKImage.FromBitmap(bitmap);
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            using var stream = File.Create(maskPath);
+            data.SaveTo(stream);
+        }
+        var face = new FaceDocumentModel
+        {
+            Id = Guid.NewGuid().ToString("D"), Title = "Glass", SourceRegion = new FaceSourceRegionModel { Width = 100, Height = 100 },
+            MaskLayer = new FaceMaskLayerModel { AssetPath = paths.ToProjectRelativePath(project, maskPath), Width = 2, Height = 2 },
+            Elements = logicalReels.Select((logical, index) => (FaceElementModel)new FaceReelMount { ObjectId = $"reel-{logical}", Name = $"Reel {logical}", X = index * 10, Y = 0, Width = 10, Height = 20, Stops = 20, LinkedMachineObjectReference = MachineObjectReference.Reel(logical) }).ToArray()
+        };
+        File.WriteAllText(faceManifest, FaceDocumentStorage.Serialize(face));
+        foreach (var asset in assignments.GroupBy(value => value.Asset).Select(group => group.First()))
+        {
+            var reelManifest = paths.GetReelManifestPath(project, asset.Asset);
+            Directory.CreateDirectory(Path.GetDirectoryName(reelManifest)!);
+            File.WriteAllText(reelManifest, ReelDocumentStorage.Serialize(ReelDocument.Create(asset.Asset) with { DiameterMm = asset.Diameter, WidthMm = asset.Width }));
+        }
+        var machine = MachineDocument.Create("Reel Machine") with
+        {
+            CabinetAsset = AssetReference.Project(paths.ToProjectRelativePath(project, cabinetManifest)),
+            SurfaceAssignments = [new("glass", paths.ToProjectRelativePath(project, faceManifest))],
+            ReelAssignments = assignments.Select(value => new MachineReelAssignment(MachineObjectReference.Reel(value.Logical), AssetReference.Project(paths.ToProjectRelativePath(project, paths.GetReelManifestPath(project, value.Asset))))).ToArray()
+        };
+        return (project, machine);
+    }
+
+    private (EditorProject Project, MachineDocument Machine, string Glb, AssetReference CabinetReference) CreateCabinetOnlyBuild()
+    {
+        var project = Project();
+        var paths = new ProjectAssetPathService();
+        var cabinetManifest = paths.GetCabinet3DManifestPath(project, "SemanticCabinet");
+        Directory.CreateDirectory(Path.GetDirectoryName(cabinetManifest)!);
+        var glb = Path.Combine(Path.GetDirectoryName(cabinetManifest)!, "cabinet.glb");
+        File.WriteAllText(cabinetManifest, CabinetDocumentStorage.Serialize(CabinetDocument.FromModelPath("cabinet.glb")));
+        var reference = AssetReference.Project(paths.ToProjectRelativePath(project, cabinetManifest));
+        var machine = MachineDocument.Create("Semantic Machine") with { CabinetAsset = reference };
+        return (project, machine, glb, reference);
+    }
+
+    private static MachineDocument WithRuntimeBehavior(EditorProject project, MachineDocument machine, bool oasis)
+    {
+        if (!oasis) return machine;
+        machine = machine with { Runtime = new OasisRuntimeDefinition(), Behavior = MachineBehaviorDefinition.OasisScript() };
+        var path = WriteMachine(project, machine);
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(path)!, "behavior.oasis"), "on machine.started() { }");
+        return machine;
+    }
+
+    private MachineRuntimeBuildResult Build(EditorProject project, MachineDocument machine)
+        => new MachineRuntimeBuildService().BuildFromMachineDocument(project, WriteMachine(project, machine), NoOpEditorProgressReporter.Instance, CancellationToken.None);
+    private MachineRuntimeBuildResult Build(EditorProject project, MachineDocument machine, string libraryRoot)
+        => new MachineRuntimeBuildService(libraryRoot: libraryRoot).BuildFromMachineDocument(project, WriteMachine(project, machine), NoOpEditorProgressReporter.Instance, CancellationToken.None);
+
+    private static (double Width, double Radius)[] ReadRuntimeReelDimensions(string buildRoot)
+    {
+        var path = Directory.EnumerateFiles(Path.Combine(buildRoot, "faces"), FaceRuntimeExportService.ManifestFileName, SearchOption.AllDirectories).Single();
+        using var json = JsonDocument.Parse(File.ReadAllText(path));
+        return json.RootElement.GetProperty("reels").EnumerateArray().Select(reel => (reel.GetProperty("physicalWidth").GetDouble(), reel.GetProperty("physicalRadius").GetDouble())).ToArray();
+    }
+
+    private EditorProject Project()
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "Assets", "Machines"));
+        Directory.CreateDirectory(Path.Combine(_root, "Generated"));
+        return new EditorProject { Name = "Workspace", ProjectFilePath = Path.Combine(_root, "Workspace.oasisproj"), ProjectDirectory = _root, AssetsDirectory = Path.Combine(_root, "Assets"), GeneratedDirectory = Path.Combine(_root, "Generated") };
+    }
+
+    private static string WriteMachine(EditorProject project, MachineDocument machine)
+    {
+        var path = new ProjectAssetPathService().GetMachineManifestPath(project, machine.DisplayName);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, MachineDocumentStorage.Serialize(machine));
+        return path;
+    }
+
+    private static void WriteTwoTargetGlb(string path, string firstNodeName = "OasisFace_topGlass", string secondNodeName = "OasisFace_bottomGlass")
+    {
+        var binary = new byte[92];
+        var positions = new float[] { 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0 };
+        var uvs = new float[] { 0, 0, 1, 0, 1, 1, 0, 1 };
+        var indices = new ushort[] { 0, 1, 2, 0, 2, 3 };
+        Buffer.BlockCopy(positions, 0, binary, 0, positions.Length * sizeof(float));
+        Buffer.BlockCopy(uvs, 0, binary, 48, uvs.Length * sizeof(float));
+        Buffer.BlockCopy(indices, 0, binary, 80, indices.Length * sizeof(ushort));
+        var json = $$"""{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0,1]}],"nodes":[{"name":"{{firstNodeName}}","mesh":0},{"name":"{{secondNodeName}}","mesh":1}],"meshes":[{"primitives":[{"attributes":{"POSITION":0,"TEXCOORD_0":1},"indices":2}]},{"primitives":[{"attributes":{"POSITION":0,"TEXCOORD_0":1},"indices":2}]}],"buffers":[{"byteLength":92}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":48},{"buffer":0,"byteOffset":48,"byteLength":32},{"buffer":0,"byteOffset":80,"byteLength":12}],"accessors":[{"bufferView":0,"componentType":5126,"count":4,"type":"VEC3"},{"bufferView":1,"componentType":5126,"count":4,"type":"VEC2"},{"bufferView":2,"componentType":5123,"count":6,"type":"SCALAR"}]}""";
+        var jsonBytes = Encoding.UTF8.GetBytes(json);
+        var paddedJsonLength = (jsonBytes.Length + 3) & ~3;
+        using var stream = File.Create(path);
+        using var writer = new BinaryWriter(stream);
+        writer.Write(0x46546C67); writer.Write(2); writer.Write(12 + 8 + paddedJsonLength + 8 + binary.Length);
+        writer.Write(paddedJsonLength); writer.Write(0x4E4F534A); writer.Write(jsonBytes); writer.Write(Enumerable.Repeat((byte)0x20, paddedJsonLength - jsonBytes.Length).ToArray());
+        writer.Write(binary.Length); writer.Write(0x004E4942); writer.Write(binary);
+    }
+
+    private static void WriteSemanticGlb(string path, (string Name, bool HasMesh, bool HasPosition)[] definitions)
+    {
+        var positions = new float[] { 0, 0, 0, 1, 0, 0, 0, 1, 0 };
+        var binary = new byte[positions.Length * sizeof(float)];
+        Buffer.BlockCopy(positions, 0, binary, 0, binary.Length);
+        var meshIndex = 0;
+        var nodes = new List<string>();
+        var meshes = new List<string>();
+        foreach (var definition in definitions)
+        {
+            nodes.Add(definition.HasMesh
+                ? $$"""{"name":"{{definition.Name}}","mesh":{{meshIndex}}}"""
+                : $$"""{"name":"{{definition.Name}}"}""");
+            if (definition.HasMesh)
+            {
+                var attributes = definition.HasPosition ? "\"POSITION\":0" : "\"NORMAL\":0";
+                meshes.Add("{\"name\":\"Mesh" + meshIndex + "\",\"primitives\":[{\"attributes\":{" + attributes + "}}]}");
+                meshIndex++;
+            }
+        }
+
+        var sceneNodes = string.Join(',', Enumerable.Range(0, definitions.Length));
+        var meshesJson = meshes.Count == 0 ? string.Empty : ",\"meshes\":[" + string.Join(',', meshes) + "]";
+        var json = $$"""{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[{{sceneNodes}}]}],"nodes":[{{string.Join(',', nodes)}}]{{meshesJson}},"buffers":[{"byteLength":{{binary.Length}}}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":{{binary.Length}}}],"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3"}]}""";
+        var jsonBytes = Encoding.UTF8.GetBytes(json);
+        var paddedJsonLength = (jsonBytes.Length + 3) & ~3;
+        using var writer = new BinaryWriter(File.Create(path));
+        writer.Write(0x46546C67); writer.Write(2); writer.Write(12 + 8 + paddedJsonLength + 8 + binary.Length);
+        writer.Write(paddedJsonLength); writer.Write(0x4E4F534A); writer.Write(jsonBytes); writer.Write(Enumerable.Repeat((byte)0x20, paddedJsonLength - jsonBytes.Length).ToArray());
+        writer.Write(binary.Length); writer.Write(0x004E4942); writer.Write(binary);
+    }
+
+    public void Dispose() { if (Directory.Exists(_root)) Directory.Delete(_root, true); }
+}

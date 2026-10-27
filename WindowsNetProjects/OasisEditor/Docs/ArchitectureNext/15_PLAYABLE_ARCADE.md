@@ -78,7 +78,7 @@ a profile from asset names, runtime kind or available anchors.
    native timing, inputs, snapshots, audio and lifecycle. A real Casino Crazy ROM
    proof passed boot/output/audio/input/reset/restart and operation alongside Pool.
    The installed provider supports one active board per process. See
-   [the integration contract](../../OasisEditor.Mcp/PLAYER_FABRIC_IMPACT.md).
+   [the integration contract](../NativeIntegration/PLAYER_FABRIC_IMPACT.md).
 4. **User-configured credited play.** The user will set up a current Editor project
    with verified emulation coin and Start mappings. Until then, defer credit/spin/
    payout acceptance. The current proof uses borrowed artwork and its coin was

@@ -83,7 +83,7 @@ Fabric/Amber DLL paths are separate from content. Original ROM paths are strippe
 from generated settings metadata. The Player owns native timing/input/snapshot/audio
 and shutdown on one worker, with main-thread device updates. The installed JPM DLL
 has one board per process; additional Impact sessions are rejected before creation.
-See [Player Fabric/Impact](../../OasisEditor.Mcp/PLAYER_FABRIC_IMPACT.md) for the
+See [Player Fabric/Impact](../NativeIntegration/PLAYER_FABRIC_IMPACT.md) for the
 verified boundary and the user-deferred credited-play acceptance.
 
 ## Diagnostics

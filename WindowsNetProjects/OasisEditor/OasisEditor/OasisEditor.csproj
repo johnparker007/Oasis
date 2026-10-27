@@ -1,54 +1,45 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <ApplicationIcon>../Assets/OasisEditorIcon.ico</ApplicationIcon>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>OasisEditor.Avalonia</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <ApplicationIcon>OasisEditorIcon.ico</ApplicationIcon>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
-
   <ItemGroup>
-    <ProjectReference Include="..\Oasis.Scripting\Oasis.Scripting.csproj" />
-    <ProjectReference Include="..\Oasis.Authoring.Core\Oasis.Authoring.Core.csproj" />
-    <ProjectReference Include="..\Oasis.RuntimeBuild\Oasis.RuntimeBuild.csproj" />
-    <ProjectReference Include="..\Oasis.Rendering3D\Oasis.Rendering3D.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="Features/CabinetEditor/Services/CabinetReflectionPlaneDeriver.cs" />
-    <Compile Remove="MachineRuntimeBuildService.cs;OasisPlayerLaunchService.cs;FaceRuntimeExportService.cs;FaceRuntimeTextureGenerator.cs;FaceRuntimeCompositionContext.cs;Object3DDocument.cs;ReelDocument.cs;OasisScriptMachineValidator.cs;Progress\IEditorProgressReporter.cs;Progress\NoOpEditorProgressReporter.cs;Features\CabinetEditor\Models\CabinetDocument.cs;Features\CabinetEditor\Models\CabinetDocumentStorage.cs;Features\CabinetEditor\Models\CabinetModelReference.cs;Features\CabinetEditor\Models\CabinetReflectionReceiverTarget.cs;Features\CabinetEditor\Models\CabinetFaceTarget.cs;Features\CabinetEditor\Services\ICabinetFaceTargetDetector.cs;Features\CabinetEditor\Services\GlbCabinetFaceTargetDetector.cs;Features\CabinetEditor\Services\CabinetSemanticGeometry.cs;Features\CabinetEditor\Services\GlbCabinetSemanticGeometryValidator.cs;Features\CabinetEditor\Services\GlbCabinetReflectionReceiverDiscovery.cs;Features\CabinetEditor\Services\CabinetTriggerInventory.cs;Emulation\Fabric\FabricManagedModels.cs;Emulation\Fabric\FabricNativeTypes.cs;Emulation\Fabric\Amber\FabricAmber*Configuration.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Dirkster.AvalonDock" Version="4.72.1" />
-    <PackageReference Include="Dirkster.AvalonDock.Themes.VS2013" Version="4.72.0" />
-    <PackageReference Include="HelixToolkit.Wpf" Version="3.1.2" />
-    <PackageReference Include="SharpGLTF.Toolkit" Version="1.0.6" />
-    <PackageReference Include="PixiEditor.ColorPicker" Version="3.4.2.3" />
-    <PackageReference Include="NAudio" Version="2.2.1" />
+    <ProjectReference Include="../Oasis.Authoring.Core/Oasis.Authoring.Core.csproj" />
+    <ProjectReference Include="../Oasis.Rendering3D/Oasis.Rendering3D.csproj" />
+    <ProjectReference Include="../Oasis.Authoring.ThreeD/Oasis.Authoring.ThreeD.csproj" />
+    <ProjectReference Include="../Oasis.Authoring.Assets/Oasis.Authoring.Assets.csproj" />
+    <ProjectReference Include="../Oasis.Emulation/Oasis.Emulation.csproj" />
+    <ProjectReference Include="../Oasis.Rendering2D/Oasis.Rendering2D.csproj" />
+    <ProjectReference Include="../Oasis.Scripting/Oasis.Scripting.csproj" />
+    <ProjectReference Include="../Oasis.RuntimeBuild/Oasis.RuntimeBuild.csproj" />
     <PackageReference Include="SkiaSharp" Version="3.119.4" />
-    <PackageReference Include="SkiaSharp.Views.WPF" Version="3.119.4" />
-    <PackageReference Include="OpenTK.GLWpfControl" Version="4.3.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Headless" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />
+    <PackageReference Include="Dock.Avalonia" Version="12.1.0.12" />
+    <PackageReference Include="Dock.Model.Mvvm" Version="12.1.0.12" />
+    <PackageReference Include="Dock.Avalonia.Themes.Fluent" Version="12.1.0.12" />
   </ItemGroup>
-
   <ItemGroup>
-    <Content Include="MfmeFonts\*.ttf">
+    <Content Include="../Assets/MfmeFonts/*">
+      <Link>MfmeFonts/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="../Assets/SegmentDisplays/*.json">
+      <Link>Assets/SegmentDisplays/%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-
-	<ItemGroup>
-	  <Content Include="..\Assets\**\*.*">
-		<Link>Assets\%(RecursiveDir)%(Filename)%(Extension)</Link>
-		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </Content>
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Content Include="OasisEditorIcon.ico" />
-	</ItemGroup>
-
+  <ItemGroup>
+    <AvaloniaResource Include="../Assets/MfmeFonts/*">
+      <Link>MfmeFonts/%(Filename)%(Extension)</Link>
+    </AvaloniaResource>
+  </ItemGroup>
 </Project>
