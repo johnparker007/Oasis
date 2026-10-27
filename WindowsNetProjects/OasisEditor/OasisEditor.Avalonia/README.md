@@ -111,8 +111,8 @@ editing, undo/redo and save. Face tools cover create/open, select, add lamp, edi
 delete, history, generation, artwork/override import, recipe updates, rebuild and
 inspection. `capture_workspace` returns a real Headless + Skia PNG of
 inspection. Machine tools author settings, inputs, behavior and save. Layout tools
-inspect/save/restore/reset the real model. `capture_workspace` returns a real Headless + Skia PNG of
-the same controls. It creates no OS windows and never captures the desktop or sends
+inspect/save/restore/reset the real model. `capture_workspace` returns a real
+Headless + Skia PNG of the same controls. It creates no OS windows and never captures the desktop or sends
 system input, with additional images for floating panes. Sizes are 960–1920 by
 640–1200; themes System/Light/Dark. The existing
 WPF MCP connection and user settings remain unchanged.
@@ -129,11 +129,12 @@ adds read-only existing-content captures. Never commit captures/private assets/R
 
 ## Verification and remaining migration
 
-Verified on Windows: Avalonia MCP build; all 54 Avalonia tests, including 14 Machine
-roundtrip/history/conflict/script/headless-inspector checks; actual MCP project,
-Machine settings/history/save/reopen and rendered captures. Earlier Panels/Face/FML
-checks remain covered by the same suite. No native emulation was executed for this
-migration.
+Verified on Windows: MCP build and headless verification; all 73 Avalonia tests,
+including source-shape Face generation, artwork import/registration/calibration,
+override processing, pixel-restoring undo, renderer pixel checks and workspace
+roundtrips; all 1,448 WPF regression tests; actual MCP project/Face/Machine
+history/save/reopen and rendered captures. The generated artwork capture was
+visually checked. No native emulation was executed for this migration.
 
 Next: build/export, real Fabric/Amber preview, multi-document tabs, and Reel/library UI.
 Machine 3D rendering remains explicitly deferred until its renderer is selected and

@@ -49,6 +49,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     private object? _inspected;
 
     partial void AddMachineWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
+    partial void AddFaceWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
 
     public WorkspaceView(AuthoringSession session, FaceAuthoringSession? faces = null)
     {

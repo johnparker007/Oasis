@@ -105,9 +105,9 @@ def main():
             assert {"capture_workspace", "update_element", "history", "create_project", "create_face", "import_fml",
                     "generate_face_from_source_shape", "import_face_artwork", "set_face_artwork_registration",
                     "set_face_artwork_calibration", "import_face_artwork_override", "set_face_artwork_override_alignment",
-                    "rebuild_face_artwork", "inspect_face_artwork"} <= names
-                    "list_machines", "open_machine", "inspect_machine", "set_machine_platform_setting",
-                    "set_machine_interaction", "set_machine_behavior_source", "apply_recovered_fml_inputs", "save_machine"} <= names
+                    "rebuild_face_artwork", "inspect_face_artwork", "list_machines", "open_machine", "inspect_machine",
+                    "set_machine_platform_setting", "set_machine_interaction", "set_machine_behavior_source",
+                    "apply_recovered_fml_inputs", "save_machine"} <= names
             created = client.state("create_project", name="Panel Authoring")
             assert any(a["type"] == "Machine" for a in created["assets"])
             machine_path = client.state("list_machines")["machines"][0]["manifestPath"]
@@ -183,7 +183,7 @@ def main():
             client.capture(args.output / "workspace-face-dark.png", "Dark")
             client.capture(args.output / "workspace-face-light.png", "Light")
             reopened = client.state("open_face", path=face["facePath"])["face"]
-            assert len(reopened["elements"]) == 2
+            assert len(reopened["elements"]) == 3  # imported artwork plus two authored lamp windows
             workspace_path = str(root / "editor.workspace.json")
             saved_workspace = client.state("save_workspace", path=workspace_path)
             client.state("reset_layout")

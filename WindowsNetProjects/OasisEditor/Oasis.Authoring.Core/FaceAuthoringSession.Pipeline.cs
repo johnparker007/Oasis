@@ -71,8 +71,37 @@ public sealed partial class FaceAuthoringSession
         artwork = BuildArtworkStages(artwork, project.ProjectDirectory);
         CaptureGeneratedFaceFiles(project.ProjectDirectory, safe);
         var faceRegion = FaceSourceRegionModel.FromBounds(0, 0, artwork.OutputWidth, artwork.OutputHeight);
-        var updated = document with { Artwork = FaceDocumentStorage.ToFile(new FaceDocumentModel { Artwork = artwork }).Artwork,
-            SourceRegion = FaceDocumentStorage.ToFile(new FaceDocumentModel { SourceRegion = faceRegion }).SourceRegion };
+        var elementFiles = (document.Elements ?? []).ToArray();
+        var artworkElementIndex = Array.FindIndex(elementFiles,
+            element => string.Equals(element.Kind, "artwork", StringComparison.OrdinalIgnoreCase));
+        var artworkElement = artworkElementIndex >= 0
+            ? elementFiles[artworkElementIndex] with
+            {
+                AssetPath = artwork.OutputAssetPath,
+                Width = artwork.OutputWidth,
+                Height = artwork.OutputHeight
+            }
+            : new FaceElementFile
+            {
+                ObjectId = $"face-artwork-{Guid.NewGuid():N}",
+                Name = "Face artwork",
+                Kind = "artwork",
+                X = 0,
+                Y = 0,
+                Width = artwork.OutputWidth,
+                Height = artwork.OutputHeight,
+                IsVisible = true,
+                LockTransform = true,
+                AssetPath = artwork.OutputAssetPath
+            };
+        if (artworkElementIndex >= 0) elementFiles[artworkElementIndex] = artworkElement;
+        else elementFiles = [artworkElement, .. elementFiles];
+        var updated = document with
+        {
+            Artwork = FaceDocumentStorage.ToFile(new FaceDocumentModel { Artwork = artwork }).Artwork,
+            SourceRegion = FaceDocumentStorage.ToFile(new FaceDocumentModel { SourceRegion = faceRegion }).SourceRegion,
+            Elements = elementFiles
+        };
         Commit(updated);
         return imported.AssetPath;
     }
