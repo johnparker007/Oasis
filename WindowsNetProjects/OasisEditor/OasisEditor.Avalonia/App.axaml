@@ -1,0 +1,65 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dock="using:Dock.Avalonia.Themes.Fluent"
+             x:Class="OasisEditor.Avalonia.EditorApplication"
+             RequestedThemeVariant="Dark">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="WorkspaceBrush">#282828</SolidColorBrush>
+          <SolidColorBrush x:Key="PanelBrush">#383838</SolidColorBrush>
+          <SolidColorBrush x:Key="ToolbarBrush">#303030</SolidColorBrush>
+          <SolidColorBrush x:Key="TextBrush">#D6D6D6</SolidColorBrush>
+          <SolidColorBrush x:Key="MutedBrush">#A0A0A0</SolidColorBrush>
+          <SolidColorBrush x:Key="DividerBrush">#202020</SolidColorBrush>
+          <Color x:Key="ViewportBackground">#242424</Color>
+          <Color x:Key="ViewportGrid">#303030</Color>
+          <Color x:Key="ElementFallback">#575F68</Color>
+          <Color x:Key="ElementOutline">#9199A2</Color>
+          <Color x:Key="SelectionColor">#59A8EB</Color>
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="WorkspaceBrush">#CBCBCB</SolidColorBrush>
+          <SolidColorBrush x:Key="PanelBrush">#E5E5E5</SolidColorBrush>
+          <SolidColorBrush x:Key="ToolbarBrush">#D8D8D8</SolidColorBrush>
+          <SolidColorBrush x:Key="TextBrush">#242424</SolidColorBrush>
+          <SolidColorBrush x:Key="MutedBrush">#626262</SolidColorBrush>
+          <SolidColorBrush x:Key="DividerBrush">#B0B0B0</SolidColorBrush>
+          <Color x:Key="ViewportBackground">#BDBDBD</Color>
+          <Color x:Key="ViewportGrid">#B2B2B2</Color>
+          <Color x:Key="ElementFallback">#9CA9B8</Color>
+          <Color x:Key="ElementOutline">#485868</Color>
+          <Color x:Key="SelectionColor">#146EAF</Color>
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+  <Application.Styles>
+    <FluentTheme />
+    <dock:DockFluentTheme />
+    <Style Selector="Window">
+      <Setter Property="FontFamily" Value="avares://Avalonia.Fonts.Inter/Assets#Inter" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Background" Value="{DynamicResource WorkspaceBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="Padding" Value="9,3" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="Padding" Value="6,3" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="MinHeight" Value="25" />
+      <Setter Property="Padding" Value="7,3" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+  </Application.Styles>
+</Application>

@@ -1,8 +1,16 @@
 # Current Priority for Codex
 
-The active user-authorised workstream is real Fabric / Amber JPM Impact integration
-in Unity Player, using the Editor as reference. A scripted fruit-machine demo is
-not the next step. See OasisEditor.Mcp/PLAYER_FABRIC_IMPACT.md and the arcade plan.
+The active user-authorised workstream is the staged Avalonia Editor migration,
+with Unity-inspired styling, background MCP authoring/capture and 3D deferred.
+The first parallel application opens real projects and edits Panel2D assets;
+see `OasisEditor.Avalonia/README.md` for delivered scope, verification, limitations
+and the next migration steps. WPF remains the complete Editor. Preserve its
+working authoring features while extracting shared services. Do not substitute
+mock data or scripted emulation previews for real systems.
+
+The preceding runtime workstream is real Fabric / Amber JPM Impact integration
+in Unity Player, using the Editor as reference. See
+OasisEditor.Mcp/PLAYER_FABRIC_IMPACT.md and the arcade plan.
 Native boot, output/audio/input delivery, reset/restart and the mixed Pool/Impact
 arcade passed actual local verification. The user has no current saved project with
 verified coin/Start mappings and will prepare one later; credit/spin/payout tests
@@ -22,7 +30,7 @@ Optional values and physics-step kinematic targets remain deferred with P6–P8.
 The original PoolTableTest1 project was backed up, explicitly reauthored and
 verified in the actual Player with sixteen runtime nodes. The user authorised this sequence.
 
-Read AGENTS.md, then Docs/ArchitectureNext/00_OVERVIEW.md,
+For resumed Player/runtime work, read AGENTS.md, then Docs/ArchitectureNext/00_OVERVIEW.md,
 10_ACTIVE_ROADMAP.md, 13_PREFABS_OASISOBJECTS_AND_COMPONENTS.md and
 14_PREFAB_AND_POOL_DELIVERY_PLAN.md. For baseline details read relevant sections of
 11_DYNAMIC_OBJECTS_BEHAVIOUR_AND_SCRIPTING.md, 12_OASIS_SCRIPT.md and
