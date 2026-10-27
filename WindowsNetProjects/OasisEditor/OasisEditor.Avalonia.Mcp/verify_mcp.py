@@ -150,6 +150,13 @@ def main():
             client.capture(args.output / "workspace-face-light.png", "Light")
             reopened = client.state("open_face", path=face["facePath"])["face"]
             assert len(reopened["elements"]) == 2
+            workspace_path = str(root / "editor.workspace.json")
+            saved_workspace = client.state("save_workspace", path=workspace_path)
+            client.state("reset_layout")
+            restored_workspace = client.state("restore_workspace", path=workspace_path)
+            assert saved_workspace["project"] == restored_workspace["project"]
+            assert restored_workspace["activeDocument"] == "Face"
+            client.capture(args.output / "workspace-restored.png", restored_workspace["theme"])
             if args.fml:
                 source = root / args.fml.name
                 shutil.copyfile(args.fml, source)

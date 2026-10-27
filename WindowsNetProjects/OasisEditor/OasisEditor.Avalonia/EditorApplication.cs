@@ -8,6 +8,7 @@ using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.Controls.Templates;
 using Dock.Model.Core;
+using Avalonia.Data;
 
 namespace OasisEditor.Avalonia;
 
@@ -16,7 +17,12 @@ public sealed class EditorApplication : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
-        DataTemplates.Add(new FuncDataTemplate<IDockable>((item, _) => new ContentControl { Content = item?.Context }));
+        DataTemplates.Add(new FuncDataTemplate<IDockable>((item, _) =>
+        {
+            var presenter = new ContentControl();
+            presenter.Bind(ContentControl.ContentProperty, new Binding(nameof(IDockable.Context)) { Source = item });
+            return presenter;
+        }));
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -30,8 +36,12 @@ public sealed class EditorApplication : Application
             window.Title = "Oasis Editor — Avalonia";
             view.StateChanged += () => window.Title = $"{view.ActiveTitle}{(view.HasUnsavedChanges ? " *" : "")} — {session.ProjectName ?? "Oasis Editor"}";
             window.Closing += (_, e) => { if (view.HasUnsavedChanges) { e.Cancel = true; view.SetStatus("Save or undo your changes before closing."); } };
+            window.Closing += (_, e) => { if (!e.Cancel && view.CanAutoSaveWorkspace) view.Try(view.SaveWorkspace); };
+            window.Closed += (_, _) => view.Dispose();
             desktop.MainWindow = window;
-            if (Program.Project is not null) view.Try(() => view.OpenProject(Program.Project));
+            view.Try(() => view.ConfigureWorkspacePersistence(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Oasis", "AvaloniaEditor", "workspace.json")));
+            if (Program.Project is not null && !string.Equals(session.ProjectFilePath, Program.Project, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                view.Try(() => view.OpenProject(Program.Project));
         }
         base.OnFrameworkInitializationCompleted();
     }
@@ -102,6 +112,22 @@ public sealed class WorkspaceCapture : IDisposable
         using var stream = new MemoryStream();
         bitmap.Save(stream, new PngBitmapEncoderOptions());
         return stream.ToArray();
+    }
+
+    public IReadOnlyList<byte[]> CaptureFloatingWindows()
+    {
+        var images = new List<byte[]>();
+        Dispatcher.UIThread.RunJobs();
+        foreach (var window in View.FloatingWorkspaceWindows)
+        {
+            window.UpdateLayout();
+            var width = Math.Clamp((int)Math.Ceiling(window.ClientSize.Width), 1, 1920);
+            var height = Math.Clamp((int)Math.Ceiling(window.ClientSize.Height), 1, 1200);
+            using var bitmap = new RenderTargetBitmap(new PixelSize(width, height), new Vector(96, 96));
+            bitmap.Render(window);
+            using var output = new MemoryStream(); bitmap.Save(output, new PngBitmapEncoderOptions()); images.Add(output.ToArray());
+        }
+        return images;
     }
 
     public void Dispose() { View.Dispose(); _window.Close(); }
