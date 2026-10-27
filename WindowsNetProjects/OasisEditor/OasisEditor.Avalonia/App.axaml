@@ -20,6 +20,7 @@
           <Color x:Key="SelectionColor">#59A8EB</Color>
           <Color x:Key="SceneColliderColor">#6645A8F0</Color>
           <Color x:Key="SceneTriggerColor">#66EF75B4</Color>
+          <Color x:Key="ReelSurfaceColor">#FFCCD1D8</Color>
         </ResourceDictionary>
         <ResourceDictionary x:Key="Light">
           <SolidColorBrush x:Key="WorkspaceBrush">#CBCBCB</SolidColorBrush>
@@ -35,6 +36,7 @@
           <Color x:Key="SelectionColor">#146EAF</Color>
           <Color x:Key="SceneColliderColor">#662A76B8</Color>
           <Color x:Key="SceneTriggerColor">#66AC2870</Color>
+          <Color x:Key="ReelSurfaceColor">#FF939BA5</Color>
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>

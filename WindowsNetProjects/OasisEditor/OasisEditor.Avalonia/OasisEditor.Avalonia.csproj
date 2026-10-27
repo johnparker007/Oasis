@@ -11,6 +11,7 @@
     <ProjectReference Include="../Oasis.Authoring.Core/Oasis.Authoring.Core.csproj" />
     <ProjectReference Include="../Oasis.Rendering3D/Oasis.Rendering3D.csproj" />
     <ProjectReference Include="../Oasis.Authoring.ThreeD/Oasis.Authoring.ThreeD.csproj" />
+    <ProjectReference Include="../Oasis.Authoring.Assets/Oasis.Authoring.Assets.csproj" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <ProjectReference Include="../Oasis.Scripting/Oasis.Scripting.csproj" />
     <ProjectReference Include="../Oasis.RuntimeBuild/Oasis.RuntimeBuild.csproj" />
