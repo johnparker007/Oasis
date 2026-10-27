@@ -123,7 +123,7 @@ public sealed partial class WorkspaceView
     private async Task SceneAction(Func<Task> action)
     { try { await action(); } catch (OperationCanceledException) { } catch (Exception e) when (e is not OutOfMemoryException) { SetStatus(e.Message); } }
     private void On3DAssetChanged() { CheckPreviewSource(); if (Is3DActive) { Refresh(); QueueSceneReload(); } }
-    private void OnMachineSceneChanged() { if (_sceneKind is "Machine" or "Cabinet3D") QueueSceneReload(); }
+    private void OnMachineSceneChanged() { RefreshCompositionGraph(); if (_sceneKind is "Machine" or "Cabinet3D") QueueSceneReload(); }
     public async Task ReloadSceneAsync()
     {
         if (!Is3DActive || _sceneDisposed) return;
@@ -283,7 +283,8 @@ public sealed partial class WorkspaceView
     private void UpdateSceneModeUI()
     {
         var active=Is3DActive;
-        _viewport.IsVisible=!active;SceneView.IsVisible=active;_hierarchy.IsVisible=!active;_sceneHierarchy.IsVisible=active;
+        _viewport.IsVisible=!active;SceneView.IsVisible=active&&!(_sceneKind=="Machine"&&IsMachineGraphActive);_hierarchy.IsVisible=!active;_sceneHierarchy.IsVisible=active;
+        SetCompositionGraphVisible(active&&_sceneKind=="Machine"&&IsMachineGraphActive);
         _sources.IsVisible=!active;if(_sourceRegionHeading is not null)_sourceRegionHeading.IsVisible=!active;
         _sceneTools.IsVisible=active;if(_sceneToolbarBorder is not null)_sceneToolbarBorder.IsVisible=active;if(_twoDToolbar is not null)_twoDToolbar.IsVisible=!active;
     }

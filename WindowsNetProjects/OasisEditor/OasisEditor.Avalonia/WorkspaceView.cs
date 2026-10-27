@@ -135,8 +135,10 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         InitializeFaceReels(create);
         InitializeFaceComponents(create);
         InitializePanelComponents(create);
+        InitializeCompositionGraph(scene,_sceneTools);
         InitializePreview(file);
         InitializeLifecycleMenus(file);
+        InitializePreferences(file);
         MenuAction(file,"Face generation settings…",async()=>{if(!_faceActive){SetStatus("Open a Face asset first.");return;}if(TopLevel.GetTopLevel(this) is Window owner && await FaceGenerationSettingsDialog.ShowAsync(owner,Faces)) Refresh();});
         InitializeDocumentTabs(scene,file);
         var edit = new MenuItem { Header = "_Edit" };

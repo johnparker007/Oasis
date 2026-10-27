@@ -29,7 +29,7 @@ public sealed partial class EditorTools(AuthoringSession session, FaceAuthoringS
     [McpServerTool(Name = "inspect_workspace", ReadOnly = true), Description("Inspect project, Panel2D assets, active document, selection, dirty state, history and all element geometry.")]
     public Task<object> Inspect(CancellationToken cancellationToken) => ui.Invoke(Snapshot, cancellationToken);
 
-    [McpServerTool(Name = "open_panel2d"), Description("Open Assets/Panel2D/<name>/asset.panel2d using the shared Oasis storage validator. Refuses unsaved replacement.")]
+    [McpServerTool(Name = "open_panel2d"), Description("Open or activate an Assets/Panel2D/<name>/asset.panel2d tab using shared storage validation. Retains other tabs and their unsaved edits.")]
     public Task<object> OpenPanel(string path, CancellationToken cancellationToken) => ui.Invoke(() => Act(() => session.OpenPanel(path)), cancellationToken);
 
     [McpServerTool(Name = "create_panel2d"), Description("Create and save a fresh schema-3 Panel2D package. Refuses existing packages.")]
