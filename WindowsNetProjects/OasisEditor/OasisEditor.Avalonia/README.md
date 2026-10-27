@@ -528,3 +528,32 @@ The other clients (`verify_mcp.py --reel-library`, `verify_remaining_workflows.p
 scene loading alone does not guarantee the first rendered frame already exists.
 No Player/native-emulation process, audible playback, OS window/focus/clipboard,
 physical monitor/DPI or macOS verification is established by these headless checks.
+
+## Hardware-backed WSL verification
+
+The existing WSL GPU bridge exposes the NVIDIA GeForce RTX 3060 through Mesa D3D12.
+No graphics drivers, device permissions, shell profiles or system-wide environment
+settings were changed. Process-local `GALLIUM_DRIVER=d3d12` and
+`MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA` selected the adapter for verification.
+The actual MCP renderer was `D3D12 (NVIDIA GeForce RTX 3060) / OpenGL ES 3.1 Mesa
+25.2.8`. Seven focused renderer/camera/reflection tests and all five MCP workflows
+passed with these settings, including inspected Dark/Light captures and multiple
+simultaneous floating graphics contexts. This establishes hardware-backed offscreen
+3D rendering; native desktop windows, OS focus/input and physical monitors remain
+separate checks. The installed driver still emits a DRI3 warning during probing;
+renderer identity and successful rendered/pixel tests establish the selected path.
+
+`verify_background_ui.py --expected-renderer "D3D12 (NVIDIA GeForce RTX 3060)"`
+fails if the actual captured scene reports another renderer and writes successful
+device/frame statistics to `renderer.json` beside its images. A deliberate llvmpipe
+run was rejected by this guard. It prevents a hardware verification job from
+silently counting software rendering as success. Renderer matching is optional so
+ordinary headless checks can continue to use working software GL.
+
+```bash
+GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA \
+python3 WindowsNetProjects/OasisEditor/OasisEditor.Avalonia.Mcp/verify_background_ui.py --expected-renderer "D3D12 (NVIDIA GeForce RTX 3060)" --dll /tmp/oasis-linux-publish/OasisEditor.Avalonia.Mcp.dll --output /tmp/oasis-hardware-captures
+```
+
+Select an adapter appropriate for the machine; do not force the WSL D3D12 driver
+for ordinary Linux desktop distributions that use other native graphics drivers.
