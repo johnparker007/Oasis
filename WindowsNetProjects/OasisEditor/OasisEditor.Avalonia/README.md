@@ -265,9 +265,13 @@ Separate future migration work includes multi-document tabs.
 The final Reel/Library checks also include actual symbol-band import, generated
 transmission masks, metadata history and 2D/mounted-3D captures on a copied real Face.
 The copied native Impact Machine rebuilt and ran real outputs with those saved assets.
-The Reel/Library authoring regression suite passes 154/154 Avalonia checks, with
+The Reel/Library authoring regression suite passes 155/155 Avalonia checks, with
 1,449/1,449 WPF and 9/9 portable 3D checks passing. Builds retain existing shared
 Skia deprecation/nullability warnings. No native desktop interaction is claimed.
+The additional GPU check keeps one renderer alive while another is disposed.
+EGL driver/display ownership lasts for the process, while individual views release
+their own contexts and GPU buffers; closing a viewport cannot terminate a display
+shared by another renderer or the host UI. CGL context ownership is unchanged.
 The scene is a static authoring preview: GLB skinning/animation and Capsule/Mesh
 collider visualization remain unsupported as described above.
 
