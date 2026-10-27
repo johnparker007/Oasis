@@ -213,10 +213,11 @@ def verify_face_build(client, root, output):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True, type=Path, help="Directory for disposable PNG evidence")
+    parser.add_argument("--dll",type=Path,default=Path(__file__).resolve().parent / "bin/Debug/net9.0/OasisEditor.Avalonia.Mcp.dll")
     args = parser.parse_args()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
-    dll = Path(__file__).resolve().parent / "bin/Debug/net9.0/OasisEditor.Avalonia.Mcp.dll"
+    dll = args.dll.resolve()
     with tempfile.TemporaryDirectory(prefix="OasisPortGapMcp-") as temporary:
         root = Path(temporary).resolve()
         client = Client(dll, root)
