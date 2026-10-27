@@ -109,7 +109,7 @@ public sealed class PortableGlbSceneLoaderTests : IDisposable
         Assert.Contains("symbolic link or reparse point", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void WriteFixture(string path, byte[] png, bool externalImage = false)
+    internal static void WriteFixture(string path, byte[] png, bool externalImage = false, bool faceTarget = false)
     {
         if (externalImage)
         {
@@ -151,6 +151,7 @@ public sealed class PortableGlbSceneLoaderTests : IDisposable
         """.Replace("__BINARY_LENGTH__", binary.Length.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal)
             .Replace("__PNG_LENGTH__", png.Length.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal);
         if (externalImage) json = json.Replace("\"images\":[{\"bufferView\":4,\"mimeType\":\"image/png\"}]", "\"images\":[{\"uri\":\"textures/face.png\"}]", StringComparison.Ordinal);
+        if (faceTarget) json = json.Replace("\"name\":\"Visual\"", "\"name\":\"OasisFace_screen\"", StringComparison.Ordinal);
         WriteGlb(path, json, binary);
     }
 
