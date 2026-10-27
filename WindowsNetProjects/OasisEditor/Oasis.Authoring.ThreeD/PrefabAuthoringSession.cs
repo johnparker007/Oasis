@@ -17,34 +17,47 @@ public sealed class PrefabAuthoringSession : ThreeDAuthoringSessionBase
 
     public void Open(string manifestPath)
     {
+        EnsureCanReplaceDocument();
         var manifest = ResolveManifest(manifestPath);
         var json = File.ReadAllText(manifest);
         if (!Object3DDocumentStorage.TryRead(json, out var document, out var error)) throw new InvalidDataException(error);
-        _document = Clone(document);
-        _payload = Object3DDocumentStorage.Serialize(_document);
-        SetOpen(manifest, _payload);
-        ValidatePackage();
+        var candidate = Clone(document);
+        var package = Path.GetDirectoryName(manifest)!;
+        ValidatePackage(candidate, package);
+        var payload = Object3DDocumentStorage.Serialize(candidate);
+        var hashes = CapturePackageHashes(package);
+        SetOpen(manifest, payload, hashes);
+        _document = candidate;
+        _payload = payload;
         Changed?.Invoke();
     }
 
     public string Create(string name, string? sourceProjectRelativePath = null)
     {
+        EnsureCanReplaceDocument();
         if (sourceProjectRelativePath is not null) _ = ResolveSource(sourceProjectRelativePath);
-        var package = CreatePackage(name);
-        SetPackageForCreate(package);
+        using var reservation = ReservePackage(name);
+        var package = reservation.StagingDirectory;
+        var expected = new Dictionary<string, string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
         var document = Object3DDocument.Create(name);
         document = document with { Root = document.Root with { Components = document.Root.Components.Where(c => c.Kind == Object3DComponentDefinition.TransformKind).ToArray() } };
         if (sourceProjectRelativePath is not null)
         {
-            var path = CopyModel(sourceProjectRelativePath);
+            var path = CopyModel(sourceProjectRelativePath, package, expected);
             var model = Object3DComponentDefinition.CreateModel(new Object3DModelDefinition(path, 1, "Y"));
             document = document with { Root = document.Root.WithComponent(model) };
         }
+        ValidatePackage(document, package);
+        var payload = Object3DDocumentStorage.Serialize(document);
+        var stagedManifest = Path.Combine(package, ProjectAssetPathService.Object3DManifestFileName);
+        WriteNewFile(stagedManifest, payload);
+        var hashes = CaptureAfterOwnedFileWrite(package, expected, ProjectAssetPathService.Object3DManifestFileName, stagedManifest);
+        EnsureCanReplaceDocument();
+        reservation.Commit();
+        var manifest = Path.Combine(reservation.FinalDirectory, ProjectAssetPathService.Object3DManifestFileName);
+        SetCreated(manifest, payload, hashes);
         _document = document;
-        _payload = Object3DDocumentStorage.Serialize(_document);
-        var manifest = Path.Combine(package, ProjectAssetPathService.Object3DManifestFileName);
-        WriteNewFile(manifest, _payload);
-        SetCreated(manifest, _payload);
+        _payload = payload;
         Changed?.Invoke();
         return manifest;
     }
@@ -53,8 +66,8 @@ public sealed class PrefabAuthoringSession : ThreeDAuthoringSessionBase
     {
         if (FindNode(_document.Root, nodeId) is null) throw new KeyNotFoundException($"Prefab node '{nodeId}' was not found.");
         ValidateModel(new Object3DModelDefinition("placeholder.glb", scale, upAxis));
-        EnsurePackageUnchanged();
-        var path = CopyModel(sourceProjectRelativePath);
+        EnsureEditingAsset();
+        var path = CopyModel(sourceProjectRelativePath, PackageDirectory!);
         SetModel(nodeId, new Object3DModelDefinition(path, scale, upAxis));
         return path;
     }
@@ -184,7 +197,8 @@ public sealed class PrefabAuthoringSession : ThreeDAuthoringSessionBase
 
     public void Save()
     {
-        ValidatePackage();
+        EnsureEditingAsset();
+        ValidatePackage(_document, PackageDirectory!);
         _payload = Object3DDocumentStorage.Serialize(_document);
         SavePayload(_payload);
         Changed?.Invoke();
@@ -213,17 +227,17 @@ public sealed class PrefabAuthoringSession : ThreeDAuthoringSessionBase
         CommitPayload(payload); return true;
     }
 
-    private void ValidatePackage()
+    private static void ValidatePackage(Object3DDocument document, string packageDirectory)
     {
-        Validate(_document);
-        if (PackageDirectory is null) return;
-        foreach (var model in EnumerateModels(_document.Root))
+        Validate(document);
+        foreach (var model in EnumerateModels(document.Root))
         {
-            var path = WorkspacePathPolicy.ResolveConfined(PackageDirectory, model.Path, requireExists: true);
-            WorkspacePathPolicy.RejectReparsePoints(PackageDirectory, model.Path, requireExists: true);
+            var path = WorkspacePathPolicy.ResolveConfined(packageDirectory, model.Path, requireExists: true);
+            WorkspacePathPolicy.RejectReparsePoints(packageDirectory, model.Path, requireExists: true);
             if (!File.Exists(path)) throw new InvalidDataException($"Prefab model '{model.Path}' is missing.");
+            ValidatePackageModelGlb(path);
         }
-        Object3DValidationService.Validate(_document, PackageDirectory);
+        Object3DValidationService.Validate(document, packageDirectory);
     }
 
     private static void Validate(Object3DDocument document) => Object3DValidationService.Validate(document);
@@ -233,6 +247,12 @@ public sealed class PrefabAuthoringSession : ThreeDAuthoringSessionBase
         if (model.UpAxis is not ("X" or "Y" or "Z")) throw new ArgumentException("Model up-axis must be X, Y, or Z.", nameof(model));
     }
     private static Object3DDocument Clone(Object3DDocument document) => Object3DDocumentStorage.TryRead(Object3DDocumentStorage.Serialize(document), out var clone, out var error) ? clone : throw new InvalidDataException(error);
+    protected override void ResetDocument()
+    {
+        _document = Object3DDocument.Create("Object3D");
+        _payload = string.Empty;
+        Changed?.Invoke();
+    }
     private static IEnumerable<Object3DModelDefinition> EnumerateModels(Object3DNodeDefinition node)
     {
         foreach (var component in node.Components) if (component.Model is { } model) yield return model;

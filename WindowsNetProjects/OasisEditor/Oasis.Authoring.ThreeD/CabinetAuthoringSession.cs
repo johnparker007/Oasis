@@ -19,35 +19,49 @@ public sealed class CabinetAuthoringSession : ThreeDAuthoringSessionBase
 
     public void Open(string manifestPath)
     {
+        EnsureCanReplaceDocument();
         var manifest = ResolveManifest(manifestPath);
         var json = File.ReadAllText(manifest);
         if (!CabinetDocumentStorage.TryRead(json, out var document)) throw new InvalidDataException("Invalid Cabinet3D manifest.");
-        _document = Clone(document);
-        _payload = CabinetDocumentStorage.Serialize(_document);
-        SetOpen(manifest, _payload);
-        ValidatePackage();
+        var candidate = Clone(document);
+        var package = Path.GetDirectoryName(manifest)!;
+        ValidatePackage(candidate, package);
+        var payload = CabinetDocumentStorage.Serialize(candidate);
+        var hashes = CapturePackageHashes(package);
+        SetOpen(manifest, payload, hashes);
+        _document = candidate;
+        _payload = payload;
         Changed?.Invoke();
     }
 
     public string Create(string name, string sourceProjectRelativePath)
     {
+        EnsureCanReplaceDocument();
         _ = ResolveSource(sourceProjectRelativePath);
-        var package = CreatePackage(name);
-        PackageDirectoryForCreate(package);
-        var modelPath = CopyModel(sourceProjectRelativePath);
-        _document = CabinetDocument.FromModelPath(modelPath);
-        _payload = CabinetDocumentStorage.Serialize(_document);
-        var manifest = Path.Combine(package, ProjectAssetPathService.Cabinet3DManifestFileName);
-        WriteNewFile(manifest, _payload);
-        MarkCreated(manifest, _payload);
+        using var reservation = ReservePackage(name);
+        var package = reservation.StagingDirectory;
+        var expected = new Dictionary<string, string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        var modelPath = CopyModel(sourceProjectRelativePath, package, expected);
+        var candidate = CabinetDocument.FromModelPath(modelPath);
+        ValidatePackage(candidate, package);
+        var payload = CabinetDocumentStorage.Serialize(candidate);
+        var stagedManifest = Path.Combine(package, ProjectAssetPathService.Cabinet3DManifestFileName);
+        WriteNewFile(stagedManifest, payload);
+        var hashes = CaptureAfterOwnedFileWrite(package, expected, ProjectAssetPathService.Cabinet3DManifestFileName, stagedManifest);
+        EnsureCanReplaceDocument();
+        reservation.Commit();
+        var manifest = Path.Combine(reservation.FinalDirectory, ProjectAssetPathService.Cabinet3DManifestFileName);
+        SetCreated(manifest, payload, hashes);
+        _document = Clone(candidate);
+        _payload = payload;
         Changed?.Invoke();
         return manifest;
     }
 
     public string ImportModel(string sourceProjectRelativePath)
     {
-        EnsurePackageUnchanged();
-        var copiedPath = CopyModel(sourceProjectRelativePath);
+        EnsureEditingAsset();
+        var copiedPath = CopyModel(sourceProjectRelativePath, PackageDirectory!);
         var updated = _document with { Model = _document.Model with { Path = copiedPath } };
         Commit(updated);
         return copiedPath;
@@ -89,7 +103,8 @@ public sealed class CabinetAuthoringSession : ThreeDAuthoringSessionBase
 
     public void Save()
     {
-        ValidatePackage();
+        EnsureEditingAsset();
+        ValidatePackage(_document, PackageDirectory!);
         _payload = CabinetDocumentStorage.Serialize(_document);
         SavePayload(_payload);
         Changed?.Invoke();
@@ -112,16 +127,14 @@ public sealed class CabinetAuthoringSession : ThreeDAuthoringSessionBase
         CommitPayload(payload); return true;
     }
 
-    private void ValidatePackage()
+    private void ValidatePackage(CabinetDocument document, string packageDirectory)
     {
-        Validate(_document);
-        if (PackageDirectory is not null)
-        {
-            var modelPath = WorkspacePathPolicy.ResolveConfined(PackageDirectory, _document.Model.Path, requireExists: true);
-            WorkspacePathPolicy.RejectReparsePoints(PackageDirectory, _document.Model.Path, requireExists: true);
-            if (!File.Exists(modelPath) || !Path.GetExtension(modelPath).Equals(".glb", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("Cabinet model must point to an existing package GLB.");
-        }
+        Validate(document);
+        var modelPath = WorkspacePathPolicy.ResolveConfined(packageDirectory, document.Model.Path, requireExists: true);
+        WorkspacePathPolicy.RejectReparsePoints(packageDirectory, document.Model.Path, requireExists: true);
+        if (!File.Exists(modelPath) || !Path.GetExtension(modelPath).Equals(".glb", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Cabinet model must point to an existing package GLB.");
+        ValidatePackageModelGlb(modelPath);
     }
 
     private static void Validate(CabinetDocument document)
@@ -158,7 +171,12 @@ public sealed class CabinetAuthoringSession : ThreeDAuthoringSessionBase
         }
     }
 
+    protected override void ResetDocument()
+    {
+        _document = CabinetDocument.Empty;
+        _payload = string.Empty;
+        Changed?.Invoke();
+    }
+
     private static CabinetDocument Clone(CabinetDocument document) => JsonSerializer.Deserialize<CabinetDocument>(CabinetDocumentStorage.Serialize(document), CloneOptions)!;
-    private void PackageDirectoryForCreate(string package) => SetPackageForCreate(package);
-    private void MarkCreated(string manifest, string payload) => SetCreated(manifest, payload);
 }
