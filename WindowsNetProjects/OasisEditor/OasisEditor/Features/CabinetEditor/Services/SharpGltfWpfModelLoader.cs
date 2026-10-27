@@ -1,93 +1,78 @@
-using System.IO;
 using System.Diagnostics;
+using System.IO;
 using System.Numerics;
-using System.Text;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
-using SharpGLTF.Schema2;
+using Oasis.Rendering3D;
 
 namespace OasisEditor.Features.CabinetEditor.Services;
 
+/// <summary>WPF projection adapter for the portable GLB scene data.</summary>
 public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
 {
-    private static readonly DiffuseMaterial DefaultMaterial = CreateDefaultMaterial();
-    private static readonly ICabinetFaceTargetDetector FaceTargetDetector = new GlbCabinetFaceTargetDetector();
+    private readonly PortableGlbSceneLoader _sceneLoader = new();
 
-    public Task<CabinetModelLoadResult> LoadAsync(string modelPath, CancellationToken cancellationToken = default)
+    public async Task<CabinetModelLoadResult> LoadAsync(string modelPath, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(modelPath))
-        {
-            return Task.FromResult(CabinetModelLoadResult.Failure("Choose a .glb cabinet model to load."));
-        }
+        var scene = await _sceneLoader.LoadAsync(modelPath, cancellationToken).ConfigureAwait(false);
+        if (!scene.Succeeded) return CabinetModelLoadResult.Failure(scene.ErrorMessage ?? "The GLB scene could not be loaded.");
 
-        if (!File.Exists(modelPath))
-        {
-            return Task.FromResult(CabinetModelLoadResult.Failure($"Cabinet model file was not found: {modelPath}"));
-        }
+        foreach (var diagnostic in scene.Diagnostics)
+            Trace.TraceWarning($"Cabinet GLB preview: {diagnostic}");
 
-        if (!string.Equals(Path.GetExtension(modelPath), ".glb", StringComparison.OrdinalIgnoreCase))
-        {
-            return Task.FromResult(CabinetModelLoadResult.Failure("Cabinet Model Viewer currently supports .glb files only."));
-        }
-
-        return Task.Run(() => LoadModel(modelPath, cancellationToken), cancellationToken);
-    }
-
-    private static CabinetModelLoadResult LoadModel(string modelPath, CancellationToken cancellationToken)
-    {
         try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var materialInfos = GlbMaterialInfoCollection.ReadFrom(modelPath);
-            var modelRoot = ModelRoot.Load(modelPath);
-            var scene = modelRoot.DefaultScene ?? modelRoot.LogicalScenes.FirstOrDefault();
-            if (scene is null)
-            {
-                return CabinetModelLoadResult.Failure("The .glb loaded, but it did not contain a scene to display.");
-            }
-
-            GlbCabinetSemanticGeometryValidator.Validate(scene, modelPath, cancellationToken);
-
-            var faceTargets = FaceTargetDetector.DetectTargets(modelPath, cancellationToken);
-            var reflectionTargets = GlbCabinetReflectionReceiverDiscovery.Discover(modelPath);
+            var materials = scene.Materials.ToDictionary(material => material.MaterialIndex, CreateMaterial);
             var visualMeshes = new Dictionary<int, MeshGeometry3D>();
             var colliderMesh = new MeshGeometry3D();
             var triggerMesh = new MeshGeometry3D();
-            var triangleCount = 0;
-            foreach (var node in scene.VisualChildren)
+            foreach (var node in scene.Meshes)
             {
-                AddNodeGeometry(node, visualMeshes, colliderMesh, triggerMesh, ref triangleCount, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                foreach (var primitive in node.Primitives)
+                {
+                    MeshGeometry3D target;
+                    if (node.SemanticKind == CabinetSemanticGeometryKind.Collider)
+                    {
+                        target = colliderMesh;
+                    }
+                    else if (node.SemanticKind == CabinetSemanticGeometryKind.Trigger)
+                    {
+                        target = triggerMesh;
+                    }
+                    else if (visualMeshes.TryGetValue(primitive.MaterialIndex, out var visualMesh))
+                    {
+                        target = visualMesh;
+                    }
+                    else
+                    {
+                        target = new MeshGeometry3D();
+                        visualMeshes.Add(primitive.MaterialIndex, target);
+                    }
+                    AppendPrimitive(target, primitive, node.WorldTransform);
+                }
             }
 
-            if (triangleCount == 0)
-            {
-                return CabinetModelLoadResult.Failure("The .glb loaded, but it did not contain displayable triangle geometry.");
-            }
-
-            var group = new Model3DGroup();
+            var visual = new Model3DGroup();
             foreach (var (materialIndex, mesh) in visualMeshes)
             {
+                if (mesh.TriangleIndices.Count == 0) continue;
                 mesh.Freeze();
-                var materialInfo = materialInfos.GetMaterialInfo(materialIndex);
-                var wpfMaterial = CreateMaterial(materialInfo);
-                var model = new GeometryModel3D
+                var material = materials.TryGetValue(materialIndex, out var found) ? found : CreateDefaultMaterial();
+                visual.Children.Add(new GeometryModel3D
                 {
                     Geometry = mesh,
-                    Material = wpfMaterial,
-                    BackMaterial = materialInfo.DoubleSided ? wpfMaterial : null
-                };
-                model.Freeze();
-                group.Children.Add(model);
+                    Material = material.Value,
+                    BackMaterial = material.DoubleSided ? material.Value : null
+                });
             }
+            visual.Freeze();
 
-            var colliderGroup = CreateDiagnosticGroup(colliderMesh, Color.FromArgb(105, 40, 170, 255));
-            var triggerGroup = CreateDiagnosticGroup(triggerMesh, Color.FromArgb(105, 255, 90, 185));
-            group.Freeze();
-            return CabinetModelLoadResult.Success(group, faceTargets, reflectionTargets, colliderGroup, triggerGroup);
+            var colliders = CreateDiagnosticGroup(colliderMesh, Color.FromArgb(105, 40, 170, 255));
+            var triggers = CreateDiagnosticGroup(triggerMesh, Color.FromArgb(105, 255, 90, 185));
+            return CabinetModelLoadResult.Success(visual, scene.FaceTargets, scene.ReflectionTargets, colliders, triggers);
         }
         catch (OperationCanceledException)
         {
@@ -95,98 +80,59 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
         }
         catch (Exception ex)
         {
-            Trace.TraceError($"Cabinet GLB loader stage=SharpGLTF path='{modelPath}' exception={ex}");
-            return CabinetModelLoadResult.Failure($"SharpGLTF fallback failed ({ex.GetType().Name}): {ex.Message}");
+            Trace.TraceError($"Cabinet GLB WPF projection path='{modelPath}' exception={ex}");
+            return CabinetModelLoadResult.Failure($"WPF GLB projection failed ({ex.GetType().Name}): {ex.Message}");
         }
     }
 
-    private static void AddNodeGeometry(Node node, Dictionary<int, MeshGeometry3D> visualMeshes, MeshGeometry3D colliderMesh, MeshGeometry3D triggerMesh, ref int triangleCount, CancellationToken cancellationToken)
+    private static void AppendPrimitive(MeshGeometry3D target, GlbPrimitiveData primitive, Matrix4x4 transform)
     {
-        if (node.Mesh is not null)
+        var normalTransform = Matrix4x4.Invert(transform, out var inverse) ? Matrix4x4.Transpose(inverse) : transform;
+        for (var offset = 0; offset + 2 < primitive.TriangleIndices.Length; offset += 3)
         {
-            var kind = CabinetSemanticGeometry.Classify(node.Name, node.Mesh.Name);
-            if (kind != CabinetSemanticGeometryKind.FaceTarget)
-            {
-                foreach (var primitive in node.Mesh.Primitives)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var positions = primitive.GetVertexAccessor("POSITION")?.AsVector3Array()
-                        ?? throw new InvalidDataException($"Mesh '{node.Mesh.Name ?? node.Name}' has a primitive without POSITION.");
-                    var normals = primitive.GetVertexAccessor("NORMAL")?.AsVector3Array();
-                    var textureCoordinates = primitive.GetVertexAccessor("TEXCOORD_0")?.AsVector2Array();
-                    var target = kind switch
-                    {
-                        CabinetSemanticGeometryKind.Collider => colliderMesh,
-                        CabinetSemanticGeometryKind.Trigger => triggerMesh,
-                        _ => GetMeshForMaterial(visualMeshes, GetLogicalIndex(primitive.Material))
-                    };
-                    foreach (var (a, b, c) in primitive.GetTriangleIndices())
-                    {
-                        ValidateTriangleIndex(a, positions.Count, node);
-                        ValidateTriangleIndex(b, positions.Count, node);
-                        ValidateTriangleIndex(c, positions.Count, node);
-                        var pointA = TransformPoint(positions[a], node.WorldMatrix);
-                        var pointB = TransformPoint(positions[b], node.WorldMatrix);
-                        var pointC = TransformPoint(positions[c], node.WorldMatrix);
-                        var fallbackNormal = CalculateNormal(pointA, pointB, pointC);
-                        AddTriangleVertex(target, a, positions, normals, textureCoordinates, node.WorldMatrix, fallbackNormal);
-                        AddTriangleVertex(target, b, positions, normals, textureCoordinates, node.WorldMatrix, fallbackNormal);
-                        AddTriangleVertex(target, c, positions, normals, textureCoordinates, node.WorldMatrix, fallbackNormal);
-                        triangleCount++;
-                    }
-                }
-            }
+            var ia = primitive.TriangleIndices[offset];
+            var ib = primitive.TriangleIndices[offset + 1];
+            var ic = primitive.TriangleIndices[offset + 2];
+            var a = Transform(primitive.Positions[ia], transform);
+            var b = Transform(primitive.Positions[ib], transform);
+            var c = Transform(primitive.Positions[ic], transform);
+            var fallbackNormal = CalculateNormal(a, b, c);
+            AppendVertex(target, ia, a, primitive, normalTransform, fallbackNormal);
+            AppendVertex(target, ib, b, primitive, normalTransform, fallbackNormal);
+            AppendVertex(target, ic, c, primitive, normalTransform, fallbackNormal);
         }
-        foreach (var child in node.VisualChildren) AddNodeGeometry(child, visualMeshes, colliderMesh, triggerMesh, ref triangleCount, cancellationToken);
     }
 
-    private static void ValidateTriangleIndex(int index, int count, Node node)
-    {
-        if (index < 0 || index >= count) throw new InvalidDataException($"Mesh '{node.Mesh?.Name ?? node.Name}' contains triangle index {index} outside its {count} POSITION values.");
-    }
-
-    private static MeshGeometry3D GetMeshForMaterial(Dictionary<int, MeshGeometry3D> meshes, int materialIndex)
-    {
-        if (!meshes.TryGetValue(materialIndex, out var mesh))
-        {
-            mesh = new MeshGeometry3D();
-            meshes.Add(materialIndex, mesh);
-        }
-
-        return mesh;
-    }
-
-    private static Point3D TransformPoint(Vector3 position, Matrix4x4 transform)
-    {
-        var transformed = Vector3.Transform(position, transform);
-        return new Point3D(transformed.X, transformed.Y, transformed.Z);
-    }
-
-    private static void AddTriangleVertex(MeshGeometry3D mesh, int sourceIndex, IList<Vector3> positions, IList<Vector3>? normals, IList<Vector2>? textureCoordinates, Matrix4x4 transform, Vector3D fallbackNormal)
+    private static void AppendVertex(MeshGeometry3D mesh, int sourceIndex, Point3D position, GlbPrimitiveData primitive,
+        Matrix4x4 normalTransform, Vector3D fallbackNormal)
     {
         var index = mesh.Positions.Count;
-        mesh.Positions.Add(TransformPoint(positions[sourceIndex], transform));
-        mesh.Normals.Add(TryGetNormal(normals, sourceIndex, transform, out var normal) ? normal : fallbackNormal);
-        var uv = textureCoordinates is not null && sourceIndex < textureCoordinates.Count ? textureCoordinates[sourceIndex] : Vector2.Zero;
+        mesh.Positions.Add(position);
+        var normal = fallbackNormal;
+        if (sourceIndex < primitive.Normals.Length && primitive.Normals[sourceIndex].LengthSquared() > float.Epsilon)
+        {
+            var transformed = Vector3.TransformNormal(primitive.Normals[sourceIndex], normalTransform);
+            normal = new Vector3D(transformed.X, transformed.Y, transformed.Z);
+            if (normal.LengthSquared > double.Epsilon) normal.Normalize();
+        }
+        mesh.Normals.Add(normal);
+        var uv = sourceIndex < primitive.TexCoords0.Length ? primitive.TexCoords0[sourceIndex] : Vector2.Zero;
         mesh.TextureCoordinates.Add(new Point(uv.X, uv.Y));
         mesh.TriangleIndices.Add(index);
     }
 
-    private static bool TryGetNormal(IList<Vector3>? normals, int index, Matrix4x4 transform, out Vector3D normal)
+    private static Point3D Transform(Vector3 value, Matrix4x4 transform)
     {
-        if (normals is not null && index < normals.Count && normals[index].LengthSquared() > float.Epsilon)
-        {
-            var normalTransform = Matrix4x4.Invert(transform, out var inverse)
-                ? Matrix4x4.Transpose(inverse)
-                : transform;
-            var sourceNormal = Vector3.TransformNormal(normals[index], normalTransform);
-            normal = new Vector3D(sourceNormal.X, sourceNormal.Y, sourceNormal.Z);
-            normal.Normalize();
-            return true;
-        }
+        var transformed = Vector3.Transform(value, transform);
+        return new Point3D(transformed.X, transformed.Y, transformed.Z);
+    }
 
-        normal = default;
-        return false;
+    private static Vector3D CalculateNormal(Point3D a, Point3D b, Point3D c)
+    {
+        var normal = Vector3D.CrossProduct(b - a, c - a);
+        if (normal.LengthSquared <= double.Epsilon) return new Vector3D(0, 1, 0);
+        normal.Normalize();
+        return normal;
     }
 
     private static Model3DGroup? CreateDiagnosticGroup(MeshGeometry3D mesh, Color color)
@@ -205,176 +151,56 @@ public sealed class SharpGltfWpfModelLoader : ICabinetModelLoader
         return group;
     }
 
-    private static Vector3D CalculateNormal(Point3D a, Point3D b, Point3D c)
-    {
-        var normal = Vector3D.CrossProduct(b - a, c - a);
-        if (normal.LengthSquared <= double.Epsilon)
-        {
-            return new Vector3D(0, 1, 0);
-        }
-
-        normal.Normalize();
-        return normal;
-    }
-
-    private static int GetLogicalIndex(SharpGLTF.Schema2.Material? material)
-    {
-        if (material is null) return -1;
-        try { return material.LogicalIndex; }
-        catch { return -1; }
-    }
-
-    private static System.Windows.Media.Media3D.Material CreateMaterial(GlbMaterialInfo info)
+    private static WpfMaterial CreateMaterial(GlbMaterialData info)
     {
         try
         {
             Brush brush = info.BaseColorTexture is null
-                ? new SolidColorBrush(info.BaseColor)
-                : new ImageBrush(info.BaseColorTexture) { ViewportUnits = BrushMappingMode.Absolute, TileMode = TileMode.None, Stretch = Stretch.Fill };
-            brush.Opacity = info.AlphaMode == GlbAlphaMode.Opaque ? 1d : info.BaseColor.A / 255d;
+                ? new SolidColorBrush(ToColor(info.BaseColorFactor))
+                : new ImageBrush(LoadBitmap(info.BaseColorTexture.EncodedBytes))
+                {
+                    ViewportUnits = BrushMappingMode.Absolute,
+                    TileMode = TileMode.None,
+                    Stretch = Stretch.Fill
+                };
+            // Keep the existing WPF preview's transparency behavior. Alpha MASK cutoff is retained
+            // in the portable material DTO for renderers that support cutout, but WPF has no cutout path.
+            brush.Opacity = info.AlphaMode == GlbAlphaMode.Opaque ? 1d : Math.Clamp(info.BaseColorFactor.W, 0f, 1f);
             brush.Freeze();
             var material = new DiffuseMaterial(brush);
             material.Freeze();
-            return material;
+            return new WpfMaterial(material, info.DoubleSided);
         }
         catch
         {
-            return DefaultMaterial;
+            var material = CreateDefaultMaterial();
+            return new WpfMaterial(material.Value, info.DoubleSided);
         }
     }
 
-    private static DiffuseMaterial CreateDefaultMaterial()
+    private static WpfMaterial CreateDefaultMaterial()
     {
-        var material = new DiffuseMaterial(new SolidColorBrush(Color.FromRgb(192, 196, 204)));
+        var brush = new SolidColorBrush(Color.FromRgb(192, 196, 204));
+        brush.Freeze();
+        var material = new DiffuseMaterial(brush);
         material.Freeze();
-        return material;
+        return new WpfMaterial(material, true);
     }
 
-    private sealed record GlbMaterialInfo(Color BaseColor, ImageSource? BaseColorTexture, GlbAlphaMode AlphaMode, bool DoubleSided)
+    private static BitmapImage LoadBitmap(byte[] bytes)
     {
-        public static GlbMaterialInfo Default { get; } = new(Color.FromRgb(192, 196, 204), null, GlbAlphaMode.Opaque, true);
+        using var stream = new MemoryStream(bytes, writable: false);
+        var bitmap = new BitmapImage();
+        bitmap.BeginInit();
+        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        bitmap.StreamSource = stream;
+        bitmap.EndInit();
+        bitmap.Freeze();
+        return bitmap;
     }
 
-    private enum GlbAlphaMode { Opaque, Mask, Blend }
+    private static Color ToColor(Vector4 factor) => Color.FromArgb(ToByte(factor.W), ToByte(factor.X), ToByte(factor.Y), ToByte(factor.Z));
+    private static byte ToByte(float value) => (byte)Math.Clamp((int)Math.Round(value * 255f), 0, 255);
 
-    private sealed class GlbMaterialInfoCollection
-    {
-        private readonly Dictionary<int, GlbMaterialInfo> _materials;
-        public GlbMaterialInfoCollection(Dictionary<int, GlbMaterialInfo> materials) => _materials = materials;
-        public GlbMaterialInfo GetMaterialInfo(int index) => _materials.TryGetValue(index, out var info) ? info : GlbMaterialInfo.Default;
-
-        public static GlbMaterialInfoCollection ReadFrom(string modelPath)
-        {
-            try
-            {
-                var glb = ReadGlb(modelPath);
-                using var document = JsonDocument.Parse(glb.Json);
-                var root = document.RootElement;
-                var result = new Dictionary<int, GlbMaterialInfo>();
-                if (!root.TryGetProperty("materials", out var materials) || materials.ValueKind != JsonValueKind.Array)
-                {
-                    return new GlbMaterialInfoCollection(result);
-                }
-
-                for (var i = 0; i < materials.GetArrayLength(); i++)
-                {
-                    var material = materials[i];
-                    var baseColor = ReadBaseColor(material);
-                    var texture = ReadBaseColorTexture(root, glb.BinaryChunk, material);
-                    var alphaMode = ReadAlphaMode(material);
-                    var doubleSided = material.TryGetProperty("doubleSided", out var doubleSidedElement) && doubleSidedElement.GetBoolean();
-                    result[i] = new GlbMaterialInfo(baseColor, texture, alphaMode, doubleSided);
-                }
-
-                return new GlbMaterialInfoCollection(result);
-            }
-            catch
-            {
-                return new GlbMaterialInfoCollection(new Dictionary<int, GlbMaterialInfo>());
-            }
-        }
-
-        private static Color ReadBaseColor(JsonElement material)
-        {
-            if (material.TryGetProperty("pbrMetallicRoughness", out var pbr)
-                && pbr.TryGetProperty("baseColorFactor", out var factor)
-                && factor.ValueKind == JsonValueKind.Array
-                && factor.GetArrayLength() >= 4)
-            {
-                return Color.FromArgb(ToByte(factor[3]), ToByte(factor[0]), ToByte(factor[1]), ToByte(factor[2]));
-            }
-
-            return GlbMaterialInfo.Default.BaseColor;
-        }
-
-        private static GlbAlphaMode ReadAlphaMode(JsonElement material)
-        {
-            if (!material.TryGetProperty("alphaMode", out var alphaMode)) return GlbAlphaMode.Opaque;
-            return alphaMode.GetString() switch
-            {
-                "MASK" => GlbAlphaMode.Mask,
-                "BLEND" => GlbAlphaMode.Blend,
-                _ => GlbAlphaMode.Opaque
-            };
-        }
-
-        private static BitmapImage? ReadBaseColorTexture(JsonElement root, byte[] binaryChunk, JsonElement material)
-        {
-            if (!material.TryGetProperty("pbrMetallicRoughness", out var pbr)
-                || !pbr.TryGetProperty("baseColorTexture", out var baseColorTexture)
-                || !baseColorTexture.TryGetProperty("index", out var textureIndexElement)) return null;
-
-            var textureIndex = textureIndexElement.GetInt32();
-            if (!TryGetArrayItem(root, "textures", textureIndex, out var texture)
-                || !texture.TryGetProperty("source", out var sourceIndexElement)) return null;
-
-            var sourceIndex = sourceIndexElement.GetInt32();
-            if (!TryGetArrayItem(root, "images", sourceIndex, out var image)
-                || !image.TryGetProperty("bufferView", out var bufferViewIndexElement)) return null;
-
-            var bufferViewIndex = bufferViewIndexElement.GetInt32();
-            if (!TryGetArrayItem(root, "bufferViews", bufferViewIndex, out var bufferView)) return null;
-
-            var offset = bufferView.TryGetProperty("byteOffset", out var offsetElement) ? offsetElement.GetInt32() : 0;
-            var length = bufferView.GetProperty("byteLength").GetInt32();
-            if (offset < 0 || length <= 0 || offset + length > binaryChunk.Length) return null;
-
-            using var stream = new MemoryStream(binaryChunk, offset, length, writable: false);
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.StreamSource = stream;
-            bitmap.EndInit();
-            bitmap.Freeze();
-            return bitmap;
-        }
-
-        private static bool TryGetArrayItem(JsonElement root, string propertyName, int index, out JsonElement item)
-        {
-            item = default;
-            if (!root.TryGetProperty(propertyName, out var array) || array.ValueKind != JsonValueKind.Array || index < 0 || index >= array.GetArrayLength()) return false;
-            item = array[index];
-            return true;
-        }
-
-        private static byte ToByte(JsonElement value) => (byte)Math.Clamp((int)Math.Round(value.GetSingle() * 255f), 0, 255);
-
-        private static (string Json, byte[] BinaryChunk) ReadGlb(string modelPath)
-        {
-            using var reader = new BinaryReader(File.OpenRead(modelPath));
-            if (reader.ReadUInt32() != 0x46546C67) throw new InvalidDataException("Not a GLB file.");
-            reader.ReadUInt32();
-            reader.ReadUInt32();
-
-            var jsonLength = reader.ReadInt32();
-            if (reader.ReadUInt32() != 0x4E4F534A) throw new InvalidDataException("GLB JSON chunk missing.");
-            var json = Encoding.UTF8.GetString(reader.ReadBytes(jsonLength));
-
-            if (reader.BaseStream.Position >= reader.BaseStream.Length) return (json, Array.Empty<byte>());
-            var binaryLength = reader.ReadInt32();
-            var chunkType = reader.ReadUInt32();
-            var binary = chunkType == 0x004E4942 ? reader.ReadBytes(binaryLength) : Array.Empty<byte>();
-            return (json, binary);
-        }
-    }
+    private sealed record WpfMaterial(DiffuseMaterial Value, bool DoubleSided);
 }

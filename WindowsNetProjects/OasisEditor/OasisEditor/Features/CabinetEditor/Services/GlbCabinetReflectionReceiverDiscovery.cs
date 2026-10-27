@@ -7,7 +7,15 @@ public static class GlbCabinetReflectionReceiverDiscovery
 {
     public static IReadOnlyList<CabinetReflectionReceiverTarget> Discover(string modelPath)
     {
-        var root = ModelRoot.Load(modelPath); var scene = root.DefaultScene ?? root.LogicalScenes.First(); var result = new List<CabinetReflectionReceiverTarget>();
+        var root = ModelRoot.Load(modelPath);
+        var scene = root.DefaultScene ?? root.LogicalScenes.First();
+        return Discover(scene);
+    }
+
+    public static IReadOnlyList<CabinetReflectionReceiverTarget> Discover(Scene scene)
+    {
+        ArgumentNullException.ThrowIfNull(scene);
+        var result = new List<CabinetReflectionReceiverTarget>();
         foreach (var node in scene.VisualChildren) Visit(node, string.Empty, result);
         return result;
     }
