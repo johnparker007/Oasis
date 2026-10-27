@@ -398,3 +398,16 @@ Label lamp/text properties through the native session and MCP.
 
 `capture_face_artwork_editor` renders the actual registration/calibration dialog
 in the isolated MCP host, without native windows or desktop capture.
+
+## Project launcher and input diagnostics
+
+Desktop startup offers New/Open and a recent-project launcher when no project is
+restored or supplied with `--project`. Recents are confined to the selected workspace;
+missing/outside entries retain an explanation rather than being opened silently.
+Headless sessions never read personal recents. `configure_recent_projects` requires
+an explicit workspace-local file and enables reproducible welcome captures.
+
+The Machine Inspector reports duplicate keyboard shortcuts and duplicate visual
+bindings through the same analyzer as WPF. It also reports unresolved visual GUIDs
+against the current Panel2D/Face context, without inventing Machine input mappings.
+`inspect_machine_input_diagnostics` exposes the same diagnostics through MCP.

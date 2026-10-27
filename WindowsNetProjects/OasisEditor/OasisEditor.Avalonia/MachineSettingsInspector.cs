@@ -149,6 +149,7 @@ public sealed partial class WorkspaceView
         if (recovered.Count > 0)
             _inspector.Children.Add(ActionButton($"Apply {recovered.Count} recovered FML inputs", () => Try(() => Machines.ApplyRecoveredInputs(recovered))));
 
+        _inspector.Children.Add(CreateMachineInputDiagnosticsControl());
         Heading("ASSET ASSIGNMENTS");
         var cabinetAsset = ReusableAssetCombo(EditorAssetType.Cabinet3D, machine.CabinetAsset);
         AddLabeledControl("Cabinet asset", cabinetAsset);
@@ -264,7 +265,7 @@ public sealed partial class WorkspaceView
             Machines.UpdateDocument(current => current with { GeometrySurfaces = surfaces });
         })));
         _inspector.Children.Add(ActionButton("Add geometry surface", () => Try(() => Machines.UpdateDocument(current => current with { GeometrySurfaces = [.. current.GeometrySurfaces, new MachineGeometrySurface("surface-" + Guid.NewGuid().ToString("N"), MachineVector3.Zero, MachineVector3.Zero, 1, 1)] }))));
-        _inspector.Children.Add(new TextBlock { Text = "3D rendering and editing remain deferred; package references and authored declarations are available here.", TextWrapping = global::Avalonia.Media.TextWrapping.Wrap, Opacity = .7 });
+        _inspector.Children.Add(new TextBlock { Text = "Use the 3D Scene to inspect placements and the Inspector to edit; package references and authored declarations are available here.", TextWrapping = global::Avalonia.Media.TextWrapping.Wrap, Opacity = .7 });
     }
 
     private AssetSummary RequireProjectAsset(string type, string friendlyName)

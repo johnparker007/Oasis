@@ -224,9 +224,9 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     public void ShowFace() { SceneView.SuspendRendering(); _sceneKind = null; _faceActive = true; _machineActive = false; _selectedSource = null; _sceneCancellation.Cancel(); Refresh(); }
     public void ShowMachine() { _sceneKind = "Machine"; _faceActive = false; _machineActive = true; Refresh(); QueueSceneReload(); }
     public void OpenProject(string path)
-    { EnsureAssetWindowsIdle(); if (HasUnsavedChanges) throw new InvalidOperationException("Save or undo document edits before changing project."); if(_isAssetWindow)throw new InvalidOperationException("Change projects in the main workspace."); var probe=new AuthoringSession(_session.WorkspacePath); probe.OpenProject(path); CloseAllAssetWindows(); Faces.CloseAllDocuments(); _session.OpenProject(path); Clear3DForProjectChange(); _documentViews.Clear(); Machines.OpenProject(path); _machineActive = false; Refresh(); }
+    { EnsureAssetWindowsIdle(); if (HasUnsavedChanges) throw new InvalidOperationException("Save or undo document edits before changing project."); if(_isAssetWindow)throw new InvalidOperationException("Change projects in the main workspace."); var probe=new AuthoringSession(_session.WorkspacePath); probe.OpenProject(path); CloseAllAssetWindows(); Faces.CloseAllDocuments(); _session.OpenProject(path); Clear3DForProjectChange(); _documentViews.Clear(); Machines.OpenProject(path); _machineActive = false; Refresh(); RecordCurrentProject(); }
     public void CreateProject(string name)
-    { EnsureAssetWindowsIdle(); if (HasUnsavedChanges) throw new InvalidOperationException("Save or undo document edits before changing project."); if(_isAssetWindow)throw new InvalidOperationException("Create projects in the main workspace."); var probe=new AuthoringSession(_session.WorkspacePath); var path=probe.CreateProject(name); CloseAllAssetWindows(); Faces.CloseAllDocuments(); _session.OpenProject(path); Clear3DForProjectChange(); _documentViews.Clear(); Machines.OpenProject(_session.ProjectFilePath!); _machineActive = false; Refresh(); }
+    { EnsureAssetWindowsIdle(); if (HasUnsavedChanges) throw new InvalidOperationException("Save or undo document edits before changing project."); if(_isAssetWindow)throw new InvalidOperationException("Create projects in the main workspace."); var probe=new AuthoringSession(_session.WorkspacePath); var path=probe.CreateProject(name); CloseAllAssetWindows(); Faces.CloseAllDocuments(); _session.OpenProject(path); Clear3DForProjectChange(); _documentViews.Clear(); Machines.OpenProject(_session.ProjectFilePath!); _machineActive = false; Refresh(); RecordCurrentProject(); }
     public void SetStatus(string text) => _status.Text = text;
     public void Try(Action action)
     {
@@ -306,6 +306,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     }
     private void Refresh()
     {
+        RefreshWelcomePage();
         if (_refreshing) return;
         _refreshing = true;
         try

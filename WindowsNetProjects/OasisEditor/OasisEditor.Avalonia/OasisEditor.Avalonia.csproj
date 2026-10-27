@@ -75,6 +75,7 @@
     <Compile Include="../OasisEditor/FaceArtworkPerformanceTrace.cs" Link="SharedRendering/FaceArtworkPerformanceTrace.cs" />
     <Compile Include="../OasisEditor/BitmapPixelBuffer.cs" Link="SharedRendering/BitmapPixelBuffer.cs" />
     <Compile Include="../OasisEditor/PanelElementValidation.cs" Link="SharedRendering/PanelElementValidation.cs" />
+    <Compile Include="../OasisEditor/InputMapDiagnostics.cs" Link="SharedAuthoring/InputMapDiagnostics.cs" />
     <Compile Include="../OasisEditor/SegmentDisplays/SegmentDisplayCanonicalGeometry.cs" Link="SharedRendering/SegmentDisplayCanonicalGeometry.cs" />
   </ItemGroup>
 </Project>
