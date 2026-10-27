@@ -19,7 +19,20 @@ are unchanged by this migration.
   Reel creation/editing is also available in Avalonia, with a physical-dimension
   GPU preview, stable native IDs, history, atomic saves and workspace restoration.
   Reel symbol-band artwork remains a Face property; the native Reel asset stores
-  its physical diameter and width. Library browsing/selection remains the next slice.
+  its physical diameter and width.
+- Project Assets / Oasis Library browsing and search, explicit Library folder setup,
+  background catalog refresh, malformed-package diagnostics and scoped asset choices.
+  Shared Cabinet/Reel/Prefab assets open in the same authoring views, with an explicit
+  Library indicator; Save updates the shared package. Workspace restoration retains
+  the root, browser source and scoped active asset. Authored Machine references remain
+  portable root-relative Project/Library references.
+- Copy complete reusable Cabinet/Reel/Prefab packages to the Library, or import them
+  into a project, preserving native IDs and dependencies. Staged copies reject conflicts,
+  source changes, path escapes and links; existing packages are never overwritten.
+  Contained GLB resource files are supported for complete packages; single-GLB model
+  import still requires embedded resources. Machine Cabinet/Reel/Prefab choices include
+  both scopes, preserve missing references and discover logical Reel references from
+  assigned Faces. Physical Reel metadata remains distinct from symbol-band images.
 - Panel rectangle/anchor/zone/label creation and image import; selection and multi-
   selection; atomic group movement; duplication with fresh IDs; deletion; stacking
   order; drag movement/resize and inspector geometry/visibility/lock editing.
@@ -233,7 +246,13 @@ with 512 lamp channels, eight reels, 32 display cells and nonzero silently consu
 PCM. No credited play or audible playback is claimed. Linux/macOS execution and
 physical desktop interaction remain unverified.
 
-Separate future migration work includes multi-document tabs and Reel/library UI.
+The Library slice passed actual MCP copy/edit/import/restoration and Dark/Light GPU
+captures of real Cabinet/Prefab and physical Reel assets. Machines using Library
+references built/exported through the production services; a copied native Impact
+Machine using Library Cabinet/Reel assignments also ran real Fabric/Amber outputs
+(512 lamps, eight reels, 32 display cells and nonzero silently consumed PCM).
+
+Separate future migration work includes multi-document tabs.
 The scene is a static authoring preview: GLB skinning/animation and Capsule/Mesh
 collider visualization remain unsupported as described above.
 

@@ -21,6 +21,7 @@ public sealed partial class WorkspaceView
     {
         var projectRoot = _session.ProjectFilePath is null ? null : Path.GetDirectoryName(_session.ProjectFilePath)!;
         string? Relative(string? path) => projectRoot is null || path is null ? null : Path.GetRelativePath(projectRoot, path).Replace('\\', '/');
+        string? AssetRelative(string? path) => path is null ? null : IsLibraryScene && ActiveLibraryRoot is { } library ? Path.GetRelativePath(library,path).Replace('\\','/') : Relative(path);
         var window = TopLevel.GetTopLevel(this) as Window;
         var bounds = window is null ? null : new WorkspaceWindowState(window.Position.X, window.Position.Y,
             Math.Max(100, window.ClientSize.Width), Math.Max(100, window.ClientSize.Height), window.WindowState.ToString());
@@ -32,13 +33,14 @@ public sealed partial class WorkspaceView
             _session.SelectedIds.ToArray(), Faces.SelectedId, _assetSearch.Text, bounds, _selectedSource, _viewport.CaptureViewState(),
             Machines.IsProjectCurrent ? Relative(Machines.MachinePath) : null, NativePreviewPreferences,
             new WorkspaceSceneState(_sceneKind,
-                _sceneKind == "Cabinet3D" && Cabinets.IsProjectCurrent ? Relative(Cabinets.FilePath) : null,
-                _sceneKind == "Prefab" && Prefabs.IsProjectCurrent ? Relative(Prefabs.FilePath) : null,
+                _sceneKind == "Cabinet3D" && Cabinets.IsProjectCurrent ? AssetRelative(Cabinets.FilePath) : null,
+                _sceneKind == "Prefab" && Prefabs.IsProjectCurrent ? AssetRelative(Prefabs.FilePath) : null,
                 _sceneKind is null ? null : _selectedSceneNodeId,
                 new WorkspaceSceneCameraState(SceneView.Camera.Target.X, SceneView.Camera.Target.Y, SceneView.Camera.Target.Z,
                     SceneView.Camera.Distance, SceneView.Camera.Yaw, SceneView.Camera.Pitch, SceneView.Camera.FieldOfView),
                 SceneView.ShowVisuals, SceneView.ShowColliders, SceneView.ShowTriggers,
-                _sceneKind == "Reel" && Reels.IsProjectCurrent ? Relative(Reels.FilePath) : null));
+                _sceneKind == "Reel" && Reels.IsProjectCurrent ? AssetRelative(Reels.FilePath) : null,IsLibraryScene?"Library":"Project"),
+                string.IsNullOrWhiteSpace(SceneLibraryRoot)?null:SceneLibraryRoot,_browseLibrary);
     }
 
     public void ConfigureWorkspacePersistence(string path, bool restore = true)
@@ -106,6 +108,8 @@ public sealed partial class WorkspaceView
         if (state.MainWindow is not null) WorkspaceLayoutState.ValidateBounds(state.MainWindow);
         state.Viewport?.Validate();
         state.Scene3D?.Validate();
+        if(state.LibraryRoot is { } libraryRoot)WorkspacePathPolicy.RejectRootReparsePoints(Path.GetFullPath(libraryRoot),requireExists:state.Scene3D?.Scope=="Library");
+        if(state.Scene3D?.Scope=="Library"&&(string.IsNullOrWhiteSpace(state.LibraryRoot)||!Directory.Exists(state.LibraryRoot)))throw new InvalidDataException("The saved Library asset requires its Library folder.");
         var sceneMode = state.Scene3D?.Mode ?? (state.ActiveDocument == "Machine" ? "Machine" : null);
         if (sceneMode == "Machine" && (state.Machine is null || state.ActiveDocument != "Machine"))
             throw new InvalidDataException("A saved Machine scene requires the active Machine document.");
@@ -129,9 +133,9 @@ public sealed partial class WorkspaceView
             if (state.Panel is not null) probe.OpenPanel(state.Panel);
             if (state.Face is not null) new FaceAuthoringSession(probe).OpenFace(state.Face);
             if (state.Machine is not null) new MachineAuthoringSession(probe).OpenMachine(state.Machine);
-            if (sceneMode == "Cabinet3D") new CabinetAuthoringSession(probe).Open(state.Scene3D!.Cabinet!);
-            if (sceneMode == "Prefab") new PrefabAuthoringSession(probe).Open(state.Scene3D!.Prefab!);
-            if (sceneMode == "Reel") new ReelAuthoringSession(probe).Open(state.Scene3D!.Reel!);
+            if (sceneMode == "Cabinet3D") {var asset=new CabinetAuthoringSession(probe);if(state.Scene3D!.Scope=="Library")asset.OpenLibrary(state.LibraryRoot!,state.Scene3D.Cabinet!);else asset.Open(state.Scene3D.Cabinet!);}
+            if (sceneMode == "Prefab") {var asset=new PrefabAuthoringSession(probe);if(state.Scene3D!.Scope=="Library")asset.OpenLibrary(state.LibraryRoot!,state.Scene3D.Prefab!);else asset.Open(state.Scene3D.Prefab!);}
+            if (sceneMode == "Reel") {var asset=new ReelAuthoringSession(probe);if(state.Scene3D!.Scope=="Library")asset.OpenLibrary(state.LibraryRoot!,state.Scene3D.Reel!);else asset.Open(state.Scene3D.Reel!);}
         }
         else if (state.Panel is not null || state.Face is not null || state.Machine is not null || sceneMode is not null)
             throw new InvalidDataException("Saved documents require a project.");
@@ -152,7 +156,8 @@ public sealed partial class WorkspaceView
                 Faces.Select(Faces.Elements.Any(e => e.Id == state.FaceSelection) ? state.FaceSelection : null);
             }
         }
-        else { Faces.Close(); _session.CloseProject(); }
+        else { Faces.Close(); _session.CloseProject(); Clear3DForProjectChange(); }
+        SceneLibraryRoot=state.LibraryRoot??string.Empty;RestartLibraryWatcher();_libraryTask=RefreshLibraryAsync();SetAssetBrowserSource(state.LibraryBrowser);
         var restored = WorkspaceLayoutState.Restore(state.Layout, known);
         ReplaceLayout(restored);
         _faceActive = state.ActiveDocument == "Face" && Faces.FacePath is not null;
@@ -180,6 +185,13 @@ public sealed partial class WorkspaceView
 
     private async Task RestoreScene3DAsync(string mode, WorkspaceSceneState? saved)
     {
+        if(saved?.Scope=="Library")
+        {
+            await OpenLibraryAssetAsync(mode=="Cabinet3D"?saved.Cabinet!:mode=="Prefab"?saved.Prefab!:saved.Reel!);
+            if(saved.Selection is null || _sceneRows.Any(row=>row.Id==saved.Selection))SelectScene3DNode(saved.Selection);
+            if(saved.Camera is { } libraryCamera)ApplySceneCamera(libraryCamera);
+            return;
+        }
         switch (mode)
         {
             case "Machine":

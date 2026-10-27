@@ -28,13 +28,14 @@ public sealed record WorkspaceSceneCameraState(double TargetX, double TargetY, d
 }
 public sealed record WorkspaceSceneState(string? Mode = null, string? Cabinet = null, string? Prefab = null,
     string? Selection = null, WorkspaceSceneCameraState? Camera = null, bool ShowVisuals = true,
-    bool ShowColliders = false, bool ShowTriggers = false, string? Reel = null)
+    bool ShowColliders = false, bool ShowTriggers = false, string? Reel = null, string Scope = "Project")
 {
     public void Validate()
     {
         if (Mode is not (null or "Machine" or "Cabinet3D" or "Prefab" or "Reel")) throw new InvalidDataException("Workspace 3D mode is invalid.");
         if ((Selection?.Length ?? 0) > 1024) throw new InvalidDataException("Workspace 3D selection is too long.");
         Camera?.Validate();
+        if(Scope is not("Project" or "Library") || Scope=="Library" && Mode is not("Cabinet3D" or "Prefab" or "Reel"))throw new InvalidDataException("Workspace asset scope is invalid.");
         if (Mode == "Cabinet3D" ? Cabinet is null || Prefab is not null || Reel is not null
             : Mode == "Prefab" ? Prefab is null || Cabinet is not null || Reel is not null
             : Mode == "Reel" ? Reel is null || Cabinet is not null || Prefab is not null
@@ -53,7 +54,8 @@ public sealed record WorkspaceState(int Version, string Theme, WorkspaceDockNode
     string? Project = null, string? Panel = null, string? Face = null, string ActiveDocument = "Panel2D",
     string[]? PanelSelection = null, string? FaceSelection = null, string? AssetSearch = null,
     WorkspaceWindowState? MainWindow = null, string? SourceSelection = null, WorkspaceViewportState? Viewport = null,
-    string? Machine = null, NativeEmulationPreferences? Emulation = null, WorkspaceSceneState? Scene3D = null);
+    string? Machine = null, NativeEmulationPreferences? Emulation = null, WorkspaceSceneState? Scene3D = null,
+    string? LibraryRoot = null, bool LibraryBrowser = false);
 
 /// <summary>Allow-listed layout data. Never deserializes arbitrary CLR types, views, contexts or commands.</summary>
 public static class WorkspaceLayoutState

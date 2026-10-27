@@ -120,22 +120,30 @@ public sealed partial class WorkspaceView
                 do { added=false; foreach(var item in machine.ObjectInstances) if(item.ParentId is { } parentId && descendants.Contains(parentId)) added |= descendants.Add(item.Id); } while(added);
             }
             var active=new CheckBox{Content="Active",IsChecked=selected?.Active??true};var parent=new ComboBox{ItemsSource=new[]{""}.Concat(machine.ObjectInstances.Where(i=>!descendants.Contains(i.Id)).Select(i=>i.Id)).ToArray(),SelectedItem=selected?.ParentId??""};
-            if(selected is not null){_inspector.Children.Add(active);AddLabeledControl("Parent instance",parent);_inspector.Children.Add(new TextBlock{Text=selected.ObjectAsset?.ToString(),TextWrapping=TextWrapping.Wrap});}
+            ComboBox? objectAsset=null;
+            if(selected is not null)
+            {
+                _inspector.Children.Add(active);AddLabeledControl("Parent instance",parent);
+                objectAsset=ReusableAssetCombo(EditorAssetType.Object3D,selected.ObjectAsset);
+                AddLabeledControl("Prefab asset",objectAsset);
+            }
             _inspector.Children.Add(ActionButton("Apply placement",()=>Try(()=>
             {
                 var transform=ReadSceneTransform(anchor is null);
-                Machines.UpdateDocument(current=>selected is not null?current with{ObjectInstances=current.ObjectInstances.Select(i=>i.Id==selected.Id?i with{DisplayName=_fields["Display name"].Text??i.DisplayName,Transform=transform,Active=active.IsChecked==true,ParentId=string.IsNullOrWhiteSpace((string?)parent.SelectedItem)?null:(string?)parent.SelectedItem}:i).ToArray()}
+                Machines.UpdateDocument(current=>selected is not null?current with{ObjectInstances=current.ObjectInstances.Select(i=>i.Id==selected.Id?i with{DisplayName=_fields["Display name"].Text??i.DisplayName,Transform=transform,Active=active.IsChecked==true,ParentId=string.IsNullOrWhiteSpace((string?)parent.SelectedItem)?null:(string?)parent.SelectedItem,ObjectAsset=(objectAsset!.SelectedItem as ReusableAssetChoice)?.Reference}:i).ToArray()}
                     :current with{Anchors=current.Anchors.Select(a=>a.Id==anchor!.Id?a with{DisplayName=_fields["Display name"].Text??a.DisplayName,Position=transform.Position,Rotation=transform.Rotation}:a).ToArray()});
             })));
             _inspector.Children.Add(ActionButton("Remove selection",()=>Try(DeleteSceneSelection)));
         }
         Heading("COMPOSITION");_inspector.Children.Add(ActionButton("Machine settings",()=>SelectSceneNode(null)));
-        var assets=Machines.ListProjectAssets().Where(a=>a.Type=="Object3D").ToArray();var prefab=new ComboBox{ItemsSource=assets.Select(a=>a.ManifestPath).ToArray(),SelectedIndex=assets.Length>0?0:-1};
+        var prefab=ReusableAssetCombo(EditorAssetType.Object3D);
+        prefab.SelectedItem=(prefab.ItemsSource as IEnumerable<ReusableAssetChoice>)?.FirstOrDefault(choice=>choice.Reference is not null);
         AddLabeledControl("Prefab asset",prefab);
         _inspector.Children.Add(ActionButton("Add placed Prefab",()=>Try(()=>
         {
-            if(prefab.SelectedItem is not string path)throw new InvalidOperationException("Create or import a Prefab before placing one.");
-            var id="object_"+Guid.NewGuid().ToString("N");Machines.UpdateDocument(current=>current with{ObjectInstances=[..current.ObjectInstances,new(id,Path.GetFileName(Path.GetDirectoryName(path)),AssetReference.Project(path),MachineObjectTransform.Identity)]});SelectSceneNode(id);
+            var reference=(prefab.SelectedItem as ReusableAssetChoice)?.Reference??throw new InvalidOperationException("Create or import a Prefab before placing one.");
+            var id="object_"+Guid.NewGuid().ToString("N");var displayName=Path.GetFileName(Path.GetDirectoryName(reference.Path));
+            Machines.UpdateDocument(current=>current with{ObjectInstances=[..current.ObjectInstances,new(id,displayName,reference,MachineObjectTransform.Identity)]});SelectSceneNode(id);
         })));
         _inspector.Children.Add(ActionButton("Add anchor",()=>Try(()=>
         {var id="anchor_"+Guid.NewGuid().ToString("N");Machines.UpdateDocument(current=>current with{Anchors=[..current.Anchors,MachineAnchor.Create(id)]});SelectSceneNode("anchor:"+id);})));

@@ -87,12 +87,48 @@ class Client:
             raise RuntimeError("".join(self.errors))
 
 
+def verify_reel_library(client, root, output, machine_path, project_directory):
+    reel = client.state("create_reel", name="Shared physical Reel")
+    reel_path, reel_id = reel["path"], reel["document"]["id"]
+    client.state("update_reel", diameterMm=290, widthMm=70)
+    client.state("scene_history"); client.state("scene_history", redo=True); client.state("save_reel")
+    library = root / "Library"; library.mkdir()
+    client.state("configure_library_root", directory=str(library))
+    copied = client.state("copy_asset_to_library", projectManifest=reel_path)["result"]
+    assert copied["success"], copied
+    library_path = copied["reference"]["path"]
+    client.state("open_library_asset", libraryRelativeManifest=library_path)
+    client.state("update_reel", widthMm=80); client.state("save_reel")
+    assert json.loads(Path(reel_path).read_text())["widthMm"] == 70
+    for theme in ("Dark", "Light"):
+        client.capture(output / f"workspace-library-reel-{theme.lower()}.png", theme)
+    reel = client.state("inspect_reel")
+    assert reel["document"]["id"] == reel_id and reel["document"]["widthMm"] == 80
+    assert reel["scene"]["gpu"]["triangles"] > 0 and not reel["scene"].get("renderingError"), reel
+    settings = str(root / "library.workspace.json")
+    client.state("save_workspace", path=settings); client.state("reset_layout")
+    client.state("restore_workspace", path=settings)
+    client.capture(output / "workspace-library-restored.png", "Dark")
+    assert client.state("inspect_layout")["scene3D"]["scope"] == "Library"
+    imported = client.state("import_library_asset", libraryRelativeManifest=library_path, packageName="Imported Reel")["result"]
+    assert imported["success"] and json.loads(Path(imported["manifestPath"]).read_text())["id"] == reel_id
+    assert not client.state("copy_asset_to_library", projectManifest=reel_path)["result"]["success"]
+    client.state("open_machine", path=machine_path)
+    client.state("assign_machine_reel", reelReference="reel:0", assetPath=library_path, scope="Library")
+    native = client.state("inspect_machine")["document"]
+    assert native["reelAssignments"][0]["reelAsset"] == {"scope":"library", "path":library_path}
+    client.state("update_machine_document", document=native)  # Native runtime union JSON must round-trip over MCP.
+    client.state("machine_history"); client.state("machine_history", redo=True); client.state("save_machine")
+    print("Native Reel/Library authoring, copy/import/conflicts, scoped assignment, workspace restoration and GPU captures passed.")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--project", type=Path)
     parser.add_argument("--panel", type=Path)
     parser.add_argument("--face", type=Path)
+    parser.add_argument("--reel-library", action="store_true", help="Exercise native Reel/Library authoring and actual offscreen GPU captures")
     parser.add_argument("--cabinet", help="Read-only Cabinet3D manifest relative to --project")
     parser.add_argument("--prefab", help="Read-only Object3D manifest relative to --project")
     parser.add_argument("--scene-machine", help="Read-only Machine manifest relative to --project")
@@ -193,6 +229,8 @@ def main():
             assert package["success"] and package["playerLaunched"] is False
             assert Path(package["packageDirectory"], "machine.runtime.json").is_file()
             print("Headless Machine create/open/settings/history/save/reopen, production build/export and rendered capture passed; no Player process launched.")
+            if args.reel_library:
+                verify_reel_library(client,root,args.output,machine_path,project_directory)
             client.state("create_panel2d", name="Control panel")
             first = client.state("add_rectangle")["selectedId"]
             client.state("update_element", id=first, name="Artwork registration", x=0, y=0, width=680, height=420)

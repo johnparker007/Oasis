@@ -268,13 +268,16 @@ public sealed class MachineAuthoringSessionTests : IDisposable
             capture.View.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Add Face assignment")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.Contains(capture.View.GetVisualDescendants().OfType<TextBlock>(), text => text.Text?.Contains("No registered Faces asset", StringComparison.Ordinal) == true);
             faces.CreateFace("AssignedFace");
-            var objectDirectory = Path.Combine(Path.GetDirectoryName(projectFile)!, "Assets", "Object3D", "Existing"); Directory.CreateDirectory(objectDirectory);
+            capture.View.Prefabs.Create("Existing");
+            var objectDirectory = Path.Combine(Path.GetDirectoryName(projectFile)!, "Assets", "Object3D", "Invalid"); Directory.CreateDirectory(objectDirectory);
             File.WriteAllText(Path.Combine(objectDirectory, "asset.object3d"), "{}");
+            Assert.DoesNotContain(capture.View.GetReusableAssetChoices(EditorAssetType.Object3D),choice=>choice.Reference?.Path.Contains("Invalid/")==true);
             capture.View.OpenAsset(machineAsset); capture.Capture();
             capture.View.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Add Face assignment")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var face = Assert.Single(capture.View.Machines.Document!.SurfaceAssignments);
             Assert.Equal("Assets/Faces/AssignedFace/asset.face", face.FaceAssetPath);
             capture.Capture();
+            capture.View.GetVisualDescendants().OfType<TextBox>().Single(box=>box.PlaceholderText=="Prefab alias").Text="existing";
             capture.View.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Add Prefab declaration")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var prefab = Assert.Single(capture.View.Machines.Document!.PrefabDependencies);
             Assert.Equal("Assets/Object3D/Existing/asset.object3d", prefab.PrefabAsset.Path);

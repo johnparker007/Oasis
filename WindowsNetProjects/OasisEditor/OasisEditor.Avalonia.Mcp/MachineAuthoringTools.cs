@@ -28,8 +28,12 @@ public sealed partial class EditorTools
         => ui.Invoke<object>(() => MachineSnapshot(), cancellationToken);
 
     [McpServerTool(Name = "update_machine_document"), Description("Replace the active Machine with one complete typed schema-11 document edit. Full metadata is validated before the atomic undoable commit; omit fields only when the current schema defaults permit it.")]
-    public Task<object> UpdateMachineDocument(MachineDocument document, CancellationToken cancellationToken)
-        => ui.Invoke(() => ActMachine(() => Machines.UpdateDocument(_ => document)), cancellationToken);
+    public Task<object> UpdateMachineDocument(JsonElement document, CancellationToken cancellationToken)
+        => ui.Invoke<object>(() =>
+        {
+            if(!MachineDocumentStorage.TryRead(document.GetRawText(),out var native,out var error))throw new InvalidDataException(error);
+            return ActMachine(() => Machines.UpdateDocument(_ => native));
+        }, cancellationToken);
 
     [McpServerTool(Name = "set_machine_name"), Description("Change the authored Machine display name as one undoable, validated edit.")]
     public Task<object> SetMachineName(string displayName, CancellationToken cancellationToken)

@@ -11,7 +11,7 @@ public sealed class CabinetAuthoringSession : ThreeDAuthoringSessionBase
     private static readonly JsonSerializerOptions CloneOptions = new() { PropertyNameCaseInsensitive = true };
 
     public CabinetAuthoringSession(AuthoringSession projectSession)
-        : base(projectSession, "Cabinet3D", ProjectAssetPathService.Cabinet3DManifestFileName) { }
+        : base(projectSession, "Cabinet3D", ProjectAssetPathService.Cabinet3DManifestFileName, "Cabinets") { }
 
     public CabinetDocument Document => Clone(_document);
     public event Action? Changed;
@@ -29,6 +29,24 @@ public sealed class CabinetAuthoringSession : ThreeDAuthoringSessionBase
         var payload = CabinetDocumentStorage.Serialize(candidate);
         var hashes = CapturePackageHashes(package);
         SetOpen(manifest, payload, hashes);
+        _document = candidate;
+        _payload = payload;
+        Changed?.Invoke();
+    }
+
+    public void OpenLibrary(string explicitLibraryRoot, string libraryRelativeManifest)
+    {
+        EnsureCanReplaceDocument();
+        var root = Path.GetFullPath(explicitLibraryRoot);
+        var manifest = ResolveLibraryManifest(root, libraryRelativeManifest);
+        var json = File.ReadAllText(manifest);
+        if (!CabinetDocumentStorage.TryRead(json, out var document)) throw new InvalidDataException("Invalid Cabinet3D manifest.");
+        var candidate = Clone(document);
+        var package = Path.GetDirectoryName(manifest)!;
+        ValidatePackage(candidate, package);
+        var payload = CabinetDocumentStorage.Serialize(candidate);
+        var hashes = CapturePackageHashes(package);
+        SetOpen(manifest, payload, hashes, root);
         _document = candidate;
         _payload = payload;
         Changed?.Invoke();
@@ -134,7 +152,7 @@ public sealed class CabinetAuthoringSession : ThreeDAuthoringSessionBase
         WorkspacePathPolicy.RejectReparsePoints(packageDirectory, document.Model.Path, requireExists: true);
         if (!File.Exists(modelPath) || !Path.GetExtension(modelPath).Equals(".glb", StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("Cabinet model must point to an existing package GLB.");
-        ValidatePackageModelGlb(modelPath);
+        ValidatePackageModelGlb(modelPath, packageDirectory);
     }
 
     private static void Validate(CabinetDocument document)

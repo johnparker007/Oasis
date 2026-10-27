@@ -150,11 +150,10 @@ public sealed partial class WorkspaceView
             _inspector.Children.Add(ActionButton($"Apply {recovered.Count} recovered FML inputs", () => Try(() => Machines.ApplyRecoveredInputs(recovered))));
 
         Heading("ASSET ASSIGNMENTS");
-        Field("Cabinet asset path", machine.CabinetAsset?.Path ?? "");
-        var cabinetScope = new ComboBox { ItemsSource = new[] { "Project", "Library" }, SelectedItem = machine.CabinetAsset?.Scope.ToString() ?? "Project" };
-        AddLabeledControl("Cabinet scope", cabinetScope);
+        var cabinetAsset = ReusableAssetCombo(EditorAssetType.Cabinet3D, machine.CabinetAsset);
+        AddLabeledControl("Cabinet asset", cabinetAsset);
         _inspector.Children.Add(ActionButton("Apply cabinet assignment", () => Try(() => Machines.UpdateDocument(current => current with
-        { CabinetAsset = string.IsNullOrWhiteSpace(_fields["Cabinet asset path"].Text) ? null : new AssetReference(Enum.Parse<AssetReferenceScope>(cabinetScope.SelectedItem!.ToString()!), _fields["Cabinet asset path"].Text!) }))));
+        { CabinetAsset = SelectedReusableAsset(cabinetAsset) }))));
 
         Heading("FACE SURFACE ASSIGNMENTS");
         for (var i = 0; i < machine.SurfaceAssignments.Length; i++)
@@ -173,32 +172,59 @@ public sealed partial class WorkspaceView
         })));
 
         Heading("REEL ASSET ASSIGNMENTS");
-        for (var i = 0; i < machine.ReelAssignments.Length; i++)
+        foreach (var reference in LogicalReelReferences(machine))
         {
-            var assignment = machine.ReelAssignments[i]; Field($"Reel ref {i}", $"{assignment.MachineReelReference.Kind}:{assignment.MachineReelReference.Id}"); Field($"Reel asset {i}", assignment.ReelAsset.Path);
+            var current = machine.ReelAssignments.FirstOrDefault(a => a.MachineReelReference == reference)?.ReelAsset;
+            var reelAsset = ReusableAssetCombo(EditorAssetType.Reel, current);
+            AddLabeledControl($"{reference.Kind}:{reference.Id}", reelAsset);
+            _inspector.Children.Add(ActionButton($"Apply {reference.Kind}:{reference.Id}", () => Try(() => AssignMachineReel(reference, SelectedReusableAsset(reelAsset)))));
+            _inspector.Children.Add(ActionButton($"Remove {reference.Kind}:{reference.Id}", () => Try(() => AssignMachineReel(reference, null))));
         }
-        _inspector.Children.Add(ActionButton("Apply Reel assignments", () => Try(() =>
+        var newReelReference = new TextBox { PlaceholderText = "Enter a logical reference, for example reel:0" };
+        AddLabeledControl("New logical Reel reference", newReelReference);
+        var newReelAsset = ReusableAssetCombo(EditorAssetType.Reel);
+        newReelAsset.SelectedItem = (newReelAsset.ItemsSource as IEnumerable<ReusableAssetChoice>)?.FirstOrDefault(choice => choice.Reference is not null);
+        AddLabeledControl("New Reel asset", newReelAsset);
+        _inspector.Children.Add(ActionButton("Add Reel assignment", () => Try(() =>
         {
-            var assignments = machine.ReelAssignments.Select((x, i) =>
-            {
-                if (!MachineObjectReference.TryParse(_fields[$"Reel ref {i}"].Text, out var reference)) throw new ArgumentException("Each reel reference must be a valid Kind:Id value.");
-                return new MachineReelAssignment(reference, new AssetReference(x.ReelAsset.Scope, _fields[$"Reel asset {i}"].Text ?? ""));
-            }).ToArray();
-            Machines.UpdateDocument(current => current with { ReelAssignments = assignments });
+            if (!MachineObjectReference.TryParse(newReelReference.Text, out var reference) || reference.Kind != MachineObjectKind.Reel)
+                throw new ArgumentException("Enter a logical Reel reference such as reel:0.");
+            var asset = SelectedReusableAsset(newReelAsset) ?? throw new InvalidOperationException("Choose a Reel asset to create the assignment.");
+            AssignMachineReel(reference, asset);
         })));
 
         Heading("PREFAB DECLARATIONS");
         for (var i = 0; i < machine.PrefabDependencies.Length; i++)
-        { Field($"Prefab alias {i}", machine.PrefabDependencies[i].Alias); Field($"Prefab asset {i}", machine.PrefabDependencies[i].PrefabAsset.Path); }
-        _inspector.Children.Add(ActionButton("Apply Prefab declarations", () => Try(() =>
         {
-            var dependencies = machine.PrefabDependencies.Select((x, i) => new MachinePrefabDeclaration(_fields[$"Prefab alias {i}"].Text ?? "", new AssetReference(x.PrefabAsset.Scope, _fields[$"Prefab asset {i}"].Text ?? ""))).ToArray();
-            Machines.UpdateDocument(current => current with { PrefabDependencies = dependencies });
-        })));
+            var index = i;
+            var declaration = machine.PrefabDependencies[index];
+            var alias = new TextBox { Text = declaration.Alias };
+            AddLabeledControl($"Prefab alias {index}", alias);
+            var prefabAsset = ReusableAssetCombo(EditorAssetType.Object3D, declaration.PrefabAsset);
+            AddLabeledControl($"Prefab asset {index}", prefabAsset);
+            _inspector.Children.Add(ActionButton($"Apply Prefab declaration {index + 1}", () => Try(() =>
+            {
+                var selected = SelectedReusableAsset(prefabAsset) ?? throw new InvalidOperationException("Choose a Prefab asset or remove this declaration.");
+                var updatedAlias = string.IsNullOrWhiteSpace(alias.Text) ? throw new ArgumentException("Prefab alias is required.") : alias.Text.Trim();
+                Machines.UpdateDocument(current => current with
+                {
+                    PrefabDependencies = current.PrefabDependencies.Select((item, itemIndex) => itemIndex == index
+                        ? new MachinePrefabDeclaration(updatedAlias, selected) : item).ToArray()
+                });
+            })));
+            _inspector.Children.Add(ActionButton($"Remove Prefab declaration {index + 1}", () => Try(() =>
+                Machines.UpdateDocument(current => current with { PrefabDependencies = current.PrefabDependencies.Where((_, itemIndex) => itemIndex != index).ToArray() }))));
+        }
+        var newPrefabAlias = new TextBox { PlaceholderText = "Prefab alias" };
+        AddLabeledControl("New Prefab alias", newPrefabAlias);
+        var newPrefabAsset = ReusableAssetCombo(EditorAssetType.Object3D);
+        newPrefabAsset.SelectedItem = (newPrefabAsset.ItemsSource as IEnumerable<ReusableAssetChoice>)?.FirstOrDefault(choice => choice.Reference is not null);
+        AddLabeledControl("New Prefab asset", newPrefabAsset);
         _inspector.Children.Add(ActionButton("Add Prefab declaration", () => Try(() =>
         {
-            var asset = RequireProjectAsset("Object3D", "Object3D Prefabs");
-            Machines.UpdateDocument(current => current with { PrefabDependencies = [.. current.PrefabDependencies, new MachinePrefabDeclaration("prefab-" + Guid.NewGuid().ToString("N"), AssetReference.Project(asset.ManifestPath))] });
+            var alias = string.IsNullOrWhiteSpace(newPrefabAlias.Text) ? throw new ArgumentException("Enter a Prefab alias.") : newPrefabAlias.Text.Trim();
+            var asset = SelectedReusableAsset(newPrefabAsset) ?? throw new InvalidOperationException("Choose a Prefab asset.");
+            Machines.UpdateDocument(current => current with { PrefabDependencies = [.. current.PrefabDependencies, new MachinePrefabDeclaration(alias, asset)] });
         })));
 
         Heading("MACHINE ANCHORS");
@@ -246,6 +272,49 @@ public sealed partial class WorkspaceView
         var asset = Machines.ListProjectAssets().Where(candidate => string.Equals(candidate.Type, type, StringComparison.Ordinal))
             .OrderBy(candidate => candidate.Name, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
         return asset ?? throw new InvalidOperationException($"No registered {friendlyName} asset exists in this project. Create or import one before adding this assignment.");
+    }
+
+    private ComboBox ReusableAssetCombo(EditorAssetType type, AssetReference? current = null)
+    {
+        var choices = GetReusableAssetChoices(type, current);
+        var combo = new ComboBox
+        {
+            ItemsSource = choices,
+            SelectedItem = choices.FirstOrDefault(choice => choice.Reference == current) ?? choices.FirstOrDefault(),
+            MinWidth = 220
+        };
+        combo.DropDownOpened += (_, _) =>
+        {
+            var selected = combo.SelectedItem is ReusableAssetChoice choice ? choice.Reference : current;
+            var refreshed = GetReusableAssetChoices(type, selected);
+            combo.ItemsSource = refreshed;
+            combo.SelectedItem = refreshed.FirstOrDefault(item => item.Reference == selected) ?? refreshed.FirstOrDefault();
+        };
+        return combo;
+    }
+
+    private static AssetReference? SelectedReusableAsset(ComboBox combo)
+        => (combo.SelectedItem as ReusableAssetChoice)?.Reference;
+
+    private IReadOnlyList<MachineObjectReference> LogicalReelReferences(MachineDocument machine)
+    {
+        var references = machine.ReelAssignments.Select(assignment => assignment.MachineReelReference)
+            .Where(reference => reference.Kind == MachineObjectKind.Reel && !reference.IsEmpty).ToHashSet();
+        foreach (var assignment in machine.SurfaceAssignments)
+        {
+            try
+            {
+                var manifest = _session.ResolveAsset(assignment.FaceAssetPath);
+                if (!FaceDocumentStorage.TryReadValidated(File.ReadAllText(manifest), out var face, out _)) continue;
+                foreach (var element in face.Elements ?? [])
+                    if (string.Equals(element.Kind, "reelMount", StringComparison.OrdinalIgnoreCase)
+                        && MachineObjectReference.TryParse(element.LinkedMachineObjectReference, out var reference)
+                        && reference.Kind == MachineObjectKind.Reel)
+                        references.Add(reference);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidDataException) { }
+        }
+        return references.OrderBy(reference => reference.Id, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
     private void AddLabeledControl(string label, Control control)

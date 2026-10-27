@@ -46,7 +46,7 @@ public sealed partial class WorkspaceView
         try { _sceneRows.Clear();_sceneRows.Add(new(reel.Id,reel.DisplayName,"Reel",0));_sceneHierarchy.SelectedItem=_sceneRows[0]; }
         finally {_sceneHierarchyUpdating=false;}
         var identity="Reel:"+Reels.FilePath;UpdateSceneDisplay(identity!=_sceneIdentity);_sceneIdentity=identity;
-        RefreshReelInspector();SetStatus($"Reel • {reel.DiameterMm:g} mm diameter × {reel.WidthMm:g} mm width");
+        Refresh3DInspector();SetStatus($"Reel • {reel.DiameterMm:g} mm diameter × {reel.WidthMm:g} mm width");
         void Vertex(Vector3 p,Vector3 n) => vertices.AddRange([p.X,p.Y,p.Z,n.X,n.Y,n.Z,0,0]);
         void Triangle(Vector3 a,Vector3 b,Vector3 c,Vector3 n)
         {var start=vertices.Count/8;Vertex(a,n);Vertex(b,n);Vertex(c,n);indices.AddRange([start,start+1,start+2]);}

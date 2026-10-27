@@ -5,13 +5,15 @@ using System.Buffers.Binary;
 
 namespace OasisEditor;
 
-public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession, string assetFolder, string manifestName)
+public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession, string assetFolder, string manifestName, string? libraryAssetFolder = null)
 {
     private readonly Dictionary<string, string> _packageHashes = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
     private string? _boundProjectRoot;
     private string? _boundProjectFile;
+    private string? _boundLibraryRoot;
     protected readonly AuthoringSession ProjectSession = projectSession ?? throw new ArgumentNullException(nameof(projectSession));
     protected readonly string AssetFolder = assetFolder;
+    protected readonly string LibraryAssetFolder = libraryAssetFolder ?? assetFolder;
     protected readonly string ManifestName = manifestName;
     protected string? ManifestPath { get; private set; }
     protected string? PackageDirectory { get; private set; }
@@ -21,6 +23,8 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
     protected abstract string CurrentPayload { get; }
     protected abstract void SetCurrentPayload(string payload);
     public string? FilePath => ManifestPath;
+    public bool IsLibraryAsset => _boundLibraryRoot is not null;
+    public string? LibraryRoot => _boundLibraryRoot;
     public bool CanUndo => IsProjectCurrent && HistoryIndex > 0;
     public bool CanRedo => IsProjectCurrent && HistoryIndex + 1 < History.Count;
     public bool IsDirty => ManifestPath is not null && CurrentPayload != SavedPayload;
@@ -77,6 +81,22 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
             throw new InvalidDataException($"Expected Assets/{AssetFolder}/<package>/{ManifestName}.");
         var result = WorkspacePathPolicy.ResolveConfined(root, relative, requireExists: true);
         if (!File.Exists(result)) throw new FileNotFoundException("Asset manifest was not found.", result);
+        return result;
+    }
+
+    protected string ResolveLibraryManifest(string libraryRoot, string libraryRelativeManifest)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(libraryRoot);
+        ArgumentException.ThrowIfNullOrWhiteSpace(libraryRelativeManifest);
+        var root = Path.GetFullPath(libraryRoot);
+        WorkspacePathPolicy.RejectRootReparsePoints(root, requireExists: true);
+        var relative = WorkspacePathPolicy.NormalizeRelativePath(libraryRelativeManifest);
+        var segments = relative.Split(Path.DirectorySeparatorChar);
+        if (segments.Length < 3 || !segments[0].Equals(LibraryAssetFolder, StringComparison.OrdinalIgnoreCase)
+            || !segments[^1].Equals(ManifestName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException($"Expected {LibraryAssetFolder}/<package>/{ManifestName} inside the Oasis Library.");
+        var result = WorkspacePathPolicy.ResolveConfined(root, relative, requireExists: true);
+        if (!File.Exists(result)) throw new FileNotFoundException("Library asset manifest was not found.", result);
         return result;
     }
 
@@ -161,13 +181,14 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
         if (IsDirty) throw new InvalidOperationException("Save or undo the current 3D asset edits before replacing the open document.");
     }
 
-    protected void SetOpen(string manifest, string payload, IReadOnlyDictionary<string, string> packageHashes)
+    protected void SetOpen(string manifest, string payload, IReadOnlyDictionary<string, string> packageHashes, string? libraryRoot = null)
     {
         EnsureCanReplaceDocument();
         var root = ProjectRoot;
         ManifestPath = manifest;
         _boundProjectRoot = root;
         _boundProjectFile = Path.GetFullPath(ProjectSession.ProjectFilePath!);
+        _boundLibraryRoot = libraryRoot is null ? null : Path.GetFullPath(libraryRoot);
         PackageDirectory = Path.GetDirectoryName(ManifestPath)!;
         ReplacePackageHashes(packageHashes);
         SavedPayload = payload;
@@ -182,6 +203,7 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
         PackageDirectory = Path.GetDirectoryName(manifest)!;
         _boundProjectRoot = root;
         _boundProjectFile = Path.GetFullPath(ProjectSession.ProjectFilePath!);
+        _boundLibraryRoot = null;
         ReplacePackageHashes(packageHashes);
         SavedPayload = payload;
         History.Clear(); History.Add(payload); HistoryIndex = 0;
@@ -194,6 +216,7 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
         PackageDirectory = null;
         _boundProjectRoot = null;
         _boundProjectFile = null;
+        _boundLibraryRoot = null;
         SavedPayload = string.Empty;
         History.Clear(); HistoryIndex = -1;
         _packageHashes.Clear();
@@ -211,7 +234,7 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
 
     protected static Dictionary<string, string> CapturePackageHashes(string package) => Fingerprint(package);
 
-    protected static void ValidatePackageModelGlb(string path) => ValidateSelfContainedGlb(path);
+    protected static void ValidatePackageModelGlb(string path, string? allowedPackageRoot = null) => ValidateGlb(path, allowedPackageRoot);
 
     protected static Dictionary<string, string> CaptureAfterOwnedFileWrite(string package, IReadOnlyDictionary<string, string> before, string relativePath, string absolutePath)
     {
@@ -286,7 +309,9 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
         EnsurePackageUnchanged();
         var baseline = new Dictionary<string, string>(_packageHashes, _packageHashes.Comparer);
         var manifestRelative = Path.GetRelativePath(PackageDirectory!, manifest).Replace('\\', '/');
-        var safeManifest = WorkspacePathPolicy.ResolveConfined(ProjectRoot, Path.GetRelativePath(ProjectRoot, manifest), requireExists: true);
+        var assetRoot = _boundLibraryRoot ?? ProjectRoot;
+        WorkspacePathPolicy.RejectRootReparsePoints(assetRoot, requireExists: true);
+        var safeManifest = WorkspacePathPolicy.ResolveConfined(assetRoot, Path.GetRelativePath(assetRoot, manifest), requireExists: true);
         var temp = safeManifest + ".tmp-" + Guid.NewGuid().ToString("N");
         try
         {
@@ -365,7 +390,9 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
         => after.Count == before.Count + 1 && before.All(pair => after.TryGetValue(pair.Key, out var hash) && hash == pair.Value)
             && after.TryGetValue(importedPath, out var newHash) && newHash == importedHash && !before.ContainsKey(importedPath);
 
-    private static void ValidateSelfContainedGlb(string path)
+    private static void ValidateSelfContainedGlb(string path) => ValidateGlb(path, allowedPackageRoot: null);
+
+    private static void ValidateGlb(string path, string? allowedPackageRoot)
     {
         var bytes = File.ReadAllBytes(path);
         if (bytes.Length < 20 || BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(0, 4)) != 0x46546C67
@@ -400,7 +427,7 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
                 || asset.ValueKind != JsonValueKind.Object
                 || !asset.TryGetProperty("version", out var version) || version.ValueKind != JsonValueKind.String || version.GetString() != "2.0")
                 throw new InvalidDataException("Model import requires a glTF 2.0 GLB document.");
-            RejectExternalUris(document.RootElement);
+            RejectExternalUris(document.RootElement, path, allowedPackageRoot);
         }
         catch (JsonException exception)
         {
@@ -408,7 +435,7 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
         }
     }
 
-    private static void RejectExternalUris(JsonElement element)
+    private static void RejectExternalUris(JsonElement element, string modelPath, string? allowedPackageRoot)
     {
         if (element.ValueKind == JsonValueKind.Object)
         {
@@ -417,13 +444,36 @@ public abstract class ThreeDAuthoringSessionBase(AuthoringSession projectSession
                 if (string.Equals(property.Name, "uri", StringComparison.OrdinalIgnoreCase)
                     && property.Value.ValueKind == JsonValueKind.String
                     && !property.Value.GetString()!.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("Model import only supports GLB files with embedded resources; external buffer or image URIs are not allowed.");
-                RejectExternalUris(property.Value);
+                {
+                    if (allowedPackageRoot is null)
+                        throw new InvalidDataException("Model import only supports GLB files with embedded resources; external buffer or image URIs are not allowed.");
+                    ValidatePackageUri(property.Value.GetString()!, modelPath, allowedPackageRoot);
+                }
+                RejectExternalUris(property.Value, modelPath, allowedPackageRoot);
             }
         }
         else if (element.ValueKind == JsonValueKind.Array)
         {
-            foreach (var item in element.EnumerateArray()) RejectExternalUris(item);
+            foreach (var item in element.EnumerateArray()) RejectExternalUris(item, modelPath, allowedPackageRoot);
         }
+    }
+
+    private static void ValidatePackageUri(string uri, string modelPath, string packageRoot)
+    {
+        var decoded = Uri.UnescapeDataString(uri);
+        if (Uri.TryCreate(decoded, UriKind.Absolute, out _) || decoded.Contains(':') || decoded.StartsWith('/') || decoded.StartsWith('\\')
+            || decoded.Contains('?') || decoded.Contains('#'))
+            throw new InvalidDataException($"GLB dependency URI '{uri}' must be relative to its package.");
+        var normalized = decoded.Replace('\\', '/');
+        if (normalized.Split('/').Any(segment => segment.Length == 0 || segment is "." or ".."))
+            throw new InvalidDataException($"GLB dependency URI '{uri}' contains an unsafe path segment.");
+
+        var package = Path.GetFullPath(packageRoot);
+        var modelDirectory = Path.GetDirectoryName(Path.GetFullPath(modelPath))!;
+        var dependencyPath = Path.GetFullPath(Path.Combine(modelDirectory, normalized.Replace('/', Path.DirectorySeparatorChar)));
+        var relative = Path.GetRelativePath(package, dependencyPath);
+        var contained = WorkspacePathPolicy.ResolveConfined(package, relative, requireExists: true);
+        WorkspacePathPolicy.RejectReparsePoints(package, relative, requireExists: true);
+        if (!File.Exists(contained)) throw new FileNotFoundException($"GLB dependency '{uri}' is missing from its package.", contained);
     }
 }
