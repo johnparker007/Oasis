@@ -85,6 +85,9 @@ public sealed partial class WorkspaceView
         if (HasUnsavedChanges || !Machines.IsProjectCurrent) throw new InvalidOperationException("Save the current project documents before previewing.");
         var machine = Machines.Document ?? throw new InvalidOperationException("Open a configured Machine first.");
         Machines.EnsureSavedSourceUnchanged();
+        if (machine.Runtime is EmulationRuntimeDefinition runtime && runtime.Platform != FruitMachinePlatformType.None)
+            machine = machine with { Runtime = runtime with { PlatformSettings = FabricRomResourceResolver.ResolveSettingsPaths(
+                _session.RequireEditorProject(), runtime.Platform, runtime.PlatformSettings) } };
         _previewSource = PreviewSource(); _previewSourceCurrent = true;
         await Preview.StartAsync(machine, NativePreviewPreferences, audible, () => _previewSourceCurrent, cancellationToken);
         SetStatus($"{machine.DisplayName}: {Preview.State} ({(audible ? "audio enabled" : "silent diagnostic audio")}).");

@@ -354,7 +354,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     private void Field(string name, object value)
     {
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("70,*") };
-        row.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
+        row.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap });
         var box = new TextBox { Text = Convert.ToString(value, CultureInfo.InvariantCulture) }; _fields[name] = box;
         Grid.SetColumn(box, 1); row.Children.Add(box); _inspector.Children.Add(row);
     }

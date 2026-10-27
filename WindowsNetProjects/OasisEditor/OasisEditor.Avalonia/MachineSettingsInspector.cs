@@ -251,7 +251,7 @@ public sealed partial class WorkspaceView
     private void AddLabeledControl(string label, Control control)
     {
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("145,*"), ColumnSpacing = 8 };
-        row.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center });
+        row.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, TextWrapping = global::Avalonia.Media.TextWrapping.Wrap });
         Grid.SetColumn(control, 1); row.Children.Add(control); _inspector.Children.Add(row);
     }
 
@@ -301,7 +301,7 @@ public sealed partial class WorkspaceView
     {
         editor.Name = "MachineSetting_" + string.Concat(label.Where(char.IsLetterOrDigit));
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("125,*"), ColumnSpacing = 6 };
-        row.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, FontSize = 12 });
+        row.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, FontSize = 12, TextWrapping = global::Avalonia.Media.TextWrapping.Wrap });
         Grid.SetColumn(editor, 1); row.Children.Add(editor); return row;
     }
 
