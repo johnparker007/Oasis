@@ -114,6 +114,22 @@ public sealed class WorkspaceCapture : IDisposable
         return stream.ToArray();
     }
 
+    public async Task<byte[]> CaptureFaceArtworkEditor(AuthoringSession session, FaceAuthoringSession faces, bool calibrationStage, string theme)
+    {
+        if (!Program.IsHeadless) throw new InvalidOperationException("Recipe capture requires the isolated headless host.");
+        _ = Capture(theme: theme);
+        Window? dialog = null;
+        var task = FaceArtworkRecipeEditor.ShowAsync(_window, session, faces, window => dialog = window, calibrationStage);
+        if (dialog is null) { await task; throw new InvalidOperationException("Artwork editor could not be opened."); }
+        try
+        {
+            dialog.UpdateLayout(); Dispatcher.UIThread.RunJobs(); AvaloniaHeadlessPlatform.ForceRenderTimerTick(2);
+            using var bitmap = new RenderTargetBitmap(new PixelSize((int)dialog.Width, (int)dialog.Height), new Vector(96, 96));
+            bitmap.Render(dialog); using var stream = new MemoryStream(); bitmap.Save(stream); return stream.ToArray();
+        }
+        finally { dialog.Close(); await task; }
+    }
+
     public IReadOnlyList<byte[]> CaptureFloatingWindows()
     {
         var images = new List<byte[]>();

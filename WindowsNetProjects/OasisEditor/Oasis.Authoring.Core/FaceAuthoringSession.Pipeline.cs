@@ -205,9 +205,15 @@ public sealed partial class FaceAuthoringSession
         artwork = CopyArtwork(artwork, correctionInput: correction);
         artwork = BuildArtworkStages(artwork, projectDirectory);
         artworkFile = FaceDocumentStorage.ToFile(new FaceDocumentModel { Artwork = artwork }).Artwork!;
-        var rebuilt = document with { Artwork = artworkFile };
-        var changed = FaceDocumentStorage.SerializePayload(rebuilt) != FaceDocumentStorage.SerializePayload(document);
-        Commit(rebuilt);
+        var state = CloneBuildState(document.BuildState);
+        foreach (var product in new[] { FaceGeneratedProduct.ArtworkCorrectionInput, FaceGeneratedProduct.BaseArtwork, FaceGeneratedProduct.ArtworkOutput }) MarkBuild(state, product, FaceBuildStatus.Current);
+        InvalidateConfigured(state, FaceGeneratedProduct.RuntimeAssets);
+        if (document.Artwork?.FinalOutputWidth != artworkFile.FinalOutputWidth || document.Artwork?.FinalOutputHeight != artworkFile.FinalOutputHeight)
+            InvalidateConfigured(state, FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays);
+        var rebuilt = document with { Artwork = artworkFile, BuildState = state };
+        var changed = System.Text.Json.JsonSerializer.Serialize(artworkFile) != System.Text.Json.JsonSerializer.Serialize(document.Artwork);
+        if (changed) Commit(rebuilt, generated: true);
+        else _history[_historyIndex] = rebuilt;
         CaptureGeneratedFaceFiles(projectDirectory, document.Title ?? "Face");
         if (!changed) Changed?.Invoke();
     }

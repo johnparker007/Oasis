@@ -4,7 +4,7 @@ The parallel Editor now supports native project creation, Panel2D authoring/impo
 Face generation/artwork processing, specialist 2D rendering, full non-3D Machine
 settings, Player build/export/launch, real native preview, Cabinet/Prefab/Machine
 3D authoring views and workspace persistence.
-WPF remains available for its other asset editors. Authored schemas and Player files
+WPF remains available alongside the portable editor. Authored schemas and Player files
 are unchanged by this migration.
 
 ## Delivered
@@ -372,3 +372,29 @@ real GPU sibling-renderer survival and restored Dark/Light captures. Images were
 inspected. The existing Reel/Library and authoring MCP regressions remain in use.
 Shared Skia deprecation/nullability warnings remain; no desktop interaction,
 audible/native gameplay, or macOS/Linux execution is claimed by this feature check.
+
+## Face build and artwork editing
+
+Image-based Face recipes now have an interactive source registration view and a
+Correction Input calibration view. Drag corners, place/move/remove pixel or area
+samples, and manage same-colour groups. Apply and rebuild commits native recipe
+history. Saved Panel2D sources retain the numeric recipe editor.
+
+Face Build regenerates configured artwork, normalized lamp masks and native
+trays/emitters as one document history entry. Runtime Build additionally invokes
+the production standalone texture exporter; components requiring Machine composition
+must use the existing Machine build. Build does not save the authored manifest.
+Failures and cancellation restore the generated tree and document history. External
+package/generated changes, links, and outputs outside the bound generated package
+are refused. Lamp and component edits invalidate their dependent build states.
+
+Authored lamp-mask import keeps an immutable package source and builds a separate
+normalized generated mask. Source switching restores the linked saved Panel2D
+artwork or mask. Component rebuild explicitly confirms replacement of local
+component edits, preserving artwork and illumination. Current Base artwork can
+be copied to an override; overrides can be enabled, disabled or removed through
+history. Panel inspectors additionally expose asset paths, background colours and
+Label lamp/text properties through the native session and MCP.
+
+`capture_face_artwork_editor` renders the actual registration/calibration dialog
+in the isolated MCP host, without native windows or desktop capture.

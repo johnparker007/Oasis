@@ -360,7 +360,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
             _inspector.Children.Add(ActionButton("Move selection", () => Try(() => _session.MoveSelected(Number("Move X"), Number("Move Y")))));
             return;
         }
-        if (selected is null) { Heading("Select an element"); _inspector.Children.Add(new TextBlock { Text = "Choose an item in the Hierarchy or viewport, or a Face source region.", TextWrapping = TextWrapping.Wrap }); return; }
+        if (selected is null) { if (_faceActive && Faces.FacePath is not null) { AppendFaceBuildInspector(); return; } Heading("Select an element"); _inspector.Children.Add(new TextBlock { Text = "Choose an item in the Hierarchy or viewport, or a Face source region.", TextWrapping = TextWrapping.Wrap }); return; }
         Heading(selected.Kind.ToUpperInvariant());
         Field("Name", selected.Name); Field("X", selected.X); Field("Y", selected.Y); Field("Width", selected.Width); Field("Height", selected.Height);
         var lampIndex = _faceActive ? Faces.Elements.FirstOrDefault(e => e.Id == selected.Id)?.LampId : null;
@@ -375,7 +375,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         })));
         if (selected.AssetPath is not null) _inspector.Children.Add(new TextBlock { Text = selected.AssetPath, TextWrapping = TextWrapping.Wrap, Opacity = .65 });
         if(_faceActive) { AppendFaceReelInspector(selected.Id); AppendFaceComponentInspector(selected.Id); }
-        else AppendPanelComponentInspector(selected.Id);
+        else { AppendPanelComponentInspector(selected.Id); AppendPanelInspectorParity(selected.Id); }
     }
     private void Heading(string text) => _inspector.Children.Add(new TextBlock { Text = text, FontWeight = FontWeight.SemiBold });
     private double Number(string name) => double.TryParse(_fields[name].Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && double.IsFinite(value)
