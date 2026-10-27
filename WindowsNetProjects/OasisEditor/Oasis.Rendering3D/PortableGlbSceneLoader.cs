@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Text.Json;
+using OasisEditor;
 using OasisEditor.Features.CabinetEditor.Services;
 using SharpGLTF.Schema2;
 
@@ -263,9 +264,17 @@ public sealed class PortableGlbSceneLoader
             throw new InvalidDataException($"GLB {resourceType} URI must be relative to the model folder: {uri}");
 
         var modelDirectory = Path.GetFullPath(Path.GetDirectoryName(modelPath)!);
-        var resolved = Path.GetFullPath(Path.Combine(modelDirectory, decoded.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar)));
-        var relative = Path.GetRelativePath(modelDirectory, resolved);
-        if (relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) || Path.IsPathRooted(relative))
-            throw new InvalidDataException($"GLB {resourceType} URI escapes the model folder: {uri}");
+        try
+        {
+            _ = WorkspacePathPolicy.ResolveConfined(modelDirectory, decoded.Replace('\\', '/'), requireExists: true);
+        }
+        catch (InvalidDataException exception)
+        {
+            throw new InvalidDataException($"GLB {resourceType} URI is not confined to the model folder: {uri}. {exception.Message}", exception);
+        }
+        catch (FileNotFoundException exception)
+        {
+            throw new InvalidDataException($"GLB {resourceType} resource was not found: {uri}", exception);
+        }
     }
 }

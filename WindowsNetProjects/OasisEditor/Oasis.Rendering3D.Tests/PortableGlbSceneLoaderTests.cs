@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using System.Text;
 using Oasis.Rendering3D;
@@ -9,6 +10,7 @@ namespace Oasis.Rendering3D.Tests;
 public sealed class PortableGlbSceneLoaderTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "OasisPortableGlbTests", Guid.NewGuid().ToString("N"));
+    private readonly string _outsideRoot = Path.Combine(Path.GetTempPath(), "OasisPortableGlbExternal", Guid.NewGuid().ToString("N"));
 
     [Fact]
     public async Task LoadsNestedTransformsSemanticMeshesAndPbrTextureMetadata()
@@ -79,7 +81,32 @@ public sealed class PortableGlbSceneLoaderTests : IDisposable
         var result = await new PortableGlbSceneLoader().LoadAsync(path);
 
         Assert.False(result.Succeeded);
-        Assert.Contains("escapes the model folder", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("not confined to the model folder", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RejectsExternalTextureReachedThroughDirectorySymbolicLink()
+    {
+        Directory.CreateDirectory(_root);
+        Directory.CreateDirectory(_outsideRoot);
+        try
+        {
+            Directory.CreateSymbolicLink(Path.Combine(_root, "textures"), _outsideRoot);
+        }
+        catch (Exception exception) when (exception is UnauthorizedAccessException or PlatformNotSupportedException or IOException)
+        {
+            Trace.WriteLine($"Symlink regression was not exercised because this environment rejected temporary symlink creation: {exception.GetType().Name}.");
+            return;
+        }
+
+        var path = Path.Combine(_root, "machine.glb");
+        var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jGQAAAABJRU5ErkJggg==");
+        WriteFixture(path, png, externalImage: true);
+
+        var result = await new PortableGlbSceneLoader().LoadAsync(path);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("symbolic link or reparse point", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     private static void WriteFixture(string path, byte[] png, bool externalImage = false)
@@ -149,6 +176,9 @@ public sealed class PortableGlbSceneLoaderTests : IDisposable
 
     public void Dispose()
     {
+        var texturesLink = new DirectoryInfo(Path.Combine(_root, "textures"));
+        if (texturesLink.LinkTarget is not null) texturesLink.Delete();
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
+        if (Directory.Exists(_outsideRoot)) Directory.Delete(_outsideRoot, recursive: true);
     }
 }
