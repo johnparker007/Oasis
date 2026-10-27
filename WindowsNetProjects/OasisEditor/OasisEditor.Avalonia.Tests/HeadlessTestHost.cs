@@ -1,18 +1,26 @@
+using Avalonia.Threading;
+
 namespace OasisEditor.Avalonia.Tests;
 
-/// <summary>Initializes Avalonia's process-wide headless platform exactly once across UI tests.</summary>
 internal static class HeadlessTestHost
 {
-    private static readonly object Gate = new();
-    private static bool initialized;
-
-    public static void Initialize()
+    private static readonly Lazy<Task<Dispatcher>> Host = new(Start);
+    private static Task<Dispatcher> Start()
     {
-        lock (Gate)
+        var ready = new TaskCompletionSource<Dispatcher>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread = new Thread(() =>
         {
-            if (initialized) return;
-            global::OasisEditor.Avalonia.Program.BuildHeadless().SetupWithoutStarting();
-            initialized = true;
-        }
+            try
+            {
+                Program.BuildHeadless().SetupWithoutStarting();
+                ready.SetResult(Dispatcher.UIThread);
+                Dispatcher.UIThread.MainLoop(CancellationToken.None);
+            }
+            catch (Exception e) { ready.TrySetException(e); }
+        }) { IsBackground = true, Name = "Oasis headless test UI" };
+        if (OperatingSystem.IsWindows()) thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        return ready.Task;
     }
+    public static void Run(Action test) => Host.Value.GetAwaiter().GetResult().InvokeAsync(test).GetAwaiter().GetResult();
 }

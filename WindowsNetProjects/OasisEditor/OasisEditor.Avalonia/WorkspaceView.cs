@@ -39,7 +39,10 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     private readonly TextBlock _project = new() { Margin = new Thickness(10, 7), FontWeight = FontWeight.SemiBold };
     private readonly TextBlock _mode = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0), FontSize = 11, Opacity = .65 };
     private readonly Button _undo, _redo, _save;
-    private readonly Document _document;
+    private Document _document;
+    private readonly WorkspaceDockFactory _factory;
+    private readonly DockControl _dock;
+    partial void AddFaceWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
     private readonly Dictionary<string, TextBox> _fields = [];
     private CheckBox? _visible, _locked;
     private bool _refreshing;
@@ -110,9 +113,10 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         tools.Children.Add(_mode);
         scene.Children.Add(Toolbar(tools)); Grid.SetRow(_viewport, 1); scene.Children.Add(_viewport);
         _document = new Document { Id = "Authoring", Title = "Panel 2D", Context = scene, CanClose = false };
-        var factory = new WorkspaceDockFactory(hierarchy, projectPanel, new ScrollViewer { Content = _inspector }, _document);
-        var layout = factory.CreateLayout(); factory.InitLayout(layout);
-        var dock = new DockControl { Layout = layout };
+        _factory = new WorkspaceDockFactory(hierarchy, projectPanel, new ScrollViewer { Content = _inspector }, () => _document);
+        var layout = _factory.CreateLayout(); _factory.InitLayout(layout);
+        _document = (Document)WorkspaceLayoutState.LeafMap(layout)["Authoring"];
+        _dock = new DockControl { Layout = layout };
 
         var root = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto") };
         var file = new MenuItem { Header = "_File" };
@@ -120,6 +124,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         MenuAction(file, "Open project…", async () => await OpenProjectDialog());
         MenuAction(file, "Save", () => Try(SaveActive));
         MenuAction(file, "Import FML layout…", async () => await ImportFml());
+        AddFaceWorkflowMenus(file, create);
         AddMachineWorkflowMenus(file, create);
         var edit = new MenuItem { Header = "_Edit" };
         MenuAction(edit, "Undo", () => Try(UndoActive)); MenuAction(edit, "Redo", () => Try(RedoActive));
@@ -128,6 +133,9 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         MenuAction(edit, "Bring forward", () => Try(() => { RequirePanel(); session.MoveSelectionInOrder(true); }));
         MenuAction(edit, "Send backward", () => Try(() => { RequirePanel(); session.MoveSelectionInOrder(false); }));
         var windowMenu = new MenuItem { Header = "_Window" };
+        MenuAction(windowMenu, "Save workspace", () => Try(SaveWorkspace));
+        MenuAction(windowMenu, "Restore workspace", () => Try(RestoreWorkspace));
+        MenuAction(windowMenu, "Reset layout", () => Try(ResetLayout));
         foreach (var theme in new[] { "System", "Dark", "Light" }) MenuAction(windowMenu, theme + " theme", () =>
         { Application.Current!.RequestedThemeVariant = theme == "Dark" ? ThemeVariant.Dark : theme == "Light" ? ThemeVariant.Light : ThemeVariant.Default; _viewport.InvalidateVisual(); });
         root.Children.Add(new Menu { ItemsSource = new[] { file, edit, windowMenu } });
@@ -139,7 +147,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         _redo = ActionButton("Redo", () => Try(RedoActive)); toolbar.Children.Add(_redo);
         toolbar.Children.Add(new TextBlock { Text = "OASIS  /  AUTHORING", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0), FontWeight = FontWeight.SemiBold });
         var bar = Toolbar(toolbar); Grid.SetRow(bar, 1); root.Children.Add(bar);
-        Grid.SetRow(dock, 2); root.Children.Add(dock);
+        Grid.SetRow(_dock, 2); root.Children.Add(_dock);
         var status = Toolbar(_status); Grid.SetRow(status, 3); root.Children.Add(status); Content = root;
         KeyDown += (_, e) =>
         {
@@ -354,20 +362,27 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         var border = new Border { Child = child, BorderThickness = new Thickness(0, 0, 0, 1) };
         border.Bind(BackgroundProperty, border.GetResourceObservable("ToolbarBrush")); border.Bind(Border.BorderBrushProperty, border.GetResourceObservable("DividerBrush")); return border;
     }
-    public void Dispose() { _session.Changed -= Refresh; Faces.Changed -= Refresh; Machines.Changed -= Refresh; _viewport.Dispose(); }
+    public void Dispose()
+    {
+        _session.Changed -= Refresh; Faces.Changed -= Refresh; Machines.Changed -= Refresh;
+        if (_dock.Layout is IRootDock root) root.ExitWindows.Execute(null);
+        _viewport.Dispose();
+    }
 }
 
-internal sealed class WorkspaceDockFactory(Control hierarchy, Control project, Control inspector, Document document) : Factory
+internal sealed class WorkspaceDockFactory(Control hierarchy, Control project, Control inspector, Func<Document> document) : Factory
 {
     public override IRootDock CreateLayout()
     {
+        var source = document();
+        var authoring = new Document { Id = source.Id, Title = source.Title, Context = source.Context, CanClose = false };
         ToolDock Pane(string id, Control content, double proportion)
         {
             var tool = new Tool { Id = id, Title = id, Context = content, CanClose = false };
             return new ToolDock { Proportion = proportion, ActiveDockable = tool, VisibleDockables = CreateList<IDockable>(tool), CanClose = false };
         }
         var center = new ProportionalDock { Orientation = DockOrientation.Vertical, Proportion = .60,
-            VisibleDockables = CreateList<IDockable>(new DocumentDock { ActiveDockable = document, VisibleDockables = CreateList<IDockable>(document), Proportion = .75 }, new ProportionalDockSplitter(), Pane("Project", project, .25)) };
+            VisibleDockables = CreateList<IDockable>(new DocumentDock { ActiveDockable = authoring, VisibleDockables = CreateList<IDockable>(authoring), Proportion = .75 }, new ProportionalDockSplitter(), Pane("Project", project, .25)) };
         var main = new ProportionalDock { Orientation = DockOrientation.Horizontal,
             VisibleDockables = CreateList<IDockable>(Pane("Hierarchy", hierarchy, .18), new ProportionalDockSplitter(), center, new ProportionalDockSplitter(), Pane("Inspector", inspector, .22)) };
         return new RootDock { Id = "Root", ActiveDockable = main, DefaultDockable = main, VisibleDockables = CreateList<IDockable>(main) };

@@ -27,6 +27,9 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
 
     public void RequestFit() { _fit = true; InvalidateVisual(); }
     public void Fit() { _fit = true; InvalidateVisual(); }
+    public WorkspaceViewportState CaptureViewState() => new(_zoom, _pan.X, _pan.Y, _fit);
+    public void RestoreViewState(WorkspaceViewportState state)
+    { state.Validate(); _zoom = state.Zoom; _pan = new Vector(state.PanX, state.PanY); _fit = state.Fit; InvalidateVisual(); }
     public void ClearImages() { foreach (var image in _images.Values) image.Dispose(); _images.Clear(); }
 
     public override void Render(DrawingContext context)

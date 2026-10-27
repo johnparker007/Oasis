@@ -11,7 +11,8 @@ public sealed class WorkspaceViewTests
     [Fact]
     public void RealWorkspaceSelectionAndInspectorEditShareHistoryAndRenderInBothThemes()
     {
-            HeadlessTestHost.Initialize();
+        HeadlessTestHost.Run(() =>
+        {
         var folder = Path.Combine(Path.GetTempPath(), "OasisAvaloniaUi-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
         try
@@ -75,5 +76,6 @@ public sealed class WorkspaceViewTests
             capture.View.Faces.Undo();
         }
         finally { Directory.Delete(folder, recursive: true); }
+        });
     }
 }
