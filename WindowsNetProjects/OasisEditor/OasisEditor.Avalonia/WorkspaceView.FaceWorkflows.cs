@@ -53,7 +53,7 @@ public sealed partial class WorkspaceView
             try
             {
                 var path = Faces.CreateFromPanelFaceSourceShape(shape.Id, name.Text ?? shape.Name);
-                _faceActive = true; _selectedSource = null; Refresh(); SetStatus("Generated Face package: " + path); dialog.Close();
+                ShowFace(); SetStatus("Generated Face package: " + path); dialog.Close();
             }
             catch (Exception ex) when (ex is IOException or ArgumentException or InvalidOperationException or KeyNotFoundException or UnauthorizedAccessException)
             { message.Text = ex.Message; }

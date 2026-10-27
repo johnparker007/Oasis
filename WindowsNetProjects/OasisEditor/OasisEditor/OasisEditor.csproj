@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Features/CabinetEditor/Services/CabinetReflectionPlaneDeriver.cs" />
     <Compile Remove="MachineRuntimeBuildService.cs;OasisPlayerLaunchService.cs;FaceRuntimeExportService.cs;FaceRuntimeTextureGenerator.cs;FaceRuntimeCompositionContext.cs;Object3DDocument.cs;ReelDocument.cs;OasisScriptMachineValidator.cs;Progress\IEditorProgressReporter.cs;Progress\NoOpEditorProgressReporter.cs;Features\CabinetEditor\Models\CabinetDocument.cs;Features\CabinetEditor\Models\CabinetDocumentStorage.cs;Features\CabinetEditor\Models\CabinetModelReference.cs;Features\CabinetEditor\Models\CabinetReflectionReceiverTarget.cs;Features\CabinetEditor\Models\CabinetFaceTarget.cs;Features\CabinetEditor\Services\ICabinetFaceTargetDetector.cs;Features\CabinetEditor\Services\GlbCabinetFaceTargetDetector.cs;Features\CabinetEditor\Services\CabinetSemanticGeometry.cs;Features\CabinetEditor\Services\GlbCabinetSemanticGeometryValidator.cs;Features\CabinetEditor\Services\GlbCabinetReflectionReceiverDiscovery.cs;Features\CabinetEditor\Services\CabinetTriggerInventory.cs;Emulation\Fabric\FabricManagedModels.cs;Emulation\Fabric\FabricNativeTypes.cs;Emulation\Fabric\Amber\FabricAmber*Configuration.cs" />
   </ItemGroup>
 

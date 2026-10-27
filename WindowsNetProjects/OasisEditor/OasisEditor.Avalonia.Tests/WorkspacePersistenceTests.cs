@@ -10,6 +10,71 @@ namespace OasisEditor.Avalonia.Tests;
 public sealed class WorkspacePersistenceTests
 {
     [Fact]
+    public async Task ThreeDSceneAssetsCameraVisibilityAndSelectionRestore()
+    {
+        await HeadlessTestHost.RunAsync(async () =>
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "Oasis3DWorkspace-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(folder);
+            try
+            {
+                var session = new AuthoringSession(folder);
+                session.CreateProject("Project");
+                var source = Path.Combine(Path.GetDirectoryName(session.ProjectFilePath!)!, "Assets", "Source.glb");
+                File.WriteAllBytes(source, CreateMinimalGlb());
+                using var capture = new WorkspaceCapture(session);
+                var view = capture.View;
+                view.ConfigureWorkspacePersistence(Path.Combine(folder, "workspace.json"), restore: false);
+
+                var cabinetPath = view.Cabinets.Create("Cabinet", "Assets/Source.glb");
+                view.Cabinets.Save();
+                await view.OpenCabinet3DAsync(cabinetPath);
+                var cabinetCamera = new OasisEditor.Avalonia.Rendering3D.SceneCameraState(new(1, 2, 3), 8, 1.2f, .4f, 55);
+                view.SceneView.SetCamera(cabinetCamera);
+                view.SceneView.ShowVisuals = false; view.SceneView.ShowColliders = true; view.SceneView.ShowTriggers = true;
+                var savedCabinet = view.InspectWorkspaceState();
+                Assert.Equal("Cabinet3D", savedCabinet.Scene3D?.Mode);
+                Assert.Equal(Path.GetRelativePath(Path.GetDirectoryName(session.ProjectFilePath!)!, cabinetPath).Replace('\\', '/'), savedCabinet.Scene3D?.Cabinet);
+
+                view.SaveWorkspace();
+                view.RestoreWorkspace();
+                await view.WaitForSceneAsync();
+                Assert.Equal("Cabinet3D", view.SceneKind);
+                Assert.Equal(cabinetCamera, view.SceneView.Camera);
+                Assert.False(view.SceneView.ShowVisuals); Assert.True(view.SceneView.ShowColliders); Assert.True(view.SceneView.ShowTriggers);
+
+                var prefabPath = view.Prefabs.Create("Prefab");
+                var child = view.Prefabs.AddNode(view.Prefabs.Document.Root.Id, "Screen");
+                view.Prefabs.Save();
+                await view.OpenPrefab3DAsync(prefabPath);
+                view.SelectScene3DNode(child);
+                var prefabCamera = new OasisEditor.Avalonia.Rendering3D.SceneCameraState(new(-1, 4, 2), 3.5f, -.2f, .6f, 72);
+                view.SceneView.SetCamera(prefabCamera);
+                var savedPrefab = view.InspectWorkspaceState();
+                Assert.Equal("Prefab", savedPrefab.Scene3D?.Mode);
+                Assert.Equal(Path.GetRelativePath(Path.GetDirectoryName(session.ProjectFilePath!)!, prefabPath).Replace('\\', '/'), savedPrefab.Scene3D?.Prefab);
+
+                view.SaveWorkspace();
+                view.RestoreWorkspace();
+                await view.WaitForSceneAsync();
+                Assert.Equal("Prefab", view.SceneKind);
+                Assert.Equal(child, view.InspectWorkspaceState().Scene3D?.Selection);
+                Assert.Equal(prefabCamera, view.SceneView.Camera);
+                Assert.Equal("Screen", view.Prefabs.Document.Root.Children.Single().Name);
+
+                var activePath = view.Prefabs.FilePath;
+                Assert.Throws<InvalidDataException>(() => view.ApplyWorkspaceState(savedPrefab with
+                {
+                    Scene3D = savedPrefab.Scene3D! with { Prefab = "../outside/asset.object3d" }
+                }));
+                Assert.Equal(activePath, view.Prefabs.FilePath);
+                Assert.Equal("Prefab", view.SceneKind);
+            }
+            finally { Directory.Delete(folder, recursive: true); }
+        });
+    }
+
+    [Fact]
     public void MachineAndNativeLibrarySettingsRestoreWithoutStartingPreview()
     {
         HeadlessTestHost.Run(() =>
@@ -101,6 +166,22 @@ public sealed class WorkspacePersistenceTests
         Assert.Throws<InvalidDataException>(() => WorkspaceLayoutState.Restore(new("System.IO.FileInfo", "Inspector"), known));
         Assert.Throws<InvalidDataException>(() => WorkspaceLayoutState.Restore(new("Root", Proportion: double.NaN), known));
         Assert.Throws<InvalidDataException>(() => WorkspaceLayoutState.Deserialize("""{"Version":1,"Theme":"Dark","Layout":{},"$type":"Unexpected"}"""));
+        var legacy = WorkspaceLayoutState.Deserialize("""{"Version":1,"Theme":"Dark","Layout":{"Kind":"Root"}}""");
+        Assert.Null(legacy.Scene3D);
+    }
+
+    private static byte[] CreateMinimalGlb()
+    {
+        var json = System.Text.Encoding.UTF8.GetBytes("{\"asset\":{\"version\":\"2.0\"},\"scene\":0,\"scenes\":[{\"nodes\":[]}]}");
+        var paddedLength = (json.Length + 3) & ~3;
+        var result = new byte[20 + paddedLength];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(result.AsSpan(0, 4), 0x46546C67);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(result.AsSpan(4, 4), 2);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(result.AsSpan(8, 4), (uint)result.Length);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(result.AsSpan(12, 4), (uint)paddedLength);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(result.AsSpan(16, 4), 0x4E4F534A);
+        json.CopyTo(result.AsSpan(20)); result.AsSpan(20 + json.Length).Fill(0x20);
+        return result;
     }
 
     [Fact]

@@ -203,7 +203,7 @@ public sealed partial class WorkspaceView
         {
             if (mode.SelectedItem is not string modeName || !Enum.TryParse<Object3DRigidbodyMode>(modeName, out var parsedMode))
                 throw new ArgumentException("Choose a supported Rigidbody mode.");
-            var mass = parsedMode == Object3DRigidbodyMode.Dynamic ? Number("Rigidbody mass") : null;
+            double? mass = parsedMode == Object3DRigidbodyMode.Dynamic ? Number("Rigidbody mass") : null;
             var useGravity = (gravity.SelectedItem as NullableBoolOption)?.Value;
             Prefabs.SetRigidbody(nodeId, new Object3DRigidbodyDefinition(parsedMode, mass, useGravity));
         })));

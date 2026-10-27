@@ -2,7 +2,8 @@
 
 The parallel Editor now supports native project creation, Panel2D authoring/import,
 Face generation/artwork processing, specialist 2D rendering, full non-3D Machine
-settings, Player build/export/launch, real native preview and workspace persistence.
+settings, Player build/export/launch, real native preview, Cabinet/Prefab/Machine
+3D authoring views and workspace persistence.
 WPF remains available for its other asset editors. Authored schemas and Player files
 are unchanged by this migration.
 
@@ -14,7 +15,8 @@ are unchanged by this migration.
   default Machine and standard folders. Existing destinations are refused, with
   atomic reservation for concurrent creation.
 - Asset discovery across Panels, Faces, Machines, Cabinets, Reels and Object3D.
-  Double-click Panels/Faces/Machines to author them. Other asset editors remain in WPF.
+  Double-click Panels/Faces/Machines/Cabinets/Object3D Prefabs to author them.
+  Reel/library asset editors remain in WPF.
 - Panel rectangle/anchor/zone/label creation and image import; selection and multi-
   selection; atomic group movement; duplication with fresh IDs; deletion; stacking
   order; drag movement/resize and inspector geometry/visibility/lock editing.
@@ -50,6 +52,35 @@ are unchanged by this migration.
   adapters; Core/decoder/Avalonia have no WPF dependency.
 - Machine settings, source and interaction authoring are shared with WPF; WPF views,
   library catalog and region conversion adapters remain platform-specific.
+- Native Cabinet3D and schema-2 Object3D Prefab sessions are available in Avalonia.
+  The Cabinet inspector edits model scale/up-axis and target settings; the Prefab
+  inspector edits typed node transforms and hierarchy plus Model, Collider and
+  Rigidbody components. Edits retain native IDs/metadata, use document-scoped
+  undo/redo, validate package contents and protect external edits. These packages
+  retain the existing schemas and can be consumed by WPF and runtime builds.
+- Machine, Cabinet and Prefab documents compose into the same interactive 3D scene.
+  The scene displays GLB meshes/materials, Cabinet semantic geometry, supported box
+  and sphere colliders, triggers, Machine anchors and assigned Face surfaces. Mounted
+  Faces use their authored artwork and can display actual preview outputs when those
+  outputs are available. Capsule and Mesh collider previews currently report a
+  diagnostic without drawing an approximation. GLB skinning and animation are not
+  evaluated; the loader reports diagnostics for both.
+- Authored Cabinet planar reflections project up to four mounted Face sources onto
+  the selected receiver material, with separate base/lamp strength, orientation,
+  Fresnel, roughness, distortion, edge fade and optional visibility masks. Automatic
+  planes follow the current imported Face target. Mounted Face buttons resolve
+  authored Machine inputs through the triangle hit UVs during native preview.
+- The 3D view renders offscreen through a real GPU context and is shared by desktop
+  display and background capture. Source paths select Avalonia ANGLE/EGL on Windows,
+  surfaceless Mesa EGL with default EGL fallback on Linux, and CGL on macOS. Workspace
+  settings retain the active 3D mode and Cabinet/Prefab manifest path, hierarchy
+  selection, camera and visual/collider/trigger visibility while remaining compatible
+  with earlier version-1 settings that have no 3D section.
+- Headless MCP includes `inspect_scene3d`, Cabinet and Prefab open/create/edit/save
+  tools, hierarchy selection/picking, camera and visibility controls, scene reload,
+  scene history and explicit scene-library-root selection. It returns the actual
+  scene hierarchy, bounds, diagnostics, selection, camera, visibility and native
+  serialized document; capture uses the same GPU scene view.
 - Exact saved-state tracking and document-local history. Panel and Machine saves
   detect external manifest/script changes; Face save fingerprints the authored
   package. Dirty replacement and close guards include retained documents. One Panel,
@@ -169,10 +200,14 @@ images, source regions and Faces, checks history/save/reopen, and captures multi
 themes/sizes. Optional `--fml <layout.fml>` imports a disposable real-layout copy.
 Optional `--project <existing.oasisproj> --panel <asset.panel2d> --face <asset.face>`
 adds read-only existing-content captures. Never commit captures/private assets/ROMs.
+With `--project`, `--cabinet <relative manifest>`, `--prefab <relative manifest>`
+and `--scene-machine <relative manifest>` capture the real GPU views in both themes
+and with semantic overlays. `--library-root <directory>` resolves Library references.
 
 ## Verification and remaining migration
 
-Verified on Windows: MCP build and headless verification; all 96 Avalonia tests,
+Previously verified on Windows before 3D integration: MCP build and headless
+verification; all 96 Avalonia tests,
 including source-shape Face generation, artwork import/registration/calibration,
 override processing, pixel-restoring undo, renderer pixel checks and workspace
 roundtrips; all 1,449 WPF regression tests; actual MCP project/Face/Machine
@@ -184,10 +219,20 @@ The reference game reports its native error display; credited play is not verifi
 Production build/export also passed on a disposable copy of the actual authored
 Impact project, including mounted Faces, Cabinet, reel and real ROM dependencies.
 The automated checks did not launch a visible Player process.
+After 3D integration, 117/117 Avalonia tests, 9/9 portable GLB/composition tests and
+1,449/1,449 WPF tests pass on Windows. This includes actual ANGLE GPU depth, texture
+orientation/cutout, transparency, mirrored rendering/picking, reflection projection
+and headless-control capture checks. Workspace roundtrips cover Cabinet/Prefab paths,
+selection, camera/visibility, invalid-path preflight and legacy version-1 settings.
+Real Pool Cabinet/Prefab/Machine and mounted Impact Face scenes were captured through
+MCP and inspected. Real Impact preview changed both mounted Face output fingerprints,
+with 512 lamp channels, eight reels, 32 display cells and nonzero silently consumed
+PCM. No credited play or audible playback is claimed. Linux/macOS execution and
+physical desktop interaction remain unverified.
 
 Separate future migration work includes multi-document tabs and Reel/library UI.
-Machine 3D rendering remains explicitly deferred until its renderer is selected and
-proved portable.
+The scene is a static authoring preview: GLB skinning/animation and Capsule/Mesh
+collider visualization remain unsupported as described above.
 
 Framework-dependent Linux x64 and Apple Silicon macOS publication succeeds, including
 matching Skia libraries. Execution and distribution packaging on those systems remain

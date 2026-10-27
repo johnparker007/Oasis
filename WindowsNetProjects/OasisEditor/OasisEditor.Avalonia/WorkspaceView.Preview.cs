@@ -58,6 +58,8 @@ public sealed partial class WorkspaceView
         _viewport.PreviewIsActive = () => Preview.Backend is not null;
         _viewport.ResolvePreviewInput = ResolvePreviewPointerInput;
         _viewport.PreviewInputRequested += async (id, pressed) => await PreviewAction(() => Preview.SetInputAsync(id, pressed, source: "viewport"), false);
+        SceneView.ResolvePreviewInput = ResolveScenePreviewInput;
+        SceneView.PreviewInputRequested += async (id, pressed) => await PreviewAction(() => Preview.SetInputAsync(id, pressed, source: "scene"), false);
         AddHandler(KeyDownEvent, PreviewKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, PreviewKeyUp, RoutingStrategies.Tunnel);
         LostFocus += async (_, _) => await PreviewAction(ReleasePreviewInputs, report: false);

@@ -17,6 +17,30 @@ public sealed record WorkspaceViewportState(double Zoom, double PanX, double Pan
             throw new InvalidDataException("Workspace viewport state is invalid.");
     }
 }
+public sealed record WorkspaceSceneCameraState(double TargetX, double TargetY, double TargetZ, double Distance, double Yaw, double Pitch, double FieldOfView = 45)
+{
+    public void Validate()
+    {
+        if (new[] { TargetX, TargetY, TargetZ, Distance, Yaw, Pitch, FieldOfView }.Any(value => !double.IsFinite(value) || Math.Abs(value) > float.MaxValue)
+            || Distance is < .0001 or > 1000000 || Math.Abs(Pitch) > 1.56 || FieldOfView is < 5 or > 120)
+            throw new InvalidDataException("Workspace 3D camera state is invalid.");
+    }
+}
+public sealed record WorkspaceSceneState(string? Mode = null, string? Cabinet = null, string? Prefab = null,
+    string? Selection = null, WorkspaceSceneCameraState? Camera = null, bool ShowVisuals = true,
+    bool ShowColliders = false, bool ShowTriggers = false)
+{
+    public void Validate()
+    {
+        if (Mode is not (null or "Machine" or "Cabinet3D" or "Prefab")) throw new InvalidDataException("Workspace 3D mode is invalid.");
+        if ((Selection?.Length ?? 0) > 1024) throw new InvalidDataException("Workspace 3D selection is too long.");
+        Camera?.Validate();
+        if (Mode == "Cabinet3D" ? Cabinet is null || Prefab is not null
+            : Mode == "Prefab" ? Prefab is null || Cabinet is not null
+            : Cabinet is not null || Prefab is not null)
+            throw new InvalidDataException("Workspace 3D asset paths do not match the active mode.");
+    }
+}
 public sealed record WorkspaceDockNode(string Kind, string? Id = null, double? Proportion = null,
     string? Orientation = null, string? Alignment = null, int Active = -1, int Default = -1,
     WorkspaceDockNode[]? Children = null, WorkspaceDockNode[]? Hidden = null,
@@ -28,7 +52,7 @@ public sealed record WorkspaceState(int Version, string Theme, WorkspaceDockNode
     string? Project = null, string? Panel = null, string? Face = null, string ActiveDocument = "Panel2D",
     string[]? PanelSelection = null, string? FaceSelection = null, string? AssetSearch = null,
     WorkspaceWindowState? MainWindow = null, string? SourceSelection = null, WorkspaceViewportState? Viewport = null,
-    string? Machine = null, NativeEmulationPreferences? Emulation = null);
+    string? Machine = null, NativeEmulationPreferences? Emulation = null, WorkspaceSceneState? Scene3D = null);
 
 /// <summary>Allow-listed layout data. Never deserializes arbitrary CLR types, views, contexts or commands.</summary>
 public static class WorkspaceLayoutState

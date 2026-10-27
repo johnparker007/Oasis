@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using Dock.Model.Controls;
 using Dock.Model.Core;
 using Dock.Model.Mvvm.Controls;
+using OasisEditor.Avalonia.Rendering3D;
 
 namespace OasisEditor.Avalonia;
 
@@ -29,7 +30,14 @@ public sealed partial class WorkspaceView
             _session.ProjectFilePath is null ? null : Path.GetRelativePath(_session.WorkspacePath, _session.ProjectFilePath).Replace('\\', '/'),
             Relative(_session.PanelPath), Relative(Faces.FacePath), _machineActive ? "Machine" : _faceActive ? "Face" : "Panel2D",
             _session.SelectedIds.ToArray(), Faces.SelectedId, _assetSearch.Text, bounds, _selectedSource, _viewport.CaptureViewState(),
-            Machines.IsProjectCurrent ? Relative(Machines.MachinePath) : null, NativePreviewPreferences);
+            Machines.IsProjectCurrent ? Relative(Machines.MachinePath) : null, NativePreviewPreferences,
+            new WorkspaceSceneState(_sceneKind,
+                _sceneKind == "Cabinet3D" && Cabinets.IsProjectCurrent ? Relative(Cabinets.FilePath) : null,
+                _sceneKind == "Prefab" && Prefabs.IsProjectCurrent ? Relative(Prefabs.FilePath) : null,
+                _sceneKind is null ? null : _selectedSceneNodeId,
+                new WorkspaceSceneCameraState(SceneView.Camera.Target.X, SceneView.Camera.Target.Y, SceneView.Camera.Target.Z,
+                    SceneView.Camera.Distance, SceneView.Camera.Yaw, SceneView.Camera.Pitch, SceneView.Camera.FieldOfView),
+                SceneView.ShowVisuals, SceneView.ShowColliders, SceneView.ShowTriggers));
     }
 
     public void ConfigureWorkspacePersistence(string path, bool restore = true)
@@ -96,6 +104,14 @@ public sealed partial class WorkspaceView
             throw new InvalidDataException("Unsupported workspace settings version, theme or document type.");
         if (state.MainWindow is not null) WorkspaceLayoutState.ValidateBounds(state.MainWindow);
         state.Viewport?.Validate();
+        state.Scene3D?.Validate();
+        var sceneMode = state.Scene3D?.Mode ?? (state.ActiveDocument == "Machine" ? "Machine" : null);
+        if (sceneMode == "Machine" && (state.Machine is null || state.ActiveDocument != "Machine"))
+            throw new InvalidDataException("A saved Machine scene requires the active Machine document.");
+        if ((sceneMode == "Cabinet3D" && state.Scene3D?.Cabinet is null) || (sceneMode == "Prefab" && state.Scene3D?.Prefab is null))
+            throw new InvalidDataException("A saved 3D asset scene requires its asset path.");
+        if ((sceneMode is "Cabinet3D" or "Prefab") && state.Project is null)
+            throw new InvalidDataException("Saved 3D assets require a project.");
         if (state.Emulation?.AudioBufferLengthMilliseconds is < 10 or > 2000) throw new InvalidDataException("Invalid emulation audio buffer.");
         if ((state.AssetSearch?.Length ?? 0) > 256 || (state.PanelSelection?.Length ?? 0) > 10000)
             throw new InvalidDataException("Workspace document state exceeds the limit.");
@@ -112,8 +128,11 @@ public sealed partial class WorkspaceView
             if (state.Panel is not null) probe.OpenPanel(state.Panel);
             if (state.Face is not null) new FaceAuthoringSession(probe).OpenFace(state.Face);
             if (state.Machine is not null) new MachineAuthoringSession(probe).OpenMachine(state.Machine);
+            if (sceneMode == "Cabinet3D") new CabinetAuthoringSession(probe).Open(state.Scene3D!.Cabinet!);
+            if (sceneMode == "Prefab") new PrefabAuthoringSession(probe).Open(state.Scene3D!.Prefab!);
         }
-        else if (state.Panel is not null || state.Face is not null || state.Machine is not null) throw new InvalidDataException("Saved documents require a project.");
+        else if (state.Panel is not null || state.Face is not null || state.Machine is not null || sceneMode is not null)
+            throw new InvalidDataException("Saved documents require a project.");
         if (state.Project is not null)
         {
             Faces.Close();
@@ -143,6 +162,48 @@ public sealed partial class WorkspaceView
         if (state.MainWindow is not null && TopLevel.GetTopLevel(this) is Window window) RestoreWindow(window, state.MainWindow);
         _inspected = null; Refresh();
         if (state.Viewport is not null) _viewport.RestoreViewState(state.Viewport);
+        if (state.Scene3D is { } sceneState)
+        {
+            SceneView.ShowVisuals = sceneState.ShowVisuals;
+            SceneView.ShowColliders = sceneState.ShowColliders;
+            SceneView.ShowTriggers = sceneState.ShowTriggers;
+        }
+        if (sceneMode is null)
+        {
+            if (_faceActive) ShowFace(); else ShowPanel();
+            if (state.Scene3D?.Camera is { } camera) ApplySceneCamera(camera);
+        }
+        else _sceneTask = RestoreScene3DAsync(sceneMode, state.Scene3D);
+    }
+
+    private async Task RestoreScene3DAsync(string mode, WorkspaceSceneState? saved)
+    {
+        switch (mode)
+        {
+            case "Machine":
+                ShowMachine();
+                await WaitForSceneAsync();
+                break;
+            case "Cabinet3D":
+                await OpenCabinet3DAsync(saved!.Cabinet!);
+                break;
+            case "Prefab":
+                await OpenPrefab3DAsync(saved!.Prefab!);
+                break;
+            default:
+                throw new InvalidDataException("Workspace 3D mode is invalid.");
+        }
+
+        if (saved?.Selection is null) SelectScene3DNode(null);
+        else if (_sceneRows.Any(row => row.Id == saved.Selection)) SelectScene3DNode(saved.Selection);
+        if (saved?.Camera is { } camera) ApplySceneCamera(camera);
+    }
+
+    private void ApplySceneCamera(WorkspaceSceneCameraState camera)
+    {
+        SceneView.SetCamera(new SceneCameraState(
+            new((float)camera.TargetX, (float)camera.TargetY, (float)camera.TargetZ),
+            (float)camera.Distance, (float)camera.Yaw, (float)camera.Pitch, (float)camera.FieldOfView));
     }
 
     public void ResetLayout()

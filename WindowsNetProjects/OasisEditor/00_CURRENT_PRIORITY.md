@@ -1,14 +1,16 @@
 # Current Priority for Codex
 
 The active user-authorised workstream is the staged Avalonia Editor migration,
-with Unity-inspired styling, background MCP authoring/capture and 3D deferred.
+with Unity-inspired styling and background MCP authoring/capture. The user has now
+explicitly authorized Avalonia 3D authoring and scene preview.
 The parallel application now creates real projects, imports FML/bitmap artwork,
 authors Panel2D/source regions, generates/processes native Faces, renders specialist
 2D components, edits Machine settings, builds/exports Player packages, previews real
-Fabric/Amber outputs and persists the workspace. These requested non-3D workflows
-are delivered; multi-document tabs and other asset editors are separate future scope.
-see `OasisEditor.Avalonia/README.md` for delivered scope, verification, limitations
-and verification limits. WPF retains its other asset editors and 3D UI. Preserve its
+Fabric/Amber outputs, persists the workspace and includes Cabinet3D/Prefab/Machine
+scene authoring with a static GPU preview. See `OasisEditor.Avalonia/README.md` for
+the supported 3D content, MCP surface and platform verification limits. Multi-document
+tabs and other asset editors remain separate future scope.
+WPF retains its other asset editors and 3D UI. Preserve its
 working authoring features while extracting shared services. Do not substitute
 mock data or scripted emulation previews for real systems.
 

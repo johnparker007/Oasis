@@ -8,4 +8,7 @@
     <ProjectReference Include="../Oasis.RuntimeBuild/Oasis.RuntimeBuild.csproj" />
     <PackageReference Include="SharpGLTF.Toolkit" Version="1.0.6" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../OasisEditor/Features/CabinetEditor/Services/CabinetReflectionPlaneDeriver.cs" Link="CabinetReflectionPlaneDeriver.cs" />
+  </ItemGroup>
 </Project>

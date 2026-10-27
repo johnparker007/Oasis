@@ -54,7 +54,7 @@ public sealed partial class EditorTools
 
     private (EditorProject Project, string MachinePath, string LibraryRoot) GetMachineBuildInputs(string? requestedLibraryRoot)
     {
-        if (session.IsDirty || faces.IsDirty || Machines.IsDirty)
+        if (capture.View.HasUnsavedChanges)
             throw new InvalidOperationException("Save or undo all open document changes before building or exporting.");
         if (!Machines.IsProjectCurrent) throw new InvalidOperationException("The Machine is no longer bound to the active project. Reopen it before building.");
         Machines.EnsureSavedSourceUnchanged();
@@ -67,7 +67,7 @@ public sealed partial class EditorTools
             ProjectDirectory = projectDirectory, AssetsDirectory = Path.Combine(projectDirectory, "Assets"),
             GeneratedDirectory = WorkspacePathPolicy.ResolveConfined(projectDirectory, "Generated", requireExists: false)
         };
-        var libraryRoot = string.IsNullOrWhiteSpace(requestedLibraryRoot) ? string.Empty : Path.GetFullPath(requestedLibraryRoot);
+        var libraryRoot = string.IsNullOrWhiteSpace(requestedLibraryRoot) ? capture.View.SceneLibraryRoot : Path.GetFullPath(requestedLibraryRoot);
         if (!string.IsNullOrEmpty(libraryRoot) && !Directory.Exists(libraryRoot)) throw new DirectoryNotFoundException($"Oasis Library folder was not found: {libraryRoot}");
         return (project, machinePath, libraryRoot);
     }

@@ -93,6 +93,10 @@ def main():
     parser.add_argument("--project", type=Path)
     parser.add_argument("--panel", type=Path)
     parser.add_argument("--face", type=Path)
+    parser.add_argument("--cabinet", help="Read-only Cabinet3D manifest relative to --project")
+    parser.add_argument("--prefab", help="Read-only Object3D manifest relative to --project")
+    parser.add_argument("--scene-machine", help="Read-only Machine manifest relative to --project")
+    parser.add_argument("--library-root", help="Explicit Library directory for Machine asset resolution")
     parser.add_argument("--fml", type=Path, help="Import a disposable copy of an actual FML; never modifies the source")
     parser.add_argument("--copy-project", type=Path, help="Copy an existing disposable Oasis project into the isolated MCP workspace and run the production Machine build/export")
     parser.add_argument("--machine", default="Assets/Machines/RefactorTest6/asset.machine", help="Machine path inside --copy-project")
@@ -171,6 +175,17 @@ def main():
             assigned_cabinet = client.state("set_machine_cabinet_asset", path="Assets/Cabinet3D/Diagnostic/asset.cabinet3d", scope="Project")
             assert "error" not in assigned_cabinet, assigned_cabinet
             client.state("save_machine")
+            retained_prefab = client.state("create_prefab",name="Retained edits")
+            prefab_path = retained_prefab["asset"]["path"]
+            prefab_root = retained_prefab["asset"]["document"]["root"]["id"]
+            client.state("add_prefab_node",parentNodeId=prefab_root,name="Pending edit")
+            client.state("open_machine",path=machine_path)
+            blocked = client.request("tools/call",{"name":"build_machine_for_player","arguments":{}})
+            assert blocked.get("isError"),"Build must refuse dirty retained Prefab edits"
+            client.state("open_prefab",path=prefab_path)
+            client.state("scene_history")
+            client.state("save_scene_document")
+            client.state("open_machine",path=machine_path)
             build = client.state("build_machine_for_player")
             assert build["success"] and build["playerLaunched"] is False, build
             assert Path(build["buildRoot"], "machine.runtime.json").is_file()
@@ -267,7 +282,7 @@ def main():
                     client.state("select_element", id=state["elements"][-1]["id"])
                 client.capture(args.output / "workspace-project.png", "Dark")
                 print("Read-only real project capture:", len(state["elements"]), "elements")
-            else:
+            elif not any((args.cabinet, args.prefab, args.scene_machine)):
                 raise RuntimeError("The supplied project has no Panel2D assets")
             if args.face:
                 state = client.state("open_face", path=str(args.face.resolve()))["face"]
@@ -275,6 +290,23 @@ def main():
                     client.state("select_face_element", id=state["elements"][-1]["id"])
                 client.capture(args.output / "workspace-existing-face.png", "Dark")
                 print("Read-only existing Face capture:", len(state["elements"]), "elements")
+            if args.library_root:
+                client.state("set_scene_library_root", directory=args.library_root)
+            for tool, asset, label in [("open_cabinet3d",args.cabinet,"cabinet"),
+                                       ("open_prefab",args.prefab,"prefab"),
+                                       ("open_machine",args.scene_machine,"machine")]:
+                if not asset:
+                    continue
+                client.state(tool,path=asset)
+                for theme in ("Dark","Light"):
+                    client.capture(args.output / f"workspace-{label}-{theme.lower()}.png",theme)
+                    scene=client.state("inspect_scene3d")["scene"]
+                    assert not scene.get("renderingError"),scene
+                    assert scene.get("gpu") and scene["gpu"]["triangles"] > 0,scene
+                client.state("set_scene_visibility",colliders=True,triggers=True)
+                client.capture(args.output / f"workspace-{label}-colliders.png","Dark")
+                client.state("set_scene_visibility",colliders=False,triggers=False)
+                print("Read-only GPU scene capture:",label,scene["meshes"],"primitives; diagnostics:",scene["diagnostics"])
         finally:
             client.close()
     print("MCP native project/panel/image/source-region/Face authoring, history, save/reopen and headless PNG captures passed.")
