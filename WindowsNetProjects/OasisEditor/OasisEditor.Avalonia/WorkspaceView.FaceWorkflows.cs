@@ -13,8 +13,57 @@ public sealed partial class WorkspaceView
         MenuAction(fileMenu, "Import Face artwork…", async () => await ImportFaceArtwork());
         MenuAction(fileMenu, "Import artwork override…", async () => await ImportFaceArtworkOverride());
         MenuAction(fileMenu, "Artwork registration and processing…", async () => await EditFaceArtworkRecipe());
+        MenuAction(fileMenu, "Import Face lamp mask…", async () => await ImportFaceLampMask());
+        MenuAction(fileMenu, "Build Face", () => Try(() => BuildActiveFace(false)));
+        MenuAction(fileMenu, "Build Face runtime assets", () => Try(() => BuildActiveFace(true)));
+        MenuAction(fileMenu, "Rebuild Face components from source…", async () => await RebuildFaceComponents());
+        MenuAction(fileMenu, "Use Panel2D artwork source", () => Try(() => { RequireFace(); Faces.UsePanelArtworkSource(); Refresh(); }));
+        MenuAction(fileMenu, "Use Panel2D lamp mask", () => Try(() => { RequireFace(); Faces.UseDerivedLampMask(); Refresh(); }));
+        MenuAction(fileMenu, "Create artwork override from Base", () => Try(() => { RequireFace(); Faces.CreateArtworkOverrideFromBase(); Refresh(); }));
+        MenuAction(fileMenu, "Enable artwork override", () => Try(() => { RequireFace(); Faces.SetArtworkOverrideEnabled(true); Refresh(); }));
+        MenuAction(fileMenu, "Disable artwork override", () => Try(() => { RequireFace(); Faces.SetArtworkOverrideEnabled(false); Refresh(); }));
+        MenuAction(fileMenu, "Remove artwork override", () => Try(() => { RequireFace(); Faces.RemoveArtworkOverride(); Refresh(); }));
         MenuAction(fileMenu, "Rebuild Face artwork", () => Try(() => { RequireFace(); Faces.RebuildArtwork(); Refresh(); }));
         MenuAction(createMenu, "Generate Face from selected source…", async () => await GenerateFaceFromSelectedShape());
+    }
+
+    public void BuildActiveFace(bool runtimeAssets = false, CancellationToken cancellationToken = default)
+    {
+        RequireFace();
+        if (Preview.State != EmulationBackendState.Stopped) throw new InvalidOperationException("Stop emulation preview before building Face assets.");
+        Faces.BuildFace(runtimeAssets ? face => new FaceRuntimeExportService().Export(face, _session.RequireEditorProject(), Faces.FacePath).Document : null, cancellationToken);
+        Refresh(); SetStatus(runtimeAssets ? "Face and runtime assets built." : "Configured Face artwork and illumination built.");
+    }
+
+    private void AppendFaceBuildInspector()
+    {
+        var face = Faces.Document;
+        Heading("FACE BUILD");
+        _inspector.Children.Add(new TextBlock { Text = $"{face.MaskLayer?.SourceKind.ToString() ?? "No"} lamp mask · {face.Trays.Count} trays · {face.LampEmitters.Count} emitters", TextWrapping = Media.TextWrapping.Wrap });
+        foreach (var product in face.BuildState.Products)
+            _inspector.Children.Add(new TextBlock { Text = $"{product.Key}: {product.Value.Status}" + (product.Value.ErrorMessage is {} error ? " — " + error : ""), TextWrapping = Media.TextWrapping.Wrap, FontSize = 11 });
+        _inspector.Children.Add(ActionButton("Build configured Face products", () => Try(() => BuildActiveFace())));
+        _inspector.Children.Add(ActionButton("Build Face runtime assets", () => Try(() => BuildActiveFace(true))));
+    }
+
+    private async Task ImportFaceLampMask()
+    {
+        if (!_faceActive) { SetStatus("Open a Face asset before importing its lamp mask."); return; }
+        if (TopLevel.GetTopLevel(this)?.StorageProvider is not { CanOpen: true } storage) return;
+        var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions { Title = "Import Face lamp mask", FileTypeFilter = [new FilePickerFileType("Images") { Patterns = ["*.png", "*.jpg", "*.bmp", "*.webp"] }] });
+        if (files.Count > 0 && files[0].TryGetLocalPath() is string path)
+            Try(() => { WithSelectedImportFile(path, source => _ = Faces.ImportLampMask(source)); Refresh(); });
+    }
+
+    private async Task RebuildFaceComponents()
+    {
+        if (!_faceActive || TopLevel.GetTopLevel(this) is not Window owner) return;
+        var panel = new StackPanel { Margin = new Thickness(18), Spacing = 12 };
+        panel.Children.Add(new TextBlock { Text = "Replace local Face component edits with components from the saved Panel2D source? Artwork and illumination are preserved. You can undo this change.", TextWrapping = Media.TextWrapping.Wrap });
+        var dialog = new Window { Title = "Rebuild Face components", Width = 460, Height = 230, Content = panel };
+        panel.Children.Add(ActionButton("Replace components", () => Try(() => { Faces.RebuildComponentsFromSource(); Refresh(); dialog.Close(); })));
+        panel.Children.Add(ActionButton("Cancel", () => dialog.Close()));
+        await dialog.ShowDialog(owner);
     }
 
     private async Task ImportFaceArtwork()
@@ -65,7 +114,9 @@ public sealed partial class WorkspaceView
     {
         if (!_faceActive || Faces.CurrentArtwork is null) { SetStatus("Import Face artwork before editing registration or processing."); return; }
         if (TopLevel.GetTopLevel(this) is not Window owner) return;
-        var saved = await FaceArtworkRecipeDialog.ShowAsync(owner, Faces);
+        var saved = Faces.CurrentArtwork.Source.Kind == FaceArtworkSourceKind.Image
+            ? await FaceArtworkRecipeEditor.ShowAsync(owner, _session, Faces)
+            : await FaceArtworkRecipeDialog.ShowAsync(owner, Faces);
         if (saved) Refresh();
     }
 }

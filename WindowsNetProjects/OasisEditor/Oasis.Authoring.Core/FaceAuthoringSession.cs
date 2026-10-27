@@ -343,9 +343,24 @@ public sealed partial class FaceAuthoringSession
         return Current;
     }
 
-    private void Commit(FaceDocumentFile next, string? selectedId = null)
+    private void Commit(FaceDocumentFile next, string? selectedId = null, bool generated = false)
     {
         if (FaceDocumentStorage.SerializePayload(next) == FaceDocumentStorage.SerializePayload(Current!)) return;
+        if (!generated && Current is {} previous)
+        {
+            var state = CloneBuildState(next.BuildState);
+            if (System.Text.Json.JsonSerializer.Serialize(previous.Elements) != System.Text.Json.JsonSerializer.Serialize(next.Elements))
+            {
+                InvalidateConfigured(state, FaceGeneratedProduct.RuntimeAssets);
+                var oldLamps = (previous.Elements ?? []).Where(e => e.Kind == "lampWindow");
+                var newLamps = (next.Elements ?? []).Where(e => e.Kind == "lampWindow");
+                if (System.Text.Json.JsonSerializer.Serialize(oldLamps) != System.Text.Json.JsonSerializer.Serialize(newLamps))
+                    InvalidateConfigured(state, FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays);
+            }
+            if (ArtworkRecipeChanged(previous, next)) InvalidateConfigured(state, FaceGeneratedProduct.ArtworkCorrectionInput, FaceGeneratedProduct.BaseArtwork,
+                FaceGeneratedProduct.ArtworkOutput, FaceGeneratedProduct.LampMask, FaceGeneratedProduct.Trays, FaceGeneratedProduct.RuntimeAssets);
+            next = next with { BuildState = state };
+        }
         if (_historyIndex + 1 < _history.Count) _history.RemoveRange(_historyIndex + 1, _history.Count - _historyIndex - 1);
         _history.Add(next);
         _historyIndex = _history.Count - 1;

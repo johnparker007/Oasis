@@ -19,8 +19,9 @@ project-close/Face-validation, Machine composition graph and processing/Player
 preferences workflows are now available through Avalonia and MCP. WPF remains
 available. Individual asset tabs now float into independent editors and redock
 without saving or discarding pending edits/history. Workspace persistence includes
-their bounds, panes, selection and cameras. Native desktop/platform verification
-remains separate work. Preserve its
+their bounds, panes, selection and cameras. Face Build/illumination/source switching, interactive image registration/calibration,
+override lifecycle and remaining Panel asset/Label inspector fields are also available.
+Native desktop/platform verification remains separate work. Preserve its
 working authoring features while extracting shared services. Do not substitute
 mock data or scripted emulation previews for real systems.
 
