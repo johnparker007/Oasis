@@ -143,6 +143,25 @@ public sealed class SpecialistRendererPixelTests
                     if (color.Blue > 180 && color.Red < 80 && color.Green < 80 && color.Alpha > 240) bluePixels++;
                 }
             Assert.True(bluePixels > 100, $"Expected the imported blue artwork in the headless screenshot, found {bluePixels} matching pixels.");
+
+            var renderedAssetPath = session.ResolveAsset(Assert.Single(session.Elements).AssetPath!);
+            using (var replacement = new SKBitmap(new SKImageInfo(8, 8, SKColorType.Bgra8888, SKAlphaType.Premul)))
+            {
+                replacement.Erase(SKColors.Red);
+                using var encoded = replacement.Encode(SKEncodedImageFormat.Png, 100);
+                File.WriteAllBytes(renderedAssetPath, encoded.ToArray());
+            }
+            File.SetLastWriteTimeUtc(renderedAssetPath, DateTime.UtcNow.AddSeconds(5));
+            using var refreshedFrame = SKBitmap.Decode(capture.Capture(1200, 800, "Dark"));
+            Assert.NotNull(refreshedFrame);
+            var redPixels = 0;
+            for (var y = 0; y < refreshedFrame.Height; y++)
+                for (var x = 0; x < refreshedFrame.Width; x++)
+                {
+                    var color = refreshedFrame.GetPixel(x, y);
+                    if (color.Red > 180 && color.Green < 80 && color.Blue < 80 && color.Alpha > 240) redPixels++;
+                }
+            Assert.True(redPixels > 100, $"Expected a regenerated red image to invalidate the viewport cache, found {redPixels} matching pixels.");
         }
         finally { Directory.Delete(folder, recursive: true); }
         });

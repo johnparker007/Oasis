@@ -6,7 +6,8 @@ namespace OasisEditor.Rendering;
 
 internal static class SkiaPanelImageLoader
 {
-    private static readonly ConcurrentDictionary<string, SKImage?> CachedPanelImages = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, CachedPanelImage> CachedPanelImages = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly object CacheGate = new();
 
     public static bool TryGetImage(string? assetPath, out SKImage image)
     {
@@ -16,14 +17,33 @@ internal static class SkiaPanelImageLoader
             return false;
         }
 
-        var cached = CachedPanelImages.GetOrAdd(resolvedPath, LoadImage);
-        if (cached is null)
+        var stamp = GetFileStamp(resolvedPath);
+        if (!CachedPanelImages.TryGetValue(resolvedPath, out var cached) || cached.Stamp != stamp)
         {
-            return false;
+            lock (CacheGate)
+            {
+                if (!CachedPanelImages.TryGetValue(resolvedPath, out cached) || cached.Stamp != stamp)
+                {
+                    cached = new CachedPanelImage(stamp, LoadImage(resolvedPath));
+                    CachedPanelImages[resolvedPath] = cached;
+                }
+            }
         }
 
-        image = cached;
+        if (cached.Image is null) return false;
+        image = cached.Image;
         return true;
+    }
+
+    private static FileStamp GetFileStamp(string path)
+    {
+        try
+        {
+            var info = new FileInfo(path);
+            return info.Exists ? new FileStamp(info.Length, info.LastWriteTimeUtc.Ticks) : new FileStamp(-1, 0);
+        }
+        catch (IOException) { return new FileStamp(-2, 0); }
+        catch (UnauthorizedAccessException) { return new FileStamp(-2, 0); }
     }
 
     private static SKImage? LoadImage(string resolvedPath)
@@ -47,4 +67,7 @@ internal static class SkiaPanelImageLoader
     {
         return ProjectAssetPathResolver.TryResolveAssetPath(assetPath, out resolvedPath);
     }
+
+    private readonly record struct FileStamp(long Length, long LastWriteTicks);
+    private sealed record CachedPanelImage(FileStamp Stamp, SKImage? Image);
 }

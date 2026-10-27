@@ -19,8 +19,8 @@ public sealed class Face2DRenderer : IFace2DRenderer
 {
     private readonly IFaceRuntimeStateResolver _runtimeStateResolver;
     private readonly Func<string?, string?> _assetPathResolver;
-    private readonly Dictionary<string, SKImage?> _cachedArtworkImages = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, SKImage?> _cachedMaskImages = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, CachedFaceImage> _cachedArtworkImages = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, CachedFaceImage> _cachedMaskImages = new(StringComparer.OrdinalIgnoreCase);
     private readonly IFaceTexturePreviewRenderer _texturePreviewRenderer;
     private readonly FaceTrayDebugOverlayRenderer _trayDebugOverlayRenderer = new();
     private readonly bool _renderTrayDebugOverlay;
@@ -487,19 +487,7 @@ public sealed class Face2DRenderer : IFace2DRenderer
             return false;
         }
 
-        if (!_cachedArtworkImages.TryGetValue(resolvedPath, out var cached))
-        {
-            cached = LoadImage(resolvedPath);
-            _cachedArtworkImages[resolvedPath] = cached;
-        }
-
-        if (cached is null)
-        {
-            return false;
-        }
-
-        image = cached;
-        return true;
+        return TryGetCachedImage(_cachedArtworkImages, resolvedPath, LoadImage, out image);
     }
 
     private bool TryGetMaskImage(string? assetPath, out SKImage image)
@@ -511,20 +499,43 @@ public sealed class Face2DRenderer : IFace2DRenderer
             return false;
         }
 
-        if (!_cachedMaskImages.TryGetValue(resolvedPath, out var cached))
+        return TryGetCachedImage(_cachedMaskImages, resolvedPath, LoadMaskAlphaImage, out image);
+    }
+
+    private static bool TryGetCachedImage(Dictionary<string, CachedFaceImage> cache, string path,
+        Func<string, SKImage?> loader, out SKImage image)
+    {
+        var stamp = GetFileStamp(path);
+        if (!cache.TryGetValue(path, out var cached) || cached.Stamp != stamp)
         {
-            cached = LoadMaskAlphaImage(resolvedPath);
-            _cachedMaskImages[resolvedPath] = cached;
+            cached?.Image?.Dispose();
+            cached = new CachedFaceImage(stamp, loader(path));
+            cache[path] = cached;
         }
 
-        if (cached is null)
+        if (cached.Image is null)
         {
+            image = default!;
             return false;
         }
 
-        image = cached;
+        image = cached.Image;
         return true;
     }
+
+    private static FaceImageStamp GetFileStamp(string path)
+    {
+        try
+        {
+            var info = new FileInfo(path);
+            return info.Exists ? new FaceImageStamp(info.Length, info.LastWriteTimeUtc.Ticks) : new FaceImageStamp(-1, 0);
+        }
+        catch (IOException) { return new FaceImageStamp(-2, 0); }
+        catch (UnauthorizedAccessException) { return new FaceImageStamp(-2, 0); }
+    }
+
+    private readonly record struct FaceImageStamp(long Length, long LastWriteTicks);
+    private sealed record CachedFaceImage(FaceImageStamp Stamp, SKImage? Image);
 
     private static SKImage? LoadImage(string resolvedPath)
     {

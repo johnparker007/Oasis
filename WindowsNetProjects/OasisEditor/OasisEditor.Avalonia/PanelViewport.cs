@@ -7,6 +7,8 @@ using Avalonia.Platform;
 using SkiaSharp;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using OasisEditor.Rendering;
 
 namespace OasisEditor.Avalonia;
@@ -140,18 +142,23 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
 
     private bool DrawSpecialistPipeline(DrawingContext context)
     {
+        var panelModel = FaceActive ? null : session.RenderDocument;
+        var faceDocument = FaceActive ? faces?.Document : null;
         var panelElements = FaceActive ? [] : session.Elements.Where(item => item.Visible).ToArray();
         var documentWidth = FaceActive ? faces!.LogicalWidth : panelElements.Select(item => item.X + item.Width).DefaultIfEmpty(1).Max();
         var documentHeight = FaceActive ? faces!.LogicalHeight : panelElements.Select(item => item.Y + item.Height).DefaultIfEmpty(1).Max();
         if (Bounds.Width <= 0 || Bounds.Height <= 0 || documentWidth <= 0 || documentHeight <= 0) return false;
         var outputs = _runtimeOutputs?.Invoke() ?? RuntimeOutputSnapshot.Empty;
         var documentRevision = FaceActive ? faces!.RenderRevision : session.RenderRevision;
+        var projectDirectory = session.ProjectFilePath is { } project ? Path.GetDirectoryName(project) : null;
+        ProjectAssetPathResolver.ProjectDirectoryPath = projectDirectory;
+        var assetFingerprint = ComputeRendererAssetFingerprint(panelModel, faceDocument, projectDirectory);
         var scale = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1d;
         var width = Math.Clamp((int)Math.Ceiling(Bounds.Width * scale), 1, 8192);
         var height = Math.Clamp((int)Math.Ceiling(Bounds.Height * scale), 1, 8192);
         var activeDocumentPath = FaceActive ? faces?.FacePath : session.PanelPath;
         var cacheKey = string.Create(System.Globalization.CultureInfo.InvariantCulture,
-            $"{(FaceActive ? 'F' : 'P')}|{activeDocumentPath}|{documentRevision}|{outputs.Fingerprint}|{_zoom:R}|{_pan.X:R}|{_pan.Y:R}|{width}|{height}|{scale:R}");
+            $"{(FaceActive ? 'F' : 'P')}|{activeDocumentPath}|{documentRevision}|{outputs.Fingerprint}|{assetFingerprint}|{_zoom:R}|{_pan.X:R}|{_pan.Y:R}|{width}|{height}|{scale:R}");
         if (_specialistBitmap is not null && string.Equals(cacheKey, _specialistBitmapKey, StringComparison.Ordinal))
         {
             context.DrawImage(_specialistBitmap, new Rect(Bounds.Size));
@@ -169,17 +176,14 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
         var runtime = CreateRuntimeState(outputs);
         try
         {
-            var projectDirectory = session.ProjectFilePath is { } project ? Path.GetDirectoryName(project) : null;
-            ProjectAssetPathResolver.ProjectDirectoryPath = projectDirectory;
             if (FaceActive)
             {
-                var faceDocument = faces?.Document;
                 if (faceDocument is null) return false;
                 FaceRenderer.Render(canvas, faceDocument, runtime, transform);
             }
-            else if (session.RenderDocument is { } model)
+            else if (panelModel is not null)
             {
-                PanelRenderer.Render(canvas, model.Elements, runtime, transform);
+                PanelRenderer.Render(canvas, panelModel.Elements, runtime, transform);
             }
             else return false;
             canvas.Restore();
@@ -209,6 +213,57 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
             _warnings.Add($"Specialist rendering: {exception.Message}");
             return FaceActive ? faces?.Document is not null : session.RenderDocument is not null;
         }
+    }
+
+    private static string ComputeRendererAssetFingerprint(Panel2DDocumentModel? panel, FaceDocumentModel? face, string? projectDirectory)
+    {
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Add(string? path) { if (!string.IsNullOrWhiteSpace(path)) paths.Add(path.Trim()); }
+        if (panel is not null)
+        {
+            foreach (var element in panel.Elements)
+            {
+                Add(element.AssetPath); Add(element.SecondaryAssetPath); Add(element.SourceOffImageAssetPath);
+                Add(element.ReelLampTransmissionMaskAssetPath);
+            }
+        }
+        if (face is not null)
+        {
+            foreach (var element in face.Elements)
+            {
+                switch (element)
+                {
+                    case FaceArtworkElement artwork: Add(artwork.AssetPath); break;
+                    case FaceLampWindowElement lamp: Add(lamp.BulbMaskAssetPath); break;
+                    case FaceReelMount reel: Add(reel.AssetPath); Add(reel.ReelLampTransmissionMaskAssetPath); break;
+                }
+            }
+            Add(face.MaskLayer?.AssetPath); Add(face.MaskLayer?.AuthoredAssetPath);
+            Add(face.Artwork?.CorrectionInputAssetPath); Add(face.Artwork?.BaseAssetPath); Add(face.Artwork?.OutputAssetPath);
+            Add(face.Artwork?.Override?.AssetPath);
+            var runtimeAssets = face.RuntimeRenderAssets;
+            Add(runtimeAssets?.ArtworkPath); Add(runtimeAssets?.MaskPath); Add(runtimeAssets?.TrayIdPath);
+            Add(runtimeAssets?.LampIds0Path); Add(runtimeAssets?.LampWeights0Path); Add(runtimeAssets?.LampIds1Path);
+            Add(runtimeAssets?.LampWeights1Path); Add(runtimeAssets?.TrayIdDebugPath); Add(runtimeAssets?.LampWeightsDebugPath);
+        }
+
+        var builder = new StringBuilder();
+        foreach (var asset in paths.OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        {
+            string resolved;
+            try { resolved = Path.IsPathRooted(asset) ? Path.GetFullPath(asset) : projectDirectory is null ? asset : Path.GetFullPath(Path.Combine(projectDirectory, asset.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar))); }
+            catch (ArgumentException) { resolved = asset; }
+            builder.Append(resolved).Append('|');
+            try
+            {
+                var info = new FileInfo(resolved);
+                builder.Append(info.Exists ? info.Length : -1).Append('|').Append(info.Exists ? info.LastWriteTimeUtc.Ticks : 0);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+            { builder.Append("unavailable"); }
+            builder.Append('\n');
+        }
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
     }
 
     private static MachineRuntimeState CreateRuntimeState(RuntimeOutputSnapshot outputs)
