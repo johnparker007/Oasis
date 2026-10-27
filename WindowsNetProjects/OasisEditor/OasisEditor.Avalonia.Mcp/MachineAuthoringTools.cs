@@ -35,6 +35,26 @@ public sealed partial class EditorTools
     public Task<object> SetMachineName(string displayName, CancellationToken cancellationToken)
         => ui.Invoke(() => ActMachine(() => Machines.SetDisplayName(displayName)), cancellationToken);
 
+    [McpServerTool(Name = "set_machine_cabinet_asset"), Description("Assign or clear the Cabinet package using a project-relative or Oasis Library-relative path. The asset must already exist and is stored as a typed AssetReference.")]
+    public Task<object> SetMachineCabinetAsset(string? path, CancellationToken cancellationToken, string scope = "Project")
+        => ui.Invoke<object>(() =>
+        {
+            try
+            {
+                AssetReference? reference = null;
+                if (!string.IsNullOrWhiteSpace(path))
+                {
+                    if (!Enum.TryParse<AssetReferenceScope>(scope, true, out var parsed)) throw new ArgumentException("Asset scope must be Project or Library.");
+                    reference = new AssetReference(parsed, path);
+                    if (parsed == AssetReferenceScope.Project) _ = Machines.ResolveAsset(path);
+                }
+                Machines.UpdateDocument(document => document with { CabinetAsset = reference });
+                return ActMachine(() => { });
+            }
+            catch (Exception exception) when (exception is IOException or ArgumentException or InvalidOperationException or UnauthorizedAccessException)
+            { return new { error = exception.Message }; }
+        }, cancellationToken);
+
     [McpServerTool(Name = "set_machine_runtime"), Description("Set runtime to Emulation on a currently supported platform with native default settings, or to Oasis with its canonical behavior source declaration. Game mappings are never inferred.")]
     public Task<object> SetMachineRuntime(string kind, CancellationToken cancellationToken, string platform = "None")
         => ui.Invoke(() => ActMachine(() =>

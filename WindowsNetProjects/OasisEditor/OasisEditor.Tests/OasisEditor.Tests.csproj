@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OasisEditor\OasisEditor.csproj" />
+    <ProjectReference Include="..\Oasis.RuntimeBuild\Oasis.RuntimeBuild.csproj" />
   </ItemGroup>
 
   <ItemGroup>

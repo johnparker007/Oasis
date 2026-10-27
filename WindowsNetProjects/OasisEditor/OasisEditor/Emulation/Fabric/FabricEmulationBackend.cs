@@ -340,64 +340,31 @@ public sealed class FabricEmulationBackend : IEmulationBackend
         _disposed = true;
     }
 
-    internal static IReadOnlyList<FabricRomResource> BuildRomResources(System6NativeRomSettings settings)
-    {
-        var resources = new List<FabricRomResource>(8);
-        AddRomRole(resources, settings.ProgramRomPaths, FabricRomRole.Program);
-        AddRomRole(resources, settings.SoundRomPaths, FabricRomRole.Sound);
-        return resources;
-    }
+    internal static IReadOnlyList<FabricRomResource> BuildRomResources(System6NativeRomSettings settings) => FabricRomResourceResolver.Build(settings);
 
     internal static IReadOnlyList<FabricRomResource> BuildRomResources(Mpu5NativeRomSettings settings)
     {
-        if (string.IsNullOrWhiteSpace(settings.ProgramRom1Path))
-            throw new InvalidOperationException("Current project settings are missing required MPU5 Program ROM 1.");
-        var resources = new List<FabricRomResource>(8);
-        AddRomRole(resources, settings.ProgramRomPaths, FabricRomRole.Program);
-        AddRomRole(resources, settings.SoundRomPaths, FabricRomRole.Sound);
-        return resources;
+        return FabricRomResourceResolver.Build(settings);
     }
 
     internal static IReadOnlyList<FabricRomResource> BuildRomResources(EpochNativeRomSettings settings)
     {
-        if (string.IsNullOrWhiteSpace(settings.ProgramRom1Path))
-            throw new InvalidOperationException("Current project settings are missing required Epoch Program ROM 1.");
-        var resources = new List<FabricRomResource>(8);
-        AddRomRole(resources, settings.ProgramRomPaths, FabricRomRole.Program);
-        AddRomRole(resources, settings.SoundRomPaths, FabricRomRole.Sound);
-        return resources;
+        return FabricRomResourceResolver.Build(settings);
     }
 
     internal static IReadOnlyList<FabricRomResource> BuildRomResources(Mpu3ProjectSettings settings)
     {
-        if (settings.ProgramRoms.Count != 4 || settings.ProgramRoms.Select(x => x.Slot).Distinct().Count() != 4)
-            throw new InvalidOperationException("MPU3 requires exactly four uniquely slotted program ROM descriptors.");
-        var resources = new List<FabricRomResource>(4);
-        foreach (var rom in settings.ProgramRoms.OrderBy(x => x.Slot))
-        {
-            if (rom.Slot is < 0 or > 3) throw new InvalidOperationException("MPU3 program ROM slot must be 0..3.");
-            if (!string.IsNullOrWhiteSpace(rom.Path)) resources.Add(new(FabricRomRole.Program, (uint)rom.Slot, rom.Path));
-        }
-        if (resources.Count == 0) throw new InvalidOperationException("Current project settings are missing required MPU3 program ROMs.");
-        return resources;
+        return FabricRomResourceResolver.Build(settings);
     }
 
     internal static IReadOnlyList<FabricRomResource> BuildRomResources(M1ProjectSettings settings)
     {
-        FabricAmberM1Configuration.Validate(settings);
-        var resources = new List<FabricRomResource>(8);
-        AddRomRole(resources, settings.ProgramRoms.OrderBy(x=>x.Slot).Select(x=>x.Path).ToArray(), FabricRomRole.Program);
-        AddRomRole(resources, settings.SoundRoms.OrderBy(x=>x.Slot).Select(x=>x.Path).ToArray(), FabricRomRole.Sound);
-        if (!resources.Any(x=>x.Role==FabricRomRole.Program)) throw new InvalidOperationException("Current project settings are missing required M1 program ROM slot 0.");
-        return resources;
+        return FabricRomResourceResolver.Build(settings);
     }
 
     internal static IReadOnlyList<FabricRomResource> BuildRomResources(Scorpion4ProjectSettings settings)
     {
-        FabricAmberScorpion4Configuration.Validate(settings); var resources=new List<FabricRomResource>(8);
-        AddRomRole(resources,settings.ProgramRoms.OrderBy(x=>x.Slot).Select(x=>x.Path).ToArray(),FabricRomRole.Program);
-        AddRomRole(resources,settings.SoundRoms.OrderBy(x=>x.Slot).Select(x=>x.Path).ToArray(),FabricRomRole.Sound);
-        if(!resources.Any(x=>x.Role==FabricRomRole.Program)) throw new InvalidOperationException("Current project settings are missing required Scorpion 4 program ROM slot 0."); return resources;
+        return FabricRomResourceResolver.Build(settings);
     }
 
     internal static IReadOnlyList<string> BuildCoinConfigurationDiagnostics(FabricAmberSystem6Configuration configuration)
@@ -415,25 +382,6 @@ public sealed class FabricEmulationBackend : IEmulationBackend
     {
         foreach (var line in BuildCoinConfigurationDiagnostics(configuration))
             Debug.WriteLine(line);
-    }
-
-    private static void AddRomRole(List<FabricRomResource> resources, IReadOnlyList<string> paths, FabricRomRole role)
-    {
-        if (paths.Count > 4)
-            throw new InvalidOperationException($"Fabric supports at most four {role} ROM slots.");
-        var sawBlank = false;
-        for (var index = 0; index < paths.Count; index++)
-        {
-            var path = paths[index];
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                sawBlank = true;
-                continue;
-            }
-            if (sawBlank)
-                throw new InvalidOperationException($"Fabric {role} ROM slot {index} is configured after a blank slot; slots must be contiguous from zero.");
-            resources.Add(new(role, checked((uint)index), path));
-        }
     }
 
     private void Pump(CancellationToken cancellationToken)

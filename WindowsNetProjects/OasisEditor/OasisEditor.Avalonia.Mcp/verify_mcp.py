@@ -94,6 +94,8 @@ def main():
     parser.add_argument("--panel", type=Path)
     parser.add_argument("--face", type=Path)
     parser.add_argument("--fml", type=Path, help="Import a disposable copy of an actual FML; never modifies the source")
+    parser.add_argument("--copy-project", type=Path, help="Copy an existing disposable Oasis project into the isolated MCP workspace and run the production Machine build/export")
+    parser.add_argument("--machine", default="Assets/Machines/RefactorTest6/asset.machine", help="Machine path inside --copy-project")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     dll = Path(__file__).parent / "bin/Debug/net9.0/OasisEditor.Avalonia.Mcp.dll"
@@ -107,7 +109,21 @@ def main():
                     "set_face_artwork_calibration", "import_face_artwork_override", "set_face_artwork_override_alignment",
                     "rebuild_face_artwork", "inspect_face_artwork", "list_machines", "open_machine", "inspect_machine",
                     "set_machine_platform_setting", "set_machine_interaction", "set_machine_behavior_source",
-                    "apply_recovered_fml_inputs", "save_machine"} <= names
+                    "set_machine_cabinet_asset", "apply_recovered_fml_inputs", "save_machine",
+                    "build_machine_for_player", "export_machine_player_package"} <= names
+            if args.copy_project:
+                project_copy = root / "ActualMachineCopy"
+                shutil.copytree(args.copy_project, project_copy)
+                project_files = list(project_copy.glob("*.oasisproj"))
+                assert len(project_files) == 1, f"Expected one copied .oasisproj, found: {project_files}"
+                client.state("open_project", path=str(project_files[0]))
+                client.state("open_machine", path=str(project_copy / args.machine))
+                actual_build = client.state("build_machine_for_player")
+                assert actual_build["success"] and actual_build["playerLaunched"] is False, actual_build
+                actual_export = client.state("export_machine_player_package")
+                assert actual_export["success"] and actual_export["playerLaunched"] is False, actual_export
+                assert Path(actual_export["packageDirectory"], "machine.runtime.json").is_file()
+                print("Copied authored project Machine built and exported through headless MCP; no Player process launched.")
             created = client.state("create_project", name="Panel Authoring")
             assert any(a["type"] == "Machine" for a in created["assets"])
             machine_path = client.state("list_machines")["machines"][0]["manifestPath"]
@@ -124,7 +140,44 @@ def main():
             client.capture(args.output / "workspace-machine-dark.png", "Dark")
             reloaded_machine = client.state("open_machine", path=machine_path)["document"]
             assert reloaded_machine["displayName"] == "MCP-authored Machine"
-            print("Headless Machine create/open/settings/history/save/reopen and rendered capture passed.")
+            project_directory = Path(created["projectFilePath"]).parent
+            rom_directory = project_directory / "Roms"
+            rom_directory.mkdir()
+            (rom_directory / "verified.bin").write_bytes(b"Disposable MCP build ROM fixture")
+            cabinet = project_directory / "Assets" / "Cabinet3D" / "Diagnostic"
+            cabinet.mkdir(parents=True)
+            (cabinet / "asset.cabinet3d").write_text(json.dumps({"version": 9, "model": {"path": "cabinet.glb", "scale": 1, "upAxis": "Y"}, "surfaceTargetSettings": []}, indent=2), encoding="utf-8")
+            def make_glb(path):
+                positions = struct.pack("<12f", 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0)
+                uvs = struct.pack("<8f", 0, 0, 1, 0, 1, 1, 0, 1)
+                indices = struct.pack("<6H", 0, 1, 2, 0, 2, 3)
+                binary = positions + uvs + indices
+                gltf = {"asset": {"version": "2.0"}, "scene": 0, "scenes": [{"nodes": [0]}],
+                        "nodes": [{"name": "OasisFace_glass", "mesh": 0}],
+                        "meshes": [{"primitives": [{"attributes": {"POSITION": 0, "TEXCOORD_0": 1}, "indices": 2}]}],
+                        "buffers": [{"byteLength": len(binary)}],
+                        "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 48},
+                                         {"buffer": 0, "byteOffset": 48, "byteLength": 32},
+                                         {"buffer": 0, "byteOffset": 80, "byteLength": 12}],
+                        "accessors": [{"bufferView": 0, "componentType": 5126, "count": 4, "type": "VEC3"},
+                                      {"bufferView": 1, "componentType": 5126, "count": 4, "type": "VEC2"},
+                                      {"bufferView": 2, "componentType": 5123, "count": 6, "type": "SCALAR"}]}
+                json_bytes = json.dumps(gltf, separators=(",", ":")).encode("utf-8")
+                json_bytes += b" " * ((-len(json_bytes)) % 4)
+                binary += b"\0" * ((-len(binary)) % 4)
+                chunks = struct.pack("<I4s", len(json_bytes), b"JSON") + json_bytes + struct.pack("<I4s", len(binary), b"BIN\0") + binary
+                path.write_bytes(struct.pack("<III", 0x46546C67, 2, 12 + len(chunks)) + chunks)
+            make_glb(cabinet / "cabinet.glb")
+            assigned_cabinet = client.state("set_machine_cabinet_asset", path="Assets/Cabinet3D/Diagnostic/asset.cabinet3d", scope="Project")
+            assert "error" not in assigned_cabinet, assigned_cabinet
+            client.state("save_machine")
+            build = client.state("build_machine_for_player")
+            assert build["success"] and build["playerLaunched"] is False, build
+            assert Path(build["buildRoot"], "machine.runtime.json").is_file()
+            package = client.state("export_machine_player_package")
+            assert package["success"] and package["playerLaunched"] is False
+            assert Path(package["packageDirectory"], "machine.runtime.json").is_file()
+            print("Headless Machine create/open/settings/history/save/reopen, production build/export and rendered capture passed; no Player process launched.")
             client.state("create_panel2d", name="Control panel")
             first = client.state("add_rectangle")["selectedId"]
             client.state("update_element", id=first, name="Artwork registration", x=0, y=0, width=680, height=420)

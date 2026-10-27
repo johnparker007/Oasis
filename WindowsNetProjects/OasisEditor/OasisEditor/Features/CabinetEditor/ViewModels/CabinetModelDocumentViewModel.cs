@@ -514,7 +514,7 @@ public sealed class CabinetModelDocumentViewModel : INotifyPropertyChanged, IDis
             return false;
         }
 
-        var positions = GetRenderQuadCorners(target.Corners, targetSettings);
+        var positions = GetRenderQuadCorners(target.Corners.Select(point => new Point3D(point.X, point.Y, point.Z)).ToArray(), targetSettings);
         var isInverted = CabinetSurfaceTargetSettings.NormalizeFrontSide(targetSettings.FrontSide) == CabinetSurfaceTargetSettings.InvertedFrontSide;
         var reverseWinding = targetSettings.FaceFlipHorizontal ^ isInverted;
         var triangleIndices = reverseWinding

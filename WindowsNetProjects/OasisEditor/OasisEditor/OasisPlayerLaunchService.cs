@@ -70,6 +70,16 @@ public sealed class OasisPlayerLaunchService
         startInfo.ArgumentList.Add(request.Width.ToString(System.Globalization.CultureInfo.InvariantCulture));
         startInfo.ArgumentList.Add("--height");
         startInfo.ArgumentList.Add(request.Height.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        if (!string.IsNullOrWhiteSpace(request.FabricRuntimeDll))
+        {
+            startInfo.ArgumentList.Add("--fabric-runtime");
+            startInfo.ArgumentList.Add(Path.GetFullPath(request.FabricRuntimeDll));
+        }
+        if (!string.IsNullOrWhiteSpace(request.AmberImpactDll))
+        {
+            startInfo.ArgumentList.Add("--amber-impact");
+            startInfo.ArgumentList.Add(Path.GetFullPath(request.AmberImpactDll));
+        }
 
         return startInfo;
     }
@@ -101,6 +111,13 @@ public sealed class OasisPlayerLaunchService
             return $"The configured Oasis Player executable does not exist: {request.ExecutablePath}";
         }
 
+        foreach (var nativeLibrary in new[] { request.FabricRuntimeDll, request.AmberImpactDll })
+        {
+            if (string.IsNullOrWhiteSpace(nativeLibrary)) continue;
+            if (!Path.IsPathRooted(nativeLibrary)) return $"Native runtime library paths must be absolute: {nativeLibrary}";
+            if (!File.Exists(nativeLibrary)) return $"The configured native runtime library does not exist: {nativeLibrary}";
+        }
+
         if (OperatingSystem.IsWindows() && !string.Equals(Path.GetExtension(request.ExecutablePath), ".exe", StringComparison.OrdinalIgnoreCase))
         {
             return $"The configured Oasis Player path must be a Windows .exe file: {request.ExecutablePath}";
@@ -115,7 +132,8 @@ public sealed class OasisPlayerLaunchService
     }
 }
 
-public sealed record OasisPlayerLaunchRequest(string ExecutablePath, string BuildRoot, bool Fullscreen, int Width, int Height);
+public sealed record OasisPlayerLaunchRequest(string ExecutablePath, string BuildRoot, bool Fullscreen, int Width, int Height,
+    string? FabricRuntimeDll = null, string? AmberImpactDll = null);
 
 public sealed record OasisPlayerLaunchResult(bool Success, string? ExecutablePath, string? BuildRoot, IReadOnlyList<string> Arguments, string? ErrorMessage)
 {
