@@ -51,19 +51,9 @@ Do not create `BuildAndTestAttempt`-style Markdown files.
 
 All architectural, command/undo, theme, language compatibility and current-priority rules remain in force.
 
-## Unity Language Compatibility
+## Shared and Player Guidance
 
-Code under `UnityProjects/OasisPlayer` must target the Unity project's default/recommended scripting environment.
-
-- Use C# 9 syntax only.
-- Use block-scoped namespaces.
-- Do not use file-scoped namespaces.
-- Do not use global using directives.
-- Do not use `required` members.
-- Do not use other C# 10 or newer language features.
-- Do not change the Unity project's scripting runtime, API compatibility level, or related .NET settings merely to support newer generated syntax.
-
-When sharing contracts or DTO concepts between Oasis Editor and Oasis Player, ensure the Unity-side implementation remains valid C# 9 even if the Editor project supports newer language features.
+Read the repository-root `AGENTS.md` for shared product direction, PC-use constraints, verification standards, and standing GitHub permissions for agents. Unity language compatibility rules live in `UnityProjects/OasisPlayer/AGENTS.md` at the repository root; consult them when changing shared contracts or Player code.
 
 ## Context Rules
 
