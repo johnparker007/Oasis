@@ -105,6 +105,7 @@ public sealed partial class WorkspaceView
             faceTargets = _composition?.CabinetFaceTargets.Select(target => new { target.Id, target.DisplayName, target.IsValid, target.ErrorMessage,
                 corners = target.Corners.Select(p => new[] {p.X,p.Y,p.Z}).ToArray(), normal = new[] {target.Normal.X,target.Normal.Y,target.Normal.Z} }).ToArray(),
             reflectionReceivers = _composition?.ReflectionTargets,
+            reflectionBindings = _baseScene.Meshes.Count(mesh => mesh.Reflection is not null),
             gpu = frame is null ? null : new { frame.Width, frame.Height, frame.Device, frame.DrawCalls, frame.Triangles } };
     }
     public void SetSceneLibraryRoot(string path)
