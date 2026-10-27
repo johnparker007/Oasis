@@ -17,8 +17,10 @@ and MCP, with native save/history and real-asset background capture verification
 Additional Panel/Face component, clipboard, source-corner, generation-settings,
 project-close/Face-validation, Machine composition graph and processing/Player
 preferences workflows are now available through Avalonia and MCP. WPF remains
-available; individual asset-tab floating and native desktop/platform verification
-are still separate work. Preserve its
+available. Individual asset tabs now float into independent editors and redock
+without saving or discarding pending edits/history. Workspace persistence includes
+their bounds, panes, selection and cameras. Native desktop/platform verification
+remains separate work. Preserve its
 working authoring features while extracting shared services. Do not substitute
 mock data or scripted emulation previews for real systems.
 

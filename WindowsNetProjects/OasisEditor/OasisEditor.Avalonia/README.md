@@ -264,8 +264,8 @@ Machine using Library Cabinet/Reel assignments also ran real Fabric/Amber output
 (512 lamps, eight reels, 32 display cells and nonzero silently consumed PCM).
 
 Retained asset tabs now support Panel2D, Face, Machine, Cabinet, Prefab and Reel
-documents in both Project and Library scopes. They share the authoring dock;
-individual asset tabs are not independently floated. The workspace reopens their
+documents in both Project and Library scopes. Each asset tab can float into an independent editor window with its own viewport,
+Hierarchy and Inspector, and return to the main authoring dock. The workspace reopens their
 saved paths after validating every document. Pending edits are never serialized
 into workspace settings. File includes Close Asset, Save All and Close Project,
 plus native Face validation and source-Panel navigation.
@@ -314,7 +314,7 @@ preferences; MCP persistence requires an explicit file inside its workspace.
 checks these native workflows and captures the real workspace in Dark and Light.
 The existing `verify_mcp.py --reel-library` continues to cover production builds,
 package operations, native history and GPU captures. No visible app or desktop input
-is used. Physical OS-dialog/focus/clipboard/docking behavior, individual-tab floating,
+is used. Physical OS-dialog/focus/clipboard/docking behavior,
 macOS/Linux execution and packaging remain separate verification or UI work.
 
 The additional authoring suite passes 174/174 Avalonia tests, including independent
@@ -325,3 +325,50 @@ Reel/Library/GPU and production-build regression. Real saved Pool content resolv
 nine composition nodes and nine links without diagnostics; Dark/Light captures
 were inspected read-only. Existing shared Skia warnings remain. These results
 do not establish native OS interaction or execution on macOS/Linux.
+
+## Individual asset windows
+
+Use the ↗ button beside an asset tab, or File > Float active asset. Multiple
+Panel2D, Face, Machine, Cabinet, Prefab and Reel assets can remain editable at once.
+Shared Library assets retain their explicit bound root and Library indicator.
+Each floating editor has its own viewport, Hierarchy and Inspector. Dock asset,
+the main tab's Dock button, or closing the floating window returns its document
+without saving or discarding pending edits. Explicit Close Asset still refuses
+dirty documents. Project change/close and Save All include floating documents.
+
+Ownership moves entirely in memory: native IDs, unsaved content, history/redo,
+selection, saved-file/package hashes and recovered Panel FML inputs survive.
+Panel windows share a project-scoped internal clipboard. Reopening an asset
+activates its existing window. Native preview stops before its editor moves and
+never restarts automatically; preview/build guards include all workspace edits.
+
+Workspace settings persist owned windows, their bounds, internal pane layouts,
+selection, 2D view/source-region state, 3D camera/visibility and Machine graph mode.
+Restore validates all documents and layouts before replacing a clean workspace;
+it reopens saved content and never stores pending authored edits. Window bounds
+use the same connected-screen clamping as the main workspace. Layout Reset keeps
+owned floating editors alive. Child editors do not load or save personal preferences.
+
+The headless MCP host adds float/dock/inspect/history/save and focused floating
+Panel/Face/Reel/Cabinet/Prefab/Machine editing tools. `capture_workspace` includes
+the actual floating-window PNGs after the main workspace image, without desktop
+capture, OS input or visible windows. Reproduce the closed loop with:
+
+```powershell
+python OasisEditor.Avalonia.Mcp/verify_floating_documents.py --output <directory>
+```
+
+This creates disposable native assets, edits all asset kinds in independent windows,
+checks history/save/conflicts, shared Library edits, saved workspace restoration
+and redocking, then inspects actual GPU state and Dark/Light captures. It also keeps
+one GPU renderer active while sibling windows redock/dispose. Native OS window
+dragging, focus, dialogs, mixed-DPI/monitor behavior and macOS/Linux execution remain
+unverified; headless captures establish only that backend's rendering and layout.
+
+The floating-window integration passes 184/184 Avalonia checks and 1,449/1,449
+WPF regressions on Windows. The dedicated floating-window MCP loop passed with
+seven simultaneous editors (all native asset kinds plus a Library Reel), including
+real GPU sibling-renderer survival and restored Dark/Light captures. Images were
+inspected. The existing Reel/Library and authoring MCP regressions remain in use.
+Shared Skia deprecation/nullability warnings remain; no desktop interaction,
+audible/native gameplay, or macOS/Linux execution is claimed by this feature check.

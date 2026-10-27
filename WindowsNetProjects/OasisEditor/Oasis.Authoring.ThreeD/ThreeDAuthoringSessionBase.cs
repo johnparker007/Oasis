@@ -22,6 +22,10 @@ public abstract partial class ThreeDAuthoringSessionBase(AuthoringSession projec
     protected string SavedPayload { get; set; } = string.Empty;
     protected abstract string CurrentPayload { get; }
     protected abstract void SetCurrentPayload(string payload);
+    protected abstract void SetTransferredPayload(string payload);
+    protected abstract void ValidateTransferPayload(string payload);
+    protected abstract void NotifyDocumentChanged();
+    protected abstract void ResetTransferredDocument();
     public string? FilePath => ManifestPath;
     public bool IsLibraryAsset => _boundLibraryRoot is not null;
     public string? LibraryRoot => _boundLibraryRoot;

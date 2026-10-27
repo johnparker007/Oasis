@@ -16,6 +16,7 @@ public sealed partial class WorkspaceView
     }
     public async Task OpenReelAsync(string path)
     {
+        if(FindAssetWindow("Reel",Path.GetFullPath(path,_session.RequireProjectDirectory())) is {} owned){ShowOwnedAssetWindow(owned.Window);return;}
         if (!SameScenePath(Reels.FilePath,Path.GetFullPath(path,_session.RequireProjectDirectory())) || !Reels.IsDirty) Reels.Open(path);
         _faceActive = _machineActive = false; _sceneKind = "Reel"; _selectedSceneNodeId = Reels.Document.Id;
         await ReloadSceneAsync(); RestoreDocumentCamera(); Refresh();

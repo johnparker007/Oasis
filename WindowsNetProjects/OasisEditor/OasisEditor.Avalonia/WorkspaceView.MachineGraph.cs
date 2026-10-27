@@ -55,6 +55,11 @@ public sealed partial class WorkspaceView
             return;
         }
 
+        if(_assetWindowOwner is {} owner)
+        {
+            if(IsInLibrary(node.ManifestPath)){await owner.OpenLibraryAssetAsync(Path.GetRelativePath(SceneLibraryRoot,node.ManifestPath));return;}
+            owner.OpenAsset(new AssetSummary(node.Kind=="Cabinet"?"Cabinet3D":node.Kind=="Prefab"?"Object3D":node.Kind,node.Title,node.ManifestPath));return;
+        }
         if (IsInLibrary(node.ManifestPath))
         {
             await OpenLibraryAssetAsync(Path.GetRelativePath(SceneLibraryRoot, node.ManifestPath));

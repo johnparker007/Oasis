@@ -16,7 +16,8 @@ public sealed partial class WorkspaceView
     private string? _workspaceSettingsPath;
     private string? _workspaceSettingsHash;
     public bool CanAutoSaveWorkspace { get; private set; }
-    public IReadOnlyList<Window> FloatingWorkspaceWindows => (_dock.Layout as IRootDock)?.Windows?.Select(w => w.Host).OfType<Window>().ToArray() ?? [];
+    public IReadOnlyList<Window> FloatingWorkspaceWindows => (((_dock.Layout as IRootDock)?.Windows?.Select(w => w.Host).OfType<Window>())??Enumerable.Empty<Window>())
+        .Concat(_assetWindows.Values.Select(w=>w.Window)).Concat(_assetWindows.Values.SelectMany(w=>w.View.FloatingWorkspaceWindows)).ToArray();
     public WorkspaceState InspectWorkspaceState()
     {
         var projectRoot = _session.ProjectFilePath is null ? null : Path.GetDirectoryName(_session.ProjectFilePath)!;
@@ -40,7 +41,7 @@ public sealed partial class WorkspaceView
                     SceneView.Camera.Distance, SceneView.Camera.Yaw, SceneView.Camera.Pitch, SceneView.Camera.FieldOfView),
                 SceneView.ShowVisuals, SceneView.ShowColliders, SceneView.ShowTriggers,
                 _sceneKind == "Reel" && Reels.IsProjectCurrent ? AssetRelative(Reels.FilePath) : null,IsLibraryScene?"Library":"Project"),
-                string.IsNullOrWhiteSpace(SceneLibraryRoot)?null:SceneLibraryRoot,_browseLibrary,CaptureDocumentList(),_sceneKind=="Machine"&&_machineGraphActive);
+                string.IsNullOrWhiteSpace(SceneLibraryRoot)?null:SceneLibraryRoot,_browseLibrary,CaptureDocumentList(),_sceneKind=="Machine"&&_machineGraphActive,InspectFloatingDocuments().ToArray());
     }
 
     public void ConfigureWorkspacePersistence(string path, bool restore = true)
@@ -62,6 +63,7 @@ public sealed partial class WorkspaceView
 
     public void SaveWorkspace()
     {
+        EnsureAssetWindowsIdle();
         var path = _workspaceSettingsPath ?? throw new InvalidOperationException("Choose a workspace settings file first.");
         var parent = Path.GetDirectoryName(path)!;
         WorkspacePathPolicy.RejectRootReparsePoints(parent, requireExists: false);
@@ -100,7 +102,8 @@ public sealed partial class WorkspaceView
 
     public void ApplyWorkspaceState(WorkspaceState state)
     {
-        if (Preview.Backend is not null) throw new InvalidOperationException("Stop preview before restoring a workspace.");
+        EnsureAssetWindowsIdle();
+        if (Preview.Backend is not null || _assetWindows.Values.Any(w=>w.View.Preview.Backend is not null)) throw new InvalidOperationException("Stop preview before restoring a workspace.");
         if (state?.Layout is null) throw new InvalidDataException("Workspace layout is missing.");
         if (HasUnsavedChanges) throw new InvalidOperationException("Save or undo all document changes before restoring a workspace.");
         if (state.Version != 1 || state.Theme is not ("System" or "Dark" or "Light") || state.ActiveDocument is not ("Panel2D" or "Face" or "Machine"))
@@ -132,6 +135,7 @@ public sealed partial class WorkspaceView
             var project = WorkspacePathPolicy.ResolveConfined(_session.WorkspacePath, state.Project, requireExists: true);
             var probe = new AuthoringSession(_session.WorkspacePath); probe.OpenProject(project);
             PreflightDocumentList(state,probe);
+            PreflightFloatingDocuments(state,probe);
             if (state.Panel is not null) probe.OpenPanel(state.Panel);
             if (state.Face is not null) new FaceAuthoringSession(probe).OpenFace(state.Face);
             if (state.Machine is not null) new MachineAuthoringSession(probe).OpenMachine(state.Machine);
@@ -139,7 +143,7 @@ public sealed partial class WorkspaceView
             if (sceneMode == "Prefab") {var asset=new PrefabAuthoringSession(probe);if(state.Scene3D!.Scope=="Library")asset.OpenLibrary(state.LibraryRoot!,state.Scene3D.Prefab!);else asset.Open(state.Scene3D.Prefab!);}
             if (sceneMode == "Reel") {var asset=new ReelAuthoringSession(probe);if(state.Scene3D!.Scope=="Library")asset.OpenLibrary(state.LibraryRoot!,state.Scene3D.Reel!);else asset.Open(state.Scene3D.Reel!);}
         }
-        else if (state.Panel is not null || state.Face is not null || state.Machine is not null || sceneMode is not null || state.Documents?.Length > 0)
+        else if (state.Panel is not null || state.Face is not null || state.Machine is not null || sceneMode is not null || state.Documents?.Length > 0 || state.FloatingDocuments?.Length > 0)
             throw new InvalidDataException("Saved documents require a project.");
         if (state.Project is not null)
         {
@@ -159,7 +163,7 @@ public sealed partial class WorkspaceView
                 Faces.Select(Faces.Elements.Any(e => e.Id == state.FaceSelection) ? state.FaceSelection : null);
             }
         }
-        else { Faces.CloseAllDocuments(); _session.CloseProject(); Machines.CloseProject(); Clear3DForProjectChange(); }
+        else { CloseAllAssetWindows(); Faces.CloseAllDocuments(); _session.CloseProject(); Machines.CloseProject(); Clear3DForProjectChange(); }
         SceneLibraryRoot=state.LibraryRoot??string.Empty;RestartLibraryWatcher();_libraryTask=RefreshLibraryAsync();SetAssetBrowserSource(state.LibraryBrowser);
         var restored = WorkspaceLayoutState.Restore(state.Layout, known);
         ReplaceLayout(restored);
@@ -186,6 +190,7 @@ public sealed partial class WorkspaceView
             if (state.Scene3D?.Camera is { } camera) ApplySceneCamera(camera);
         }
         else _sceneTask = RestoreScene3DAsync(sceneMode, state.Scene3D);
+        _assetWindowTask=RestoreFloatingDocumentsAsync(_sceneTask,state.FloatingDocuments);
     }
 
     private async Task RestoreScene3DAsync(string mode, WorkspaceSceneState? saved)
@@ -201,7 +206,7 @@ public sealed partial class WorkspaceView
         {
             case "Machine":
                 ShowMachine();
-                await WaitForSceneAsync();
+                await _sceneTask;
                 break;
             case "Cabinet3D":
                 await OpenCabinet3DAsync(saved!.Cabinet!);

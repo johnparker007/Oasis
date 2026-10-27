@@ -107,13 +107,13 @@ public sealed partial class WorkspaceView
 
     private void InitializePreferences(MenuItem fileMenu)
     {
-        if (!Program.IsHeadless)
+        if (!Program.IsHeadless && !_isAssetWindow)
         {
             _preferencesStore = new AvaloniaEditorPreferencesStore();
             try { Preferences = _preferencesStore.Load().Normalize(); }
             catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException) { SetStatus("Preferences could not be loaded: "+error.Message); }
         }
-        ImageProcessingExecutionPolicy.Configure(Preferences.Processing);
+        if(!_isAssetWindow)ImageProcessingExecutionPolicy.Configure(Preferences.Processing);
         var item = new MenuItem { Header = "Preferences…" };
         item.Click += async (_, _) => await ShowPreferencesAsync();
         fileMenu.Items.Add(item);

@@ -41,7 +41,7 @@ public sealed partial class WorkspaceView
         Cabinets = new(_session); Prefabs = new(_session);
         _twoDToolbar=twoDTools.Parent as Control;
         _sourceRegionHeading=hierarchy.Children.OfType<TextBlock>().FirstOrDefault();
-        if (!Program.IsHeadless) SceneLibraryRoot = GetLibraryRoot();
+        if (!Program.IsHeadless && !_isAssetWindow) SceneLibraryRoot = GetLibraryRoot();
         _sceneHierarchy.ItemsSource = _sceneRows; _sceneHierarchy.IsVisible = false;
         _sceneHierarchy.ItemTemplate = new FuncDataTemplate<SceneHierarchyRow>((row, _) => new TextBlock
         { Text = row is null ? "" : new string(' ', row.Depth * 2) + "◇  " + row.Name, TextTrimming = TextTrimming.CharacterEllipsis });
@@ -70,17 +70,19 @@ public sealed partial class WorkspaceView
     }
     public async Task OpenCabinet3DAsync(string path)
     {
+        if(FindAssetWindow("Cabinet3D",Path.GetFullPath(path,_session.RequireProjectDirectory())) is {} owned){ShowOwnedAssetWindow(owned.Window);return;}
         if (Cabinets.FilePath is null || !SameScenePath(Cabinets.FilePath, Path.GetFullPath(path, _session.RequireProjectDirectory())) || !Cabinets.IsDirty) Cabinets.Open(path);
         _faceActive = _machineActive = false; _sceneKind = "Cabinet3D"; _selectedSceneNodeId = "cabinet";
         await ReloadSceneAsync(); RestoreDocumentCamera(); Refresh();
     }
     public async Task OpenPrefab3DAsync(string path)
     {
+        if(FindAssetWindow("Prefab",Path.GetFullPath(path,_session.RequireProjectDirectory())) is {} owned){ShowOwnedAssetWindow(owned.Window);return;}
         if (Prefabs.FilePath is null || !SameScenePath(Prefabs.FilePath, Path.GetFullPath(path, _session.RequireProjectDirectory())) || !Prefabs.IsDirty) Prefabs.Open(path);
         _faceActive = _machineActive = false; _sceneKind = "Prefab"; _selectedSceneNodeId = Prefabs.Document.Root.Id;
         await ReloadSceneAsync(); RestoreDocumentCamera(); Refresh();
     }
-    public Task WaitForSceneAsync() => _sceneTask;
+    public Task WaitForSceneAsync() => Task.WhenAll(new[]{_sceneTask,_assetWindowTask}.Concat(_assetWindows.Values.Select(w=>w.View.WaitForSceneAsync())));
     public void SelectScene3DNode(string? id)
     {
         if (id is not null && !_sceneRows.Any(row => row.Id == id)) throw new ArgumentException("Scene node does not exist: " + id, nameof(id));
@@ -122,8 +124,8 @@ public sealed partial class WorkspaceView
     private void QueueSceneReload() => _sceneTask = SceneAction(async () => { await ReloadSceneAsync(); RestoreDocumentCamera(); });
     private async Task SceneAction(Func<Task> action)
     { try { await action(); } catch (OperationCanceledException) { } catch (Exception e) when (e is not OutOfMemoryException) { SetStatus(e.Message); } }
-    private void On3DAssetChanged() { CheckPreviewSource(); if (Is3DActive) { Refresh(); QueueSceneReload(); } }
-    private void OnMachineSceneChanged() { RefreshCompositionGraph(); if (_sceneKind is "Machine" or "Cabinet3D") QueueSceneReload(); }
+    private void On3DAssetChanged() { if(_movingDocument)return; CheckPreviewSource(); if (Is3DActive) { Refresh(); QueueSceneReload(); StateChanged?.Invoke(); } }
+    private void OnMachineSceneChanged() { if(_movingDocument)return; RefreshCompositionGraph(); if (_sceneKind is "Machine" or "Cabinet3D") QueueSceneReload(); }
     public async Task ReloadSceneAsync()
     {
         if (!Is3DActive || _sceneDisposed) return;

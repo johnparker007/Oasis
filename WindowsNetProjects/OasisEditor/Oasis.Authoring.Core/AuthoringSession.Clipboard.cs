@@ -4,8 +4,24 @@ namespace OasisEditor;
 
 public sealed partial class AuthoringSession
 {
-    private PanelElementFile[] _panelClipboard = [];
-    private string? _panelClipboardProjectRoot;
+    private sealed class PanelClipboardState
+    {
+        public PanelElementFile[] Elements = [];
+        public string? ProjectRoot;
+    }
+
+    private PanelClipboardState _panelClipboardState = new();
+    // Keep the existing local names while allowing paired authoring sessions to share one clipboard instance.
+    private PanelElementFile[] _panelClipboard
+    {
+        get => _panelClipboardState.Elements;
+        set => _panelClipboardState.Elements = value;
+    }
+    private string? _panelClipboardProjectRoot
+    {
+        get => _panelClipboardState.ProjectRoot;
+        set => _panelClipboardState.ProjectRoot = value;
+    }
 
     /// <summary>Whether this authoring session has a reusable Panel2D clipboard payload.</summary>
     public bool CanPasteClipboard => _panelClipboard.Length > 0 && _panelClipboardProjectRoot is not null && _projectDirectory is not null

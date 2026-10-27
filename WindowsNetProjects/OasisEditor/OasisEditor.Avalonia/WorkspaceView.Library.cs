@@ -70,6 +70,8 @@ public sealed partial class WorkspaceView
         var reference=AssetReference.Library(libraryRelativeManifest);
         await RefreshLibraryAsync();
         var asset=LibraryCatalog.Assets.FirstOrDefault(a=>a.Reference==reference)??throw new InvalidDataException("Library asset is missing or invalid. Refresh the Library and inspect its diagnostics.");
+        var kind=asset.Type switch{EditorAssetType.Object3D=>"Prefab",EditorAssetType.Cabinet3D=>"Cabinet3D",_=>asset.Type.ToString()};
+        if(FindAssetWindow(kind,asset.ManifestPath) is {} owned){ShowOwnedAssetWindow(owned.Window);return;}
         switch(asset.Type)
         {
             case EditorAssetType.Reel:if(!SameScenePath(Reels.FilePath,asset.ManifestPath)||!Reels.IsDirty)Reels.OpenLibrary(SceneLibraryRoot,reference.Path);_sceneKind="Reel";_selectedSceneNodeId=Reels.Document.Id;break;
