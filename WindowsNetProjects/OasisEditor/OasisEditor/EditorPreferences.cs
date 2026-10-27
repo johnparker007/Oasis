@@ -22,34 +22,12 @@ public sealed class AssetLibraryPreferences
     public string RootPath { get; init; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Oasis Library");
 }
 
-public enum CpuImageProcessingMode { Auto, Maximum, Custom }
-
-public sealed class ProcessingPreferences
-{
-    public CpuImageProcessingMode CpuMode { get; init; } = CpuImageProcessingMode.Auto;
-    public int CustomMaximumWorkers { get; init; } = 1;
-}
-
 public sealed class OasisPlayerPreferences
 {
     public string ExecutablePath { get; init; } = string.Empty;
     public bool Fullscreen { get; init; }
     public int PreviewWidth { get; init; } = OasisPlayerLaunchService.DefaultPreviewWidth;
     public int PreviewHeight { get; init; } = OasisPlayerLaunchService.DefaultPreviewHeight;
-}
-
-public sealed class NativeEmulationPreferences
-{
-    public const int DefaultAudioBufferLengthMilliseconds = 50;
-
-    public string FabricRuntimeLibraryPath { get; init; } = string.Empty;
-    public string ProductionAmberLibraryPath { get; init; } = string.Empty;
-    public string Mpu5AmberLibraryPath { get; init; } = string.Empty;
-    public string EpochAmberLibraryPath { get; init; } = string.Empty;
-    public string Mpu3AmberLibraryPath { get; init; } = string.Empty;
-    public string M1AmberLibraryPath { get; init; } = string.Empty;
-    public string Scorpion4AmberLibraryPath { get; init; } = string.Empty;
-    public int AudioBufferLengthMilliseconds { get; init; } = DefaultAudioBufferLengthMilliseconds;
 }
 
 public sealed class FaceGenerationPreferences

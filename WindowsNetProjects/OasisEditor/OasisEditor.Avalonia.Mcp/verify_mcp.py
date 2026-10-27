@@ -102,7 +102,10 @@ def main():
         client = Client(dll, root)
         try:
             names = {tool["name"] for tool in client.request("tools/list", {})["tools"]}
-            assert {"capture_workspace", "update_element", "history", "create_project", "create_face", "import_fml"} <= names
+            assert {"capture_workspace", "update_element", "history", "create_project", "create_face", "import_fml",
+                    "generate_face_from_source_shape", "import_face_artwork", "set_face_artwork_registration",
+                    "set_face_artwork_calibration", "import_face_artwork_override", "set_face_artwork_override_alignment",
+                    "rebuild_face_artwork", "inspect_face_artwork"} <= names
             created = client.state("create_project", name="Panel Authoring")
             assert any(a["type"] == "Machine" for a in created["assets"])
             client.state("create_panel2d", name="Control panel")
@@ -144,8 +147,22 @@ def main():
             client.state("face_history")
             client.state("face_history", redo=True)
             client.state("add_face_lamp", name="Hold lamp", x=460, y=140, width=260, height=120, lampIndex=7)
+            client.state("import_face_artwork", path=str(artwork))
+            client.state("set_face_artwork_registration", topLeftX=0.02, topLeftY=0.04, topRightX=0.98, topRightY=0.02,
+                         bottomRightX=0.96, bottomRightY=0.96, bottomLeftX=0.04, bottomLeftY=0.98)
+            calibration = {"strength": 65, "blackReference": {"manualEnabled": True, "manualColor": "#FF202020", "samples": []},
+                           "whiteReference": {"manualEnabled": True, "manualColor": "#FFD0D0D0", "samples": []},
+                           "sameColorGroups": [], "correctSpatialBrightness": False, "correctSpatialColor": True,
+                           "normalizeBlackWhite": True, "neutralizeWhite": True}
+            client.state("set_face_artwork_calibration", calibration=calibration)
+            client.state("import_face_artwork_override", path=str(artwork))
+            client.state("set_face_artwork_override_alignment", x=0.1, y=0.15, width=0.8, height=0.7, alphaSource="OverrideImage")
+            client.state("rebuild_face_artwork")
             face = client.state("save_face")["face"]
             assert not face["isDirty"]
+            artwork_state = client.state("inspect_face_artwork")["artwork"]
+            assert artwork_state["processingPipeline"]["operations"][0]["strength"] == 65
+            assert artwork_state["override"]["alphaSource"] == "OverrideImage"
             client.capture(args.output / "workspace-face-dark.png", "Dark")
             client.capture(args.output / "workspace-face-light.png", "Light")
             reopened = client.state("open_face", path=face["facePath"])["face"]

@@ -1,6 +1,8 @@
 using SkiaSharp;
 
-namespace OasisEditor;
+using OasisEditor;
+
+namespace OasisEditor.FacePipeline;
 
 /// <summary>High-quality projective rasterization for offline generated assets.</summary>
 internal static class PerspectiveRasterizer

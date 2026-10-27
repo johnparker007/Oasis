@@ -17,7 +17,9 @@ extracted. No authored schemas or Player files change in this migration.
   selection; atomic group movement; duplication with fresh IDs; deletion; stacking
   order; drag movement/resize and inspector geometry/visibility/lock editing.
 - Persisted Face source-region creation, convex four-corner editing and deletion,
-  with region outlines in the viewport. Face generation from these regions is pending.
+  with region outlines in the viewport. Generate Face creates a native package from
+  a saved source shape using perspective correction, lamp masks, semantic components
+  and tray authoring.
 - Actual FML decoder, mapper, asset copier, lamp/mask and background compositing
   shared with WPF. Portable Skia bitmap adapters preserve palette alpha and straight
   color bytes. Imports have fresh IDs and enter history as one command; existing
@@ -28,9 +30,15 @@ extracted. No authored schemas or Player files change in this migration.
   element/emitter name, geometry, visibility, locking and lamp-ID editing; deletion,
   history and save. The viewport shows actual artwork and editable bounds, without
   simulating specialist lamp/reel/display rendering or emulation.
+- Face artwork import and override import; saved perspective registration, sampled or
+  manual calibration, spatial/tonal processing and override alignment; rebuild
+  Correction Input, Base and Output; recipe undo/redo restores generated pixels.
+  These operations are shared by the Avalonia UI and workspace-confined MCP tools.
 - Full project/Machine/Panel2D/Face models and storage in `Oasis.Authoring.Core`.
-  The core/decoder/Avalonia projects have no WPF dependency. WPF views, library
-  catalog and region conversion adapters remain platform-specific.
+  Face generation, perspective mapping/rasterization, semantic conversion,
+  processing/calibration, override, tray/emitter authoring and image import are
+  shared services. WPF uses narrow progress/reference/geometry compatibility
+  adapters; Core/decoder/Avalonia have no WPF dependency.
 - Exact saved-state tracking and document-local history. Panel save detects external
   manifest changes; Face save fingerprints the authored package. Dirty replacement
   and close guards include both retained documents. One Panel and one Face may be
@@ -56,7 +64,9 @@ dotnet run --project WindowsNetProjects/OasisEditor/OasisEditor.Avalonia -- --wo
 
 New projects are created under the explicit workspace. File creates/opens projects
 and imports an FML into the open panel. Project creates Panels and Faces; Create
-adds elements/images/regions/lamps. Face creation currently starts blank.
+adds elements/images/regions/lamps. Create Face starts blank; Generate Face builds a
+Face from the selected saved source region. File includes artwork and override import,
+registration/processing and rebuild commands.
 
 Wheel zooms, middle drag pans, drag moves selection and the bottom-right handle
 resizes a single element. Ctrl/Cmd-click toggles selection. Ctrl/Cmd+S saves;
@@ -77,7 +87,8 @@ dotnet <absolute-path>/OasisEditor.Avalonia.Mcp.dll --workspace <existing-direct
 Project/Panel tools cover project creation/open, asset inspection, panel creation/open,
 element/image/FML import, multi-selection, move/duplicate/reorder/delete, source-region
 editing, undo/redo and save. Face tools cover create/open, select, add lamp, edit,
-delete, history and save. `capture_workspace` returns a real Headless + Skia PNG of
+delete, history, generation, artwork/override import, recipe updates, rebuild and
+inspection. `capture_workspace` returns a real Headless + Skia PNG of
 the same controls. It creates no OS windows and never captures the desktop or sends
 system input. Sizes are 960–1920 by 640–1200; themes System/Light/Dark. The existing
 WPF MCP connection and user settings remain unchanged.
@@ -101,8 +112,7 @@ An existing 196-element Panel and 80-element Face were captured read-only. Exist
 decoder nullable/obsolete warnings now appear in Core on a clean build. No native
 emulation was executed for this migration.
 
-Next: Face generation from source regions, artwork import/registration/processing,
-specialist 2D renderers, remaining inspectors and Machine settings, build/export,
+Next: specialist 2D renderers, remaining inspectors and Machine settings, build/export,
 real Fabric/Amber preview, multi-document tabs, saved layouts and Reel/library UI.
 3D remains explicitly deferred until its renderer is selected and proved portable.
 

@@ -20,7 +20,7 @@ public sealed record FaceElementSnapshot(
     int? LampId);
 
 /// <summary>Portable editing session for one authored Face package in an open Oasis project.</summary>
-public sealed class FaceAuthoringSession
+public sealed partial class FaceAuthoringSession
 {
     private readonly AuthoringSession _project;
     private readonly ProjectAssetPathService _assetPaths = new();
@@ -31,6 +31,7 @@ public sealed class FaceAuthoringSession
     private string? _facePath;
     private string? _savedPayload;
     private Dictionary<string, string> _savedPackageFiles = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, string> _savedGeneratedFiles = new(StringComparer.OrdinalIgnoreCase);
     private int _historyIndex;
     private string? _selectedId;
 
@@ -39,6 +40,8 @@ public sealed class FaceAuthoringSession
 
     public string? FacePath => _facePath;
     public string FaceTitle => Current?.Title ?? string.Empty;
+    public FaceArtworkModel? CurrentArtwork => Current is null ? null : FaceDocumentStorage.ToModel(Current).Artwork;
+    public FaceDocumentModel? CurrentDocument => Current is null ? null : FaceDocumentStorage.ToModel(Current);
     public string? SelectedId => _selectedId;
     public bool IsDirty => Current is not null && FaceDocumentStorage.SerializePayload(Current) != _savedPayload;
     public bool CanUndo => Current is not null && _historyIndex > 0;
@@ -97,6 +100,7 @@ public sealed class FaceAuthoringSession
         _facePath = resolvedPath;
         _packageDirectory = Path.GetDirectoryName(resolvedPath)!;
         _savedPackageFiles = FingerprintPackage(projectRoot, _packageDirectory);
+        _savedGeneratedFiles = FingerprintGeneratedFaceFiles(projectRoot, faceName);
         _savedPayload = FaceDocumentStorage.SerializePayload(file);
         ResetHistory(file);
         _selectedId = null;
@@ -129,6 +133,7 @@ public sealed class FaceAuthoringSession
         _facePath = manifestPath;
         _packageDirectory = packageDirectory;
         _savedPackageFiles = FingerprintPackage(projectRoot, packageDirectory);
+        _savedGeneratedFiles = FingerprintGeneratedFaceFiles(projectRoot, safeName);
         _savedPayload = FaceDocumentStorage.SerializePayload(file);
         ResetHistory(file);
         _selectedId = null;
@@ -259,6 +264,8 @@ public sealed class FaceAuthoringSession
     {
         if (!CanUndo) return;
         _historyIndex--;
+        try { RebuildCurrentArtworkForHistory(); }
+        catch { _historyIndex++; throw; }
         KeepSelection();
         Changed?.Invoke();
     }
@@ -267,6 +274,8 @@ public sealed class FaceAuthoringSession
     {
         if (!CanRedo) return;
         _historyIndex++;
+        try { RebuildCurrentArtworkForHistory(); }
+        catch { _historyIndex--; throw; }
         KeepSelection();
         Changed?.Invoke();
     }
@@ -289,6 +298,7 @@ public sealed class FaceAuthoringSession
         _history[_historyIndex] = savedFile;
         _savedPayload = FaceDocumentStorage.SerializePayload(savedFile);
         _savedPackageFiles = FingerprintPackage(projectRoot, packageDirectory);
+        _savedGeneratedFiles = FingerprintGeneratedFaceFiles(projectRoot, Path.GetFileName(packageDirectory));
         Changed?.Invoke();
         return true;
     }
@@ -358,6 +368,7 @@ public sealed class FaceAuthoringSession
         _projectRootAtOpen = null;
         _savedPayload = null;
         _savedPackageFiles = new(StringComparer.OrdinalIgnoreCase);
+        _savedGeneratedFiles = new(StringComparer.OrdinalIgnoreCase);
     }
 
     private static FaceElementSnapshot ProjectElement(FaceElementFile element)

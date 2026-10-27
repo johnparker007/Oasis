@@ -18,7 +18,7 @@ internal static class FaceArtworkOverridePreviewService
         FacePerspectiveRegistrationModel registration, int maximumDimension = MaximumPreviewDimension)
     {
         if (maximumDimension <= 0) throw new ArgumentOutOfRangeException(nameof(maximumDimension));
-        var useful=FaceSourceShapeTransformService.EstimateRegisteredImageOutputSize(sourceWidth,sourceHeight,registration);
+        var useful=PortableFaceSourceShapeTransformAdapter.EstimateRegisteredImageOutputSize(sourceWidth,sourceHeight,registration);
         var scale=Math.Min(1d,maximumDimension/(double)Math.Max(useful.Width,useful.Height));
         return new FaceSourceShapeOutputSize(Math.Max(1,(int)Math.Round(useful.Width*scale)),Math.Max(1,(int)Math.Round(useful.Height*scale)));
     }

@@ -1,6 +1,8 @@
-using System.Windows;
+using Rect = OasisEditor.FacePipeline.FaceRect;
 
-namespace OasisEditor;
+using OasisEditor;
+
+namespace OasisEditor.FacePipeline;
 
 internal sealed class FaceSemanticElementConversionService
 {
@@ -69,7 +71,7 @@ internal sealed class FaceSemanticElementConversionService
             return null;
         }
 
-        return FaceSourceRegionWpfAdapter.FromRect(new Rect(minX, minY, maxX - minX, maxY - minY));
+        return FaceSourceRegionGeometryAdapter.FromRect(new Rect(minX, minY, maxX - minX, maxY - minY));
     }
 
     public static bool IsCenterInsideSourceShape(PanelElementModel element, PanelFaceSourceShapeModel sourceShape)

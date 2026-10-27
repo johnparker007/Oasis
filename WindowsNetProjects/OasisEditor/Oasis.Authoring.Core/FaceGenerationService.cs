@@ -1,9 +1,10 @@
-using System.Windows;
-using OasisEditor.Progress;
+using Rect = OasisEditor.FacePipeline.FaceRect;
 
 using SkiaSharp;
 
-namespace OasisEditor;
+using OasisEditor;
+
+namespace OasisEditor.FacePipeline;
 
 internal sealed class FaceGenerationResult
 {
@@ -52,7 +53,7 @@ internal sealed class FaceGenerationService
         string? faceAssetName = null,
         string? faceAssetDirectory = null,
         FaceGenerationSettingsModel? generationSettings = null,
-        IEditorProgressReporter? progress = null,
+        Action<double, string>? progress = null,
         string? sourcePanel2DDocumentPath = null,
         IReadOnlyList<InputDefinitionModel>? inputDefinitions = null,
         CancellationToken cancellationToken = default)
@@ -64,7 +65,7 @@ internal sealed class FaceGenerationService
         var pathService = new ProjectAssetPathService();
         var resolvedFaceAssetName = pathService.SanitizePathSegment(string.IsNullOrWhiteSpace(faceAssetName) ? title : faceAssetName);
         var faceArtworkPath = ResolveFaceAuthoredAssetPath(projectDirectory, generatedDirectory, faceAssetDirectory, resolvedFaceAssetName, ProjectAssetPathService.FaceArtworkFileName);
-        var region = FaceSourceRegionWpfAdapter.FromRect(new Rect(0, 0, output.Width, output.Height));
+        var region = FaceSourceRegionGeometryAdapter.FromRect(new Rect(0, 0, output.Width, output.Height));
         var sourceBackground = sourcePanel.Elements.FirstOrDefault(element => element.Kind == PanelElementKind.Background);
         var artworkState = new FaceArtworkModel
         {
@@ -123,7 +124,7 @@ internal sealed class FaceGenerationService
             cancellationToken.ThrowIfCancellationRequested();
         }
         var faceDocumentId = Guid.NewGuid().ToString("N");
-        progress?.Report(0.2, "Converting source-shape semantic components...");
+        progress?.Invoke(0.2, "Converting source-shape semantic components...");
         var semanticElements = _semanticElementConversionService.ConvertSupportedElements(sourcePanel, sourceShape, output.Width, output.Height, projectDirectory, inputDefinitions).ToArray();
         var lampWindows = semanticElements.OfType<FaceLampWindowElement>().ToArray();
         var maskLayer = GenerateMaskFromSourceShape(
@@ -156,7 +157,7 @@ internal sealed class FaceGenerationService
             Provenance = new FaceArtworkProvenanceModel { Generator = "Create Face from Face Source Shape", GeneratedAtUtc = DateTime.UtcNow }
         };
         var elements = new FaceElementModel[] { artwork }.Concat(semanticElements).ToArray();
-        progress?.Report(0.9, "Auto-authoring trays/emitters...");
+        progress?.Invoke(0.9, "Auto-authoring trays/emitters...");
         var autoAuthored = _trayAutoAuthoringService.AutoAuthor(new FaceDocumentModel { GenerationSettings = settings, MaskLayer = maskLayer, Elements = elements }, projectDirectory);
         cancellationToken.ThrowIfCancellationRequested();
         var document = new FaceDocumentModel
@@ -195,7 +196,7 @@ internal sealed class FaceGenerationService
         var sevenSegmentCount = semanticElements.OfType<FaceSevenSegmentDisplayElement>().Count();
         var alphaCount = semanticElements.OfType<FaceAlphaDisplayElement>().Count();
         var buttonCount = semanticElements.OfType<FaceButtonElement>().Count();
-        progress?.Report(1.0, $"Face generated: artwork=1, lamps={lampWindows.Length}, reels={reelCount}, sevenSegment={sevenSegmentCount}, alpha={alphaCount}, buttons={buttonCount}");
+        progress?.Invoke(1.0, $"Face generated: artwork=1, lamps={lampWindows.Length}, reels={reelCount}, sevenSegment={sevenSegmentCount}, alpha={alphaCount}, buttons={buttonCount}");
         return new FaceGenerationResult(document, lampWindows.Length, 1, buttonCount, sevenSegmentCount, alphaCount, reelCount);
     }
 
@@ -280,7 +281,7 @@ internal sealed class FaceGenerationService
             Name = "Face Mask",
             AssetPath = assetPath,
             SourcePanel2DDocumentId = NormalizeOptional(sourcePanel2DDocumentId),
-            SourceRegion = FaceSourceRegionWpfAdapter.FromRect(new Rect(0, 0, faceWidth, faceHeight)),
+            SourceRegion = FaceSourceRegionGeometryAdapter.FromRect(new Rect(0, 0, faceWidth, faceHeight)),
             ExtractionThreshold = extractionThreshold,
             GeneratedUtc = DateTime.UtcNow,
             Width = faceWidth,
@@ -349,7 +350,7 @@ internal sealed class FaceGenerationService
             minY = Math.Min(minY, top + row); maxY = Math.Max(maxY, top + row);
         }
         var bounds = count > 0
-            ? FaceSourceRegionWpfAdapter.FromRect(new Rect(minX, minY, maxX - minX + 1, maxY - minY + 1))
+            ? FaceSourceRegionGeometryAdapter.FromRect(new Rect(minX, minY, maxX - minX + 1, maxY - minY + 1))
             : null;
         return new SourceShapeMaskContribution(bounds, count);
     }
@@ -446,7 +447,7 @@ internal sealed class FaceGenerationService
             return null;
         }
 
-        var faceBounds = FaceSourceRegionWpfAdapter.FromRect(new Rect(minX, minY, maxX - minX, maxY - minY));
+        var faceBounds = FaceSourceRegionGeometryAdapter.FromRect(new Rect(minX, minY, maxX - minX, maxY - minY));
         var bulbMaskAssetPath = FaceSourceShapeTransformService.TryGenerateTransformedElementAsset(
             sourceElement,
             sourceElement.SecondaryAssetPath,

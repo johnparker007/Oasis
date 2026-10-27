@@ -18,8 +18,9 @@ using Orientation = Avalonia.Layout.Orientation;
 
 namespace OasisEditor.Avalonia;
 
-public sealed class WorkspaceView : UserControl, IDisposable
+public sealed partial class WorkspaceView : UserControl, IDisposable
 {
+    partial void AddFaceWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
     private readonly AuthoringSession _session;
     public FaceAuthoringSession Faces { get; }
     private bool _faceActive;
@@ -115,6 +116,7 @@ public sealed class WorkspaceView : UserControl, IDisposable
         MenuAction(file, "Open project…", async () => await OpenProjectDialog());
         MenuAction(file, "Save", () => Try(SaveActive));
         MenuAction(file, "Import FML layout…", async () => await ImportFml());
+        AddFaceWorkflowMenus(file, create);
         var edit = new MenuItem { Header = "_Edit" };
         MenuAction(edit, "Undo", () => Try(UndoActive)); MenuAction(edit, "Redo", () => Try(RedoActive));
         MenuAction(edit, "Duplicate", () => Try(() => { RequirePanel(); session.DuplicateSelected(); }));
