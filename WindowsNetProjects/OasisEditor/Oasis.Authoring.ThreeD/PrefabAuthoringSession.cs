@@ -9,7 +9,7 @@ public sealed class PrefabAuthoringSession : ThreeDAuthoringSessionBase
     private Object3DDocument _document = Object3DDocument.Create("Object3D");
 
     public PrefabAuthoringSession(AuthoringSession projectSession)
-        : base(projectSession, "Object3D", ProjectAssetPathService.Object3DManifestFileName) { }
+        : base(projectSession, "Object3D", ProjectAssetPathService.Object3DManifestFileName, "Object3D") { }
 
     public Object3DDocument Document => Clone(_document);
     public event Action? Changed;
@@ -27,6 +27,24 @@ public sealed class PrefabAuthoringSession : ThreeDAuthoringSessionBase
         var payload = Object3DDocumentStorage.Serialize(candidate);
         var hashes = CapturePackageHashes(package);
         SetOpen(manifest, payload, hashes);
+        _document = candidate;
+        _payload = payload;
+        Changed?.Invoke();
+    }
+
+    public void OpenLibrary(string explicitLibraryRoot, string libraryRelativeManifest)
+    {
+        EnsureCanReplaceDocument();
+        var root = Path.GetFullPath(explicitLibraryRoot);
+        var manifest = ResolveLibraryManifest(root, libraryRelativeManifest);
+        var json = File.ReadAllText(manifest);
+        if (!Object3DDocumentStorage.TryRead(json, out var document, out var error)) throw new InvalidDataException(error);
+        var candidate = Clone(document);
+        var package = Path.GetDirectoryName(manifest)!;
+        ValidatePackage(candidate, package);
+        var payload = Object3DDocumentStorage.Serialize(candidate);
+        var hashes = CapturePackageHashes(package);
+        SetOpen(manifest, payload, hashes, root);
         _document = candidate;
         _payload = payload;
         Changed?.Invoke();
@@ -235,7 +253,7 @@ public sealed class PrefabAuthoringSession : ThreeDAuthoringSessionBase
             var path = WorkspacePathPolicy.ResolveConfined(packageDirectory, model.Path, requireExists: true);
             WorkspacePathPolicy.RejectReparsePoints(packageDirectory, model.Path, requireExists: true);
             if (!File.Exists(path)) throw new InvalidDataException($"Prefab model '{model.Path}' is missing.");
-            ValidatePackageModelGlb(path);
+            ValidatePackageModelGlb(path, packageDirectory);
         }
         Object3DValidationService.Validate(document, packageDirectory);
     }

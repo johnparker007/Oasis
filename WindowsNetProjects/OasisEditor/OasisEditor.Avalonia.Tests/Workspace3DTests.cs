@@ -12,6 +12,25 @@ namespace OasisEditor.Avalonia.Tests;
 public sealed class Workspace3DTests
 {
     [Fact]
+    public async Task AssigningTheFirstCabinetFramesGeometryAfterAnEmptyMachineView()
+    {
+        await HeadlessTestHost.RunAsync(async()=>
+        {
+            var root=NewWorkspace();Directory.CreateDirectory(root);
+            try
+            {
+                var session=new AuthoringSession(root);session.CreateProject("Project");var projectRoot=Path.GetDirectoryName(session.ProjectFilePath!)!;
+                File.WriteAllBytes(Path.Combine(projectRoot,"Assets","Quad.glb"),CreateQuadGlb());
+                using var capture=new WorkspaceCapture(session);var view=capture.View;var cabinet=view.Cabinets.Create("Quad","Assets/Quad.glb");
+                view.Machines.OpenMachine(view.Machines.ListMachines().Single().ManifestPath);view.ShowMachine();await view.WaitForSceneAsync();
+                Assert.True(view.SceneView.Camera.Distance<1);
+                view.Machines.UpdateDocument(machine=>machine with{CabinetAsset=AssetReference.Project(Path.GetRelativePath(projectRoot,cabinet))});await view.WaitForSceneAsync();
+                Assert.True(view.SceneView.Camera.Distance>1);Assert.Contains(view.SceneView.Scene.Meshes,mesh=>mesh.Kind=="visual");
+            }
+            finally{Directory.Delete(root,true);}
+        });
+    }
+    [Fact]
     public async Task NestedPrefabModelPicksOwningNodeAndLiveEditsUndoAndPersist()
     {
         await HeadlessTestHost.RunAsync(async () =>

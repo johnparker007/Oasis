@@ -112,7 +112,11 @@ public sealed partial class WorkspaceView
     {
         var full = Path.GetFullPath(path);
         WorkspacePathPolicy.RejectRootReparsePoints(full, requireExists: true);
+        if(!Directory.Exists(full))throw new DirectoryNotFoundException("The Oasis Library folder does not exist.");
+        if(!SameScenePath(SceneLibraryRoot,full) && (Reels.IsLibraryAsset&&Reels.IsDirty || Cabinets.IsLibraryAsset&&Cabinets.IsDirty || Prefabs.IsLibraryAsset&&Prefabs.IsDirty))throw new InvalidOperationException("Save or undo Library asset edits before changing the Library folder.");
+        if(IsLibraryScene&&!SameScenePath(ActiveLibraryRoot,full)){_sceneKind=null;SceneView.SuspendRendering();}
         SceneLibraryRoot = full;
+        RestartLibraryWatcher();_libraryTask=RefreshLibraryAsync();Refresh();
         if (Is3DActive) QueueSceneReload();
     }
     private void QueueSceneReload() => _sceneTask = SceneAction(() => ReloadSceneAsync());
@@ -153,9 +157,10 @@ public sealed partial class WorkspaceView
         var reflectionDiagnostics = AttachSceneReflections(result, meshes);
         AddAnchorMeshes(result, meshes);
         var bounds = result.Bounds;
+        var frameFirstGeometry = !_baseScene.Meshes.Any(mesh => mesh.Kind is "visual" or "face") && meshes.Any(mesh => mesh.Kind is "visual" or "face");
         var diagnostics = result.Diagnostics.Concat(faceDiagnostics).Concat(reflectionDiagnostics).ToArray();
         _baseScene = new(meshes, bounds.IsEmpty ? Vector3.Zero : bounds.Minimum, bounds.IsEmpty ? Vector3.Zero : bounds.Maximum, diagnostics);
-        RebuildSceneHierarchy(result); UpdateSceneDisplay(identity != _sceneIdentity); _sceneIdentity = identity;
+        RebuildSceneHierarchy(result); UpdateSceneDisplay(identity != _sceneIdentity || frameFirstGeometry); _sceneIdentity = identity;
         Refresh3DInspector();
         SetStatus($"{kind}: {meshes.Count} mesh primitives" + (diagnostics.Length > 0 ? " • " + string.Join(" • ", diagnostics) : ""));
     }
@@ -229,8 +234,8 @@ public sealed partial class WorkspaceView
         return new(Get("ViewportGrid"),Get("SelectionColor"),Get("SceneColliderColor"),Get("SceneTriggerColor"));
     }
     private void Refresh3DInspector()
-    { if (_sceneKind == "Reel") RefreshReelInspector(); else if (_sceneKind == "Prefab") RefreshPrefab3DInspector(); else if (_sceneKind == "Cabinet3D") RefreshCabinet3DInspector(); else RefreshMachine3DInspector(); }
-    private static bool SameScenePath(string? left,string? right) => left is not null && right is not null && string.Equals(Path.GetFullPath(left),Path.GetFullPath(right),OperatingSystem.IsWindows()?StringComparison.OrdinalIgnoreCase:StringComparison.Ordinal);
+    {        if (_sceneKind == "Reel") RefreshReelInspector(); else if (_sceneKind == "Prefab") RefreshPrefab3DInspector(); else if (_sceneKind == "Cabinet3D") RefreshCabinet3DInspector(); else RefreshMachine3DInspector();        if(IsLibraryScene)_inspector.Children.Insert(0,new TextBlock{Text="Shared Library asset · Save updates this package for projects that reference it.",TextWrapping=TextWrapping.Wrap,Opacity=.7});    }
+    private static bool SameScenePath(string? left,string? right) => !string.IsNullOrWhiteSpace(left) && !string.IsNullOrWhiteSpace(right) && string.Equals(Path.GetFullPath(left),Path.GetFullPath(right),OperatingSystem.IsWindows()?StringComparison.OrdinalIgnoreCase:StringComparison.Ordinal);
     private async Task Create3DAssetDialog(bool prefab)
     {
         if (TopLevel.GetTopLevel(this) is not Window owner) return;
@@ -284,9 +289,9 @@ public sealed partial class WorkspaceView
     }
     private void Refresh3DWorkspaceChrome()
     {
-        RefreshAssets();_project.Text=_session.ProjectName??"Open or create an Oasis project";
+        RefreshAssets();_project.Text=_browseLibrary?"Oasis Library · "+SceneLibraryRoot:_session.ProjectName??"Open or create an Oasis project";
         var dirty=_sceneKind=="Reel"?Reels.IsDirty:_sceneKind=="Cabinet3D"?Cabinets.IsDirty:_sceneKind=="Prefab"?Prefabs.IsDirty:Machines.IsDirty;
-        _document.Title=ActiveTitle+(dirty?" *":"");_mode.Text=_sceneKind;_save.IsEnabled=dirty;
+        _document.Title=ActiveTitle+(IsLibraryScene?" [Library]":"")+(dirty?" *":"");_mode.Text=_sceneKind+(IsLibraryScene?" · Library":"");_save.IsEnabled=dirty;
         _undo.IsEnabled=_sceneKind=="Reel"?Reels.CanUndo:_sceneKind=="Cabinet3D"?Cabinets.CanUndo:_sceneKind=="Prefab"?Prefabs.CanUndo:Machines.CanUndo;
         _redo.IsEnabled=_sceneKind=="Reel"?Reels.CanRedo:_sceneKind=="Cabinet3D"?Cabinets.CanRedo:_sceneKind=="Prefab"?Prefabs.CanRedo:Machines.CanRedo;
         Refresh3DInspector();StateChanged?.Invoke();

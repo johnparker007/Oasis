@@ -81,7 +81,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
 
         _assets.ItemTemplate = new FuncDataTemplate<AssetSummary>((a, _) => new TextBlock
         { Text = a is null ? "" : $"{a.Type}   /   {a.Name}", TextTrimming = TextTrimming.CharacterEllipsis });
-        _assets.DoubleTapped += (_, _) => { if (_assets.SelectedItem is AssetSummary asset) Try(() => OpenAsset(asset)); };
+        _assets.DoubleTapped += (_, _) => { if (_assets.SelectedItem is AssetSummary asset) { if(_browseLibrary)_sceneTask=SceneAction(()=>OpenLibraryAssetAsync(asset.ManifestPath));else Try(() => OpenAsset(asset)); } };
         _assetSearch.TextChanged += (_, _) => RefreshAssets();
         var projectPanel = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto") };
         projectPanel.Children.Add(_project); Grid.SetRow(_assetSearch, 1); projectPanel.Children.Add(_assetSearch);
@@ -129,6 +129,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         AddMachineWorkflowMenus(file, create);
         Initialize3DAuthoring(hierarchy, scene, tools, file);
         InitializeReels(create);
+        InitializeLibrary(projectPanel,file);
         InitializePreview(file);
         var edit = new MenuItem { Header = "_Edit" };
         MenuAction(edit, "Undo", () => Try(UndoActive)); MenuAction(edit, "Redo", () => Try(RedoActive));
@@ -278,10 +279,13 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
 
     private void RefreshAssets()
     {
-        var assets = _session.ProjectFilePath is null ? [] : _session.ListAssets();
+        _project.Text=_browseLibrary?"Oasis Library":_session.ProjectName??"Open or create an Oasis project";
+        ToolTip.SetTip(_project,_browseLibrary?SceneLibraryRoot:null);
+        IReadOnlyList<AssetSummary> assets = _browseLibrary ? LibraryCatalog.Assets.Select(a=>new AssetSummary(a.Type.ToString(),a.DisplayName+" · "+a.Reference.Path,a.Reference.Path)).ToArray() : _session.ProjectFilePath is null ? [] : _session.ListAssets();
         var query = _assetSearch.Text?.Trim() ?? "";
         var filtered = assets.Where(a => (a.Name + " " + a.Type).Contains(query, StringComparison.OrdinalIgnoreCase)).ToArray();
-        if (_assets.ItemsSource is not AssetSummary[] old || !old.SequenceEqual(filtered)) _assets.ItemsSource = filtered;
+        var selected=(_assets.SelectedItem as AssetSummary)?.ManifestPath;
+        if (_assets.ItemsSource is not AssetSummary[] old || !old.SequenceEqual(filtered)) { _assets.ItemsSource = filtered;_assets.SelectedItem=filtered.FirstOrDefault(a=>a.ManifestPath==selected); }
     }
     private void Refresh()
     {
@@ -299,7 +303,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
             foreach (var e in _rows.Where(e => SelectedIds.Contains(e.Id))) _hierarchy.SelectedItems?.Add(e);
             var shapes = _faceActive ? [] : _session.SourceShapes;
             _sources.ItemsSource = shapes; _sources.SelectedItem = shapes.FirstOrDefault(s => s.Id == _selectedSource);
-            RefreshAssets(); _project.Text = _session.ProjectName ?? "Open or create an Oasis project";
+            RefreshAssets(); _project.Text = _browseLibrary ? "Oasis Library · "+SceneLibraryRoot : _session.ProjectName ?? "Open or create an Oasis project";
             var title = _machineActive ? Machines.MachineTitle : _faceActive ? Faces.FaceTitle : _session.PanelTitle;
             var path = _machineActive ? Machines.MachinePath : _faceActive ? Faces.FacePath : _session.PanelPath;
             var dirty = _machineActive ? Machines.IsDirty : _faceActive ? Faces.IsDirty : _session.IsDirty;
@@ -374,6 +378,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     }
     public void Dispose()
     {
+        DisposeLibrary();
         Dispose3D();
         DisposePreview();
         _session.Changed -= Refresh; Faces.Changed -= Refresh; Machines.Changed -= Refresh;
