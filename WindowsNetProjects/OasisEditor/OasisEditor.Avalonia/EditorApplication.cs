@@ -28,10 +28,10 @@ public sealed class EditorApplication : Application
             var view = new WorkspaceView(session);
             window.Content = view;
             window.Title = "Oasis Editor — Avalonia";
-            session.Changed += () => window.Title = $"{session.PanelTitle}{(session.IsDirty ? " *" : "")} — {session.ProjectName ?? "Oasis Editor"}";
-            window.Closing += (_, e) => { if (session.IsDirty) { e.Cancel = true; view.SetStatus("Save or undo your changes before closing."); } };
+            view.StateChanged += () => window.Title = $"{view.ActiveTitle}{(view.HasUnsavedChanges ? " *" : "")} — {session.ProjectName ?? "Oasis Editor"}";
+            window.Closing += (_, e) => { if (view.HasUnsavedChanges) { e.Cancel = true; view.SetStatus("Save or undo your changes before closing."); } };
             desktop.MainWindow = window;
-            if (Program.Project is not null) view.Try(() => session.OpenProject(Program.Project));
+            if (Program.Project is not null) view.Try(() => view.OpenProject(Program.Project));
         }
         base.OnFrameworkInitializationCompleted();
     }
@@ -76,11 +76,11 @@ public sealed class WorkspaceCapture : IDisposable
 {
     private readonly Window _window;
     public WorkspaceView View { get; }
-    public WorkspaceCapture(AuthoringSession session)
+    public WorkspaceCapture(AuthoringSession session, FaceAuthoringSession? faces = null)
     {
         if (!Program.IsHeadless)
             throw new InvalidOperationException("WorkspaceCapture requires the headless platform; desktop capture is not supported here.");
-        View = new WorkspaceView(session);
+        View = new WorkspaceView(session, faces);
         _window = new Window { Content = View, Width = 1400, Height = 900 };
         _window.Show(); // Headless platform only: no native window exists.
     }

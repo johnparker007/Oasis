@@ -92,7 +92,7 @@ public sealed class FaceGenerationSettingsTests
                 Title = "Renamed Face",
                 SourcePanel2DDocumentId = "panel-doc",
                 SourceFaceShapeId = "shape-1",
-                SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
+                SourceRegion = FaceSourceRegionWpfAdapter.FromRect(new Rect(0, 0, 100, 100)),
                 GenerationSettings = FaceGenerationSettingsModel.Default
             };
 
@@ -118,7 +118,7 @@ public sealed class FaceGenerationSettingsTests
             Title = "Face",
             SourcePanel2DDocumentId = "panel-doc",
             SourceFaceShapeId = "shape-1",
-            SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
+            SourceRegion = FaceSourceRegionWpfAdapter.FromRect(new Rect(0, 0, 100, 100)),
             GenerationSettings = new FaceGenerationSettingsModel
             {
                 MaskExtractionThreshold = 13,
@@ -141,7 +141,7 @@ public sealed class FaceGenerationSettingsTests
             Title = "Face",
             SourcePanel2DDocumentId = "panel-doc",
             SourceFaceShapeId = "shape-1",
-            SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
+            SourceRegion = FaceSourceRegionWpfAdapter.FromRect(new Rect(0, 0, 100, 100)),
             GenerationSettings = new FaceGenerationSettingsModel { MaskExtractionThreshold = 13 }
         };
 
@@ -178,7 +178,7 @@ public sealed class FaceGenerationSettingsTests
                     new FaceMaskContributionModel
                     {
                         SourcePanel2DElementId = "lamp-1",
-                        Bounds = FaceSourceRegionModel.FromRect(new Rect(10, 20, 30, 40)),
+                        Bounds = FaceSourceRegionWpfAdapter.FromRect(new Rect(10, 20, 30, 40)),
                         PixelCount = 100
                     }
                 ]

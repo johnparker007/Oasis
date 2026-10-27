@@ -309,7 +309,7 @@ internal sealed class FmlToOasisMapper
 
         var rawShortcut = shortcut?.Text ?? string.Empty;
         var keyboardShortcut = string.Empty;
-        if (shortcut is not null && MfmeShortcutKeyMapper.TryMap(rawShortcut, out var mappedKey))
+        if (shortcut is not null && MfmeShortcutNameMapper.TryMapShortcutName(rawShortcut, out var mappedKey))
         {
             keyboardShortcut = mappedKey.ToString();
         }

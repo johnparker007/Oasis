@@ -5,19 +5,26 @@ using ModelContextProtocol.Server;
 namespace OasisEditor.Avalonia.Mcp;
 
 [McpServerToolType]
-public sealed class EditorTools(AuthoringSession session, WorkspaceCapture capture, EditorDispatcher ui)
+public sealed partial class EditorTools(AuthoringSession session, FaceAuthoringSession faces, WorkspaceCapture capture, EditorDispatcher ui)
 {
     private object Snapshot() => new
     {
         session.ProjectName, session.ProjectFilePath, session.PanelTitle, session.PanelPath,
-        session.IsDirty, session.CanUndo, session.CanRedo, session.SelectedId,
+        session.IsDirty, session.CanUndo, session.CanRedo, session.SelectedId, session.SelectedIds,
         panels = session.ProjectFilePath is null ? [] : session.ListPanels(), elements = session.Elements,
-        rendering = new { supported = "Panel2D geometry, artwork images and text", deferred = "3D, emulation previews, specialist lamp/reel/display rendering" }
+        assets = session.ProjectFilePath is null ? [] : session.ListAssets(), sourceShapes = session.SourceShapes,
+        recoveredInputDefinitions = session.ImportedInputDefinitions,
+        face = new { faces.FacePath, faces.FaceTitle, faces.IsDirty, faces.CanUndo, faces.CanRedo, faces.SelectedId, elements = faces.Elements, faces.ArtworkPath, faces.LogicalWidth, faces.LogicalHeight },
+        rendering = new { supported = "Panel2D geometry, artwork images and text; Face artwork and editable bounds", deferred = "3D, emulation previews, specialist lamp/reel/display rendering" }
     };
-    private object Act(Action action) { action(); return Snapshot(); }
+    private object Act(Action action) { action(); capture.View.ShowPanel(); return Snapshot(); }
+    private object ActFace(Action action) { action(); capture.View.ShowFace(); return Snapshot(); }
+
+    [McpServerTool(Name = "create_project"), Description("Create and open a complete native Oasis project, including the real default Machine. Refuses existing folders and unsaved edits.")]
+    public Task<object> CreateProject(string name, CancellationToken cancellationToken) => ui.Invoke(() => Act(() => capture.View.CreateProject(name)), cancellationToken);
 
     [McpServerTool(Name = "open_project"), Description("Open a schema-9 Oasis project within the explicit workspace. Headless isolated session; rejects dirty replacement.")]
-    public Task<object> OpenProject(string path, CancellationToken cancellationToken) => ui.Invoke(() => Act(() => session.OpenProject(path)), cancellationToken);
+    public Task<object> OpenProject(string path, CancellationToken cancellationToken) => ui.Invoke(() => Act(() => capture.View.OpenProject(path)), cancellationToken);
 
     [McpServerTool(Name = "inspect_workspace", ReadOnly = true), Description("Inspect project, Panel2D assets, active document, selection, dirty state, history and all element geometry.")]
     public Task<object> Inspect(CancellationToken cancellationToken) => ui.Invoke(Snapshot, cancellationToken);

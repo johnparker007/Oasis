@@ -12,6 +12,7 @@ public static class FaceDocumentStorage
     private static readonly JsonSerializerOptions s_readOptions = new()
     {
         PropertyNameCaseInsensitive = true,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         Converters = { new JsonStringEnumConverter() }
     };
 
@@ -31,7 +32,7 @@ public static class FaceDocumentStorage
             Id = Guid.NewGuid().ToString("N"),
             Title = resolvedTitle,
             Summary = "Native Face document.",
-            SourceRegion = ToFile(FaceSourceRegionModel.FromRect(new System.Windows.Rect(0, 0, DefaultNativeLogicalWidth, DefaultNativeLogicalHeight))),
+            SourceRegion = ToFile(FaceSourceRegionModel.FromBounds(0, 0, DefaultNativeLogicalWidth, DefaultNativeLogicalHeight)),
             Provenance = new FaceProvenanceModel(),
             BuildState = new FaceBuildStateModel(),
             GenerationSettings = ToFile(FaceGenerationSettingsModel.Default),
@@ -89,6 +90,9 @@ public static class FaceDocumentStorage
         };
         return JsonSerializer.Serialize(normalized, s_writeOptions);
     }
+
+    internal static string SerializePayload(FaceDocumentFile file)
+        => JsonSerializer.Serialize(file with { SavedAtUtc = default }, s_writeOptions);
 
     public static bool TryRead(string? json, out FaceDocumentFile file)
     {

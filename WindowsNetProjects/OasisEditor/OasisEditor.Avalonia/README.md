@@ -1,102 +1,112 @@
 # Avalonia Editor migration
 
-This is the first functional slice of the parallel cross-platform Editor. The WPF
-Editor remains the complete authoring application. No authored schema changes are
-introduced, and no Player files are part of this migration.
+The parallel Editor now supports native project creation, Panel2D authoring/import
+and Face editing. WPF remains the complete application while further workflows are
+extracted. No authored schemas or Player files change in this migration.
 
 ## Delivered
 
-- Unity-inspired compact workspace with real Dock tool/document panes: Hierarchy,
-  Inspector, Project and Panel2D. Pane movement/floating uses Dock; real desktop
-  interaction and multi-monitor behaviour still require manual verification.
-- System, Dark and Light themes using semantic resources.
-- Open an existing schema-9 project with the standard Assets/Generated layout.
-  Discover, open and create current schema-3 Panel2D packages.
-- Skia-backed Avalonia 2D artwork/geometry/text viewport with fit, wheel zoom,
-  middle-button pan, picking and undoable drag movement. The inspector edits name,
-  position, dimensions, visibility and transform locking through the same commands
-  used by automation. A panel can contain all current element DTO fields, but this
-  viewport does **not** reproduce specialist reel/lamp/display visual behaviour.
-- Document history, exact saved-state tracking, dirty-replacement protection,
-  atomic save and external-manifest-change detection. Switching saved panels retains
-  their histories while their persisted contents match. One panel is active at a time.
-- The existing Panel2D storage/model sources now live in `Oasis.Authoring.Core`,
-  consumed by both Editor implementations. There is no WPF dependency in that core
-  or either Avalonia project. Existing WPF storage behaviour is unchanged.
-- New isolated stdio MCP host using the same authoring session and real workspace
-  controls. Capture uses Avalonia Headless with the Skia renderer; it creates no OS
-  windows and never reads the desktop or sends system mouse/keyboard input.
+- Unity-inspired docking workspace with Hierarchy, Inspector, searchable Project
+  pane and authoring viewport; semantic System/Dark/Light themes.
+- Native schema-9 project scaffolding shared with WPF, including the real schema-11
+  default Machine and standard folders. Existing destinations are refused, with
+  atomic reservation for concurrent creation.
+- Asset discovery across Panels, Faces, Machines, Cabinets, Reels and Object3D.
+  Double-click Panels/Faces to author them. Other asset editors remain in WPF.
+- Panel rectangle/anchor/zone/label creation and image import; selection and multi-
+  selection; atomic group movement; duplication with fresh IDs; deletion; stacking
+  order; drag movement/resize and inspector geometry/visibility/lock editing.
+- Persisted Face source-region creation, convex four-corner editing and deletion,
+  with region outlines in the viewport. Face generation from these regions is pending.
+- Actual FML decoder, mapper, asset copier, lamp/mask and background compositing
+  shared with WPF. Portable Skia bitmap adapters preserve palette alpha and straight
+  color bytes. Imports have fresh IDs and enter history as one command; existing
+  import packages are refused. Failure cleanup only removes owned reserved output.
+- Recovered FML input definitions are exposed as session metadata for Machine setup.
+  Panel2D schema 3 does not persist Machine input bindings.
+- Blank native Face creation; full current-schema Face loading; lamp-window creation;
+  element/emitter name, geometry, visibility, locking and lamp-ID editing; deletion,
+  history and save. The viewport shows actual artwork and editable bounds, without
+  simulating specialist lamp/reel/display rendering or emulation.
+- Full project/Machine/Panel2D/Face models and storage in `Oasis.Authoring.Core`.
+  The core/decoder/Avalonia projects have no WPF dependency. WPF views, library
+  catalog and region conversion adapters remain platform-specific.
+- Exact saved-state tracking and document-local history. Panel save detects external
+  manifest changes; Face save fingerprints the authored package. Dirty replacement
+  and close guards include both retained documents. One Panel and one Face may be
+  retained, with one active view. Imported images remain after undo for redo.
 
-The new session accepts current schemas only and rejects unrecognized Panel2D
-properties rather than silently dropping them. Full current DTO data is preserved
-through edits; tests cover native metadata, reel settings and source shapes.
-Workspace/project paths are confined, separator-normalized and checked for links.
-Use a disposable project copy for development; image assets are read-only.
+New sessions accept current schemas and reject unrecognized fields rather than
+silently discarding data. Full DTO metadata is retained through editing.
 
-## Build and run
+## Build and use
 
-From the repository root with .NET 9 SDK installed:
+From the repository root with .NET 9:
 
 ```powershell
 dotnet build WindowsNetProjects/OasisEditor/OasisEditor.Avalonia.Mcp
 dotnet test WindowsNetProjects/OasisEditor/OasisEditor.Avalonia.Tests
 ```
 
-Only run this next command when a visible application is wanted:
+Only launch this when a visible application is wanted:
 
 ```powershell
 dotnet run --project WindowsNetProjects/OasisEditor/OasisEditor.Avalonia -- --workspace <projects-directory> --project <project.oasisproj>
 ```
 
-Project paths must be inside the explicit workspace. Relative project paths in
-the MCP session resolve against that workspace. Double-click a panel in Project
-to open it. Save or undo pending changes before switching panels/projects or
-closing. Ctrl/Cmd+S saves; Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z undo/redo outside text
-fields. The initial layout has no persisted workspace preferences yet.
+New projects are created under the explicit workspace. File creates/opens projects
+and imports an FML into the open panel. Project creates Panels and Faces; Create
+adds elements/images/regions/lamps. Face creation currently starts blank.
 
-## Background MCP loop
+Wheel zooms, middle drag pans, drag moves selection and the bottom-right handle
+resizes a single element. Ctrl/Cmd-click toggles selection. Ctrl/Cmd+S saves;
+Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z undo/redo; Ctrl/Cmd+D duplicates, Ctrl/Cmd+A selects
+all panel elements, and Delete removes selection outside text fields. Source regions
+expose four corners in Inspector. Save or undo pending edits before replacement.
 
-Launch the separate host with:
+Native-picker imports can read the explicitly selected external file; the UI stages
+it under Generated before calling the confined session API. MCP imports require
+sources inside the explicit workspace. User-owned source files are never modified.
+
+## Background MCP verification
 
 ```text
 dotnet <absolute-path>/OasisEditor.Avalonia.Mcp.dll --workspace <existing-directory>
 ```
 
-Tools: `open_project`, `inspect_workspace`, `open_panel2d`, `create_panel2d`,
-`add_rectangle`, `select_element`, `update_element`, `history`, `save_panel2d`,
-`capture_workspace`. Captures return PNG image content; dimensions are bounded to
-960–1920 by 640–1200. Themes are System/Light/Dark. This host is independent of the
-existing WPF MCP server and does not change the user's configured MCP connections.
-
-The standard-library Python client tests the actual stdio protocol end to end:
+Project/Panel tools cover project creation/open, asset inspection, panel creation/open,
+element/image/FML import, multi-selection, move/duplicate/reorder/delete, source-region
+editing, undo/redo and save. Face tools cover create/open, select, add lamp, edit,
+delete, history and save. `capture_workspace` returns a real Headless + Skia PNG of
+the same controls. It creates no OS windows and never captures the desktop or sends
+system input. Sizes are 960–1920 by 640–1200; themes System/Light/Dark. The existing
+WPF MCP connection and user settings remain unchanged.
 
 ```powershell
 python WindowsNetProjects/OasisEditor/OasisEditor.Avalonia.Mcp/verify_mcp.py --output <capture-directory>
 ```
 
-It authors a disposable test fixture, edits elements, checks undo/redo and
-save/reopen, and captures Dark, Light and compact workspaces. Optional
-`--project <existing.oasisproj> --panel <asset.panel2d>` adds a read-only capture of
-real authored content. The small generated project is a **test fixture**, not a
-replacement for native project creation/scaffolding. Do not commit captures or
-private project assets.
+The standard-library client creates a native disposable project, authors Panels,
+images, source regions and Faces, checks history/save/reopen, and captures multiple
+themes/sizes. Optional `--fml <layout.fml>` imports a disposable real-layout copy.
+Optional `--project <existing.oasisproj> --panel <asset.panel2d> --face <asset.face>`
+adds read-only existing-content captures. Never commit captures/private assets/ROMs.
 
-## Remaining migration work
+## Verification and remaining migration
 
-Continue with full project scaffolding and asset browser workflows, additional
-Panel2D authoring/selection and source-shape tools, FML import and Face authoring,
-specialist 2D renderers, workspace layout persistence, then build/export and
-emulation service extraction. Keep the real Fabric/Amber path. 3D is explicitly
-deferred until its renderer has been selected and proved cross-platform.
+Verified on Windows: portable authoring/headless UI tests; all 1,448 existing WPF
+tests, including 110 focused import/mapper/pixel/shortcut tests; actual MCP authoring
+and rendered captures. A disposable Bonanza FML produced 195 editable elements.
+An existing 196-element Panel and 80-element Face were captured read-only. Existing
+decoder nullable/obsolete warnings now appear in Core on a clean build. No native
+emulation was executed for this migration.
 
-Verified locally on Windows: new projects build without warnings; portable session
-and headless UI tests; actual MCP authoring and image captures; read-only capture of
-an existing 196-element panel; existing WPF regression suite (1,448 tests). The first
-WPF run had an audio timing assertion failure; its focused rerun and full rerun
-passed. A WPF rebuild reports 332 existing compiler warnings.
+Next: Face generation from source regions, artwork import/registration/processing,
+specialist 2D renderers, remaining inspectors and Machine settings, build/export,
+real Fabric/Amber preview, multi-document tabs, saved layouts and Reel/library UI.
+3D remains explicitly deferred until its renderer is selected and proved portable.
 
-Not yet verified: macOS/Linux execution and packaging, native desktop docking,
-floating windows, OS clipboard/dialogs, real pointer/keyboard focus, mixed-DPI
-monitors, specialist rendering parity, audio or native emulation in Avalonia.
-Headless screenshots establish rendered layout in that backend, not these desktop
-or platform behaviours.
+Not yet verified: Mac/Linux execution/packaging; native docking/floating, OS dialogs,
+clipboard, physical input/focus and mixed-DPI monitors; specialist visual parity,
+audio or native emulation in Avalonia. Headless images verify that backend's layout,
+not these desktop/platform behaviours.

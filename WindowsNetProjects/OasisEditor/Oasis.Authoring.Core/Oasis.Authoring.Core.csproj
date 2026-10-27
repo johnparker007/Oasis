@@ -6,4 +6,7 @@
     <AssemblyName>Oasis.Authoring.Core</AssemblyName>
     <RootNamespace>OasisEditor</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
+  </ItemGroup>
 </Project>

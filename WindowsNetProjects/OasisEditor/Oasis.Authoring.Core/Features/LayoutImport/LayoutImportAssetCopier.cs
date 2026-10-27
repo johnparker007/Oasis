@@ -38,8 +38,7 @@ internal sealed class LayoutImportAssetCopier
             return CreateError(elements, warnings, errors);
         }
 
-        var layoutSegment = SanitizePathSegment(layoutName, "layout");
-        var destinationRoot = Path.Combine(projectAssetsRoot, "FmlImport", layoutSegment);
+        var destinationRoot = GetDestinationRoot(projectAssetsRoot, layoutName);
         var pathMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var mappedElements = elements
             .Select(element => MapElementAssets(element, stagingRootPath, destinationRoot, projectAssetsRoot, pathMap, copied, warnings, errors))
@@ -80,6 +79,9 @@ internal sealed class LayoutImportAssetCopier
             Errors = []
         };
     }
+
+    internal static string GetDestinationRoot(string projectAssetsPath, string layoutName)
+        => Path.Combine(Path.GetFullPath(projectAssetsPath), "FmlImport", SanitizePathSegment(layoutName, "layout"));
 
     private static PanelElementModel[] BakeLampOffArtworkIntoBackgrounds(
         PanelElementModel[] elements,

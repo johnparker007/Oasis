@@ -20,12 +20,14 @@ internal static class Program
         {
             global::OasisEditor.Avalonia.Program.BuildHeadless().SetupWithoutStarting();
             var session = new AuthoringSession(args[1]);
-            using var capture = new WorkspaceCapture(session);
+            var faces = new FaceAuthoringSession(session);
+            using var capture = new WorkspaceCapture(session, faces);
             var builder = Host.CreateApplicationBuilder();
             builder.Logging.ClearProviders();
             builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
             builder.Logging.SetMinimumLevel(LogLevel.Warning);
             builder.Services.AddSingleton(session);
+            builder.Services.AddSingleton(faces);
             builder.Services.AddSingleton(capture);
             builder.Services.AddSingleton<EditorDispatcher>();
             builder.Services.AddMcpServer().WithStdioServerTransport().WithTools<EditorTools>();

@@ -13,7 +13,7 @@ public sealed class FaceValidationServiceTests
             Id = "face-validation",
             Title = "Face Validation",
             SourcePanel2DDocumentId = "missing-panel",
-            SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
+            SourceRegion = FaceSourceRegionWpfAdapter.FromRect(new Rect(0, 0, 100, 100)),
             Elements =
             [
                 new FaceArtworkElement

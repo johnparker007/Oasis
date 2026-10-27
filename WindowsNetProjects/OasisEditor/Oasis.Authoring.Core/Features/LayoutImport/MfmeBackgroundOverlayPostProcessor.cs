@@ -1,7 +1,4 @@
-using System.Buffers.Binary;
 using System.IO;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace OasisEditor.Features.LayoutImport;
 
@@ -329,145 +326,18 @@ internal static class MfmeBackgroundOverlayPostProcessor
 
     private static PixelBuffer LoadBgra32(string path)
     {
-        if (TryLoadUncompressedBgra32Bmp(path, out var bmp))
-        {
-            return bmp;
-        }
-
-        using var stream = File.OpenRead(path);
-        var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
-        var frame = decoder.Frames[0];
-        var converted = new FormatConvertedBitmap(frame, PixelFormats.Bgra32, frame.Palette, 0);
-        var stride = converted.PixelWidth * 4;
-        var pixels = new byte[stride * converted.PixelHeight];
-        converted.CopyPixels(pixels, stride, 0);
-
-        if (IsPalettized(frame.Format) && frame.Palette is not null)
-        {
-            ReapplyIndexedAlpha(frame, pixels, stride);
-        }
-
-        return new PixelBuffer(converted.PixelWidth, converted.PixelHeight, stride, pixels);
+        if (MfmeBitmapCodec.TryDecodeUncompressedBgra32Bmp(path, out var bmp))
+            return new PixelBuffer(bmp.Width, bmp.Height, bmp.Stride, bmp.Pixels);
+        var decoded = MfmeBitmapCodec.Decode(path);
+        return new PixelBuffer(decoded.Width, decoded.Height, decoded.Stride, decoded.Pixels);
     }
 
     private static bool TryLoadUncompressedBgra32Bmp(string path, out PixelBuffer image)
     {
         image = default!;
-
-        if (!string.Equals(Path.GetExtension(path), ".bmp", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var bytes = File.ReadAllBytes(path);
-        if (bytes.Length < 54 || bytes[0] != (byte)'B' || bytes[1] != (byte)'M')
-        {
-            return false;
-        }
-
-        var pixelDataOffset = ReadInt32LittleEndian(bytes, 10);
-        var dibHeaderSize = ReadInt32LittleEndian(bytes, 14);
-        if (dibHeaderSize < 40 || bytes.Length < 14 + dibHeaderSize)
-        {
-            return false;
-        }
-
-        var width = ReadInt32LittleEndian(bytes, 18);
-        var signedHeight = ReadInt32LittleEndian(bytes, 22);
-        var planes = ReadUInt16LittleEndian(bytes, 26);
-        var bitsPerPixel = ReadUInt16LittleEndian(bytes, 28);
-        var compression = ReadInt32LittleEndian(bytes, 30);
-        if (width <= 0 || signedHeight == 0 || signedHeight == int.MinValue || planes != 1 || bitsPerPixel != 32 || compression != 0 || pixelDataOffset < 0)
-        {
-            return false;
-        }
-
-        var height = Math.Abs(signedHeight);
-        var stride = checked(width * 4);
-        var pixelByteCount = (long)stride * height;
-        var requiredLength = pixelDataOffset + pixelByteCount;
-        if (pixelByteCount > int.MaxValue || requiredLength > bytes.Length)
-        {
-            return false;
-        }
-
-        var pixels = new byte[stride * height];
-        var sourceTopDown = signedHeight < 0;
-        for (var y = 0; y < height; y++)
-        {
-            var sourceY = sourceTopDown ? y : height - 1 - y;
-            Buffer.BlockCopy(bytes, pixelDataOffset + (sourceY * stride), pixels, y * stride, stride);
-        }
-
-        image = new PixelBuffer(width, height, stride, pixels);
+        if (!MfmeBitmapCodec.TryDecodeUncompressedBgra32Bmp(path, out var bmp)) return false;
+        image = new PixelBuffer(bmp.Width, bmp.Height, bmp.Stride, bmp.Pixels);
         return true;
-    }
-
-    private static int ReadInt32LittleEndian(byte[] bytes, int offset)
-    {
-        return BinaryPrimitives.ReadInt32LittleEndian(bytes.AsSpan(offset, sizeof(int)));
-    }
-
-    private static ushort ReadUInt16LittleEndian(byte[] bytes, int offset)
-    {
-        return BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(offset, sizeof(ushort)));
-    }
-
-    private static bool IsPalettized(PixelFormat format)
-    {
-        return format == PixelFormats.Indexed1
-            || format == PixelFormats.Indexed2
-            || format == PixelFormats.Indexed4
-            || format == PixelFormats.Indexed8;
-    }
-
-    private static void ReapplyIndexedAlpha(BitmapSource frame, byte[] pixels, int stride)
-    {
-        var palette = frame.Palette.Colors;
-        if (palette.Count == 0)
-        {
-            return;
-        }
-
-        var bitsPerPixel = frame.Format.BitsPerPixel;
-        if (bitsPerPixel is not (1 or 2 or 4 or 8))
-        {
-            return;
-        }
-
-        var indexedStride = (frame.PixelWidth * bitsPerPixel + 7) / 8;
-        var indices = new byte[indexedStride * frame.PixelHeight];
-        frame.CopyPixels(indices, indexedStride, 0);
-
-        for (var y = 0; y < frame.PixelHeight; y++)
-        {
-            for (var x = 0; x < frame.PixelWidth; x++)
-            {
-                var paletteIndex = ReadPaletteIndex(indices, indexedStride, bitsPerPixel, x, y);
-                if (paletteIndex < 0 || paletteIndex >= palette.Count)
-                {
-                    continue;
-                }
-
-                var color = palette[paletteIndex];
-                pixels[(y * stride) + (x * 4) + 3] = color.A;
-            }
-        }
-    }
-
-    private static int ReadPaletteIndex(byte[] indices, int stride, int bitsPerPixel, int x, int y)
-    {
-        if (bitsPerPixel == 8)
-        {
-            return indices[(y * stride) + x];
-        }
-
-        var bitIndex = x * bitsPerPixel;
-        var byteIndex = (y * stride) + (bitIndex / 8);
-        var bitOffset = bitIndex % 8;
-        var shift = 8 - bitsPerPixel - bitOffset;
-        var mask = (1 << bitsPerPixel) - 1;
-        return (indices[byteIndex] >> shift) & mask;
     }
 
     private static int ScaleCoordinate(int value, int sourceSize, int destinationSize)
@@ -533,12 +403,7 @@ internal static class MfmeBackgroundOverlayPostProcessor
             Directory.CreateDirectory(directory);
         }
 
-        var bitmap = BitmapSource.Create(image.Width, image.Height, 96, 96, PixelFormats.Bgra32, null, image.Pixels, image.Stride);
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(bitmap));
-
-        using var stream = File.Create(destinationPath);
-        encoder.Save(stream);
+        MfmeBitmapCodec.SavePng(new MfmeBitmapCodec.PixelData(image.Width, image.Height, image.Stride, image.Pixels), destinationPath);
     }
 
     private readonly record struct PixelRect(int X, int Y, int Width, int Height);
