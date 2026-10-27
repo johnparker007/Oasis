@@ -82,7 +82,7 @@ public sealed partial class AuthoringSession
             var x = source.X + offsetX;
             var y = source.Y + offsetY;
             ValidateGeometry(x, y, source.Width, source.Height);
-            copies.Add(source with { ObjectId = $"{Panel2DDocumentStorage.SerializeElementKind(source.ElementKind)}-{Guid.NewGuid():N}", X = x, Y = y });
+            copies.Add(source with { ObjectId = Guid.NewGuid().ToString("N"), X = x, Y = y });
         }
         Commit(document with { Elements = [.. document.Elements, .. copies] }, notify: false);
         _selectedIds = copies.Select(copy => copy.ObjectId).ToList();
@@ -124,7 +124,7 @@ public sealed partial class AuthoringSession
         var normalizedKind = kind.Trim().ToLowerInvariant();
         if (normalizedKind is not ("rectangle" or "anchor" or "zone" or "label"))
             throw new ArgumentException("Only rectangle, anchor, zone, and label elements can be added here.", nameof(kind));
-        var id = $"{normalizedKind}-{Guid.NewGuid():N}";
+        var id = Guid.NewGuid().ToString("N");
         var element = new PanelElementFile
         {
             ObjectId = id, Name = name.Trim(), Kind = normalizedKind, X = x, Y = y, Width = width, Height = height,

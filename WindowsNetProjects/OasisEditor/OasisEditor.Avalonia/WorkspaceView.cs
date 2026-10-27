@@ -51,8 +51,9 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     partial void AddMachineWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
     partial void AddFaceWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
 
-    public WorkspaceView(AuthoringSession session, FaceAuthoringSession? faces = null)
+    public WorkspaceView(AuthoringSession session, FaceAuthoringSession? faces = null, NativePreviewSession? preview = null)
     {
+        Preview = preview ?? new NativePreviewSession();
         _session = session; Faces = faces ?? new FaceAuthoringSession(session); Machines = new MachineAuthoringSession(session);
         _viewport = new PanelViewport(session, Faces, () => _faceActive);
         _viewport.CommandFailed += SetStatus;
@@ -126,6 +127,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         MenuAction(file, "Import FML layout…", async () => await ImportFml());
         AddFaceWorkflowMenus(file, create);
         AddMachineWorkflowMenus(file, create);
+        InitializePreview(file);
         var edit = new MenuItem { Header = "_Edit" };
         MenuAction(edit, "Undo", () => Try(UndoActive)); MenuAction(edit, "Redo", () => Try(RedoActive));
         MenuAction(edit, "Duplicate", () => Try(() => { RequirePanel(); session.DuplicateSelected(); }));
@@ -145,6 +147,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         _save = ActionButton("Save", () => Try(SaveActive)); toolbar.Children.Add(_save);
         _undo = ActionButton("Undo", () => Try(UndoActive)); toolbar.Children.Add(_undo);
         _redo = ActionButton("Redo", () => Try(RedoActive)); toolbar.Children.Add(_redo);
+        toolbar.Children.Add(CreatePreviewToolbar());
         toolbar.Children.Add(new TextBlock { Text = "OASIS  /  AUTHORING", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0), FontWeight = FontWeight.SemiBold });
         var bar = Toolbar(toolbar); Grid.SetRow(bar, 1); root.Children.Add(bar);
         Grid.SetRow(_dock, 2); root.Children.Add(_dock);
@@ -190,7 +193,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         else if (asset.Type == "Face")
         { if (!string.Equals(Faces.FacePath, path, comparison)) Faces.OpenFace(asset.ManifestPath); _faceActive = true; _machineActive = false; }
         else if (asset.Type == "Machine")
-        { if (!string.Equals(Machines.MachinePath, path, comparison)) Machines.OpenMachine(asset.ManifestPath); _faceActive = false; _machineActive = true; }
+        { if (!Machines.IsDirty || !string.Equals(Machines.MachinePath, path, comparison)) Machines.OpenMachine(asset.ManifestPath); _faceActive = false; _machineActive = true; }
         else { SetStatus($"{asset.Type} / {asset.Name} — authoring for this asset type is still available in the WPF Editor."); return; }
         _selectedSource = null; _inspected = null; Refresh();
     }
@@ -351,7 +354,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     private void Field(string name, object value)
     {
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("70,*") };
-        row.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
+        row.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap });
         var box = new TextBox { Text = Convert.ToString(value, CultureInfo.InvariantCulture) }; _fields[name] = box;
         Grid.SetColumn(box, 1); row.Children.Add(box); _inspector.Children.Add(row);
     }
@@ -364,6 +367,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     }
     public void Dispose()
     {
+        DisposePreview();
         _session.Changed -= Refresh; Faces.Changed -= Refresh; Machines.Changed -= Refresh;
         if (_dock.Layout is IRootDock root) root.ExitWindows.Execute(null);
         _viewport.Dispose();

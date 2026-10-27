@@ -51,6 +51,8 @@ internal static class Program
 
 public sealed class EditorDispatcher
 {
+    public async Task<T> InvokeAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken)
+        => await await Dispatcher.UIThread.InvokeAsync(action, DispatcherPriority.Normal, cancellationToken);
     public async Task<T> Invoke<T>(Func<T> action, CancellationToken cancellationToken)
         => await Dispatcher.UIThread.InvokeAsync(action, DispatcherPriority.Normal, cancellationToken);
 }

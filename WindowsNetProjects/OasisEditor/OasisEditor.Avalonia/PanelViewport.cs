@@ -20,6 +20,10 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
     private IReadOnlyList<ElementSnapshot> Elements => FaceActive ? faces!.Elements.Select(WorkspaceView.ToViewportElement).ToArray() : session.Elements;
     private IReadOnlyList<string> SelectedIds => FaceActive ? faces!.SelectedId is { } id ? [id] : [] : session.SelectedIds;
     public event Action<string>? CommandFailed;
+    public Func<bool>? PreviewIsActive { get; set; }
+    public Func<Point, string?>? ResolvePreviewInput { get; set; }
+    public event Action<string, bool>? PreviewInputRequested;
+    private string? _previewInput;
     private double _zoom = 1;
     private Vector _pan = new(30, 30);
     private bool _fit = true;
@@ -317,6 +321,13 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
         else if (properties.IsLeftButtonPressed)
         {
             var documentPoint = new Point((position.X - _pan.X) / _zoom, (position.Y - _pan.Y) / _zoom);
+            if (PreviewIsActive?.Invoke() == true)
+            {
+                _previewInput = ResolvePreviewInput?.Invoke(documentPoint);
+                if (_previewInput is not null) { e.Pointer.Capture(this); PreviewInputRequested?.Invoke(_previewInput, true); }
+                e.Handled = true;
+                return;
+            }
             var hit = Elements.LastOrDefault(item => item.Visible && new Rect(item.X, item.Y, item.Width, item.Height).Contains(documentPoint));
             var toggle = (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta | KeyModifiers.Shift)) != 0;
             if (FaceActive) faces!.Select(hit?.Id);
@@ -341,6 +352,10 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
     }
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
+        if (_previewInput is { } input)
+        {
+            _previewInput = null; PreviewInputRequested?.Invoke(input, false); e.Pointer.Capture(null); e.Handled = true; return;
+        }
         var drag = _drag; var offset = _preview; var resizing = _resizing;
         _press = null; _drag = null; _preview = default; e.Pointer.Capture(null);
         try
@@ -360,7 +375,10 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
         InvalidateVisual();
     }
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
-    { _press = null; _drag = null; _preview = default; InvalidateVisual(); }
+    {
+        if (_previewInput is { } input) { _previewInput = null; PreviewInputRequested?.Invoke(input, false); }
+        _press = null; _drag = null; _preview = default; InvalidateVisual();
+    }
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         var point = e.GetPosition(this); var next = Math.Clamp(_zoom * Math.Pow(1.12, e.Delta.Y), .01, 64);

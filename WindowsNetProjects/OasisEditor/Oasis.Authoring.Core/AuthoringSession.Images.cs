@@ -15,7 +15,7 @@ public sealed partial class AuthoringSession
         if (codec.Info.Width is < 1 or > 8192 || codec.Info.Height is < 1 or > 8192)
             throw new InvalidDataException("Imported images must be between 1 and 8192 pixels in each dimension.");
         using var bitmap = SKBitmap.Decode(codec) ?? throw new InvalidDataException("The image could not be decoded.");
-        var id = "image-" + Guid.NewGuid().ToString("N");
+        var id = Guid.NewGuid().ToString("N");
         var relativeDirectory = Path.GetRelativePath(root, Path.Combine(Path.GetDirectoryName(_panelPath!)!, "Images"));
         var directory = WorkspacePathPolicy.ResolveConfined(root, relativeDirectory);
         Directory.CreateDirectory(directory);

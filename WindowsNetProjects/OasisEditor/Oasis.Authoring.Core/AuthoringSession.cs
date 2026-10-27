@@ -223,7 +223,7 @@ public sealed partial class AuthoringSession
     public string AddRectangle()
     {
         var document = RequireDocument();
-        var id = $"rectangle-{Guid.NewGuid():N}";
+        var id = Guid.NewGuid().ToString("N");
         var rectangle = new PanelElementFile
         {
             ObjectId = id, Name = "Rectangle", Kind = "rectangle", X = 24, Y = 24, Width = 120, Height = 80,

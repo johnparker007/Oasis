@@ -23,4 +23,5 @@ internal static class HeadlessTestHost
         return ready.Task;
     }
     public static void Run(Action test) => Host.Value.GetAwaiter().GetResult().InvokeAsync(test).GetAwaiter().GetResult();
+    public static async Task RunAsync(Func<Task> test) => await (await Host.Value).InvokeAsync(test);
 }

@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Oasis.Authoring.Core/Oasis.Authoring.Core.csproj" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
     <ProjectReference Include="../Oasis.Scripting/Oasis.Scripting.csproj" />
     <ProjectReference Include="../Oasis.RuntimeBuild/Oasis.RuntimeBuild.csproj" />
     <PackageReference Include="SkiaSharp" Version="3.119.4" />
@@ -21,6 +22,12 @@
     <PackageReference Include="Dock.Avalonia.Themes.Fluent" Version="12.1.0.12" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="../OasisEditor/Emulation/Fabric/**/*.cs" Link="SharedEmulation/Fabric/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../OasisEditor/Emulation/EmulationBackendAbstractions.cs" Link="SharedEmulation/EmulationBackendAbstractions.cs" />
+    <Compile Include="../OasisEditor/Emulation/EmulationAudio.cs" Link="SharedEmulation/EmulationAudio.cs" />
+    <Compile Include="../OasisEditor/Emulation/NAudioEmulationAudioSink.cs" Link="SharedEmulation/NAudioEmulationAudioSink.cs" />
+    <Compile Include="../OasisEditor/Emulation/PcmFrameRingBuffer.cs" Link="SharedEmulation/PcmFrameRingBuffer.cs" />
+    <Compile Include="../OasisEditor/Emulation/PcmRingWaveProvider.cs" Link="SharedEmulation/PcmRingWaveProvider.cs" />
     <Content Include="../OasisEditor/MfmeFonts/*.ttf">
       <Link>MfmeFonts/%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
