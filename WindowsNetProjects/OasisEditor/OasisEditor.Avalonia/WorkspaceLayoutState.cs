@@ -152,6 +152,19 @@ public static class WorkspaceLayoutState
             return result;
         }
         var root = Build(state, 0) as IRootDock ?? throw new InvalidDataException("Workspace must have a root layout.");
+        // Older schema-1 layouts predate Output. Add it beside Project while retaining the saved arrangement.
+        if (known.TryGetValue("Output", out var output) && !used.Contains("Output"))
+        {
+            IDock? FindProject(IDockable value)
+            {
+                if (value is not IDock dock) return null;
+                if (dock.VisibleDockables?.Any(d => d.Id == "Project") == true) return dock;
+                foreach (var child in dock.VisibleDockables ?? []) if (FindProject(child) is {} found) return found;
+                if (dock is IRootDock r) foreach (var window in r.Windows ?? []) if (window.Layout is {} layout && FindProject(layout) is {} found) return found;
+                return null;
+            }
+            if (FindProject(root) is {} projectDock) { projectDock.VisibleDockables!.Add(output); used.Add("Output"); }
+        }
         if (!known.Keys.ToHashSet(StringComparer.Ordinal).SetEquals(used)) throw new InvalidDataException("Workspace is missing required panes.");
         return root;
     }

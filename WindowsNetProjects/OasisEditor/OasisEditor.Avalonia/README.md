@@ -411,3 +411,35 @@ The Machine Inspector reports duplicate keyboard shortcuts and duplicate visual
 bindings through the same analyzer as WPF. It also reports unresolved visual GUIDs
 against the current Panel2D/Face context, without inventing Machine input mappings.
 `inspect_machine_input_diagnostics` exposes the same diagnostics through MCP.
+
+## Output and project package actions
+
+The Output tab beside Project retains bounded status/error entries, severity/text
+filters, Copy and Clear. Desktop logs append under the editor's local Logs folder;
+headless and floating editors do not create personal log files. Floating status
+and errors also reach the owner's Output. Saved layouts created before Output
+restore with the tab added beside Project, retaining their existing arrangement.
+
+Project package context actions provide Reveal, Rename and recoverable Delete.
+Open/floating/dirty packages, links, destination conflicts and stale fingerprints
+are refused. Rename preserves manifest bytes/native IDs and refuses saved references
+(including paths inside the package) that would require rewriting. Delete checks
+external references and moves the complete package to Generated/Trash, with a recovery
+path. This conservative rename policy deliberately does not rewrite dependent assets.
+Reveal invokes the operating system only when explicitly selected by the user.
+
+Reproduce the latest background loop with:
+
+```powershell
+python OasisEditor.Avalonia.Mcp/verify_port_gap_workflows.py --output <directory>
+```
+
+The combined changes pass 212/212 Avalonia tests and 1,449/1,449 WPF regressions.
+All four MCP verifiers pass, including real Face runtime textures/manifests,
+rollback, guarded package actions, welcome and actual calibration-dialog captures,
+retained/floating assets and GPU scenes. Dark/Light images were inspected. Linux x64
+and macOS arm64 framework-dependent publishing succeeds with no apphost; native OS
+execution/packaging, dialogs, physical clipboard/focus/input and mixed-DPI behavior
+remain unverified. Existing Skia warnings remain. Capsule/Mesh collider previews
+and animated/skinned GLB evaluation are shared WPF/static-renderer limitations.
+A source audit found no additional substantial unported WPF authoring workflow.
