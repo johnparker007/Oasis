@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Oasis.Authoring.Core/Oasis.Authoring.Core.csproj" />
+    <ProjectReference Include="../Oasis.RuntimeBuild/Oasis.RuntimeBuild.csproj" />
+  </ItemGroup>
+</Project>
