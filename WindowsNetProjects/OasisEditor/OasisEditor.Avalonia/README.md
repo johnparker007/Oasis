@@ -105,8 +105,10 @@ are unchanged by this migration.
   serialized document; capture uses the same GPU scene view.
 - Exact saved-state tracking and document-local history. Panel and Machine saves
   detect external manifest/script changes; Face save fingerprints the authored
-  package. Dirty replacement and close guards include retained documents. One Panel,
-  Face and Machine may be retained, with one active view. Imported images remain
+  package. Dirty replacement and close guards include retained documents. Multiple assets of each type are retained in explicit tabs, with one active view.
+  Switching tabs preserves pending edits, selection, history, saved fingerprints and
+  viewport state. Save All uses the native guards; Close refuses dirty assets.
+  Imported images remain
   after undo for redo.
 - Workspace persistence saves docking topology (including pinned/floating panes),
   proportions, theme, window placement, asset search, project/document paths and
@@ -261,7 +263,12 @@ references built/exported through the production services; a copied native Impac
 Machine using Library Cabinet/Reel assignments also ran real Fabric/Amber outputs
 (512 lamps, eight reels, 32 display cells and nonzero silently consumed PCM).
 
-Separate future migration work includes multi-document tabs.
+Retained asset tabs now support Panel2D, Face, Machine, Cabinet, Prefab and Reel
+documents in both Project and Library scopes. They share the authoring dock;
+individual asset tabs are not independently floated. The workspace reopens their
+saved paths after validating every document. Pending edits are never serialized
+into workspace settings. File includes Close Asset, Save All and Close Project,
+plus native Face validation and source-Panel navigation.
 The final Reel/Library checks also include actual symbol-band import, generated
 transmission masks, metadata history and 2D/mounted-3D captures on a copied real Face.
 The copied native Impact Machine rebuilt and ran real outputs with those saved assets.
@@ -281,3 +288,40 @@ unverified, as do native docking/floating, OS dialogs,
 clipboard, physical input/focus and mixed-DPI monitors; specialist visual parity,
 audible playback and credited gameplay. Headless images verify that backend's layout,
 not these desktop/platform behaviours.
+
+## Additional editing and overview workflows
+
+Panel Create now includes native lamps, reels, seven-segment, alpha and VFD displays.
+Their specialist Inspector settings use document history. Edit includes session-local
+cut/copy/paste, preserving complete metadata and assigning fresh IDs, plus all four
+stacking-order commands. The clipboard is project-scoped. Source-region corners can
+be dragged; one valid convex region edit enters history on release.
+
+Face Create includes native buttons, seven-segment and alpha displays with typed
+logical/input references. File > Face generation settings exposes the native
+mask/tray/sharpening settings. Settings edits invalidate configured generated products;
+metadata-only history does not rebuild files. Rebuilding artwork remains explicit.
+
+Machine scenes include a Composition Graph toggle. The read-only graph resolves
+actual Cabinet, Face, source Panel, logical Reel and Prefab dependencies, reports
+unresolved assets, supports fit/pan/zoom and opens saved assets from their nodes.
+It uses current Machine and active Face data; other dependencies are read from disk.
+Preferences persist CPU processing mode/worker limits and Player executable/display
+settings independently of authored projects. Headless sessions never load personal
+preferences; MCP persistence requires an explicit file inside its workspace.
+
+`python OasisEditor.Avalonia.Mcp/verify_remaining_workflows.py --output <directory>`
+checks these native workflows and captures the real workspace in Dark and Light.
+The existing `verify_mcp.py --reel-library` continues to cover production builds,
+package operations, native history and GPU captures. No visible app or desktop input
+is used. Physical OS-dialog/focus/clipboard/docking behavior, individual-tab floating,
+macOS/Linux execution and packaging remain separate verification or UI work.
+
+The additional authoring suite passes 174/174 Avalonia tests, including independent
+retained histories/cameras/conflicts, missing-file close, workspace preflight,
+headless corner dragging and generation build-state invalidation. The existing
+1,449 WPF regressions pass. Both MCP clients pass, including the optional
+Reel/Library/GPU and production-build regression. Real saved Pool content resolves
+nine composition nodes and nine links without diagnostics; Dark/Light captures
+were inspected read-only. Existing shared Skia warnings remain. These results
+do not establish native OS interaction or execution on macOS/Linux.

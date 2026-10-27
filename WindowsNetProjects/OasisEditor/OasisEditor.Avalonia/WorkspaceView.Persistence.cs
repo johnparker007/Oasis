@@ -40,7 +40,7 @@ public sealed partial class WorkspaceView
                     SceneView.Camera.Distance, SceneView.Camera.Yaw, SceneView.Camera.Pitch, SceneView.Camera.FieldOfView),
                 SceneView.ShowVisuals, SceneView.ShowColliders, SceneView.ShowTriggers,
                 _sceneKind == "Reel" && Reels.IsProjectCurrent ? AssetRelative(Reels.FilePath) : null,IsLibraryScene?"Library":"Project"),
-                string.IsNullOrWhiteSpace(SceneLibraryRoot)?null:SceneLibraryRoot,_browseLibrary,CaptureDocumentList());
+                string.IsNullOrWhiteSpace(SceneLibraryRoot)?null:SceneLibraryRoot,_browseLibrary,CaptureDocumentList(),_sceneKind=="Machine"&&_machineGraphActive);
     }
 
     public void ConfigureWorkspacePersistence(string path, bool restore = true)
@@ -111,6 +111,7 @@ public sealed partial class WorkspaceView
         if(state.LibraryRoot is { } libraryRoot)WorkspacePathPolicy.RejectRootReparsePoints(Path.GetFullPath(libraryRoot),requireExists:state.Scene3D?.Scope=="Library");
         if(state.Scene3D?.Scope=="Library"&&(string.IsNullOrWhiteSpace(state.LibraryRoot)||!Directory.Exists(state.LibraryRoot)))throw new InvalidDataException("The saved Library asset requires its Library folder.");
         var sceneMode = state.Scene3D?.Mode ?? (state.ActiveDocument == "Machine" ? "Machine" : null);
+        if(state.MachineGraph && sceneMode!="Machine")throw new InvalidDataException("A saved composition graph requires the active Machine scene.");
         if (sceneMode == "Machine" && (state.Machine is null || state.ActiveDocument != "Machine"))
             throw new InvalidDataException("A saved Machine scene requires the active Machine document.");
         if ((sceneMode == "Cabinet3D" && state.Scene3D?.Cabinet is null) || (sceneMode == "Prefab" && state.Scene3D?.Prefab is null))
@@ -177,6 +178,8 @@ public sealed partial class WorkspaceView
             SceneView.ShowColliders = sceneState.ShowColliders;
             SceneView.ShowTriggers = sceneState.ShowTriggers;
         }
+        _machineGraphActive=state.MachineGraph;
+        UpdateSceneModeUI();
         if (sceneMode is null)
         {
             if (_faceActive) ShowFace(); else ShowPanel();

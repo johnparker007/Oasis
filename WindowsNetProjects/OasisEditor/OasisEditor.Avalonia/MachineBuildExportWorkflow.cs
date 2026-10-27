@@ -30,8 +30,9 @@ public sealed partial class WorkspaceView
                 var runtime = Machines.Document?.Runtime ?? throw new InvalidOperationException("Open a Machine before launching Oasis Player.");
                 if (runtime is EmulationRuntimeDefinition emulation && emulation.Platform != FruitMachinePlatformType.Impact)
                     throw new InvalidOperationException($"Oasis Player preview currently supports Oasis behavior and JPM Impact. The authored {emulation.Platform} runtime has no Player backend yet.");
-                executable = await ChoosePlayerExecutableAsync();
+                executable = string.IsNullOrWhiteSpace(PlayerPreferences.ExecutablePath)?await ChoosePlayerExecutableAsync():PlayerPreferences.ExecutablePath;
                 if (string.IsNullOrWhiteSpace(executable)) return;
+                if(executable!=PlayerPreferences.ExecutablePath)SetPlayerPreferences(PlayerPreferences with {ExecutablePath=executable});
                 if (runtime is EmulationRuntimeDefinition)
                 {
                     fabricRuntimeDll = await ChooseNativeLibraryAsync("Choose the Fabric runtime DLL");
@@ -49,9 +50,9 @@ public sealed partial class WorkspaceView
             }
             SetStatus($"Oasis Player machine built: {result.BuildRoot}");
             if (!launchAfterBuild) return;
-            var launch = new OasisPlayerLaunchService().Launch(new OasisPlayerLaunchRequest(executable!, result.BuildRoot!, false,
-                OasisPlayerLaunchService.DefaultPreviewWidth, OasisPlayerLaunchService.DefaultPreviewHeight, fabricRuntimeDll, amberImpactDll));
-            SetStatus(launch.Success ? $"Launched Oasis Player windowed at {launch.ExecutablePath}." : launch.ErrorMessage!);
+            var launch = new OasisPlayerLaunchService().Launch(new OasisPlayerLaunchRequest(executable!, result.BuildRoot!, PlayerPreferences.Fullscreen,
+                PlayerPreferences.PreviewWidth, PlayerPreferences.PreviewHeight, fabricRuntimeDll, amberImpactDll));
+            SetStatus(launch.Success ? $"Launched Oasis Player at {launch.ExecutablePath}." : launch.ErrorMessage!);
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or ArgumentException or InvalidOperationException or UnauthorizedAccessException or JsonException)
         {
