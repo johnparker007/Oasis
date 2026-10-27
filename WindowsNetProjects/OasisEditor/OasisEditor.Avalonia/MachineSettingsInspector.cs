@@ -17,6 +17,7 @@ public sealed partial class WorkspaceView
         var item = new MenuItem { Header = "Machine settings…" };
         item.Click += async (_, _) => await NewMachineDialog();
         createMenu.Items.Add(item);
+        AddMachineBuildExportMenus(fileMenu);
     }
 
     private async Task OpenMachineDialog()

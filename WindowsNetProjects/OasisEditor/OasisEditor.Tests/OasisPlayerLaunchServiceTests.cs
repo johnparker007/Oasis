@@ -82,6 +82,22 @@ public sealed class OasisPlayerLaunchServiceTests
     }
 
     [Fact]
+    public void Launch_ImpactNativeLibrariesArePassedAsSeparateArguments()
+    {
+        var root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "Oasis Player Tests", Guid.NewGuid().ToString("N"))).FullName;
+        var exe = Path.Combine(root, "OasisPlayer.exe");
+        var fabric = Path.Combine(root, "fabric runtime.dll");
+        var impact = Path.Combine(root, "amber impact.dll");
+        File.WriteAllText(exe, string.Empty);
+        File.WriteAllText(fabric, string.Empty);
+        File.WriteAllText(impact, string.Empty);
+
+        var startInfo = OasisPlayerLaunchService.CreateStartInfo(new OasisPlayerLaunchRequest(exe, root, false, 1280, 800, fabric, impact));
+
+        Assert.Equal(new[] { "--fabric-runtime", Path.GetFullPath(fabric), "--amber-impact", Path.GetFullPath(impact) }, startInfo.ArgumentList.Skip(9));
+    }
+
+    [Fact]
     public void Launch_ProcessException_ReturnsClearFailure()
     {
         var root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "Oasis Player Tests", Guid.NewGuid().ToString("N"))).FullName;

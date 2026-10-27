@@ -339,7 +339,7 @@ public sealed class FaceRuntimeTextureGenerator
             if (tray.Vertices.Count > 0)
             {
                 if (tray.Vertices.Count < 3
-                    || tray.Vertices.Any(vertex => !PanelElementValidation.IsFinite(vertex.X) || !PanelElementValidation.IsFinite(vertex.Y))
+                    || tray.Vertices.Any(vertex => !RuntimePanelElementValidation.IsFinite(vertex.X) || !RuntimePanelElementValidation.IsFinite(vertex.Y))
                     || Math.Abs(PolygonArea(tray.Vertices)) <= double.Epsilon)
                 {
                     diagnostics.Add($"tray '{displayName}' has invalid tray geometry vertices");
