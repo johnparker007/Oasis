@@ -484,3 +484,12 @@ WSL resolved the published Linux Skia/HarfBuzz shared-library dependencies with 
 missing libraries, but has no existing .NET runtime/SDK available, so Linux managed
 execution was not attempted and no software was installed. macOS execution, native
 OS dialogs/window focus/clipboard and physical mixed-DPI monitors remain unverified.
+
+## Linux GLES depth clear
+
+Mesa may export the desktop `glClearDepth` entry point while the active context is
+OpenGL ES, where that call produces `GL_INVALID_OPERATION`. The offscreen renderer
+now uses `glClearDepthf` for GLES contexts and retains the desktop call for CGL.
+The depth/texture/transparency/picking/context-lifetime/reflection regressions run
+on Linux as well as Windows, with backend-specific device assertions. The recovery
+test that relies on Windows file-sharing locks is explicitly skipped on Linux.

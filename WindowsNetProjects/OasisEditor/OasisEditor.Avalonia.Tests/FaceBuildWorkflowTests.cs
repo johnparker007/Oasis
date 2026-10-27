@@ -92,10 +92,9 @@ public sealed class FaceBuildWorkflowTests : IDisposable
         Assert.DoesNotContain(Directory.EnumerateFileSystemEntries(root), path => Path.GetFileName(path).StartsWith(".oasis-face-build-", StringComparison.Ordinal));
     }
 
-    [Fact]
+    [WindowsOnlyFact]
     public void BuildFace_PreservesRecoveryFilesWhenRollbackIsBlockedByAnOpenFile()
     {
-        if (!OperatingSystem.IsWindows()) return; // Windows sharing rules prevent deleting an open generated output.
         var (_, faces, root, _, _) = CreateBuildableFace("Recovery");
         var generated = Path.Combine(root, "Generated", "Faces", "Recovery");
         var originalFiles = Directory.GetFiles(generated, "*", SearchOption.AllDirectories).ToDictionary(path => Path.GetRelativePath(generated, path), File.ReadAllBytes);
@@ -436,4 +435,12 @@ public sealed class FaceBuildWorkflowTests : IDisposable
     }
 
     public void Dispose() => Directory.Delete(_workspace, recursive: true);
+}
+
+public sealed class WindowsOnlyFactAttribute : FactAttribute
+{
+    public WindowsOnlyFactAttribute()
+    {
+        if (!OperatingSystem.IsWindows()) Skip = "This test depends on Windows file-sharing rules for open files.";
+    }
 }

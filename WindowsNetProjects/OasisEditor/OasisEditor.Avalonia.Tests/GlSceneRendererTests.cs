@@ -14,7 +14,7 @@ public sealed class GlSceneRendererTests
     private static SceneRenderMesh Quad(string id, float z, SceneMaterial material) => new(id, id,
         [-1,-1,z,0,0,1,0,1, 1,-1,z,0,0,1,1,1, 1,1,z,0,0,1,1,0, -1,1,z,0,0,1,0,0],
         [0,1,2,0,2,3], material, Matrix4x4.Identity);
-    [WindowsGpuFact]
+    [Fact]
     public void RealOffscreenGpuUsesDepthAndReleasesResizeResources()
     {
         using var renderer = new GlSceneRenderer();
@@ -27,12 +27,14 @@ public sealed class GlSceneRendererTests
         Assert.Equal((byte)255, frame.BgraPixels[center + 1]);
         Assert.Equal((byte)0, frame.BgraPixels[center + 2]);
         Assert.Equal(4, frame.Triangles); Assert.Equal(2, frame.DrawCalls);
-        Assert.Contains("ANGLE", frame.Device);
+        Assert.False(string.IsNullOrWhiteSpace(frame.Device));
+        if (OperatingSystem.IsWindows()) Assert.Contains("ANGLE", frame.Device, StringComparison.OrdinalIgnoreCase);
+        if (OperatingSystem.IsLinux()) Assert.Contains("OpenGL ES 3", frame.Device, StringComparison.OrdinalIgnoreCase);
         var resized = renderer.Render(scene, camera, 96, 48, Vector4.Zero);
         Assert.Equal(96 * 48 * 4, resized.BgraPixels.Length);
         Assert.Equal((byte)255, resized.BgraPixels[(24 * 96 + 48) * 4 + 1]);
     }
-    [WindowsGpuFact]
+    [Fact]
     public void DisposingOneRendererPreservesAnotherLiveRendererContext()
     {
         var scene = new SceneRenderData(
@@ -54,7 +56,7 @@ public sealed class GlSceneRendererTests
         Assert.True(after.BgraPixels[center + 1] > 245);
         Assert.Equal((byte)0, after.BgraPixels[center + 2]);
     }
-    [WindowsGpuFact]
+    [Fact]
     public void RealOffscreenGpuPreservesTextureOrientationAndAlphaCutout()
     {
         using var bitmap = new SKBitmap(2, 2);
@@ -82,7 +84,7 @@ public sealed class GlSceneRendererTests
         Assert.InRange(camera.Orbit(200, 200).Pitch, -1.55f, 1.55f);
         Assert.Throws<ArgumentException>(() => (camera with { Distance = float.NaN }).Validate());
     }
-    [WindowsGpuFact]
+    [Fact]
     public void TransparentSurfacesSortByTheirBoundsInsteadOfAnArbitraryVertex()
     {
         using var renderer = new GlSceneRenderer();
@@ -93,7 +95,7 @@ public sealed class GlSceneRendererTests
         var pixel = (32 * 64 + 32) * 4;
         Assert.True(frame.BgraPixels[pixel + 1] > frame.BgraPixels[pixel + 2] + 30);
     }
-    [WindowsGpuFact]
+    [Fact]
     public void MirroredMeshesRenderAndPickConsistentlyAndUnloadingClearsTheCapturedFrame()
     {
         HeadlessTestHost.Run(() =>
@@ -115,9 +117,4 @@ public sealed class GlSceneRendererTests
             finally { window.Close(); }
         });
     }
-}
-
-public sealed class WindowsGpuFactAttribute : FactAttribute
-{
-    public WindowsGpuFactAttribute() { if (!OperatingSystem.IsWindows()) Skip = "Native GPU tests require the verified Windows ANGLE host; other native backends need platform verification."; }
 }

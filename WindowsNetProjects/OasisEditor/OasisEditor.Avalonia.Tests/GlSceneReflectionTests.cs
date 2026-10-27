@@ -8,7 +8,7 @@ namespace OasisEditor.Avalonia.Tests;
 [Collection("GL scene GPU")]
 public sealed class GlSceneReflectionTests
 {
-    [WindowsGpuFact]
+    [Fact]
     public void AuthoredPlanarReflectionProjectsTheMatchedFaceTexture()
     {
         using var bitmap = new SKBitmap(2, 2); bitmap.Erase(SKColors.Red);
