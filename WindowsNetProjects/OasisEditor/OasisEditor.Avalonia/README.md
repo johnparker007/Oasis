@@ -479,11 +479,11 @@ rendered Inspector contents and a subsequent edit after returning from a Reel.
 The complete Avalonia suite passes 224/224 tests. All five MCP clients pass against
 the Release-published Windows host, including the Reel/Library branch and actual
 GPU captures; compact, large and floating images were inspected. No desktop input,
-desktop capture, Player launch, audible playback or credited play was used. Ubuntu
-WSL resolved the published Linux Skia/HarfBuzz shared-library dependencies with no
-missing libraries, but has no existing .NET runtime/SDK available, so Linux managed
-execution was not attempted and no software was installed. macOS execution, native
-OS dialogs/window focus/clipboard and physical mixed-DPI monitors remain unverified.
+desktop capture, Player launch, audible playback or credited play was used. The initial
+Ubuntu WSL dependency inspection resolved Linux Skia/HarfBuzz libraries before .NET
+was installed. See the native Linux verification below for subsequent execution.
+macOS execution, native OS dialogs/window focus/clipboard and physical mixed-DPI
+monitors remain unverified.
 
 ## Linux GLES depth clear
 
@@ -493,3 +493,38 @@ now uses `glClearDepthf` for GLES contexts and retains the desktop call for CGL.
 The depth/texture/transparency/picking/context-lifetime/reflection regressions run
 on Linux as well as Windows, with backend-specific device assertions. The recovery
 test that relies on Windows file-sharing locks is explicitly skipped on Linux.
+
+## Native Linux WSL verification
+
+Ubuntu 24.04 x64 now has the user-local .NET SDK 9.0.320/runtime 9.0.22 under
+`/home/john/.dotnet`; no shell profiles or system .NET defaults were changed.
+Tracked sources were copied to an isolated Linux build directory so native restore,
+build and publish did not overwrite the Windows checkout's build state. The native
+Linux suite passes 223 tests with one explicit Windows-only sharing-lock skip.
+The six real GPU tests are included, rather than skipped as on earlier runs.
+The focused Windows renderer/Face regressions still pass 18/18.
+
+All five MCP verification clients pass against the natively built/published Linux
+host, including production builds/exports, Face masks/calibration, package guards,
+Library assets, independent floating editors, workspace restore, UTF-8 paths,
+compact layouts and actual rendered images. Dark/Light Panel/Face and 3D images
+were inspected. The GL device was Mesa 25.2.8 / OpenGL ES 3.2 on llvmpipe; this verifies
+software-backed GL execution, not hardware acceleration. WSL emitted DRI3 fallback
+warnings but the rendering/pixel assertions passed. The minimal WSL font set lacks
+Japanese coverage in the Unicode stress fixture; names still round-trip correctly.
+
+For a Linux checkout with .NET 9 available, reproduce without desktop windows:
+
+```bash
+export DOTNET_ROOT="$HOME/.dotnet"
+export PATH="$DOTNET_ROOT:$PATH"
+dotnet publish WindowsNetProjects/OasisEditor/OasisEditor.Avalonia.Mcp -c Release -r linux-x64 --self-contained false -p:UseAppHost=false -o /tmp/oasis-linux-publish
+python3 WindowsNetProjects/OasisEditor/OasisEditor.Avalonia.Mcp/verify_background_ui.py --dll /tmp/oasis-linux-publish/OasisEditor.Avalonia.Mcp.dll --output /tmp/oasis-linux-captures
+```
+
+The other clients (`verify_mcp.py --reel-library`, `verify_remaining_workflows.py`,
+`verify_floating_documents.py`, `verify_port_gap_workflows.py`) accept the same
+`--dll` and `--output` options. GPU statistics are inspected after an actual capture;
+scene loading alone does not guarantee the first rendered frame already exists.
+No Player/native-emulation process, audible playback, OS window/focus/clipboard,
+physical monitor/DPI or macOS verification is established by these headless checks.
