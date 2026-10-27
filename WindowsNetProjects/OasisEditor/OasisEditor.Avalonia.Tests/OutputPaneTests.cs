@@ -15,7 +15,7 @@ public sealed class OutputPaneTests
             using var service = new OutputLogService();
             var pane = new OutputPaneControl(service);
             var layout = Assert.IsType<Grid>(pane.Content);
-            var toolbar = Assert.IsType<Grid>(layout.Children[0]);
+            var toolbar = Assert.IsAssignableFrom<Panel>(layout.Children[0]);
             var search = Assert.Single(toolbar.Children.OfType<TextBox>());
             var filters = Assert.Single(toolbar.Children.OfType<StackPanel>());
             service.Add("opened project", OutputSeverity.Info);

@@ -61,7 +61,7 @@ public sealed partial class WorkspaceView
             _sceneTools.Children.Add(check);
             SceneView.VisibilityChanged += () => check.IsChecked = label == "Visual meshes" ? SceneView.ShowVisuals : label == "Colliders" ? SceneView.ShowColliders : SceneView.ShowTriggers;
         }
-        _sceneToolbarBorder=Toolbar(_sceneTools); scene.Children.Add(_sceneToolbarBorder);
+        _sceneToolbarBorder=Toolbar(new ScrollViewer { Content = _sceneTools, HorizontalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto, VerticalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled }); scene.Children.Add(_sceneToolbarBorder);
         MenuAction(file, "Import Cabinet GLB…", async () => await Create3DAssetDialog(false));
         MenuAction(file, "Create Prefab…", async () => await Create3DAssetDialog(true));
         Cabinets.Changed += On3DAssetChanged; Prefabs.Changed += On3DAssetChanged;
