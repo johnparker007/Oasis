@@ -327,5 +327,18 @@ public sealed class MachineAuthoringSessionTests : IDisposable
         return false;
     }
 
+    [Fact]
+    public void BuildAndPreviewSourceCheckRejectsDirtyOrExternallyChangedSavedMachine()
+    {
+        var project = new AuthoringSession(workspace); project.CreateProject("SourceCheck");
+        var machines = new MachineAuthoringSession(project); machines.OpenMachine(machines.ListMachines().Single().ManifestPath);
+        machines.EnsureSavedSourceUnchanged();
+        machines.SetDisplayName("Unsaved");
+        Assert.Throws<InvalidOperationException>(machines.EnsureSavedSourceUnchanged);
+        machines.Undo(); machines.EnsureSavedSourceUnchanged();
+        File.AppendAllText(machines.MachinePath!, " ");
+        Assert.Throws<IOException>(machines.EnsureSavedSourceUnchanged);
+    }
+
     public void Dispose() { if (Directory.Exists(workspace)) Directory.Delete(workspace, recursive: true); }
 }

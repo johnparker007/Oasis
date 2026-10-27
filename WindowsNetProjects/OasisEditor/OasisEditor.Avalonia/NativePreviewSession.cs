@@ -8,6 +8,7 @@ public sealed class NativePreviewSession : IAsyncDisposable
     private readonly SemaphoreSlim _gate = new(1);
     private readonly Func<NativeEmulationPreferences, FruitMachinePlatformType, bool, IEmulationBackend> _factory;
     private readonly ConcurrentDictionary<string, InputDefinitionModel> _pressed = new();
+    private readonly Dictionary<string, HashSet<string>> _inputSources = [];
     private Func<bool>? _sourceCurrent;
     private MachineDocument? _machine;
     private IEmulationBackend? _backend;
@@ -85,7 +86,7 @@ public sealed class NativePreviewSession : IAsyncDisposable
         finally { _gate.Release(); }
     }
 
-    public async Task<CoinInputResult?> SetInputAsync(string id, bool pressed, CancellationToken cancellationToken = default)
+    public async Task<CoinInputResult?> SetInputAsync(string id, bool pressed, CancellationToken cancellationToken = default, string source = "default")
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -96,21 +97,25 @@ public sealed class NativePreviewSession : IAsyncDisposable
             if (pressed && State != EmulationBackendState.Running) throw new InvalidOperationException("Resume preview before pressing an input.");
             if (pressed)
             {
-                if (_pressed.ContainsKey(id)) return null; // Key repeat must not insert repeated coins.
+                if (_pressed.ContainsKey(id)) { _inputSources[id].Add(source); return null; }
                 if (input.CoinInput)
                 {
                     var result = await backend.InsertCoinAsync(input, cancellationToken).ConfigureAwait(false);
-                    if (result == CoinInputResult.Accepted) _pressed[id] = input;
+                    if (result == CoinInputResult.Accepted) { _pressed[id] = input; _inputSources[id] = [source]; }
                     return result;
                 }
                 await backend.SetInputStateAsync(input, true, cancellationToken).ConfigureAwait(false);
                 _pressed[id] = input;
+                _inputSources[id] = [source];
             }
             else if (_pressed.TryGetValue(id, out var held))
             {
+                if (!_inputSources[id].Contains(source)) return null;
+                if (_inputSources[id].Count > 1) { _inputSources[id].Remove(source); return null; }
                 if (held.CoinInput) await backend.ReleaseCoinAsync(held, cancellationToken).ConfigureAwait(false);
                 else await backend.SetInputStateAsync(held, false, cancellationToken).ConfigureAwait(false);
                 _pressed.TryRemove(id, out _);
+                _inputSources.Remove(id);
             }
             return null;
         }
@@ -126,7 +131,7 @@ public sealed class NativePreviewSession : IAsyncDisposable
     private async Task ReleaseAllCore()
     {
         var backend = _backend;
-        if (backend is null) { _pressed.Clear(); return; }
+        if (backend is null) { _pressed.Clear(); _inputSources.Clear(); return; }
         var failures = new List<Exception>();
         foreach (var pair in _pressed.ToArray())
         {
@@ -136,7 +141,7 @@ public sealed class NativePreviewSession : IAsyncDisposable
                 else await backend.SetInputStateAsync(pair.Value, false, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception error) { failures.Add(error); }
-            finally { _pressed.TryRemove(pair.Key, out _); }
+            finally { _pressed.TryRemove(pair.Key, out _); _inputSources.Remove(pair.Key); }
         }
         if (failures.Count != 0) throw new AggregateException("One or more held inputs could not be released.", failures);
     }

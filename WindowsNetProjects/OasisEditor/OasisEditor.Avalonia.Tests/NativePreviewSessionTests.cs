@@ -60,6 +60,27 @@ public sealed class NativePreviewSessionTests
         Assert.True(backend.Disposed);
     }
     [Fact]
+    public async Task PointerReleaseDoesNotReleaseAnInputStillHeldByKeyboard()
+    {
+        var backend = new Backend(); await using var preview = new NativePreviewSession((_, _, _) => backend);
+        await preview.StartAsync(Machine(), new());
+        await preview.SetInputAsync("door", true, source: "keyboard");
+        await preview.SetInputAsync("door", true, source: "pointer");
+        await preview.SetInputAsync("door", false, source: "pointer");
+        Assert.Equal(new[] { "door:True" }, backend.Calls);
+        await preview.SetInputAsync("door", false, source: "keyboard");
+        Assert.Equal(new[] { "door:True", "door:False" }, backend.Calls);
+    }
+    [Fact]
+    public async Task InvalidNativeLibraryDoesNotRetainTheProcessLease()
+    {
+        await using var first = new NativePreviewSession();
+        await using var second = new NativePreviewSession();
+        await Assert.ThrowsAsync<FileNotFoundException>(() => first.StartAsync(Machine(), new()));
+        await Assert.ThrowsAsync<FileNotFoundException>(() => second.StartAsync(Machine(), new()));
+        Assert.Null(first.Backend); Assert.Null(second.Backend);
+    }
+    [Fact]
     public void DiagnosticAudioCountsRealPcmWithoutPlayback()
     {
         using var sink = new DiagnosticAudioSink(); sink.Start(new(48000, 2, 16));
@@ -68,7 +89,7 @@ public sealed class NativePreviewSessionTests
         Assert.False(sink.GetStatistics().PlaybackStarted);
         sink.Clear(); Assert.Equal(0, sink.Frames);
     }
-    private sealed class Backend : IEmulationBackend
+    internal sealed class Backend : IEmulationBackend
     {
         public readonly List<string> Calls = [];
         public bool Disposed, FailStart; public int Resets;

@@ -3,16 +3,17 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 
 namespace OasisEditor.Avalonia;
 
 public sealed record NativePreviewSnapshot(string State, string? Machine, bool Audible, bool Throttled,
-    string? Error, long AudioFrames, long NonZeroSamples);
+    string? Error, long AudioFrames, long NonZeroSamples, int Lamps, int Reels, int SegmentCells);
 
 public sealed partial class WorkspaceView
 {
-    public NativePreviewSession Preview { get; } = new();
+    public NativePreviewSession Preview { get; }
     public NativeEmulationPreferences NativePreviewPreferences { get; private set; } = new();
     private readonly DispatcherTimer _previewTimer = new() { Interval = TimeSpan.FromMilliseconds(33) };
     private readonly Dictionary<Key, string[]> _previewKeys = [];
@@ -21,15 +22,14 @@ public sealed partial class WorkspaceView
     private bool _previewStopping;
     private int _previewCheckTicks;
     private Window? _previewInputs;
-    partial void ConnectPreviewRendering(IEmulationBackend backend, MachineDocument machine);
-    partial void ClearPreviewRendering();
-    partial void RefreshPreviewRendering();
+    private readonly TextBlock _previewStatus = new() { Text = "Stopped", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0) };
+    private bool _previewAudible;
 
     private void InitializePreview(MenuItem file)
     {
         var menu = new MenuItem { Header = "Emulation preview" }; file.Items.Add(menu);
         MenuAction(menu, "Configure native libraries…", async () => await PreviewConfigurationDialog());
-        MenuAction(menu, "Play", async () => await PreviewAction(() => StartNativePreviewAsync()));
+        MenuAction(menu, "Play", async () => await PreviewAction(() => StartNativePreviewAsync(_previewAudible)));
         foreach (var action in new[] { "pause", "resume", "reset", "stop", "throttle", "unthrottle" })
             MenuAction(menu, char.ToUpperInvariant(action[0]) + action[1..], async () => await PreviewAction(() => Preview.ControlAsync(action)));
         MenuAction(menu, "Machine inputs…", ShowPreviewInputs);
@@ -38,6 +38,7 @@ public sealed partial class WorkspaceView
         _session.Changed += CheckPreviewSource; Faces.Changed += CheckPreviewSource; Machines.Changed += CheckPreviewSource;
         _previewTimer.Tick += async (_, _) =>
         {
+            _previewStatus.Text = Preview.State.ToString();
             if (Preview.Backend is null) return;
             if (++_previewCheckTicks % 30 == 0)
             {
@@ -56,11 +57,20 @@ public sealed partial class WorkspaceView
         _previewTimer.Start();
         _viewport.PreviewIsActive = () => Preview.Backend is not null;
         _viewport.ResolvePreviewInput = ResolvePreviewPointerInput;
-        _viewport.PreviewInputRequested += async (id, pressed) => await PreviewAction(() => Preview.SetInputAsync(id, pressed), false);
+        _viewport.PreviewInputRequested += async (id, pressed) => await PreviewAction(() => Preview.SetInputAsync(id, pressed, source: "viewport"), false);
         AddHandler(KeyDownEvent, PreviewKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, PreviewKeyUp, RoutingStrategies.Tunnel);
-        LostFocus += async (_, _) => await PreviewAction(Preview.ReleaseInputsAsync, report: false);
+        LostFocus += async (_, _) => await PreviewAction(ReleasePreviewInputs, report: false);
         AttachedToVisualTree += (_, _) => { if (TopLevel.GetTopLevel(this) is Window window) window.Deactivated += PreviewWindowDeactivated; };
+    }
+    private Control CreatePreviewToolbar()
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Margin = new Thickness(10, 0, 0, 0) };
+        panel.Children.Add(ActionButton("▶ Play", async () => await PreviewAction(() => StartNativePreviewAsync(_previewAudible))));
+        panel.Children.Add(ActionButton("Ⅱ Pause", async () => await PreviewAction(() => Preview.ControlAsync(Preview.State == EmulationBackendState.Paused ? "resume" : "pause"))));
+        panel.Children.Add(ActionButton("■ Stop", async () => await PreviewAction(() => Preview.ControlAsync("stop"))));
+        panel.Children.Add(_previewStatus);
+        return panel;
     }
 
     public void ConfigureNativePreview(NativeEmulationPreferences preferences)
@@ -85,7 +95,8 @@ public sealed partial class WorkspaceView
         var audio = (Preview.Backend as FabricEmulationBackend)?.AudioSink as DiagnosticAudioSink;
         return new(Preview.State.ToString(), Preview.Machine?.DisplayName, Preview.Audible,
             Preview.Backend?.IsThrottleEnabled ?? true, Preview.LastError ?? (Preview.Backend as FabricEmulationBackend)?.LastFailure?.Message,
-            audio?.Frames ?? 0, audio?.NonZeroSamples ?? 0);
+            audio?.Frames ?? 0, audio?.NonZeroSamples ?? 0, _previewOutputs?.LampCount ?? 0,
+            _previewOutputs?.ReelCount ?? 0, _previewOutputs?.SegmentCount ?? 0);
     }
     private string? PreviewSource() => !Machines.IsProjectCurrent || Machines.Document is not { } machine ? null
         : _session.ProjectFilePath + "\n" + Machines.MachinePath + "\n" + MachineDocumentStorage.Serialize(machine);
@@ -99,7 +110,8 @@ public sealed partial class WorkspaceView
         try { await action(); if (report) SetStatus("Preview: " + Preview.State); }
         catch (Exception error) { SetStatus(error.Message); }
     }
-    private async void PreviewWindowDeactivated(object? sender, EventArgs e) => await PreviewAction(Preview.ReleaseInputsAsync, report: false);
+    private Task ReleasePreviewInputs() { _previewKeys.Clear(); return Preview.ReleaseInputsAsync(); }
+    private async void PreviewWindowDeactivated(object? sender, EventArgs e) => await PreviewAction(ReleasePreviewInputs, report: false);
     private async void PreviewKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Handled || e.Source is TextBox || Preview.State != EmulationBackendState.Running) return;
@@ -107,13 +119,13 @@ public sealed partial class WorkspaceView
         var ids = Preview.Machine!.InputDefinitions.Where(input => Matches(input.KeyboardShortcut, e)).Select(input => input.Id).ToArray();
         if (ids.Length == 0) return;
         e.Handled = true; _previewKeys[e.Key] = ids;
-        foreach (var id in ids) await PreviewAction(() => Preview.SetInputAsync(id, true), report: false);
+        foreach (var id in ids) await PreviewAction(() => Preview.SetInputAsync(id, true, source: "key:" + e.Key), report: false);
     }
     private async void PreviewKeyUp(object? sender, KeyEventArgs e)
     {
         if (!_previewKeys.Remove(e.Key, out var ids)) return;
         e.Handled = true;
-        foreach (var id in ids) await PreviewAction(() => Preview.SetInputAsync(id, false), report: false);
+        foreach (var id in ids) await PreviewAction(() => Preview.SetInputAsync(id, false, source: "key:" + e.Key), report: false);
     }
     private static bool Matches(string shortcut, KeyEventArgs e)
     {
@@ -149,28 +161,41 @@ public sealed partial class WorkspaceView
         foreach (var input in machine.InputDefinitions)
         {
             var button = new Button { Content = input.Name + (input.CoinInput ? " (coin)" : "") + "   " + input.KeyboardShortcut, HorizontalAlignment = HorizontalAlignment.Stretch };
-            button.PointerPressed += async (_, e) => { e.Handled = true; e.Pointer.Capture(button); await PreviewAction(() => Preview.SetInputAsync(input.Id, true), false); };
-            button.PointerReleased += async (_, e) => { e.Pointer.Capture(null); await PreviewAction(() => Preview.SetInputAsync(input.Id, false), false); };
-            button.PointerCaptureLost += async (_, _) => await PreviewAction(() => Preview.SetInputAsync(input.Id, false), false);
+            button.PointerPressed += async (_, e) => { e.Handled = true; e.Pointer.Capture(button); await PreviewAction(() => Preview.SetInputAsync(input.Id, true, source: "button"), false); };
+            button.PointerReleased += async (_, e) => { e.Pointer.Capture(null); await PreviewAction(() => Preview.SetInputAsync(input.Id, false, source: "button"), false); };
+            button.PointerCaptureLost += async (_, _) => await PreviewAction(() => Preview.SetInputAsync(input.Id, false, source: "button"), false);
             items.Children.Add(button);
         }
         if (machine.InputDefinitions.Count == 0) items.Children.Add(new TextBlock { Text = "Author Machine inputs and shortcuts in Machine settings first." });
         _previewInputs = new Window { Title = "Preview inputs — " + machine.DisplayName, Width = 380, Height = 500, Content = new ScrollViewer { Content = items } };
         _previewInputs.Deactivated += PreviewWindowDeactivated;
-        _previewInputs.Closed += async (_, _) => { _previewInputs = null; await PreviewAction(Preview.ReleaseInputsAsync, false); };
+        _previewInputs.Closed += async (_, _) => { _previewInputs = null; await PreviewAction(ReleasePreviewInputs, false); };
         _previewInputs.Show(owner);
     }
     private async Task PreviewConfigurationDialog()
     {
         if (TopLevel.GetTopLevel(this) is not Window owner) return;
         var fields = typeof(NativeEmulationPreferences).GetProperties().Where(p => p.PropertyType == typeof(string)).ToArray();
+        var labels = new[] { "Fabric runtime", "JPM Impact provider", "Barcrest MPU5 provider", "Maygay Epoch provider", "Barcrest MPU3 provider", "Maygay M1 provider", "Bell-Fruit Scorpion 4 provider" };
         var content = new StackPanel { Margin = new Thickness(16), Spacing = 8 };
         var inputs = new Dictionary<string, TextBox>();
-        foreach (var field in fields)
+        for (var index = 0; index < fields.Length; index++)
         {
-            content.Children.Add(new TextBlock { Text = field.Name.Replace("LibraryPath", " library") });
+            var field = fields[index];
+            content.Children.Add(new TextBlock { Text = labels[index] });
             var input = new TextBox { Text = (string?)field.GetValue(NativePreviewPreferences), Watermark = "Absolute native library path" };
-            inputs[field.Name] = input; content.Children.Add(input);
+            inputs[field.Name] = input;
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 6 }; row.Children.Add(input);
+            var browse = ActionButton("Browse…", async () =>
+            {
+                var files = await owner.StorageProvider.OpenFilePickerAsync(new()
+                {
+                    Title = "Choose native library", AllowMultiple = false,
+                    FileTypeFilter = [new FilePickerFileType("Native libraries") { Patterns = ["*.dll", "*.so", "*.dylib"] }]
+                });
+                if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) input.Text = path;
+            });
+            Grid.SetColumn(browse, 1); row.Children.Add(browse); content.Children.Add(row);
         }
         var audible = new CheckBox { Content = "Enable audio for Play (Windows)", IsChecked = false };
         content.Children.Add(audible);
@@ -180,7 +205,7 @@ public sealed partial class WorkspaceView
         {
             var preferences = new NativeEmulationPreferences();
             foreach (var field in fields) field.SetValue(preferences, inputs[field.Name].Text?.Trim() ?? "");
-            try { ConfigureNativePreview(preferences); await StartNativePreviewAsync(audible.IsChecked == true); dialog.Close(); }
+            try { ConfigureNativePreview(preferences); _previewAudible = audible.IsChecked == true; await StartNativePreviewAsync(_previewAudible); dialog.Close(); }
             catch (Exception error) { SetStatus(error.Message); }
         };
         dialog.Content = new ScrollViewer { Content = content }; await dialog.ShowDialog(owner);

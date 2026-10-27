@@ -10,6 +10,35 @@ namespace OasisEditor.Avalonia.Tests;
 public sealed class WorkspacePersistenceTests
 {
     [Fact]
+    public void MachineAndNativeLibrarySettingsRestoreWithoutStartingPreview()
+    {
+        HeadlessTestHost.Run(() =>
+        {
+            var folder = Path.Combine(Path.GetTempPath(), "OasisMachineWorkspace-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(folder);
+            try
+            {
+                var session = new AuthoringSession(folder); session.CreateProject("Project");
+                using var capture = new WorkspaceCapture(session);
+                var view = capture.View;
+                view.Machines.OpenMachine(view.Machines.ListMachines().Single().ManifestPath); view.ShowMachine();
+                view.ConfigureNativePreview(new() { FabricRuntimeLibraryPath = "unused-native-library", AudioBufferLengthMilliseconds = 75 });
+                var saved = view.InspectWorkspaceState();
+                Assert.Equal("Machine", saved.ActiveDocument); Assert.NotNull(saved.Machine);
+                view.ShowPanel(); view.ConfigureNativePreview(new());
+                view.ApplyWorkspaceState(saved);
+                Assert.Equal("Machine", view.InspectWorkspaceState().ActiveDocument);
+                Assert.Equal("unused-native-library", view.NativePreviewPreferences.FabricRuntimeLibraryPath);
+                Assert.Equal(75, view.NativePreviewPreferences.AudioBufferLengthMilliseconds);
+                Assert.Null(view.Preview.Backend);
+                view.Machines.SetDisplayName("Pending edit");
+                Assert.Throws<InvalidOperationException>(() => view.ApplyWorkspaceState(saved));
+            }
+            finally { Directory.Delete(folder, recursive: true); }
+        });
+    }
+
+    [Fact]
     public void FloatingPaneReopensInAHeadlessWindowAndResetRetainsTheDocument()
     {
         HeadlessTestHost.Run(() =>

@@ -51,8 +51,9 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     partial void AddMachineWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
     partial void AddFaceWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
 
-    public WorkspaceView(AuthoringSession session, FaceAuthoringSession? faces = null)
+    public WorkspaceView(AuthoringSession session, FaceAuthoringSession? faces = null, NativePreviewSession? preview = null)
     {
+        Preview = preview ?? new NativePreviewSession();
         _session = session; Faces = faces ?? new FaceAuthoringSession(session); Machines = new MachineAuthoringSession(session);
         _viewport = new PanelViewport(session, Faces, () => _faceActive);
         _viewport.CommandFailed += SetStatus;
@@ -146,6 +147,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         _save = ActionButton("Save", () => Try(SaveActive)); toolbar.Children.Add(_save);
         _undo = ActionButton("Undo", () => Try(UndoActive)); toolbar.Children.Add(_undo);
         _redo = ActionButton("Redo", () => Try(RedoActive)); toolbar.Children.Add(_redo);
+        toolbar.Children.Add(CreatePreviewToolbar());
         toolbar.Children.Add(new TextBlock { Text = "OASIS  /  AUTHORING", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0), FontWeight = FontWeight.SemiBold });
         var bar = Toolbar(toolbar); Grid.SetRow(bar, 1); root.Children.Add(bar);
         Grid.SetRow(_dock, 2); root.Children.Add(_dock);
