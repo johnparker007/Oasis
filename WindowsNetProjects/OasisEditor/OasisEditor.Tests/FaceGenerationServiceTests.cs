@@ -323,7 +323,7 @@ public sealed class FaceGenerationServiceTests
             Title = "Face",
             SourcePanel2DDocumentId = "panel-doc-1",
             SourceFaceShapeId = "shape-1",
-            SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
+            SourceRegion = FaceSourceRegionWpfAdapter.FromRect(new Rect(0, 0, 100, 100)),
             Elements =
             [
                 new FaceReelMount { ObjectId = "existing-reel", Name = "Old", LinkedPanel2DElementId = "reel-1", X = 0, Y = 0, Width = 1, Height = 1, LinkedMachineObjectReference = MachineObjectReference.Reel(99),},
@@ -374,7 +374,7 @@ public sealed class FaceGenerationServiceTests
             Title = "Face",
             SourcePanel2DDocumentId = "panel-doc-1",
             SourceFaceShapeId = "shape-1",
-            SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
+            SourceRegion = FaceSourceRegionWpfAdapter.FromRect(new Rect(0, 0, 100, 100)),
             Artwork = new FaceArtworkModel
             {
                 Id = "stable-artwork",
@@ -431,7 +431,7 @@ public sealed class FaceGenerationServiceTests
             var existingFace = new FaceDocumentModel
             {
                 Id = "face-1", Title = "Face", SourcePanel2DDocumentId = "panel-doc-1", SourceFaceShapeId = "shape-1",
-                SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
+                SourceRegion = FaceSourceRegionWpfAdapter.FromRect(new Rect(0, 0, 100, 100)),
                 Artwork = new FaceArtworkModel { Id = "stable-artwork", ProcessingPipeline = new ImageProcessingPipelineModel { Operations = [operation] } }
             };
             var documentPath = Path.Combine(directory, "Assets", "Faces", "Face", "asset.face");
@@ -464,7 +464,7 @@ public sealed class FaceGenerationServiceTests
             Title = "Face",
             SourcePanel2DDocumentId = "panel-doc-1",
             SourceFaceShapeId = "shape-1",
-            SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, 100, 100)),
+            SourceRegion = FaceSourceRegionWpfAdapter.FromRect(new Rect(0, 0, 100, 100)),
             Elements =
             [
                 new FaceArtworkElement

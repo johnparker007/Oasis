@@ -1,5 +1,5 @@
 <UserControl x:Class="OasisEditor.Views.ImpactRuntimeSettingsView"
- xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:OasisEditor">
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:OasisEditor" xmlns:core="clr-namespace:OasisEditor;assembly=Oasis.Authoring.Core">
                 <Grid>
                 
                 <Grid.RowDefinitions>
@@ -127,7 +127,7 @@
                         <TextBlock Margin="0,0,0,4" Text="Coin Mechanism" FontWeight="SemiBold" />
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                             <TextBlock VerticalAlignment="Center" Text="Communication Style:" />
-                            <ComboBox Margin="8,0,16,0" Width="120" SelectedValue="{Binding System6CoinCommunicationStyle}" SelectedValuePath="Tag"><ComboBoxItem Content="Parallel" Tag="{x:Static local:AmberCoinCommunicationStyle.Parallel}" /></ComboBox>
+                            <ComboBox Margin="8,0,16,0" Width="120" SelectedValue="{Binding System6CoinCommunicationStyle}" SelectedValuePath="Tag"><ComboBoxItem Content="Parallel" Tag="{x:Static core:AmberCoinCommunicationStyle.Parallel}" /></ComboBox>
                             <CheckBox Margin="0,0,16,0" VerticalAlignment="Center" Content="Communication Invert" IsChecked="{Binding System6CoinCommunicationInvert}" />
                             <TextBlock VerticalAlignment="Center" Text="Pulse Cycles:" />
                             <TextBox Margin="8,0,16,0" Width="100" Text="{Binding System6CoinPulseCycles, UpdateSourceTrigger=LostFocus}" />

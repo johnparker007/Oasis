@@ -107,7 +107,7 @@ public sealed class FaceTrayAutoAuthoringTests
         {
             Trays =
             [
-                new FaceTrayModel { ObjectId = "tray-a", Name = "A", Bounds = FaceSourceRegionModel.FromRect(new Rect(0, 0, 10, 10)) },
+                new FaceTrayModel { ObjectId = "tray-a", Name = "A", Bounds = FaceSourceRegionWpfAdapter.FromRect(new Rect(0, 0, 10, 10)) },
                 new FaceTrayModel { ObjectId = "tray-a", Name = "B", Bounds = new FaceSourceRegionModel { X = 1, Y = 1, Width = 0, Height = 10 } }
             ],
             LampEmitters =
@@ -136,7 +136,7 @@ public sealed class FaceTrayAutoAuthoringTests
                 {
                     ObjectId = "tray-debug",
                     IsAutoAuthored = true,
-                    Bounds = FaceSourceRegionModel.FromRect(new Rect(5, 5, 30, 20)),
+                    Bounds = FaceSourceRegionWpfAdapter.FromRect(new Rect(5, 5, 30, 20)),
                     Vertices =
                     [
                         new FacePointModel { X = 5, Y = 5 },
@@ -294,7 +294,7 @@ public sealed class FaceTrayAutoAuthoringTests
                     {
                         SourcePanel2DElementId = "panel-lamp-3",
                         LinkedMachineObjectReference = MachineObjectReference.Lamp(3),
-                        Bounds = FaceSourceRegionModel.FromRect(new Rect(8, 9, 11, 12)),
+                        Bounds = FaceSourceRegionWpfAdapter.FromRect(new Rect(8, 9, 11, 12)),
                         PixelCount = 24
                     }
                 ]

@@ -5,52 +5,6 @@ using SkiaSharp;
 
 namespace OasisEditor;
 
-public enum FaceSourceRegionKind
-{
-    Rect
-}
-
-public sealed class FaceSourceRegionModel
-{
-    public FaceSourceRegionKind Kind { get; init; } = FaceSourceRegionKind.Rect;
-    public double X { get; init; }
-    public double Y { get; init; }
-    public double Width { get; init; }
-    public double Height { get; init; }
-
-    public static FaceSourceRegionModel FromRect(Rect rect)
-    {
-        var normalized = Normalize(rect);
-        return new FaceSourceRegionModel
-        {
-            Kind = FaceSourceRegionKind.Rect,
-            X = normalized.X,
-            Y = normalized.Y,
-            Width = normalized.Width,
-            Height = normalized.Height
-        };
-    }
-
-    public Rect ToRect() => new(X, Y, Width, Height);
-
-    public bool IsValid => Kind == FaceSourceRegionKind.Rect
-        && PanelElementValidation.IsFinite(X)
-        && PanelElementValidation.IsFinite(Y)
-        && PanelElementValidation.IsFinite(Width)
-        && PanelElementValidation.IsFinite(Height)
-        && Width > 0
-        && Height > 0;
-
-    private static Rect Normalize(Rect rect)
-    {
-        var left = Math.Min(rect.Left, rect.Right);
-        var top = Math.Min(rect.Top, rect.Bottom);
-        var right = Math.Max(rect.Left, rect.Right);
-        var bottom = Math.Max(rect.Top, rect.Bottom);
-        return new Rect(left, top, right - left, bottom - top);
-    }
-}
-
 internal sealed class FaceGenerationResult
 {
     public FaceGenerationResult(FaceDocumentModel document, int convertedLampCount, int artworkElementCount, int convertedButtonCount, int convertedSevenSegmentDisplayCount, int convertedAlphaDisplayCount, int convertedReelMountCount)
@@ -110,7 +64,7 @@ internal sealed class FaceGenerationService
         var pathService = new ProjectAssetPathService();
         var resolvedFaceAssetName = pathService.SanitizePathSegment(string.IsNullOrWhiteSpace(faceAssetName) ? title : faceAssetName);
         var faceArtworkPath = ResolveFaceAuthoredAssetPath(projectDirectory, generatedDirectory, faceAssetDirectory, resolvedFaceAssetName, ProjectAssetPathService.FaceArtworkFileName);
-        var region = FaceSourceRegionModel.FromRect(new Rect(0, 0, output.Width, output.Height));
+        var region = FaceSourceRegionWpfAdapter.FromRect(new Rect(0, 0, output.Width, output.Height));
         var sourceBackground = sourcePanel.Elements.FirstOrDefault(element => element.Kind == PanelElementKind.Background);
         var artworkState = new FaceArtworkModel
         {
@@ -326,7 +280,7 @@ internal sealed class FaceGenerationService
             Name = "Face Mask",
             AssetPath = assetPath,
             SourcePanel2DDocumentId = NormalizeOptional(sourcePanel2DDocumentId),
-            SourceRegion = FaceSourceRegionModel.FromRect(new Rect(0, 0, faceWidth, faceHeight)),
+            SourceRegion = FaceSourceRegionWpfAdapter.FromRect(new Rect(0, 0, faceWidth, faceHeight)),
             ExtractionThreshold = extractionThreshold,
             GeneratedUtc = DateTime.UtcNow,
             Width = faceWidth,
@@ -395,7 +349,7 @@ internal sealed class FaceGenerationService
             minY = Math.Min(minY, top + row); maxY = Math.Max(maxY, top + row);
         }
         var bounds = count > 0
-            ? FaceSourceRegionModel.FromRect(new Rect(minX, minY, maxX - minX + 1, maxY - minY + 1))
+            ? FaceSourceRegionWpfAdapter.FromRect(new Rect(minX, minY, maxX - minX + 1, maxY - minY + 1))
             : null;
         return new SourceShapeMaskContribution(bounds, count);
     }
@@ -492,7 +446,7 @@ internal sealed class FaceGenerationService
             return null;
         }
 
-        var faceBounds = FaceSourceRegionModel.FromRect(new Rect(minX, minY, maxX - minX, maxY - minY));
+        var faceBounds = FaceSourceRegionWpfAdapter.FromRect(new Rect(minX, minY, maxX - minX, maxY - minY));
         var bulbMaskAssetPath = FaceSourceShapeTransformService.TryGenerateTransformedElementAsset(
             sourceElement,
             sourceElement.SecondaryAssetPath,

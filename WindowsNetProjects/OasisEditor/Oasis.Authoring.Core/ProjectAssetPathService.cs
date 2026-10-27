@@ -23,6 +23,7 @@ public sealed class ProjectAssetPathService
     public const string FaceArtworkFileName = "artwork.png";
     public const string FaceArtworkDirectoryName = "Artwork";
     public const string FaceMaskFileName = "mask.png";
+    private const string FaceRuntimeDirectoryName = "runtime";
 
     public string SanitizePathSegment(string name)
     {
@@ -60,7 +61,7 @@ public sealed class ProjectAssetPathService
     public string GetFaceArtworkDirectory(EditorProject project, string assetName) => Path.Combine(project.GeneratedDirectory, "Faces", SanitizePathSegment(assetName), FaceArtworkDirectoryName);
     public string GetFaceArtworkPath(EditorProject project, string assetName) => Path.Combine(GetFaceArtworkDirectory(project, assetName), FaceArtworkFileName);
     public string GetFaceMaskPath(EditorProject project, string assetName) => Path.Combine(GetAssetPackageDirectory(project, EditorAssetType.Face, assetName), FaceMaskFileName);
-    public string GetFaceRuntimeDirectory(EditorProject project, string assetName) => Path.Combine(project.GeneratedDirectory, "Faces", SanitizePathSegment(assetName), FaceRuntimeExportService.RuntimeDirectoryName);
+    public string GetFaceRuntimeDirectory(EditorProject project, string assetName) => Path.Combine(project.GeneratedDirectory, "Faces", SanitizePathSegment(assetName), FaceRuntimeDirectoryName);
 
     public static string? GetPackageAssetNameFromManifestPath(string manifestPath, EditorAssetType assetType)
     {

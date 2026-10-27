@@ -69,7 +69,7 @@ internal sealed class FaceSemanticElementConversionService
             return null;
         }
 
-        return FaceSourceRegionModel.FromRect(new Rect(minX, minY, maxX - minX, maxY - minY));
+        return FaceSourceRegionWpfAdapter.FromRect(new Rect(minX, minY, maxX - minX, maxY - minY));
     }
 
     public static bool IsCenterInsideSourceShape(PanelElementModel element, PanelFaceSourceShapeModel sourceShape)

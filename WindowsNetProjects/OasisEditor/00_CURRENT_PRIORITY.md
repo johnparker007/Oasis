@@ -2,7 +2,8 @@
 
 The active user-authorised workstream is the staged Avalonia Editor migration,
 with Unity-inspired styling, background MCP authoring/capture and 3D deferred.
-The first parallel application opens real projects and edits Panel2D assets;
+The parallel application now creates real projects, imports FML/bitmap artwork,
+authors Panel2D elements/source regions and edits native Face documents;
 see `OasisEditor.Avalonia/README.md` for delivered scope, verification, limitations
 and the next migration steps. WPF remains the complete Editor. Preserve its
 working authoring features while extracting shared services. Do not substitute

@@ -10,7 +10,7 @@ public sealed record ElementSnapshot(
     string? TextColorHex, string? DisplayColorHex, string? DisplayText, bool Visible, bool Locked);
 
 /// <summary>Portable, single-document authoring session shared by desktop UI and MCP.</summary>
-public sealed class AuthoringSession
+public sealed partial class AuthoringSession
 {
     private const string PanelManifest = "asset.panel2d";
     private readonly string _workspacePath;
@@ -24,6 +24,7 @@ public sealed class AuthoringSession
     private int _historyIndex;
     private Panel2DDocumentFile? _document;
     private string? _selectedId;
+    private List<string> _selectedIds = [];
 
     public AuthoringSession(string workspacePath)
     {
@@ -71,6 +72,7 @@ public sealed class AuthoringSession
         _panelPath = null;
         _document = null;
         _selectedId = null;
+        _selectedIds.Clear();
         _panelStates.Clear();
         _diskHash = null;
         _savedContent = string.Empty;
@@ -115,6 +117,7 @@ public sealed class AuthoringSession
         _diskHash = Hash(content);
         _savedContent = Payload(parsed);
         _selectedId = null;
+        _selectedIds.Clear();
         ResetHistory(parsed);
         Changed?.Invoke();
     }
@@ -144,6 +147,7 @@ public sealed class AuthoringSession
         _diskHash = Hash(content);
         _savedContent = Payload(document);
         _selectedId = null;
+        _selectedIds.Clear();
         ResetHistory(document);
         Changed?.Invoke();
         return manifestPath;
@@ -153,8 +157,10 @@ public sealed class AuthoringSession
     {
         if (id is not null && !(_document?.Elements ?? []).Any(element => element.ObjectId == id))
             throw new KeyNotFoundException($"Panel element '{id}' was not found.");
-        if (_selectedId == id) return;
+        if (_selectedIds.Count == (id is null ? 0 : 1) && (id is null || _selectedIds[0] == id)) return;
         _selectedId = id;
+        _selectedIds = id is null ? [] : [id];
+        StorePanelState();
         Changed?.Invoke();
     }
 
@@ -196,6 +202,8 @@ public sealed class AuthoringSession
         };
         Commit(document with { Elements = [.. document.Elements, rectangle] }, notify: false);
         _selectedId = id;
+        _selectedIds = [id];
+        StorePanelState();
         Changed?.Invoke();
         return id;
     }
@@ -437,7 +445,7 @@ public sealed class AuthoringSession
     private void StorePanelState()
     {
         if (_panelPath is null || _document is null) return;
-        _panelStates[_panelPath] = new PanelState(_history.ToArray(), _historyIndex, _savedContent, _diskHash, _selectedId);
+        _panelStates[_panelPath] = new PanelState(_history.ToArray(), _historyIndex, _savedContent, _diskHash, _selectedId, _selectedIds.ToArray());
     }
     private void RestorePanelState(PanelState state)
     {
@@ -448,12 +456,15 @@ public sealed class AuthoringSession
         _savedContent = state.SavedContent;
         _diskHash = state.DiskHash;
         _selectedId = state.SelectedId;
+        _selectedIds = state.SelectedIds.ToList();
         KeepSelection();
     }
 
-    private sealed record PanelState(Panel2DDocumentFile[] History, int HistoryIndex, string SavedContent, string? DiskHash, string? SelectedId);
+    private sealed record PanelState(Panel2DDocumentFile[] History, int HistoryIndex, string SavedContent, string? DiskHash, string? SelectedId, string[] SelectedIds);
     private void KeepSelection()
     {
-        if (_selectedId is not null && !(_document?.Elements ?? []).Any(element => element.ObjectId == _selectedId)) _selectedId = null;
+        var existing = (_document?.Elements ?? []).Select(element => element.ObjectId).ToHashSet(StringComparer.Ordinal);
+        _selectedIds = _selectedIds.Where(existing.Contains).Distinct(StringComparer.Ordinal).ToList();
+        _selectedId = _selectedIds.FirstOrDefault();
     }
 }
