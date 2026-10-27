@@ -28,16 +28,17 @@ public sealed record WorkspaceSceneCameraState(double TargetX, double TargetY, d
 }
 public sealed record WorkspaceSceneState(string? Mode = null, string? Cabinet = null, string? Prefab = null,
     string? Selection = null, WorkspaceSceneCameraState? Camera = null, bool ShowVisuals = true,
-    bool ShowColliders = false, bool ShowTriggers = false)
+    bool ShowColliders = false, bool ShowTriggers = false, string? Reel = null)
 {
     public void Validate()
     {
-        if (Mode is not (null or "Machine" or "Cabinet3D" or "Prefab")) throw new InvalidDataException("Workspace 3D mode is invalid.");
+        if (Mode is not (null or "Machine" or "Cabinet3D" or "Prefab" or "Reel")) throw new InvalidDataException("Workspace 3D mode is invalid.");
         if ((Selection?.Length ?? 0) > 1024) throw new InvalidDataException("Workspace 3D selection is too long.");
         Camera?.Validate();
-        if (Mode == "Cabinet3D" ? Cabinet is null || Prefab is not null
-            : Mode == "Prefab" ? Prefab is null || Cabinet is not null
-            : Cabinet is not null || Prefab is not null)
+        if (Mode == "Cabinet3D" ? Cabinet is null || Prefab is not null || Reel is not null
+            : Mode == "Prefab" ? Prefab is null || Cabinet is not null || Reel is not null
+            : Mode == "Reel" ? Reel is null || Cabinet is not null || Prefab is not null
+            : Cabinet is not null || Prefab is not null || Reel is not null)
             throw new InvalidDataException("Workspace 3D asset paths do not match the active mode.");
     }
 }

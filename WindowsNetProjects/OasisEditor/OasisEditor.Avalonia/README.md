@@ -16,7 +16,10 @@ are unchanged by this migration.
   atomic reservation for concurrent creation.
 - Asset discovery across Panels, Faces, Machines, Cabinets, Reels and Object3D.
   Double-click Panels/Faces/Machines/Cabinets/Object3D Prefabs to author them.
-  Reel/library asset editors remain in WPF.
+  Reel creation/editing is also available in Avalonia, with a physical-dimension
+  GPU preview, stable native IDs, history, atomic saves and workspace restoration.
+  Reel symbol-band artwork remains a Face property; the native Reel asset stores
+  its physical diameter and width. Library browsing/selection remains the next slice.
 - Panel rectangle/anchor/zone/label creation and image import; selection and multi-
   selection; atomic group movement; duplication with fresh IDs; deletion; stacking
   order; drag movement/resize and inspector geometry/visibility/lock editing.

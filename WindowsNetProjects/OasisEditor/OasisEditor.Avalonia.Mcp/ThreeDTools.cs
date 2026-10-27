@@ -19,6 +19,7 @@ public sealed partial class EditorTools
         {
             "Cabinet3D" when Cabinets.FilePath is not null => CabinetDocumentStorage.Serialize(Cabinets.Document),
             "Prefab" when Prefabs.FilePath is not null => Object3DDocumentStorage.Serialize(Prefabs.Document),
+            "Reel" when capture.View.Reels.FilePath is not null => ReelDocumentStorage.Serialize(capture.View.Reels.Document),
             "Machine" when Machines.Document is { } machine => MachineDocumentStorage.Serialize(machine),
             _ => null
         };
@@ -26,6 +27,7 @@ public sealed partial class EditorTools
         {
             "Cabinet3D" => (object)new { path = Cabinets.FilePath, Cabinets.IsDirty, Cabinets.CanUndo, Cabinets.CanRedo, document = Cabinets.FilePath is null ? null : Cabinets.Document },
             "Prefab" => new { path = Prefabs.FilePath, Prefabs.IsDirty, Prefabs.CanUndo, Prefabs.CanRedo, document = Prefabs.FilePath is null ? null : Prefabs.Document },
+            "Reel" => new { path = capture.View.Reels.FilePath, capture.View.Reels.IsDirty,capture.View.Reels.CanUndo,capture.View.Reels.CanRedo,document=capture.View.Reels.FilePath is null?null:capture.View.Reels.Document },
             "Machine" => new { path = Machines.MachinePath, Machines.IsDirty, Machines.CanUndo, Machines.CanRedo, document = Machines.Document },
             _ => null
         };
@@ -156,6 +158,7 @@ public sealed partial class EditorTools
                 case "Cabinet3D": if (redo) Cabinets.Redo(); else Cabinets.Undo(); break;
                 case "Prefab": if (redo) Prefabs.Redo(); else Prefabs.Undo(); break;
                 case "Machine": if (redo) Machines.Redo(); else Machines.Undo(); break;
+                case "Reel": if(redo)capture.View.Reels.Redo();else capture.View.Reels.Undo();break;
                 default: throw new InvalidOperationException("Open a 3D document before using its history.");
             }
             return Scene3DSnapshot();
@@ -170,6 +173,7 @@ public sealed partial class EditorTools
                 case "Cabinet3D": Cabinets.Save(); break;
                 case "Prefab": Prefabs.Save(); break;
                 case "Machine": Machines.Save(); break;
+                case "Reel": capture.View.Reels.Save();break;
                 default: throw new InvalidOperationException("Open a 3D document before saving.");
             }
             return Scene3DSnapshot();

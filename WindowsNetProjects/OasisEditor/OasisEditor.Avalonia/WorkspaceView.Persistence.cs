@@ -37,7 +37,8 @@ public sealed partial class WorkspaceView
                 _sceneKind is null ? null : _selectedSceneNodeId,
                 new WorkspaceSceneCameraState(SceneView.Camera.Target.X, SceneView.Camera.Target.Y, SceneView.Camera.Target.Z,
                     SceneView.Camera.Distance, SceneView.Camera.Yaw, SceneView.Camera.Pitch, SceneView.Camera.FieldOfView),
-                SceneView.ShowVisuals, SceneView.ShowColliders, SceneView.ShowTriggers));
+                SceneView.ShowVisuals, SceneView.ShowColliders, SceneView.ShowTriggers,
+                _sceneKind == "Reel" && Reels.IsProjectCurrent ? Relative(Reels.FilePath) : null));
     }
 
     public void ConfigureWorkspacePersistence(string path, bool restore = true)
@@ -110,7 +111,7 @@ public sealed partial class WorkspaceView
             throw new InvalidDataException("A saved Machine scene requires the active Machine document.");
         if ((sceneMode == "Cabinet3D" && state.Scene3D?.Cabinet is null) || (sceneMode == "Prefab" && state.Scene3D?.Prefab is null))
             throw new InvalidDataException("A saved 3D asset scene requires its asset path.");
-        if ((sceneMode is "Cabinet3D" or "Prefab") && state.Project is null)
+        if ((sceneMode is "Cabinet3D" or "Prefab" or "Reel") && state.Project is null)
             throw new InvalidDataException("Saved 3D assets require a project.");
         if (state.Emulation?.AudioBufferLengthMilliseconds is < 10 or > 2000) throw new InvalidDataException("Invalid emulation audio buffer.");
         if ((state.AssetSearch?.Length ?? 0) > 256 || (state.PanelSelection?.Length ?? 0) > 10000)
@@ -130,6 +131,7 @@ public sealed partial class WorkspaceView
             if (state.Machine is not null) new MachineAuthoringSession(probe).OpenMachine(state.Machine);
             if (sceneMode == "Cabinet3D") new CabinetAuthoringSession(probe).Open(state.Scene3D!.Cabinet!);
             if (sceneMode == "Prefab") new PrefabAuthoringSession(probe).Open(state.Scene3D!.Prefab!);
+            if (sceneMode == "Reel") new ReelAuthoringSession(probe).Open(state.Scene3D!.Reel!);
         }
         else if (state.Panel is not null || state.Face is not null || state.Machine is not null || sceneMode is not null)
             throw new InvalidDataException("Saved documents require a project.");
@@ -189,6 +191,9 @@ public sealed partial class WorkspaceView
                 break;
             case "Prefab":
                 await OpenPrefab3DAsync(saved!.Prefab!);
+                break;
+            case "Reel":
+                await OpenReelAsync(saved!.Reel!);
                 break;
             default:
                 throw new InvalidDataException("Workspace 3D mode is invalid.");

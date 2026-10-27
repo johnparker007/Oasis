@@ -9,7 +9,9 @@ authors Panel2D/source regions, generates/processes native Faces, renders specia
 Fabric/Amber outputs, persists the workspace and includes Cabinet3D/Prefab/Machine
 scene authoring with a static GPU preview. See `OasisEditor.Avalonia/README.md` for
 the supported 3D content, MCP surface and platform verification limits. Multi-document
-tabs and other asset editors remain separate future scope.
+tabs remain separate future scope. The user has additionally authorized the remaining
+Reel and Library workflows. Native physical Reel authoring/preview is implemented;
+Library browsing, copying and scoped asset choices are the next migration slice.
 WPF retains its other asset editors and 3D UI. Preserve its
 working authoring features while extracting shared services. Do not substitute
 mock data or scripted emulation previews for real systems.

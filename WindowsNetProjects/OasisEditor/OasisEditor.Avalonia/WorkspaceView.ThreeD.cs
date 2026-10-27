@@ -123,6 +123,7 @@ public sealed partial class WorkspaceView
     public async Task ReloadSceneAsync()
     {
         if (!Is3DActive || _sceneDisposed) return;
+        if (_sceneKind == "Reel") { _sceneCancellation.Cancel(); ReloadReelScene(); return; }
         var old = _sceneCancellation; _sceneCancellation = new(); old.Cancel(); old.Dispose();
         var token = _sceneCancellation.Token;
         var project = _session.RequireEditorProject(); var kind = _sceneKind;
@@ -228,7 +229,7 @@ public sealed partial class WorkspaceView
         return new(Get("ViewportGrid"),Get("SelectionColor"),Get("SceneColliderColor"),Get("SceneTriggerColor"));
     }
     private void Refresh3DInspector()
-    { if (_sceneKind == "Prefab") RefreshPrefab3DInspector(); else if (_sceneKind == "Cabinet3D") RefreshCabinet3DInspector(); else RefreshMachine3DInspector(); }
+    { if (_sceneKind == "Reel") RefreshReelInspector(); else if (_sceneKind == "Prefab") RefreshPrefab3DInspector(); else if (_sceneKind == "Cabinet3D") RefreshCabinet3DInspector(); else RefreshMachine3DInspector(); }
     private static bool SameScenePath(string? left,string? right) => left is not null && right is not null && string.Equals(Path.GetFullPath(left),Path.GetFullPath(right),OperatingSystem.IsWindows()?StringComparison.OrdinalIgnoreCase:StringComparison.Ordinal);
     private async Task Create3DAssetDialog(bool prefab)
     {
@@ -267,12 +268,12 @@ public sealed partial class WorkspaceView
     }
     private void Clear3DForProjectChange()
     {
-        _sceneKind=null; _sceneCancellation.Cancel(); Cabinets.Close(); Prefabs.Close(); _composition=null; _sceneRows.Clear(); _baseScene=SceneRenderData.Empty; SceneView.SetScene(SceneRenderData.Empty);
+        _sceneKind=null; _sceneCancellation.Cancel(); Cabinets.Close(); Prefabs.Close(); Reels.Close(); _composition=null; _sceneRows.Clear(); _baseScene=SceneRenderData.Empty; SceneView.SetScene(SceneRenderData.Empty);
     }
     private void Dispose3D()
     {
         _sceneDisposed=true; _sceneKind=null; _sceneCancellation.Cancel(); _sceneCancellation.Dispose();
-        Cabinets.Changed-=On3DAssetChanged; Prefabs.Changed-=On3DAssetChanged; Machines.Changed-=OnMachineSceneChanged; Faces.Changed-=OnMachineSceneChanged; SceneView.Dispose();
+        Reels.Changed-=On3DAssetChanged; Cabinets.Changed-=On3DAssetChanged; Prefabs.Changed-=On3DAssetChanged; Machines.Changed-=OnMachineSceneChanged; Faces.Changed-=OnMachineSceneChanged; SceneView.Dispose();
     }
     private void UpdateSceneModeUI()
     {
@@ -284,10 +285,10 @@ public sealed partial class WorkspaceView
     private void Refresh3DWorkspaceChrome()
     {
         RefreshAssets();_project.Text=_session.ProjectName??"Open or create an Oasis project";
-        var dirty=_sceneKind=="Cabinet3D"?Cabinets.IsDirty:_sceneKind=="Prefab"?Prefabs.IsDirty:Machines.IsDirty;
+        var dirty=_sceneKind=="Reel"?Reels.IsDirty:_sceneKind=="Cabinet3D"?Cabinets.IsDirty:_sceneKind=="Prefab"?Prefabs.IsDirty:Machines.IsDirty;
         _document.Title=ActiveTitle+(dirty?" *":"");_mode.Text=_sceneKind;_save.IsEnabled=dirty;
-        _undo.IsEnabled=_sceneKind=="Cabinet3D"?Cabinets.CanUndo:_sceneKind=="Prefab"?Prefabs.CanUndo:Machines.CanUndo;
-        _redo.IsEnabled=_sceneKind=="Cabinet3D"?Cabinets.CanRedo:_sceneKind=="Prefab"?Prefabs.CanRedo:Machines.CanRedo;
+        _undo.IsEnabled=_sceneKind=="Reel"?Reels.CanUndo:_sceneKind=="Cabinet3D"?Cabinets.CanUndo:_sceneKind=="Prefab"?Prefabs.CanUndo:Machines.CanUndo;
+        _redo.IsEnabled=_sceneKind=="Reel"?Reels.CanRedo:_sceneKind=="Cabinet3D"?Cabinets.CanRedo:_sceneKind=="Prefab"?Prefabs.CanRedo:Machines.CanRedo;
         Refresh3DInspector();StateChanged?.Invoke();
     }
 }
