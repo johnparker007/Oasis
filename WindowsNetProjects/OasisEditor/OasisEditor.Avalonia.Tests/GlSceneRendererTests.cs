@@ -33,6 +33,28 @@ public sealed class GlSceneRendererTests
         Assert.Equal((byte)255, resized.BgraPixels[(24 * 96 + 48) * 4 + 1]);
     }
     [WindowsGpuFact]
+    public void DisposingOneRendererPreservesAnotherLiveRendererContext()
+    {
+        var scene = new SceneRenderData(
+            [Quad("survivor", 0, new(new(0,1,0,1), Vector3.Zero, Unlit: true))],
+            new(-1), new(1), []);
+        var camera = new SceneCameraState(Vector3.Zero, 4, 0, 0);
+        using var rendererA = new GlSceneRenderer();
+        var before = rendererA.Render(scene, camera, 64, 64, Vector4.Zero);
+        var center = (32 * 64 + 32) * 4;
+        Assert.True(before.BgraPixels[center + 1] > 245);
+
+        using (var rendererB = new GlSceneRenderer())
+        {
+            var other = rendererB.Render(scene, camera, 64, 64, Vector4.Zero);
+            Assert.True(other.BgraPixels[center + 1] > 245);
+        }
+
+        var after = rendererA.Render(scene, camera, 64, 64, Vector4.Zero);
+        Assert.True(after.BgraPixels[center + 1] > 245);
+        Assert.Equal((byte)0, after.BgraPixels[center + 2]);
+    }
+    [WindowsGpuFact]
     public void RealOffscreenGpuPreservesTextureOrientationAndAlphaCutout()
     {
         using var bitmap = new SKBitmap(2, 2);

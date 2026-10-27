@@ -7,8 +7,9 @@ namespace OasisEditor.Avalonia.Rendering3D;
 /// <summary>A real offscreen GPU context. Creates no native window and restores the caller's current context.</summary>
 internal sealed class OffscreenGraphicsContext : IDisposable
 {
+    private static readonly object EglGate = new();
+    private static EglDriver? _sharedEglDriver;
     private nint _module;
-    private EglDisplay? _display;
     private EglContext? _eglContext;
     private nint _cglContext;
     private CglSetCurrent? _cglSetCurrent;
@@ -29,35 +30,95 @@ internal sealed class OffscreenGraphicsContext : IDisposable
     }
     private void InitializeEgl()
     {
-        var windows = OperatingSystem.IsWindows();
-        if (windows)
+        lock (EglGate)
         {
-            var architecture = RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant();
-            var candidate = Path.Combine(AppContext.BaseDirectory, "av_libglesv2.dll");
-            if (!File.Exists(candidate)) candidate = Path.Combine(AppContext.BaseDirectory, "runtimes", "win-" + architecture, "native", "av_libglesv2.dll");
-            _module = NativeLibrary.Load(candidate);
+            var driver = _sharedEglDriver ??= EglDriver.Create();
+            try
+            {
+                _eglContext = driver.CurrentDisplay.CreateContext(new EglContextOptions());
+            }
+            catch (Exception firstFailure) when (firstFailure is not OutOfMemoryException)
+            {
+                // Avalonia or another UI renderer may have terminated/reinitialized this native EGL display.
+                // Never terminate the old display here: it may also be used by a live renderer or the host UI.
+                driver.UseFreshDisplay();
+                try { _eglContext = driver.CurrentDisplay.CreateContext(new EglContextOptions()); }
+                catch (Exception retryFailure) when (retryFailure is not OutOfMemoryException)
+                {
+                    throw new InvalidOperationException("Could not create an offscreen EGL context after refreshing the shared EGL display.", retryFailure);
+                }
+            }
         }
-        else _module = NativeLibrary.Load("libEGL.so.1");
-        var egl = new EglInterface(name =>
-        {
-            var symbol = windows && name.StartsWith("egl", StringComparison.Ordinal) ? "EGL_" + name[3..] : name;
-            return NativeLibrary.TryGetExport(_module, symbol, out var address) ? address : 0;
-        });
-        EglDisplayCreationOptions Options(int? platform) => new()
-        {
-            Egl = egl, PlatformType = platform, PlatformDisplay = 0,
-            PlatformDisplayAttrs = windows ? [0x3203, 0x3208, 0x3038] : [0x3038],
-            GlVersions = [new(GlProfileType.OpenGLES, 3, 0)]
-        };
-        if (windows) _display = new EglDisplay(Options(0x3202)); // ANGLE / D3D11, supplied by Avalonia.
-        else
-        {
-            try { _display = new EglDisplay(Options(0x31DD)); } // EGL_PLATFORM_SURFACELESS_MESA
-            catch (Exception e) when (e is not OutOfMemoryException) { _display = new EglDisplay(Options(null)); }
-        }
-        _eglContext = _display.CreateContext(new EglContextOptions());
         Gl = _eglContext.GlInterface;
         IsGles = true;
+    }
+    private sealed class EglDriver
+    {
+        private readonly nint _module;
+        private readonly EglInterface _egl;
+        private readonly bool _windows;
+        private readonly List<EglDisplay> _displays = [];
+        public EglDisplay CurrentDisplay { get; private set; } = null!;
+
+        private EglDriver(nint module, bool windows)
+        {
+            _module = module;
+            _windows = windows;
+            _egl = new EglInterface(name =>
+            {
+                var symbol = windows && name.StartsWith("egl", StringComparison.Ordinal) ? "EGL_" + name[3..] : name;
+                return NativeLibrary.TryGetExport(_module, symbol, out var address) ? address : 0;
+            });
+        }
+
+        public static EglDriver Create()
+        {
+            var windows = OperatingSystem.IsWindows();
+            nint module = 0;
+            try
+            {
+                if (windows)
+                {
+                    var architecture = RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant();
+                    var candidate = Path.Combine(AppContext.BaseDirectory, "av_libglesv2.dll");
+                    if (!File.Exists(candidate)) candidate = Path.Combine(AppContext.BaseDirectory, "runtimes", "win-" + architecture, "native", "av_libglesv2.dll");
+                    module = NativeLibrary.Load(candidate);
+                }
+                else module = NativeLibrary.Load("libEGL.so.1");
+
+                var driver = new EglDriver(module, windows);
+                driver.UseFreshDisplay();
+                // EGL displays and their driver modules are process-lifetime shared objects. They intentionally
+                // remain rooted here; disposing an individual viewport must not call eglTerminate or unload EGL.
+                return driver;
+            }
+            catch
+            {
+                // A failed initial construction has no live shared driver/display owner, so release only the
+                // module loaded by this attempt and allow a later constructor to retry from scratch.
+                if (module != 0) NativeLibrary.Free(module);
+                throw;
+            }
+        }
+
+        public void UseFreshDisplay()
+        {
+            EglDisplayCreationOptions Options(int? platform) => new()
+            {
+                Egl = _egl, PlatformType = platform, PlatformDisplay = 0,
+                PlatformDisplayAttrs = _windows ? [0x3203, 0x3208, 0x3038] : [0x3038],
+                GlVersions = [new(GlProfileType.OpenGLES, 3, 0)]
+            };
+            EglDisplay display;
+            if (_windows) display = new EglDisplay(Options(0x3202)); // ANGLE / D3D11, supplied by Avalonia.
+            else
+            {
+                try { display = new EglDisplay(Options(0x31DD)); } // EGL_PLATFORM_SURFACELESS_MESA
+                catch (Exception e) when (e is not OutOfMemoryException) { display = new EglDisplay(Options(null)); }
+            }
+            _displays.Add(display);
+            CurrentDisplay = display;
+        }
     }
     private void InitializeCgl()
     {
@@ -90,7 +151,6 @@ internal sealed class OffscreenGraphicsContext : IDisposable
     public void Dispose()
     {
         _eglContext?.Dispose(); _eglContext = null;
-        _display?.Dispose(); _display = null;
         if (_cglContext != 0) { _cglDestroy?.Invoke(_cglContext); _cglContext = 0; }
         if (_module != 0) { NativeLibrary.Free(_module); _module = 0; }
     }

@@ -183,7 +183,11 @@ public sealed class SceneViewport : Control, IDisposable
     private void ReleaseRenderer()
     {
         try { _renderer?.Dispose(); }
-        catch (Exception error) when (error is not OutOfMemoryException) { Failed?.Invoke("3D graphics cleanup: " + error.Message); }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            var message="3D graphics cleanup: "+error.Message;
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(()=>Failed?.Invoke(message));
+        }
         finally { _renderer = null; }
     }
 }
