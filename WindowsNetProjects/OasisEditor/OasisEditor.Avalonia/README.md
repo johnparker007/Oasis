@@ -455,3 +455,32 @@ The Project/Output dock keeps enough height for asset rows and creation actions 
 within narrow panes. The main and floating 3D toolbars scroll horizontally so their
 last visibility control remains reachable. Actual headless pointer/key tests are
 separate from physical keyboard, native clipboard and OS focus verification.
+
+## Release artifact and input verification
+
+Background verification now also executes the Release-published Windows MCP host,
+rather than relying only on development output. All existing MCP clients accept
+`--dll <published-OasisEditor.Avalonia.Mcp.dll>`; the default remains the development
+build. `verify_background_ui.py` adds 960×640 and 1920×1200 Dark/Light captures,
+Unicode project/asset names, native GPU Reel rendering, and persisted floating
+workspace/redocking checks. For example:
+
+```powershell
+python OasisEditor.Avalonia.Mcp/verify_background_ui.py --dll <published-host.dll> --output <directory>
+```
+
+Headless routed-key tests exercise Ctrl/Meta scene shortcuts and keep text editing
+with the focused Inspector/Output field. They use the headless platform's virtual
+input and clipboard; they do not establish native OS focus/clipboard behaviour.
+Returning from a 3D asset invalidates the cached 2D inspector, so retained Panel/Face
+controls are rebuilt and edits target the active document. Regressions verify both
+rendered Inspector contents and a subsequent edit after returning from a Reel.
+
+The complete Avalonia suite passes 224/224 tests. All five MCP clients pass against
+the Release-published Windows host, including the Reel/Library branch and actual
+GPU captures; compact, large and floating images were inspected. No desktop input,
+desktop capture, Player launch, audible playback or credited play was used. Ubuntu
+WSL resolved the published Linux Skia/HarfBuzz shared-library dependencies with no
+missing libraries, but has no existing .NET runtime/SDK available, so Linux managed
+execution was not attempted and no software was installed. macOS execution, native
+OS dialogs/window focus/clipboard and physical mixed-DPI monitors remain unverified.

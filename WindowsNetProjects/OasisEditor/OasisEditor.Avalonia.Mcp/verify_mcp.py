@@ -136,9 +136,10 @@ def main():
     parser.add_argument("--fml", type=Path, help="Import a disposable copy of an actual FML; never modifies the source")
     parser.add_argument("--copy-project", type=Path, help="Copy an existing disposable Oasis project into the isolated MCP workspace and run the production Machine build/export")
     parser.add_argument("--machine", default="Assets/Machines/RefactorTest6/asset.machine", help="Machine path inside --copy-project")
+    parser.add_argument("--dll",type=Path,default=Path(__file__).resolve().parent / "bin/Debug/net9.0/OasisEditor.Avalonia.Mcp.dll")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    dll = Path(__file__).parent / "bin/Debug/net9.0/OasisEditor.Avalonia.Mcp.dll"
+    dll = args.dll.resolve()
     with tempfile.TemporaryDirectory(prefix="oasis-avalonia-") as temporary:
         root = Path(temporary)
         client = Client(dll, root)

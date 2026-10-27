@@ -236,7 +236,8 @@ public sealed partial class WorkspaceView
         return new(Get("ViewportGrid"),Get("SelectionColor"),Get("SceneColliderColor"),Get("SceneTriggerColor"));
     }
     private void Refresh3DInspector()
-    {        if (_sceneKind == "Reel") RefreshReelInspector(); else if (_sceneKind == "Prefab") RefreshPrefab3DInspector(); else if (_sceneKind == "Cabinet3D") RefreshCabinet3DInspector(); else RefreshMachine3DInspector();        if(IsLibraryScene)_inspector.Children.Insert(0,new TextBlock{Text="Shared Library asset · Save updates this package for projects that reference it.",TextWrapping=TextWrapping.Wrap,Opacity=.7});    }
+    {        _inspected = null; // A 3D inspector replaces the cached Panel/Face controls.
+        if (_sceneKind == "Reel") RefreshReelInspector(); else if (_sceneKind == "Prefab") RefreshPrefab3DInspector(); else if (_sceneKind == "Cabinet3D") RefreshCabinet3DInspector(); else RefreshMachine3DInspector();        if(IsLibraryScene)_inspector.Children.Insert(0,new TextBlock{Text="Shared Library asset · Save updates this package for projects that reference it.",TextWrapping=TextWrapping.Wrap,Opacity=.7});    }
     private static bool SameScenePath(string? left,string? right) => !string.IsNullOrWhiteSpace(left) && !string.IsNullOrWhiteSpace(right) && string.Equals(Path.GetFullPath(left),Path.GetFullPath(right),OperatingSystem.IsWindows()?StringComparison.OrdinalIgnoreCase:StringComparison.Ordinal);
     private async Task Create3DAssetDialog(bool prefab)
     {

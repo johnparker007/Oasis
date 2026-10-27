@@ -29,9 +29,11 @@ def captures(client, output, name, expected):
 
 
 def main():
-    parser = argparse.ArgumentParser(); parser.add_argument("--output", type=Path, required=True); args = parser.parse_args()
+    parser = argparse.ArgumentParser(); parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--dll",type=Path,default=Path(__file__).resolve().parent / "bin/Debug/net9.0/OasisEditor.Avalonia.Mcp.dll")
+    args = parser.parse_args()
     output = args.output.resolve(); output.mkdir(parents=True, exist_ok=True)
-    dll = Path(__file__).resolve().parent / "bin/Debug/net9.0/OasisEditor.Avalonia.Mcp.dll"
+    dll = args.dll.resolve()
     with tempfile.TemporaryDirectory(prefix="OasisFloatingMcp-") as temporary:
         root = Path(temporary); client = Client(dll, root)
         try:
