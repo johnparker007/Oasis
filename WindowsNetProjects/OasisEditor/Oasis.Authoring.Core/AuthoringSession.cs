@@ -44,6 +44,35 @@ public sealed partial class AuthoringSession
     public IReadOnlyList<ElementSnapshot> Elements => (_document?.Elements ?? []).Select(Project).ToArray();
     public event Action? Changed;
 
+    internal string RequireProjectDirectory() => RequireProject();
+
+    internal EditorProject RequireEditorProject()
+    {
+        var directory = RequireProject();
+        var projectFile = _projectFilePath ?? throw new InvalidOperationException("Open an Oasis project first.");
+        return new EditorProject
+        {
+            Name = ProjectName ?? Path.GetFileNameWithoutExtension(projectFile),
+            ProjectFilePath = projectFile,
+            ProjectDirectory = directory,
+            AssetsDirectory = Path.Combine(directory, "Assets"),
+            GeneratedDirectory = Path.Combine(directory, "Generated")
+        };
+    }
+
+    internal Panel2DDocumentModel RequirePanelDocument()
+        => _document is null ? throw new InvalidOperationException("Open a Panel2D document first.") : Panel2DDocumentStorage.ToModel(_document);
+
+    internal void EnsurePanelMatchesSavedFile()
+    {
+        if (_panelPath is null || _diskHash is null)
+            throw new InvalidOperationException("Save the source Panel2D document before generating a Face.");
+        if (IsDirty)
+            throw new InvalidOperationException("Save the source Panel2D edits before generating a Face.");
+        if (!File.Exists(_panelPath) || !string.Equals(HashFile(_panelPath), _diskHash, StringComparison.Ordinal))
+            throw new IOException("The source Panel2D manifest changed outside this session. Reopen it before generating a Face.");
+    }
+
     public void OpenProject(string path)
     {
         EnsureCanReplaceDocument();

@@ -22,14 +22,6 @@ public sealed class AssetLibraryPreferences
     public string RootPath { get; init; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Oasis Library");
 }
 
-public enum CpuImageProcessingMode { Auto, Maximum, Custom }
-
-public sealed class ProcessingPreferences
-{
-    public CpuImageProcessingMode CpuMode { get; init; } = CpuImageProcessingMode.Auto;
-    public int CustomMaximumWorkers { get; init; } = 1;
-}
-
 public sealed class OasisPlayerPreferences
 {
     public string ExecutablePath { get; init; } = string.Empty;

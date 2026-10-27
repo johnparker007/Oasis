@@ -1,8 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
-using System.Windows;
+using Rect = OasisEditor.FacePipeline.FaceRect;
+using Point = OasisEditor.FacePipeline.FacePoint;
 
-namespace OasisEditor;
+using OasisEditor;
+
+namespace OasisEditor.FacePipeline;
 
 internal sealed class FaceTrayAutoAuthoringService
 {
@@ -156,8 +159,8 @@ internal sealed class FaceTrayAutoAuthoringService
         var contribution = FindBestContribution(lampWindow, maskLayer);
         var baseBounds = contribution?.Bounds is { IsValid: true } contributionBounds
             ? contributionBounds
-            : FaceSourceRegionWpfAdapter.FromRect(new Rect(lampWindow.X, lampWindow.Y, lampWindow.Width, lampWindow.Height));
-        var lampBounds = FaceSourceRegionWpfAdapter.FromRect(new Rect(lampWindow.X, lampWindow.Y, lampWindow.Width, lampWindow.Height));
+            : FaceSourceRegionGeometryAdapter.FromRect(new Rect(lampWindow.X, lampWindow.Y, lampWindow.Width, lampWindow.Height));
+        var lampBounds = FaceSourceRegionGeometryAdapter.FromRect(new Rect(lampWindow.X, lampWindow.Y, lampWindow.Width, lampWindow.Height));
         var bounds = ExpandBounds(baseBounds, lampBounds, settings);
         var source = contribution?.Bounds is { IsValid: true } ? "maskContributionBounds" : "lampWindowBounds";
         return new LampWorkItem(lampWindow, contribution, bounds, source, CreateLampStableKey(lampWindow));
@@ -231,11 +234,11 @@ internal sealed class FaceTrayAutoAuthoringService
         Rect? union = null;
         foreach (var bound in bounds.Where(bound => bound.IsValid))
         {
-            var rect = FaceSourceRegionWpfAdapter.ToRect(bound);
+            var rect = FaceSourceRegionGeometryAdapter.ToRect(bound);
             union = union is Rect existing ? Rect.Union(existing, rect) : rect;
         }
 
-        return FaceSourceRegionWpfAdapter.FromRect(union ?? Rect.Empty);
+        return FaceSourceRegionGeometryAdapter.FromRect(union ?? Rect.Empty);
     }
 
     private static EmitterPlacement ResolveEmitterPlacement(FaceLampWindowElement lampWindow, string? projectDirectory)
@@ -294,8 +297,8 @@ internal sealed class FaceTrayAutoAuthoringService
                     continue;
                 }
 
-                var leftRect = FaceSourceRegionWpfAdapter.ToRect(leftBounds);
-                var rightRect = FaceSourceRegionWpfAdapter.ToRect(rightBounds);
+                var leftRect = FaceSourceRegionGeometryAdapter.ToRect(leftBounds);
+                var rightRect = FaceSourceRegionGeometryAdapter.ToRect(rightBounds);
                 var overlap = Rect.Intersect(leftRect, rightRect);
                 if (overlap.IsEmpty || overlap.Width <= 0d || overlap.Height <= 0d)
                 {
@@ -427,7 +430,7 @@ internal sealed class FaceTrayAutoAuthoringService
             return false;
         }
 
-        var rect = FaceSourceRegionWpfAdapter.ToRect(validBounds);
+        var rect = FaceSourceRegionGeometryAdapter.ToRect(validBounds);
         return !trays.Any(otherTray => HasPositiveIntersection(tray, otherTray, rect));
     }
 
@@ -438,7 +441,7 @@ internal sealed class FaceTrayAutoAuthoringService
             return false;
         }
 
-        var intersection = Rect.Intersect(rect, FaceSourceRegionWpfAdapter.ToRect(other));
+        var intersection = Rect.Intersect(rect, FaceSourceRegionGeometryAdapter.ToRect(other));
         return !intersection.IsEmpty && intersection.Width > 0d && intersection.Height > 0d;
     }
 
@@ -526,15 +529,15 @@ internal sealed class FaceTrayAutoAuthoringService
         var lampBounds = new Rect(lampWindow.X, lampWindow.Y, lampWindow.Width, lampWindow.Height);
         return maskLayer.Contributions
             .Where(candidate => candidate.Bounds is { IsValid: true })
-            .OrderByDescending(candidate => OverlapArea(lampBounds, FaceSourceRegionWpfAdapter.ToRect(candidate.Bounds!)))
+            .OrderByDescending(candidate => OverlapArea(lampBounds, FaceSourceRegionGeometryAdapter.ToRect(candidate.Bounds!)))
             .ThenByDescending(candidate => candidate.PixelCount)
-            .FirstOrDefault(candidate => OverlapArea(lampBounds, FaceSourceRegionWpfAdapter.ToRect(candidate.Bounds!)) > 0d);
+            .FirstOrDefault(candidate => OverlapArea(lampBounds, FaceSourceRegionGeometryAdapter.ToRect(candidate.Bounds!)) > 0d);
     }
 
 
     private static FaceSourceRegionModel ExpandBounds(FaceSourceRegionModel baseBounds, FaceSourceRegionModel lampWindowBounds, FaceGenerationSettingsModel settings)
     {
-        var rect = FaceSourceRegionWpfAdapter.ToRect(baseBounds);
+        var rect = FaceSourceRegionGeometryAdapter.ToRect(baseBounds);
         var padding = Math.Max(0d, settings.TrayBoundsPaddingPixels);
         if (padding > 0d)
         {
@@ -549,11 +552,11 @@ internal sealed class FaceTrayAutoAuthoringService
 
         if (settings.ClampTrayBoundsToLampWindow)
         {
-            var clamped = Rect.Intersect(rect, FaceSourceRegionWpfAdapter.ToRect(lampWindowBounds));
-            rect = clamped.IsEmpty ? FaceSourceRegionWpfAdapter.ToRect(lampWindowBounds) : clamped;
+            var clamped = Rect.Intersect(rect, FaceSourceRegionGeometryAdapter.ToRect(lampWindowBounds));
+            rect = clamped.IsEmpty ? FaceSourceRegionGeometryAdapter.ToRect(lampWindowBounds) : clamped;
         }
 
-        return FaceSourceRegionWpfAdapter.FromRect(rect);
+        return FaceSourceRegionGeometryAdapter.FromRect(rect);
     }
 
     private static IReadOnlyList<FacePointModel> CreateRectangleVertices(FaceSourceRegionModel bounds)

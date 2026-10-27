@@ -60,7 +60,7 @@ public sealed class FaceArtworkOverrideTests : IDisposable
     public void InteractivePreviewSize_IsBoundedWithoutChangingUsefulAspectRatio()
     {
         var registration=new FacePerspectiveRegistrationModel{TopLeft=P(.1,.2),TopRight=P(.8,.2),BottomRight=P(.8,.7),BottomLeft=P(.1,.7)};
-        var useful=FaceSourceShapeTransformService.EstimateRegisteredImageOutputSize(8000,6000,registration);
+        var useful=PortableFaceSourceShapeTransformAdapter.EstimateRegisteredImageOutputSize(8000,6000,registration);
         var preview=FaceArtworkOverridePreviewService.DeterminePreviewSize(8000,6000,registration);
         Assert.True(Math.Max(preview.Width,preview.Height)<=FaceArtworkOverridePreviewService.MaximumPreviewDimension);
         Assert.Equal(useful.Width/(double)useful.Height,preview.Width/(double)preview.Height,2);

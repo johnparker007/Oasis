@@ -5,20 +5,19 @@ namespace OasisEditor;
 /// <summary>Owns the generated artwork stage names and project-path resolution.</summary>
 internal static class FaceArtworkGeneratedPathService
 {
-    public const string BaseFileName = "base.png";
-    public const string OutputFileName = "artwork.png";
-    public const string CorrectionInputFileName = "correction-input.png";
+    public const string BaseFileName = FacePipeline.FaceArtworkGeneratedPathService.BaseFileName;
+    public const string OutputFileName = FacePipeline.FaceArtworkGeneratedPathService.OutputFileName;
+    public const string CorrectionInputFileName = FacePipeline.FaceArtworkGeneratedPathService.CorrectionInputFileName;
 
-    public static string GetBasePathFromOutput(string outputPath) =>
-        Path.Combine(Path.GetDirectoryName(outputPath) ?? string.Empty, BaseFileName);
+    public static string GetBasePathFromOutput(string outputPath)
+        => FacePipeline.FaceArtworkGeneratedPathService.GetBasePathFromOutput(outputPath);
 
-    public static string GetCorrectionInputPathFromOutput(string outputPath) =>
-        Path.Combine(Path.GetDirectoryName(outputPath) ?? string.Empty, CorrectionInputFileName);
+    public static string GetCorrectionInputPathFromOutput(string outputPath)
+        => FacePipeline.FaceArtworkGeneratedPathService.GetCorrectionInputPathFromOutput(outputPath);
 
-    public static string Resolve(string path, string projectDirectory) => Path.IsPathRooted(path)
-        ? path
-        : Path.Combine(projectDirectory, path.Replace('/', Path.DirectorySeparatorChar));
+    public static string Resolve(string path, string projectDirectory)
+        => FacePipeline.FaceArtworkGeneratedPathService.Resolve(path, projectDirectory);
 
     public static string ToProjectRelative(string path, string projectDirectory) =>
-        Path.GetRelativePath(projectDirectory, path).Replace('\\', '/');
+        FacePipeline.FaceArtworkGeneratedPathService.ToProjectRelative(path, projectDirectory);
 }

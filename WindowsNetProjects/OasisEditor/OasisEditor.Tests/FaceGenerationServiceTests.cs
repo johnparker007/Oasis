@@ -307,7 +307,7 @@ public sealed class FaceGenerationServiceTests
             (X: inside.X + inside.Width, Y: inside.Y),
             (X: inside.X + inside.Width, Y: inside.Y + inside.Height),
             (X: inside.X, Y: inside.Y + inside.Height)
-        }.Select(c => { FaceSourceShapeTransformService.TryTransformPanelPointToFace(shape, 200, 120, c.X, c.Y, out var point); return point; }).ToArray();
+        }.Select(c => { PortableFaceSourceShapeTransformAdapter.TryTransformPanelPointToFace(shape, 200, 120, c.X, c.Y, out var point); return point; }).ToArray();
         Assert.Equal(transformedCorners.Min(p => p.X), bounds.X, 9);
         Assert.Equal(transformedCorners.Min(p => p.Y), bounds.Y, 9);
         Assert.Equal(transformedCorners.Max(p => p.X) - transformedCorners.Min(p => p.X), bounds.Width, 9);

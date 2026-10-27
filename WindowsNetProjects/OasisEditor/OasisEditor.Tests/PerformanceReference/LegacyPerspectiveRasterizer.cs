@@ -15,8 +15,8 @@ internal static class LegacyPerspectiveRasterizer
 
         var output = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
         output.Erase(SKColors.Transparent);
-        if (!FaceSourceShapeTransformService.TryCreateHomography(
-                FaceSourceShapeTransformService.CreateFaceCorners(width, height), sourceQuad, out var destinationToSource))
+        if (!PortableFaceSourceShapeTransformAdapter.TryCreateHomography(
+                PortableFaceSourceShapeTransformAdapter.CreateFaceCorners(width, height), sourceQuad, out var destinationToSource))
         {
             return output;
         }
@@ -34,7 +34,7 @@ internal static class LegacyPerspectiveRasterizer
                 // Images occupy [0, width] x [0, height]; these are quarter-points in the destination pixel area.
                 var destinationX = x + ((sampleX + 0.5d) / SupersampleGridSize);
                 var destinationY = y + ((sampleY + 0.5d) / SupersampleGridSize);
-                if (!FaceSourceShapeTransformService.TryApplyHomography(destinationToSource, destinationX, destinationY, out var point)) continue;
+                if (!PortableFaceSourceShapeTransformAdapter.TryApplyHomography(destinationToSource, destinationX, destinationY, out var point)) continue;
                 var sample = SampleBicubicPremultiplied(source, point.X, point.Y);
                 red += sample.Red;
                 green += sample.Green;
@@ -58,8 +58,8 @@ internal static class LegacyPerspectiveRasterizer
         if (width <= 0 || height <= 0) throw new ArgumentOutOfRangeException(nameof(width));
         var output = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
         output.Erase(SKColors.Transparent);
-        if (!FaceSourceShapeTransformService.TryCreateHomography(sourceQuad,
-                FaceSourceShapeTransformService.CreateFaceCorners(width, height), out var sourceToDestination)) return output;
+        if (!PortableFaceSourceShapeTransformAdapter.TryCreateHomography(sourceQuad,
+                PortableFaceSourceShapeTransformAdapter.CreateFaceCorners(width, height), out var sourceToDestination)) return output;
         cancellationToken.ThrowIfCancellationRequested();
         var matrix = new SKMatrix
         {

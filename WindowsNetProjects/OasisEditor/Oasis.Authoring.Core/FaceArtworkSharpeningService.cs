@@ -1,6 +1,8 @@
 using SkiaSharp;
 
-namespace OasisEditor;
+using OasisEditor;
+
+namespace OasisEditor.FacePipeline;
 
 /// <summary>Post-rectification, linear-light unsharp masking for visible Face artwork.</summary>
 internal static class FaceArtworkSharpeningService

@@ -1,6 +1,8 @@
 using SkiaSharp;
 
-namespace OasisEditor;
+using OasisEditor;
+
+namespace OasisEditor.FacePipeline;
 
 /// <summary>Evaluates authored operations in order. Calibration samples always observe the operation input.</summary>
 internal sealed class FaceArtworkProcessingPipeline

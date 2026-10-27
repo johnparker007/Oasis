@@ -204,7 +204,7 @@ public sealed partial class McpEditorSession
         var shape = new PanelFaceSourceShapeModel { Id = "faceSourceShape-" + Guid.NewGuid().ToString("N"), Name = name,
             TopLeft = new() { X = quad.TopLeft.X, Y = quad.TopLeft.Y }, TopRight = new() { X = quad.TopRight.X, Y = quad.TopRight.Y },
             BottomRight = new() { X = quad.BottomRight.X, Y = quad.BottomRight.Y }, BottomLeft = new() { X = quad.BottomLeft.X, Y = quad.BottomLeft.Y } };
-        var size = FaceSourceShapeTransformService.EstimateOutputSize(shape);
+        var size = PortableFaceSourceShapeTransformAdapter.EstimateOutputSize(shape);
         ValidateOutputSize(size.Width, size.Height);
         return shape;
     }

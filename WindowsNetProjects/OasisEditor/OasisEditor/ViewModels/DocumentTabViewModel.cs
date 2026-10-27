@@ -1159,7 +1159,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
 
         var background = panel.Elements.First(element => element.Kind == PanelElementKind.Background
             && !string.IsNullOrWhiteSpace(element.AssetPath));
-        var size = FaceSourceShapeTransformService.EstimateOutputSize(shape);
+        var size = PortableFaceSourceShapeTransformAdapter.EstimateOutputSize(shape);
         var artwork = new FaceArtworkModel
         {
             Id = current.Id,
@@ -1219,7 +1219,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
     {
         var current=_faceDocumentModel.Artwork; if (current?.Source.Kind != FaceArtworkSourceKind.Image) return false;
         var normalized=registration.Normalize(); if (!normalized.IsValid()) return false;
-        var size=FaceSourceShapeTransformService.EstimateRegisteredImageOutputSize(current.Source.PixelWidth, current.Source.PixelHeight, normalized);
+        var size=PortableFaceSourceShapeTransformAdapter.EstimateRegisteredImageOutputSize(current.Source.PixelWidth, current.Source.PixelHeight, normalized);
         var artwork=new FaceArtworkModel { Id=current.Id, Source=current.Source,
             Geometry=new FaceArtworkGeometryModel { PerspectiveRegistration=normalized }, ProcessingPipeline=current.ProcessingPipeline,
             CorrectionInputAssetPath=current.CorrectionInputAssetPath, BaseAssetPath=current.BaseAssetPath, OutputAssetPath=current.OutputAssetPath,
@@ -1575,7 +1575,7 @@ public sealed class DocumentTabViewModel : INotifyPropertyChanged, IDisposable
         if(!TryResolveSourcePanel(out var panel,out error))return false;
         var shape=panel.FaceSourceShapes.FirstOrDefault(value=>string.Equals(value.Id,_faceDocumentModel.SourceFaceShapeId,StringComparison.Ordinal));
         if(shape is null){error=$"Face Source Shape '{_faceDocumentModel.SourceFaceShapeId}' was not found in the source Panel2D.";return false;}
-        var estimated=FaceSourceShapeTransformService.EstimateOutputSize(shape,null);
+        var estimated=PortableFaceSourceShapeTransformAdapter.EstimateOutputSize(shape,null);
         // Component geometry stays in the established Face logical space. It must not follow a replacement
         // artwork bitmap's pixel dimensions (Phase 5 deliberately makes artwork resolution independent).
         var logicalArtwork=_faceDocumentModel.Elements.OfType<FaceArtworkElement>().FirstOrDefault();
