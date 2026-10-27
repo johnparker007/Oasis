@@ -397,7 +397,7 @@ public sealed record Portable3DCompositionResult(
 
 internal sealed class CompositionBuilder(PortableGlbSceneLoader loader)
 {
-    private readonly Dictionary<string, GlbSceneLoadResult> _sceneCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, GlbSceneLoadResult> _sceneCache = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
     private readonly Dictionary<(string Path, int Material), int> _materialMap = new();
     public List<Portable3DMeshInstance> Meshes { get; } = [];
     public List<GlbMaterialData> Materials { get; } = [];
