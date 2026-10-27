@@ -46,7 +46,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     {
         _pathService = pathService ?? new ProjectAssetPathService();
         _faceRuntimeExportService = faceRuntimeExportService ?? new FaceRuntimeExportService();
-        _libraryRoot = libraryRoot ?? new EditorPreferencesStore().Load().AssetLibrary.RootPath;
+        _libraryRoot = libraryRoot ?? string.Empty;
     }
 
     public MachineRuntimeBuildResult BuildFromMachineDocument(EditorProject project, string machineManifestPath, IEditorProgressReporter progress, CancellationToken cancellationToken)
@@ -55,6 +55,17 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         ArgumentNullException.ThrowIfNull(progress);
         cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(machineManifestPath)) return MachineRuntimeBuildResult.Fail("A saved Machine asset must be selected before building for Oasis Player.");
+        string secureMachinePath;
+        try
+        {
+            var relative = Path.GetRelativePath(Path.GetFullPath(project.ProjectDirectory), Path.GetFullPath(machineManifestPath));
+            secureMachinePath = WorkspacePathPolicy.ResolveConfined(project.ProjectDirectory, relative, requireExists: true);
+            if (!string.Equals(Path.GetFullPath(machineManifestPath), secureMachinePath, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                return MachineRuntimeBuildResult.Fail("Machine manifest must be inside the current project.");
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        { return MachineRuntimeBuildResult.Fail($"Machine manifest path is not safe: {exception.Message}"); }
+        machineManifestPath = secureMachinePath;
         if (!File.Exists(machineManifestPath)) return MachineRuntimeBuildResult.Fail($"Machine manifest was not found: {machineManifestPath}");
         if (!MachineDocumentStorage.TryRead(File.ReadAllText(machineManifestPath), out var machineDocument, out var error)) return MachineRuntimeBuildResult.Fail($"Machine manifest is invalid: {error}");
         return BuildFromMachineDocument(project, machineManifestPath, machineDocument, progress, cancellationToken);
@@ -66,25 +77,28 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         ArgumentNullException.ThrowIfNull(machineDocument);
         ArgumentNullException.ThrowIfNull(progress);
         cancellationToken.ThrowIfCancellationRequested();
-        try { MachineDocumentStorage.Validate(machineDocument); }
+        try { _ = MachineDocumentStorage.Serialize(machineDocument); }
         catch (Exception exception) when (exception is InvalidOperationException or ArgumentException) { return MachineRuntimeBuildResult.Fail(exception.Message); }
         var machineAssetName = ProjectAssetPathService.GetPackageAssetNameFromManifestPath(machineManifestPath, EditorAssetType.Machine);
         if (string.IsNullOrWhiteSpace(machineAssetName)) return MachineRuntimeBuildResult.Fail("Machine manifests must be stored as Assets/Machines/<Name>/asset.machine before building for Oasis Player.");
         if (machineDocument.CabinetAsset is null) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' has no Cabinet asset assigned.");
         string cabinetManifestPath;
-        try { cabinetManifestPath = _assetResolver.Resolve(project, _libraryRoot, machineDocument.CabinetAsset); }
+        try { cabinetManifestPath = ResolveAsset(project, machineDocument.CabinetAsset); }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException) { return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' cannot resolve Cabinet {machineDocument.CabinetAsset}: {exception.Message}"); }
         if (!File.Exists(cabinetManifestPath)) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references a missing Cabinet {machineDocument.CabinetAsset}. Library root: '{_libraryRoot}'.");
         if (!CabinetDocumentStorage.TryRead(File.ReadAllText(cabinetManifestPath), out var cabinetDocument)) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references an invalid Cabinet: {machineDocument.CabinetAsset}");
         var cabinetAssetName = Path.GetFileName(Path.GetDirectoryName(cabinetManifestPath));
         string sourceGlb;
         try { sourceGlb = ResolveCabinetModelPath(cabinetManifestPath, cabinetDocument.Model.Path); }
-        catch (InvalidOperationException exception) { return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references an invalid Cabinet {machineDocument.CabinetAsset}: {exception.Message}"); }
+        catch (Exception exception) when (exception is InvalidOperationException or InvalidDataException) { return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references an invalid Cabinet {machineDocument.CabinetAsset}: {exception.Message}"); }
         if (!File.Exists(sourceGlb)) return MachineRuntimeBuildResult.Fail($"Machine '{machineDocument.DisplayName}' references Cabinet {machineDocument.CabinetAsset}, whose package GLB was not found: {sourceGlb}");
         var buildRoot = GetBuildRoot(project, machineAssetName);
         var stagingRoot = buildRoot + ".staging";
         try
         {
+            var projectRoot = Path.GetFullPath(project.ProjectDirectory);
+            _ = WorkspacePathPolicy.ResolveConfined(projectRoot, Path.GetRelativePath(projectRoot, buildRoot), requireExists: false);
+            _ = WorkspacePathPolicy.ResolveConfined(projectRoot, Path.GetRelativePath(projectRoot, stagingRoot), requireExists: false);
             progress.Report(0.05, "Preparing build output...");
             // Read and validate the persisted source again; never trust the Editor buffer.
             var behaviorSource = ValidateBehavior(project, machineManifestPath, machineDocument);
@@ -140,19 +154,20 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         if (runtime is not EmulationRuntimeDefinition { Platform: FruitMachinePlatformType.Impact, PlatformSettings: System6NativeRomSettings authoredSettings })
             return null;
 
-        var resolvedSettings = CloneSystem6Settings(project, authoredSettings);
+        var resolvedSettings = (System6NativeRomSettings)FabricRomResourceResolver.ResolveSettingsPaths(project, FruitMachinePlatformType.Impact, authoredSettings);
         ValidateContiguousRomSlots(resolvedSettings.ProgramRomPaths, "program");
         ValidateContiguousRomSlots(resolvedSettings.SoundRomPaths, "sound");
         if (string.IsNullOrWhiteSpace(resolvedSettings.ProgramRom1Path))
             throw new InvalidOperationException("Impact builds require Program ROM 1.");
 
-        var romResources = FabricEmulationBackend.BuildRomResources(resolvedSettings);
+        var romResources = FabricRomResourceResolver.Build(resolvedSettings);
         var roms = new List<FabricRuntimeRom>(romResources.Count);
         foreach (var resource in romResources)
         {
-            var source = Path.GetFullPath(resource.Path);
-            if (!File.Exists(source))
+            if (!File.Exists(resource.Path))
                 throw new InvalidOperationException($"Impact {RomRoleName(resource.Role)} ROM {resource.Slot + 1} was not found: '{resource.Path}'.");
+            var fullPath = Path.GetFullPath(resource.Path);
+            var source = WorkspacePathPolicy.ResolveConfined(Path.GetDirectoryName(fullPath)!, Path.GetFileName(fullPath), requireExists: true);
 
             var roleName = RomRoleName(resource.Role);
             var relativePath = $"emulation/roms/{roleName}-{resource.Slot}.bin";
@@ -180,28 +195,6 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         return new FabricRuntimeDescriptor("amber", "jpm-system6", configurationPath, roms);
     }
 
-    private static System6NativeRomSettings CloneSystem6Settings(EditorProject project, System6NativeRomSettings settings)
-    {
-        var clone = JsonSerializer.Deserialize<System6NativeRomSettings>(JsonSerializer.Serialize(settings))
-            ?? throw new InvalidOperationException("Impact settings could not be copied for runtime export.");
-        clone.ProgramRom1Path = Resolve(settings.ProgramRom1Path);
-        clone.ProgramRom2Path = Resolve(settings.ProgramRom2Path);
-        clone.ProgramRom3Path = Resolve(settings.ProgramRom3Path);
-        clone.ProgramRom4Path = Resolve(settings.ProgramRom4Path);
-        clone.SoundRom1Path = Resolve(settings.SoundRom1Path);
-        clone.SoundRom2Path = Resolve(settings.SoundRom2Path);
-        clone.SoundRom3Path = Resolve(settings.SoundRom3Path);
-        clone.SoundRom4Path = Resolve(settings.SoundRom4Path);
-        return clone;
-
-        string Resolve(string path)
-        {
-            return string.IsNullOrWhiteSpace(path) || Path.IsPathFullyQualified(path)
-                ? path
-                : Path.GetFullPath(Path.Combine(project.ProjectDirectory, path.Replace('/', Path.DirectorySeparatorChar)));
-        }
-    }
-
     private static void ValidateContiguousRomSlots(IReadOnlyList<string> paths, string role)
     {
         var gap = false;
@@ -222,7 +215,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     private string? ValidateBehavior(EditorProject project, string manifestPath, MachineDocument machine)
     {
         if (machine.Runtime is not OasisRuntimeDefinition) return null;
-        var sourcePath = Path.Combine(Path.GetDirectoryName(manifestPath)!, MachineBehaviorDefinition.CanonicalSourcePath);
+        var sourcePath = WorkspacePathPolicy.ResolveConfined(Path.GetDirectoryName(manifestPath)!, MachineBehaviorDefinition.CanonicalSourcePath, requireExists: false);
         if (!File.Exists(sourcePath)) throw new InvalidOperationException($"Machine '{machine.DisplayName}', behavior.oasis: source file is missing.");
         var source = File.ReadAllText(sourcePath);
         var compilation = OasisScriptCompiler.Compile(source, MachineBehaviorDefinition.CanonicalSourcePath);
@@ -247,7 +240,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         {
             cancellationToken.ThrowIfCancellationRequested();
             string manifestPath;
-            try { manifestPath = _assetResolver.Resolve(project, _libraryRoot, reference); }
+            try { manifestPath = ResolveAsset(project, reference); }
             catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
             { throw new InvalidOperationException($"{context} cannot resolve Object3D asset {reference}: {exception.Message}", exception); }
             if (!File.Exists(manifestPath)) throw new InvalidOperationException($"{context} references missing Object3D asset {reference}.");
@@ -267,7 +260,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 foreach (var component in node.Components.Where(c => c.Model is not null))
                 {
                     var relative = component.Model!.Path;
-                    var source = Path.GetFullPath(Path.Combine(sourcePackage, relative.Replace('/', Path.DirectorySeparatorChar)));
+                    var source = WorkspacePathPolicy.ResolveConfined(sourcePackage, relative, requireExists: true);
                     models[relative] = (source, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(source))).ToLowerInvariant());
                 }
                 foreach (var child in node.Children) CollectModels(child);
@@ -374,8 +367,9 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (string.IsNullOrWhiteSpace(definition.VisibilityMask)) { result.Add(definition with { VisibilityMask = null }); continue; }
-            var source = Path.GetFullPath(Path.Combine(sourceRoot, definition.VisibilityMask));
-            if (!source.StartsWith(sourceRoot, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException($"Reflection '{definition.Id}' visibility mask escapes the Cabinet asset directory.");
+            string source;
+            try { source = WorkspacePathPolicy.ResolveConfined(Path.GetDirectoryName(cabinetManifestPath)!, definition.VisibilityMask, requireExists: false); }
+            catch (InvalidDataException exception) { throw new InvalidOperationException($"Reflection '{definition.Id}' visibility mask escapes the Cabinet asset directory: {exception.Message}", exception); }
             if (!File.Exists(source)) throw new InvalidOperationException($"Reflection '{definition.Id}' visibility mask was not found: {source}");
             var safeId = string.Concat(definition.Id.Where(character => char.IsLetterOrDigit(character) || character is '-' or '_'));
             if (safeId.Length == 0) throw new InvalidOperationException("Reflection visibility masks require an alphanumeric definition ID.");
@@ -414,7 +408,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 CopyDirectory(exportResult.OutputDirectory, buildFaceDirectory, cancellationToken);
                 references.Add(CreateRuntimeFaceReference(cabinetDocument, faceDocument.Id, faceAssetName, assignment.TargetId, ProjectAssetPathService.NormalizeProjectRelativePath(Path.Combine("faces", _pathService.SanitizePathSegment(faceAssetName), FaceRuntimeExportService.ManifestFileName))));
             }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException)
+            catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or InvalidOperationException)
             {
                 throw new InvalidOperationException($"Machine '{machineDocument.DisplayName}', Cabinet asset '{cabinetAssetPath}', Face target '{assignment.TargetId}', referenced Face '{assignment.FaceAssetPath}': {exception.Message}", exception);
             }
@@ -441,7 +435,7 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
                 ? $"{context} -> no Reel asset assignment."
                 : $"{context} -> duplicate Reel asset assignments.");
             var asset = matches[0].ReelAsset;
-            var manifestPath = _assetResolver.Resolve(project, _libraryRoot, asset);
+            var manifestPath = ResolveAsset(project, asset);
             if (!File.Exists(manifestPath)) throw new InvalidOperationException($"{context} -> Reel asset '{asset}' was not found. Library root: '{_libraryRoot}'.");
             if (!string.Equals(Path.GetFileName(manifestPath), ProjectAssetPathService.ReelManifestFileName, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException($"{context} -> Reel asset '{asset}' is not an asset.reel package manifest.");
@@ -461,7 +455,9 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
     private static string ResolveFaceManifestPath(EditorProject project, string assetPath)
     {
         var fullPath = Path.IsPathRooted(assetPath) ? assetPath : Path.Combine(project.ProjectDirectory, assetPath.Replace('/', Path.DirectorySeparatorChar));
-        return Directory.Exists(fullPath) ? Path.Combine(fullPath, ProjectAssetPathService.FaceManifestFileName) : fullPath;
+        var relative = Path.GetRelativePath(project.ProjectDirectory, fullPath);
+        var secure = WorkspacePathPolicy.ResolveConfined(project.ProjectDirectory, relative, requireExists: true);
+        return Directory.Exists(secure) ? WorkspacePathPolicy.ResolveConfined(secure, ProjectAssetPathService.FaceManifestFileName, requireExists: true) : secure;
     }
 
     private static void CopyDirectory(string sourceDirectory, string destinationDirectory, CancellationToken cancellationToken)
@@ -484,17 +480,42 @@ public sealed class MachineRuntimeBuildService : IMachineRuntimeBuildService
 
     private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    public string GetBuildRoot(EditorProject project, string machineAssetName) => Path.Combine(project.GeneratedDirectory, "Builds", _pathService.SanitizePathSegment(machineAssetName));
+    public string GetBuildRoot(EditorProject project, string machineAssetName)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+        var generatedRelative = Path.GetRelativePath(project.ProjectDirectory, project.GeneratedDirectory);
+        return WorkspacePathPolicy.ResolveConfined(project.ProjectDirectory,
+            Path.Combine(generatedRelative, "Builds", _pathService.SanitizePathSegment(machineAssetName)), requireExists: false);
+    }
+    private string ResolveAsset(EditorProject project, AssetReference reference)
+    {
+        try
+        {
+            var path = _assetResolver.Resolve(project, _libraryRoot, reference);
+            var root = reference.Scope == AssetReferenceScope.Project ? project.ProjectDirectory : _libraryRoot;
+            // Keep missing assets as unresolved candidates so the caller can add the
+            // Machine/object/reel context to its diagnostic. ResolveConfined still
+            // walks existing ancestors and rejects reparse points when the leaf is absent.
+            return WorkspacePathPolicy.ResolveConfined(root, Path.GetRelativePath(root, path), requireExists: false);
+        }
+        catch (InvalidDataException exception) { throw new InvalidOperationException($"Asset reference '{reference}' is not safe: {exception.Message}", exception); }
+    }
     private static string ResolveCabinetModelPath(string manifestPath, string modelPath)
     {
         if (Path.IsPathFullyQualified(modelPath)) throw new InvalidOperationException("Cabinet model paths must be package-relative.");
         var packageRoot = Path.GetFullPath(Path.GetDirectoryName(manifestPath) ?? string.Empty).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        var resolved = Path.GetFullPath(Path.Combine(packageRoot, modelPath));
-        if (!resolved.StartsWith(packageRoot, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Cabinet model path escapes the Cabinet package.");
-        return resolved;
+        return WorkspacePathPolicy.ResolveConfined(packageRoot, modelPath, requireExists: false);
     }
-    private static void ReplaceEmptyDirectory(string path) { if (Directory.Exists(path)) Directory.Delete(path, true); Directory.CreateDirectory(path); }
-    private static void ReplaceFinalDirectory(string stagingRoot, string buildRoot) { if (Directory.Exists(buildRoot)) Directory.Delete(buildRoot, true); Directory.CreateDirectory(Path.GetDirectoryName(buildRoot)!); Directory.Move(stagingRoot, buildRoot); }
+    private static void ReplaceEmptyDirectory(string path)
+    {
+        if (Directory.Exists(path)) { if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) throw new IOException($"Build staging directory is a reparse point: {path}"); Directory.Delete(path, true); }
+        Directory.CreateDirectory(path);
+    }
+    private static void ReplaceFinalDirectory(string stagingRoot, string buildRoot)
+    {
+        if (Directory.Exists(buildRoot)) { if ((File.GetAttributes(buildRoot) & FileAttributes.ReparsePoint) != 0) throw new IOException($"Build output directory is a reparse point: {buildRoot}"); Directory.Delete(buildRoot, true); }
+        Directory.CreateDirectory(Path.GetDirectoryName(buildRoot)!); Directory.Move(stagingRoot, buildRoot);
+    }
 }
 
 public sealed record MachineRuntimeBuildResult(bool Success, string? BuildRoot, string? ErrorMessage)

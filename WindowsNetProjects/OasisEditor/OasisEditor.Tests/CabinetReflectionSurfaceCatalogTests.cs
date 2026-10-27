@@ -36,5 +36,5 @@ public sealed class CabinetReflectionSurfaceCatalogTests
     }
 
     private static CabinetFaceTarget Target(string id, bool valid) =>
-        new(id, id, id, [], new Vector3D(), new Point3D(), valid, valid ? null : "invalid");
+        new(id, id, id, [], System.Numerics.Vector3.Zero, System.Numerics.Vector3.Zero, valid, valid ? null : "invalid");
 }

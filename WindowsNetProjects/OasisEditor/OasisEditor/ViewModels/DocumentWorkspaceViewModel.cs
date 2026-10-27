@@ -183,7 +183,7 @@ public sealed class DocumentWorkspaceViewModel
             .FirstOrDefault(candidate => candidate is not null);
         var targetAspect = target is null || target.Corners.Count < 4
             ? (double?)null
-            : (target.Corners[1] - target.Corners[0]).Length / Math.Max(0.0001, (target.Corners[3] - target.Corners[0]).Length);
+            : (target.Corners[1] - target.Corners[0]).Length() / Math.Max(0.0001, (target.Corners[3] - target.Corners[0]).Length());
         var title = string.IsNullOrWhiteSpace(faceAssetName) ? $"{sourceDocument.Title} Face" : faceAssetName.Trim();
         return new FaceGenerationWorkItem(
             sourceDocument.GetPanelDocument(), shape, title, sourceDocument.DocumentId.ToString("N"), sourceDocument.FilePath,

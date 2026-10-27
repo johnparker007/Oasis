@@ -128,7 +128,7 @@ public sealed class CabinetViewerLifecycleTests
         var cabinet = CabinetDocument.FromModelPath("cabinet.glb") with { Reflections = [reflection] };
         var document = CreateDocument(cabinet);
         var authoredReflection = Assert.Single(document.GetCabinetDocument().Reflections!);
-        var faceTarget = new CabinetFaceTarget(sourceId, sourceId, "Top Glass", [], new Vector3D(), new Point3D(), true, null);
+        var faceTarget = new CabinetFaceTarget(sourceId, sourceId, "Top Glass", [], System.Numerics.Vector3.Zero, System.Numerics.Vector3.Zero, true, null);
         var receiverTarget = new CabinetReflectionReceiverTarget(
             "Cabinet/Glass",
             "Glass",

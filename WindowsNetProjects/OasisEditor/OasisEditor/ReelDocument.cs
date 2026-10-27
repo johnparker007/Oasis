@@ -52,7 +52,7 @@ public static class ReelDocumentStorage
         if (document.Version != ReelDocument.CurrentVersion) throw new InvalidOperationException($"Unsupported Reel schema version. This editor supports only version {ReelDocument.CurrentVersion}.");
         if (!Guid.TryParse(document.Id, out _)) throw new InvalidOperationException("Reel ID must be a stable GUID.");
         if (string.IsNullOrWhiteSpace(document.DisplayName)) throw new InvalidOperationException("Reel display name is required.");
-        if (!PanelElementValidation.IsFinite(document.DiameterMm) || document.DiameterMm <= 0) throw new InvalidOperationException("Reel diameter must be a positive finite millimetre value.");
-        if (!PanelElementValidation.IsFinite(document.WidthMm) || document.WidthMm <= 0) throw new InvalidOperationException("Reel width must be a positive finite millimetre value.");
+        if (!RuntimePanelElementValidation.IsFinite(document.DiameterMm) || document.DiameterMm <= 0) throw new InvalidOperationException("Reel diameter must be a positive finite millimetre value.");
+        if (!RuntimePanelElementValidation.IsFinite(document.WidthMm) || document.WidthMm <= 0) throw new InvalidOperationException("Reel width must be a positive finite millimetre value.");
     }
 }

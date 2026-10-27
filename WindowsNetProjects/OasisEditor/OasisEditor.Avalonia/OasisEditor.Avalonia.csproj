@@ -11,6 +11,7 @@
     <ProjectReference Include="../Oasis.Authoring.Core/Oasis.Authoring.Core.csproj" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <ProjectReference Include="../Oasis.Scripting/Oasis.Scripting.csproj" />
+    <ProjectReference Include="../Oasis.RuntimeBuild/Oasis.RuntimeBuild.csproj" />
     <PackageReference Include="SkiaSharp" Version="3.119.4" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />

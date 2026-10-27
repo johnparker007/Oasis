@@ -3,7 +3,6 @@ using System.IO;
 using System.Numerics;
 using System.Text;
 using System.Text.Json;
-using System.Windows.Media.Media3D;
 using OasisEditor.Features.CabinetEditor.Models;
 
 namespace OasisEditor.Features.CabinetEditor.Services;
@@ -58,9 +57,9 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
                 return Invalid(id, sourceName, displayName, "Target node does not reference a mesh.");
             }
 
-            var points = new List<Point3D>();
-            var samples = new List<(Point3D Position, Vector2 Uv)>();
-            Vector3D? meshNormal = null;
+            var points = new List<Vector3>();
+            var samples = new List<(Vector3 Position, Vector2 Uv)>();
+            Vector3? meshNormal = null;
             if (mesh.TryGetProperty("primitives", out var primitives) && primitives.ValueKind == JsonValueKind.Array)
             {
                 foreach (var primitive in primitives.EnumerateArray())
@@ -87,14 +86,14 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
                     {
                         var p0 = Vector3.Transform(localPositions[indexes[0]], transform); var p1 = Vector3.Transform(localPositions[indexes[1]], transform); var p2 = Vector3.Transform(localPositions[indexes[2]], transform);
                         var candidateNormal = Vector3.Cross(p1 - p0, p2 - p0);
-                        if (candidateNormal.LengthSquared() > 1e-12f) { candidateNormal = Vector3.Normalize(candidateNormal); meshNormal = new Vector3D(candidateNormal.X, candidateNormal.Y, candidateNormal.Z); }
+                        if (candidateNormal.LengthSquared() > 1e-12f) { candidateNormal = Vector3.Normalize(candidateNormal); meshNormal = candidateNormal; }
                     }
 
                     foreach (var index in indexes)
                     {
                         if (index < 0 || index >= localPositions.Count) continue;
                         var transformed = Vector3.Transform(localPositions[index], transform);
-                        var point = new Point3D(transformed.X, transformed.Y, transformed.Z);
+                        var point = new Vector3(transformed.X, transformed.Y, transformed.Z);
                         AddUnique(points, point);
                         samples.Add((point, textureCoordinates[index]));
                     }
@@ -106,15 +105,15 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
                 return Invalid(id, sourceName, displayName, $"Expected 4 unique quad corners, found {points.Count}.");
             }
 
-            var center = new Point3D(points.Average(p => p.X), points.Average(p => p.Y), points.Average(p => p.Z));
+            var center = new Vector3(points.Average(p => p.X), points.Average(p => p.Y), points.Average(p => p.Z));
             var ordered = OrderCorners(points, center);
-            var normal = Vector3D.CrossProduct(ordered[1] - ordered[0], ordered[2] - ordered[1]);
-            if (normal.LengthSquared <= 1e-12)
+            var normal = Vector3.Cross(ordered[1] - ordered[0], ordered[2] - ordered[1]);
+            if (normal.LengthSquared() <= 1e-12f)
             {
                 return Invalid(id, sourceName, displayName, "Quad corners are degenerate.");
             }
 
-            normal.Normalize();
+            normal = Vector3.Normalize(normal);
             if (meshNormal is not null) normal = meshNormal.Value;
             if (!IsPlanar(ordered, normal, center))
             {
@@ -134,7 +133,7 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
         }
     }
 
-    internal static bool TryDeriveUvBasis(IReadOnlyList<(Point3D Position, Vector2 Uv)> samples, out Point3D origin, out Vector3D right, out Vector3D up, out string error)
+    internal static bool TryDeriveUvBasis(IReadOnlyList<(Vector3 Position, Vector2 Uv)> samples, out Vector3 origin, out Vector3 right, out Vector3 up, out string error)
     {
         origin = default; right = default; up = default; error = string.Empty;
         const double epsilon = 1e-6;
@@ -150,11 +149,11 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
             right = ((b.Position - a.Position) * dv2 - (c.Position - a.Position) * dv1) / determinant;
             up = ((c.Position - a.Position) * du1 - (b.Position - a.Position) * du2) / determinant;
             origin = a.Position - right * a.Uv.X - up * a.Uv.Y;
-            var scale = Math.Max(1d, Math.Max(right.Length, up.Length));
+            var scale = Math.Max(1d, Math.Max(right.Length(), up.Length()));
             var mappingIsAffine = true;
             foreach (var sample in samples)
             {
-                if ((origin + right * sample.Uv.X + up * sample.Uv.Y - sample.Position).Length <= scale * 1e-4) continue;
+                if ((origin + right * sample.Uv.X + up * sample.Uv.Y - sample.Position).Length() <= scale * 1e-4) continue;
                 mappingIsAffine = false;
                 break;
             }
@@ -162,7 +161,7 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
             {
                 error = "Target TEXCOORD_0 is not a single affine planar mapping."; return false;
             }
-            if (right.Length <= epsilon || up.Length <= epsilon || Math.Abs(Vector3D.DotProduct(right, up) / (right.Length * up.Length)) > 1e-4)
+            if (right.Length() <= epsilon || up.Length() <= epsilon || Math.Abs(Vector3.Dot(right, up) / (right.Length() * up.Length())) > 1e-4)
             {
                 error = "Target TEXCOORD_0 must describe a non-degenerate rectangular mapping."; return false;
             }
@@ -175,31 +174,31 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
         error = "Target TEXCOORD_0 cannot form a valid rectangular planar mapping."; return false;
     }
 
-    private static IReadOnlyList<Point3D> OrderCorners(IReadOnlyList<Point3D> points, Point3D center)
+    private static IReadOnlyList<Vector3> OrderCorners(IReadOnlyList<Vector3> points, Vector3 center)
     {
-        var normal = Vector3D.CrossProduct(points[1] - points[0], points[2] - points[0]);
-        if (normal.LengthSquared <= 1e-12) normal = new Vector3D(0, 0, 1);
-        normal.Normalize();
-        var right = points.OrderByDescending(p => (p - center).LengthSquared).First() - center;
-        if (right.LengthSquared <= 1e-12) right = new Vector3D(1, 0, 0);
-        right.Normalize();
-        var up = Vector3D.CrossProduct(normal, right);
-        if (up.LengthSquared <= 1e-12) up = new Vector3D(0, 1, 0);
-        up.Normalize();
+        var normal = Vector3.Cross(points[1] - points[0], points[2] - points[0]);
+        if (normal.LengthSquared() <= 1e-12f) normal = new Vector3(0, 0, 1);
+        normal = Vector3.Normalize(normal);
+        var right = points.OrderByDescending(p => (p - center).LengthSquared()).First() - center;
+        if (right.LengthSquared() <= 1e-12f) right = new Vector3(1, 0, 0);
+        right = Vector3.Normalize(right);
+        var up = Vector3.Cross(normal, right);
+        if (up.LengthSquared() <= 1e-12f) up = new Vector3(0, 1, 0);
+        up = Vector3.Normalize(up);
 
         return points
-            .Select(p => new { Point = p, Angle = Math.Atan2(Vector3D.DotProduct(p - center, up), Vector3D.DotProduct(p - center, right)) })
+            .Select(p => new { Point = p, Angle = Math.Atan2(Vector3.Dot(p - center, up), Vector3.Dot(p - center, right)) })
             .OrderByDescending(x => x.Angle)
             .Select(x => x.Point)
             .ToArray();
     }
 
-    private static bool IsPlanar(IEnumerable<Point3D> points, Vector3D normal, Point3D center)
-        => points.All(p => Math.Abs(Vector3D.DotProduct(p - center, normal)) <= 0.001d);
+    private static bool IsPlanar(IEnumerable<Vector3> points, Vector3 normal, Vector3 center)
+        => points.All(p => Math.Abs(Vector3.Dot(p - center, normal)) <= 0.001d);
 
-    private static void AddUnique(ICollection<Point3D> points, Point3D point)
+    private static void AddUnique(ICollection<Vector3> points, Vector3 point)
     {
-        if (!points.Any(existing => (existing - point).LengthSquared <= 1e-10)) points.Add(point);
+        if (!points.Any(existing => (existing - point).LengthSquared() <= 1e-10)) points.Add(point);
     }
 
     private static List<Vector3> ReadVector3Accessor(JsonElement root, byte[] binaryChunk, int accessorIndex)
@@ -314,7 +313,7 @@ public sealed class GlbCabinetFaceTargetDetector : ICabinetFaceTargetDetector
         => TryGetArrayItem(root, "meshes", meshIndex, out var mesh) && mesh.TryGetProperty("name", out var name) ? name.GetString() : null;
 
     private static bool IsTargetName(string? name) => CabinetSemanticGeometry.ClassifyName(name) == CabinetSemanticGeometryKind.FaceTarget;
-    private static CabinetFaceTarget Invalid(string id, string sourceName, string displayName, string message) => new(id, sourceName, displayName, Array.Empty<Point3D>(), default, default, false, message);
+    private static CabinetFaceTarget Invalid(string id, string sourceName, string displayName, string message) => new(id, sourceName, displayName, Array.Empty<Vector3>(), default, default, false, message);
 
     private static string CreateStableId(string sourceName)
     {
