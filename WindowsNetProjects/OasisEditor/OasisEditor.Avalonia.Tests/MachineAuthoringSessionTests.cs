@@ -338,6 +338,11 @@ public sealed class MachineAuthoringSessionTests : IDisposable
         machines.Undo(); machines.EnsureSavedSourceUnchanged();
         File.AppendAllText(machines.MachinePath!, " ");
         Assert.Throws<IOException>(machines.EnsureSavedSourceUnchanged);
+        machines.OpenMachine(machines.MachinePath!); machines.EnsureSavedSourceUnchanged();
+        var content = File.ReadAllText(machines.MachinePath!);
+        File.WriteAllText(machines.MachinePath!, content, new System.Text.UTF8Encoding(true));
+        machines.OpenMachine(machines.MachinePath!); machines.EnsureSavedSourceUnchanged();
+        machines.SetDisplayName("After BOM reload"); machines.Save(); machines.EnsureSavedSourceUnchanged();
     }
 
     public void Dispose() { if (Directory.Exists(workspace)) Directory.Delete(workspace, recursive: true); }

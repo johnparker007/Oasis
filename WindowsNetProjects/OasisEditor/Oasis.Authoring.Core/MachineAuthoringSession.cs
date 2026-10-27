@@ -139,10 +139,12 @@ public sealed class MachineAuthoringSession
         EnsureCanReplace();
         var root = RequireProject();
         var resolved = ResolveManifest(path, root);
-        if (SamePath(resolved, machinePath)) return;
-        var content = File.ReadAllText(resolved, Encoding.UTF8);
+        var bytes = File.ReadAllBytes(resolved);
+        var sourceHash = Convert.ToHexString(SHA256.HashData(bytes));
+        if (SamePath(resolved, machinePath) && sourceHash == diskHash) return;
+        var content = Encoding.UTF8.GetString(bytes).TrimStart('\uFEFF');
         if (!MachineDocumentStorage.TryRead(content, out var loaded, out var error)) throw new InvalidDataException(error);
-        SetOpened(resolved, loaded, content);
+        SetOpened(resolved, loaded, content, sourceHash);
         Changed?.Invoke();
     }
 
@@ -292,9 +294,9 @@ public sealed class MachineAuthoringSession
         Changed?.Invoke();
     }
 
-    private void SetOpened(string path, MachineDocument loaded, string content)
+    private void SetOpened(string path, MachineDocument loaded, string content, string? sourceHash = null)
     {
-        machinePath = path; document = loaded; diskHash = Hash(content); savedPayload = Payload(loaded);
+        machinePath = path; document = loaded; diskHash = sourceHash ?? Hash(content); savedPayload = Payload(loaded);
         behaviorSource = loaded.Behavior is null ? string.Empty : ReadBehavior(path, loaded.Behavior.Source);
         savedBehaviorSource = behaviorSource;
         behaviorDiskHash = loaded.Behavior is null ? null : HashFile(WorkspacePathPolicy.ResolveConfined(Path.GetDirectoryName(path)!, loaded.Behavior.Source));

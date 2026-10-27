@@ -34,9 +34,15 @@ public sealed partial class WorkspaceView
 
     public void ConfigureWorkspacePersistence(string path, bool restore = true)
     {
-        _workspaceSettingsPath = Path.GetFullPath(path);
-        WorkspacePathPolicy.RejectRootReparsePoints(Path.GetDirectoryName(_workspaceSettingsPath)!, requireExists: false);
-        VerifySettingsFile(_workspaceSettingsPath);
+        var fullPath = Path.GetFullPath(path);
+        WorkspacePathPolicy.RejectRootReparsePoints(Path.GetDirectoryName(fullPath)!, requireExists: false);
+        VerifySettingsFile(fullPath);
+        if (string.Equals(fullPath, _workspaceSettingsPath, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+        {
+            if (restore && File.Exists(fullPath)) RestoreWorkspace();
+            return;
+        }
+        _workspaceSettingsPath = fullPath;
         _workspaceSettingsHash = FileHash(_workspaceSettingsPath);
         CanAutoSaveWorkspace = false;
         if (restore && File.Exists(_workspaceSettingsPath)) RestoreWorkspace();

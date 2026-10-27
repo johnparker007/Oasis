@@ -193,7 +193,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         else if (asset.Type == "Face")
         { if (!string.Equals(Faces.FacePath, path, comparison)) Faces.OpenFace(asset.ManifestPath); _faceActive = true; _machineActive = false; }
         else if (asset.Type == "Machine")
-        { if (!string.Equals(Machines.MachinePath, path, comparison)) Machines.OpenMachine(asset.ManifestPath); _faceActive = false; _machineActive = true; }
+        { if (!Machines.IsDirty || !string.Equals(Machines.MachinePath, path, comparison)) Machines.OpenMachine(asset.ManifestPath); _faceActive = false; _machineActive = true; }
         else { SetStatus($"{asset.Type} / {asset.Name} — authoring for this asset type is still available in the WPF Editor."); return; }
         _selectedSource = null; _inspected = null; Refresh();
     }

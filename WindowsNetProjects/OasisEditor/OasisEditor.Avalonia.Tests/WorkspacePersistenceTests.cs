@@ -135,6 +135,8 @@ public sealed class WorkspacePersistenceTests
                 session.Undo();
                 File.AppendAllText(file, "\n");
                 Assert.Throws<IOException>(view.SaveWorkspace);
+                view.ConfigureWorkspacePersistence(file, restore: false);
+                Assert.Throws<IOException>(view.SaveWorkspace);
                 view.RestoreWorkspace();
                 var reopened = view.InspectWorkspaceState();
                 Assert.Equal("Face", reopened.ActiveDocument); Assert.Equal("Face", reopened.AssetSearch);
