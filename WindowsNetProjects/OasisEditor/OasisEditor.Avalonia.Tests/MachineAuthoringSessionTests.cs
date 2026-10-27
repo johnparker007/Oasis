@@ -209,7 +209,8 @@ public sealed class MachineAuthoringSessionTests : IDisposable
     [Fact]
     public void HeadlessMachineInspectorShowsTypedSettingsAndCommitsThemThroughHistory()
     {
-        HeadlessTestHost.Initialize();
+        HeadlessTestHost.Run(() =>
+        {
         var projectFile = CreateProject();
         var session = new AuthoringSession(workspace); session.OpenProject(projectFile);
         var faces = new FaceAuthoringSession(session);
@@ -229,6 +230,78 @@ public sealed class MachineAuthoringSessionTests : IDisposable
         Assert.True(capture.View.Machines.CanUndo);
         capture.View.Machines.Undo();
         Assert.Equal(string.Empty, Assert.IsType<System6NativeRomSettings>(((EmulationRuntimeDefinition)capture.View.Machines.Document!.Runtime).PlatformSettings).ProgramRom1Path);
+        });
+    }
+
+    [Fact]
+    public void InvalidProjectDoesNotReplaceSharedProjectBinding()
+    {
+        var projectFile = CreateProject();
+        var shared = new AuthoringSession(workspace); shared.OpenProject(projectFile);
+        var machines = new MachineAuthoringSession(shared); machines.OpenProject(projectFile);
+        var invalidFolder = Path.Combine(workspace, "Invalid"); Directory.CreateDirectory(invalidFolder);
+        var invalidProject = Path.Combine(invalidFolder, "Invalid.oasisproj");
+        File.WriteAllText(invalidProject, "{\"name\":\"Invalid\",\"version\":9,\"layout\":{\"assets\":\"Elsewhere\",\"generated\":\"Generated\"}}");
+        Assert.Throws<InvalidDataException>(() => machines.OpenProject(invalidProject));
+        Assert.Equal(Path.GetFullPath(projectFile), Path.GetFullPath(shared.ProjectFilePath!));
+        Assert.True(machines.IsProjectCurrent);
+        Assert.Single(machines.ListMachines());
+    }
+
+    [Fact]
+    public void SwitchingSharedProjectKeepsDirtyMachineButBlocksStaleEditsAndSave() => AssertStaleBinding(closeProject: false);
+
+    [Fact]
+    public void ClosingSharedProjectKeepsDirtyMachineButBlocksStaleEditsAndSave() => AssertStaleBinding(closeProject: true);
+
+    [Fact]
+    public void MachineAssignmentCreationUsesExistingRegisteredAssetsAndExplainsMissingAssets()
+    {
+        HeadlessTestHost.Run(() =>
+        {
+            var projectFile = CreateProject();
+            var shared = new AuthoringSession(workspace); shared.OpenProject(projectFile);
+            var faces = new FaceAuthoringSession(shared);
+            using var capture = new WorkspaceCapture(shared, faces);
+            var machineAsset = new AssetSummary("Machine", "Machine", "Assets/Machines/Machine/asset.machine");
+            capture.View.OpenAsset(machineAsset); capture.Capture();
+            capture.View.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Add Face assignment")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Contains(capture.View.GetVisualDescendants().OfType<TextBlock>(), text => text.Text?.Contains("No registered Faces asset", StringComparison.Ordinal) == true);
+            faces.CreateFace("AssignedFace");
+            var objectDirectory = Path.Combine(Path.GetDirectoryName(projectFile)!, "Assets", "Object3D", "Existing"); Directory.CreateDirectory(objectDirectory);
+            File.WriteAllText(Path.Combine(objectDirectory, "asset.object3d"), "{}");
+            capture.View.OpenAsset(machineAsset); capture.Capture();
+            capture.View.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Add Face assignment")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var face = Assert.Single(capture.View.Machines.Document!.SurfaceAssignments);
+            Assert.Equal("Assets/Faces/AssignedFace/asset.face", face.FaceAssetPath);
+            capture.Capture();
+            capture.View.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Add Prefab declaration")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var prefab = Assert.Single(capture.View.Machines.Document!.PrefabDependencies);
+            Assert.Equal("Assets/Object3D/Existing/asset.object3d", prefab.PrefabAsset.Path);
+        });
+    }
+
+    private void AssertStaleBinding(bool closeProject)
+    {
+        var projectFile = CreateProject();
+        var shared = new AuthoringSession(workspace); shared.OpenProject(projectFile);
+        var machines = new MachineAuthoringSession(shared); machines.OpenProject(projectFile);
+        machines.OpenMachine(machines.ListMachines().Single().ManifestPath);
+        machines.SetDisplayName("First local edit"); machines.SetDisplayName("Second local edit"); machines.Undo();
+        if (closeProject) shared.CloseProject();
+        else
+        {
+            var otherDirectory = new ProjectScaffolder().CreateProject("Other", workspace);
+            shared.OpenProject(Path.Combine(otherDirectory, "Other.oasisproj"));
+        }
+        Assert.False(machines.IsProjectCurrent);
+        Assert.True(machines.IsDirty);
+        Assert.Equal("First local edit", machines.Document!.DisplayName);
+        Assert.Throws<InvalidOperationException>(machines.Undo);
+        Assert.Throws<InvalidOperationException>(machines.Redo);
+        Assert.Throws<InvalidOperationException>(machines.Save);
+        Assert.Equal("First local edit", machines.Document!.DisplayName);
+        Assert.True(machines.IsDirty);
     }
 
     private string CreateProject() => new ProjectScaffolder().CreateProject("Machine", workspace) is var directory

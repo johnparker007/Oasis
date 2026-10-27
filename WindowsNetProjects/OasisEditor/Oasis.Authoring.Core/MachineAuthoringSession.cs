@@ -12,6 +12,7 @@ public sealed class MachineAuthoringSession
     private readonly List<MachineDocument> history = [];
     private readonly List<string> behaviorHistory = [];
     private string? projectDirectory;
+    private string? projectFilePath;
     private string? machinePath;
     private string? diskHash;
     private string savedPayload = string.Empty;
@@ -31,23 +32,31 @@ public sealed class MachineAuthoringSession
         : this(projectSession?.WorkspacePath ?? throw new ArgumentNullException(nameof(projectSession)))
     {
         this.projectSession = projectSession;
+        if (projectSession.ProjectFilePath is { } currentProject)
+        {
+            var probe = new AuthoringSession(workspacePath);
+            probe.OpenProject(currentProject);
+            BindToProject(Path.GetFullPath(probe.ProjectFilePath!));
+        }
     }
 
     public string WorkspacePath => workspacePath;
     public string? ProjectDirectory => projectDirectory;
+    public bool IsProjectCurrent => projectFilePath is not null && File.Exists(projectFilePath) && (projectSession is null
+        ? true
+        : projectSession.ProjectFilePath is { } sharedProject && SamePath(projectFilePath, Path.GetFullPath(sharedProject)));
     public string? MachinePath => machinePath;
     public MachineDocument? Document => document is null ? null : CloneDocument(document);
     public string MachineTitle => document?.DisplayName ?? string.Empty;
     public string BehaviorSource => behaviorSource;
     public bool IsDirty => document is not null && (Payload(document) != savedPayload || behaviorSource != savedBehaviorSource);
-    public bool CanUndo => historyIndex > 0;
-    public bool CanRedo => historyIndex + 1 < history.Count;
+    public bool CanUndo => IsProjectCurrent && document is not null && historyIndex > 0;
+    public bool CanRedo => IsProjectCurrent && document is not null && historyIndex + 1 < history.Count;
     public event Action? Changed;
 
     public void OpenProject(string path)
     {
         EnsureCanReplace();
-        projectSession?.OpenProject(path);
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         WorkspacePathPolicy.RejectRootReparsePoints(workspacePath, requireExists: true);
         var fullPath = Path.GetFullPath(path, workspacePath);
@@ -61,13 +70,24 @@ public sealed class MachineAuthoringSession
         }
         if (!File.Exists(projectFile) || !string.Equals(Path.GetExtension(projectFile), ".oasisproj", StringComparison.OrdinalIgnoreCase))
             throw new FileNotFoundException("Choose an Oasis project file or project folder.", projectFile);
-        var projectRoot = Path.GetDirectoryName(projectFile)!;
-        _ = WorkspacePathPolicy.ResolveConfined(projectRoot, "Assets/Machines", requireExists: false);
-        projectDirectory = projectSession?.ProjectFilePath is { } sharedProject
-            ? Path.GetDirectoryName(sharedProject) : projectRoot;
+        var projectProbe = new AuthoringSession(workspacePath);
+        projectProbe.OpenProject(projectFile);
+        var canonicalProjectFile = Path.GetFullPath(projectProbe.ProjectFilePath!);
+        if (projectSession is not null && !SamePath(projectSession.ProjectFilePath ?? string.Empty, canonicalProjectFile))
+            projectSession.OpenProject(canonicalProjectFile);
+        BindToProject(canonicalProjectFile);
         machinePath = null; document = null; diskHash = null; savedPayload = string.Empty; behaviorSource = savedBehaviorSource = string.Empty; behaviorDiskHash = null;
         ResetHistory();
         Changed?.Invoke();
+    }
+
+    public IReadOnlyList<AssetSummary> ListProjectAssets()
+    {
+        _ = RequireProject();
+        if (projectSession is not null) return projectSession.ListAssets();
+        var probe = new AuthoringSession(workspacePath);
+        probe.OpenProject(projectFilePath!);
+        return probe.ListAssets();
     }
 
     public IReadOnlyList<AssetSummary> ListMachines()
@@ -187,6 +207,7 @@ public sealed class MachineAuthoringSession
 
     public void Undo()
     {
+        _ = RequireDocument();
         if (!CanUndo) return;
         document = history[--historyIndex];
         behaviorSource = behaviorHistory[historyIndex];
@@ -195,6 +216,7 @@ public sealed class MachineAuthoringSession
 
     public void Redo()
     {
+        _ = RequireDocument();
         if (!CanRedo) return;
         document = history[++historyIndex];
         behaviorSource = behaviorHistory[historyIndex];
@@ -268,22 +290,24 @@ public sealed class MachineAuthoringSession
         if (IsDirty) throw new InvalidOperationException("Save or undo the current Machine edits before replacing the open document.");
     }
 
+    private void BindToProject(string canonicalProjectFile)
+    {
+        projectFilePath = canonicalProjectFile;
+        projectDirectory = Path.GetDirectoryName(canonicalProjectFile)!;
+        _ = WorkspacePathPolicy.ResolveConfined(projectDirectory, "Assets/Machines", requireExists: false);
+    }
+
     private string RequireProject()
     {
-        if (projectSession?.ProjectFilePath is { } sharedProject)
-        {
-            var sharedRoot = Path.GetDirectoryName(sharedProject)!;
-            if (!SamePath(sharedRoot, projectDirectory))
-            {
-                EnsureCanReplace();
-                projectDirectory = sharedRoot;
-                machinePath = null; document = null; diskHash = null; savedPayload = string.Empty; behaviorSource = savedBehaviorSource = string.Empty; behaviorDiskHash = null;
-                ResetHistory();
-            }
-        }
-        return projectDirectory ?? throw new InvalidOperationException("Open an Oasis project first.");
+        if (projectDirectory is null || projectFilePath is null) throw new InvalidOperationException("Open an Oasis project first.");
+        if (!IsProjectCurrent) throw new InvalidOperationException("The Machine session is no longer bound to the active project. Reopen the Machine from the current project.");
+        return projectDirectory;
     }
-    private MachineDocument RequireDocument() => document ?? throw new InvalidOperationException("Open or create a Machine first.");
+    private MachineDocument RequireDocument()
+    {
+        _ = RequireProject();
+        return document ?? throw new InvalidOperationException("Open or create a Machine first.");
+    }
 
     private static string ResolveManifest(string path, string root)
     {

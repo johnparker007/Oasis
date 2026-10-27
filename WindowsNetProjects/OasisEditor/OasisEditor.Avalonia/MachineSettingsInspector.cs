@@ -165,7 +165,11 @@ public sealed partial class WorkspaceView
             var assignments = machine.SurfaceAssignments.Select((x, i) => new MachineSurfaceAssignment(_fields[$"Face target {i}"].Text ?? "", _fields[$"Face asset {i}"].Text ?? "")).ToArray();
             Machines.UpdateDocument(current => current with { SurfaceAssignments = assignments });
         })));
-        _inspector.Children.Add(ActionButton("Add Face assignment", () => Try(() => Machines.UpdateDocument(current => current with { SurfaceAssignments = [.. current.SurfaceAssignments, new MachineSurfaceAssignment("new-target", "Assets/Faces/Face/asset.face")] }))));
+        _inspector.Children.Add(ActionButton("Add Face assignment", () => Try(() =>
+        {
+            var asset = RequireProjectAsset("Face", "Faces");
+            Machines.UpdateDocument(current => current with { SurfaceAssignments = [.. current.SurfaceAssignments, new MachineSurfaceAssignment(Guid.NewGuid().ToString("D"), asset.ManifestPath)] });
+        })));
 
         Heading("REEL ASSET ASSIGNMENTS");
         for (var i = 0; i < machine.ReelAssignments.Length; i++)
@@ -190,7 +194,11 @@ public sealed partial class WorkspaceView
             var dependencies = machine.PrefabDependencies.Select((x, i) => new MachinePrefabDeclaration(_fields[$"Prefab alias {i}"].Text ?? "", new AssetReference(x.PrefabAsset.Scope, _fields[$"Prefab asset {i}"].Text ?? ""))).ToArray();
             Machines.UpdateDocument(current => current with { PrefabDependencies = dependencies });
         })));
-        _inspector.Children.Add(ActionButton("Add Prefab declaration", () => Try(() => Machines.UpdateDocument(current => current with { PrefabDependencies = [.. current.PrefabDependencies, new MachinePrefabDeclaration("prefab", AssetReference.Project("Assets/Object3D/Prefab/asset.object3d"))] }))));
+        _inspector.Children.Add(ActionButton("Add Prefab declaration", () => Try(() =>
+        {
+            var asset = RequireProjectAsset("Object3D", "Object3D Prefabs");
+            Machines.UpdateDocument(current => current with { PrefabDependencies = [.. current.PrefabDependencies, new MachinePrefabDeclaration("prefab-" + Guid.NewGuid().ToString("N"), AssetReference.Project(asset.ManifestPath))] });
+        })));
 
         Heading("MACHINE ANCHORS");
         for (var i = 0; i < machine.Anchors.Length; i++)
@@ -230,6 +238,13 @@ public sealed partial class WorkspaceView
         })));
         _inspector.Children.Add(ActionButton("Add geometry surface", () => Try(() => Machines.UpdateDocument(current => current with { GeometrySurfaces = [.. current.GeometrySurfaces, new MachineGeometrySurface("surface-" + Guid.NewGuid().ToString("N"), MachineVector3.Zero, MachineVector3.Zero, 1, 1)] }))));
         _inspector.Children.Add(new TextBlock { Text = "3D rendering and editing remain deferred; package references and authored declarations are available here.", TextWrapping = global::Avalonia.Media.TextWrapping.Wrap, Opacity = .7 });
+    }
+
+    private AssetSummary RequireProjectAsset(string type, string friendlyName)
+    {
+        var asset = Machines.ListProjectAssets().Where(candidate => string.Equals(candidate.Type, type, StringComparison.Ordinal))
+            .OrderBy(candidate => candidate.Name, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
+        return asset ?? throw new InvalidOperationException($"No registered {friendlyName} asset exists in this project. Create or import one before adding this assignment.");
     }
 
     private void AddLabeledControl(string label, Control control)
