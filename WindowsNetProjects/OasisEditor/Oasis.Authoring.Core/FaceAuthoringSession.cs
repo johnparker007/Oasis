@@ -93,6 +93,8 @@ public sealed partial class FaceAuthoringSession
                 ProjectAssetPathService.NormalizeProjectRelativePath(expectedRelativePath), PathComparison))
             throw new InvalidDataException("Choose an asset.face manifest inside Assets/Faces.");
 
+        if (RestoreRetainedFace(resolvedPath)) return;
+        RetainCurrentFace();
         var content = File.ReadAllText(resolvedPath);
         if (!FaceDocumentStorage.TryReadValidated(content, out var file, out var error))
             throw new InvalidDataException(error);
@@ -131,6 +133,7 @@ public sealed partial class FaceAuthoringSession
         Directory.CreateDirectory(packageDirectory);
         WriteAtomic(manifestPath, content, overwrite: false);
 
+        RetainCurrentFace();
         _projectFileAtOpen = projectFile;
         _projectRootAtOpen = projectRoot;
         _facePath = manifestPath;
@@ -146,7 +149,8 @@ public sealed partial class FaceAuthoringSession
 
     public void Close()
     {
-        EnsureCanReplace();
+        if (IsDirty) throw new InvalidOperationException("Save or undo Face edits before closing.");
+        if (_facePath is {} path) _retainedFaces.Remove(path);
         ClearDocument();
         Changed?.Invoke();
     }
@@ -313,7 +317,7 @@ public sealed partial class FaceAuthoringSession
 
     private void EnsureCanReplace()
     {
-        if (IsDirty) throw new InvalidOperationException("Save or undo Face changes before opening, creating, or closing another Face.");
+        if (!RetainDocuments && IsDirty) throw new InvalidOperationException("Save or undo Face changes before opening, creating, or closing another Face.");
     }
 
     private void EnsureCurrentProject()

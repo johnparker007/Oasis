@@ -55,7 +55,7 @@ public sealed record WorkspaceState(int Version, string Theme, WorkspaceDockNode
     string[]? PanelSelection = null, string? FaceSelection = null, string? AssetSearch = null,
     WorkspaceWindowState? MainWindow = null, string? SourceSelection = null, WorkspaceViewportState? Viewport = null,
     string? Machine = null, NativeEmulationPreferences? Emulation = null, WorkspaceSceneState? Scene3D = null,
-    string? LibraryRoot = null, bool LibraryBrowser = false);
+    string? LibraryRoot = null, bool LibraryBrowser = false, WorkspaceDocumentState[]? Documents = null);
 
 /// <summary>Allow-listed layout data. Never deserializes arbitrary CLR types, views, contexts or commands.</summary>
 public static class WorkspaceLayoutState

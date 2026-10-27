@@ -4,7 +4,7 @@ using System.Text;
 namespace OasisEditor;
 
 /// <summary>Portable, document-scoped authoring and persistence for a complete schema-11 Machine.</summary>
-public sealed class MachineAuthoringSession
+public sealed partial class MachineAuthoringSession
 {
     private const string ManifestName = ProjectAssetPathService.MachineManifestFileName;
     private readonly string workspacePath;
@@ -56,6 +56,7 @@ public sealed class MachineAuthoringSession
 
     public void OpenProject(string path)
     {
+        if (HasRetainedChanges) throw new InvalidOperationException("Save or undo all Machine edits before changing project.");
         EnsureCanReplace();
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         WorkspacePathPolicy.RejectRootReparsePoints(workspacePath, requireExists: true);
@@ -75,6 +76,7 @@ public sealed class MachineAuthoringSession
         var canonicalProjectFile = Path.GetFullPath(projectProbe.ProjectFilePath!);
         if (projectSession is not null && !SamePath(projectSession.ProjectFilePath ?? string.Empty, canonicalProjectFile))
             projectSession.OpenProject(canonicalProjectFile);
+        retainedMachines.Clear();
         BindToProject(canonicalProjectFile);
         machinePath = null; document = null; diskHash = null; savedPayload = string.Empty; behaviorSource = savedBehaviorSource = string.Empty; behaviorDiskHash = null;
         ResetHistory();
@@ -129,6 +131,7 @@ public sealed class MachineAuthoringSession
             throw;
         }
         File.Delete(reservation);
+        RetainCurrentMachine();
         SetOpened(path, created, content);
         Changed?.Invoke();
         return path;
@@ -139,6 +142,8 @@ public sealed class MachineAuthoringSession
         EnsureCanReplace();
         var root = RequireProject();
         var resolved = ResolveManifest(path, root);
+        if (RestoreRetainedMachine(resolved)) return;
+        RetainCurrentMachine();
         var bytes = File.ReadAllBytes(resolved);
         var sourceHash = Convert.ToHexString(SHA256.HashData(bytes));
         if (SamePath(resolved, machinePath) && sourceHash == diskHash) return;
@@ -265,7 +270,7 @@ public sealed class MachineAuthoringSession
     public void EnsureSavedSourceUnchanged()
     {
         var current = RequireDocument();
-        if (IsDirty) throw new InvalidOperationException("Save the Machine before building or previewing.");
+        if (!RetainDocuments && IsDirty) throw new InvalidOperationException("Save the Machine before building or previewing.");
         var path = ResolveManifest(machinePath!, RequireProject());
         if (!string.Equals(HashFile(path), diskHash, StringComparison.Ordinal))
             throw new IOException("The Machine manifest changed outside this session. Reopen it before building or previewing.");
@@ -305,7 +310,7 @@ public sealed class MachineAuthoringSession
 
     private void EnsureCanReplace()
     {
-        if (IsDirty) throw new InvalidOperationException("Save or undo the current Machine edits before replacing the open document.");
+        if (!RetainDocuments && IsDirty) throw new InvalidOperationException("Save or undo the current Machine edits before replacing the open document.");
     }
 
     private void BindToProject(string canonicalProjectFile)

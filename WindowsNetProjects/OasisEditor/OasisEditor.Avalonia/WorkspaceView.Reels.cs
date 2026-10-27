@@ -18,7 +18,7 @@ public sealed partial class WorkspaceView
     {
         if (!SameScenePath(Reels.FilePath,Path.GetFullPath(path,_session.RequireProjectDirectory())) || !Reels.IsDirty) Reels.Open(path);
         _faceActive = _machineActive = false; _sceneKind = "Reel"; _selectedSceneNodeId = Reels.Document.Id;
-        await ReloadSceneAsync(); Refresh();
+        await ReloadSceneAsync(); RestoreDocumentCamera(); Refresh();
     }
     private void ReloadReelScene()
     {

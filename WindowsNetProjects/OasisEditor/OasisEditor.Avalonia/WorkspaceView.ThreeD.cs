@@ -72,13 +72,13 @@ public sealed partial class WorkspaceView
     {
         if (Cabinets.FilePath is null || !SameScenePath(Cabinets.FilePath, Path.GetFullPath(path, _session.RequireProjectDirectory())) || !Cabinets.IsDirty) Cabinets.Open(path);
         _faceActive = _machineActive = false; _sceneKind = "Cabinet3D"; _selectedSceneNodeId = "cabinet";
-        await ReloadSceneAsync(); Refresh();
+        await ReloadSceneAsync(); RestoreDocumentCamera(); Refresh();
     }
     public async Task OpenPrefab3DAsync(string path)
     {
         if (Prefabs.FilePath is null || !SameScenePath(Prefabs.FilePath, Path.GetFullPath(path, _session.RequireProjectDirectory())) || !Prefabs.IsDirty) Prefabs.Open(path);
         _faceActive = _machineActive = false; _sceneKind = "Prefab"; _selectedSceneNodeId = Prefabs.Document.Root.Id;
-        await ReloadSceneAsync(); Refresh();
+        await ReloadSceneAsync(); RestoreDocumentCamera(); Refresh();
     }
     public Task WaitForSceneAsync() => _sceneTask;
     public void SelectScene3DNode(string? id)
@@ -119,7 +119,7 @@ public sealed partial class WorkspaceView
         RestartLibraryWatcher();_libraryTask=RefreshLibraryAsync();Refresh();
         if (Is3DActive) QueueSceneReload();
     }
-    private void QueueSceneReload() => _sceneTask = SceneAction(() => ReloadSceneAsync());
+    private void QueueSceneReload() => _sceneTask = SceneAction(async () => { await ReloadSceneAsync(); RestoreDocumentCamera(); });
     private async Task SceneAction(Func<Task> action)
     { try { await action(); } catch (OperationCanceledException) { } catch (Exception e) when (e is not OutOfMemoryException) { SetStatus(e.Message); } }
     private void On3DAssetChanged() { CheckPreviewSource(); if (Is3DActive) { Refresh(); QueueSceneReload(); } }
@@ -273,7 +273,7 @@ public sealed partial class WorkspaceView
     }
     private void Clear3DForProjectChange()
     {
-        _sceneKind=null; _sceneCancellation.Cancel(); Cabinets.Close(); Prefabs.Close(); Reels.Close(); _composition=null; _sceneRows.Clear(); _baseScene=SceneRenderData.Empty; SceneView.SetScene(SceneRenderData.Empty);
+        _sceneKind=null; _sceneCancellation.Cancel(); Cabinets.CloseAllDocuments(); Prefabs.CloseAllDocuments(); Reels.CloseAllDocuments(); _composition=null; _sceneRows.Clear(); _baseScene=SceneRenderData.Empty; SceneView.SetScene(SceneRenderData.Empty);
     }
     private void Dispose3D()
     {
