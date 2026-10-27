@@ -21,7 +21,7 @@ public sealed partial class EditorTools
 
     [McpServerTool(Name = "open_machine"), Description("Open a current-schema Machine package through the shared storage validator. Confined to Assets/Machines and rejects dirty replacement.")]
     public Task<object> OpenMachine(string path, CancellationToken cancellationToken)
-        => ui.Invoke(() => { Machines.OpenMachine(path); capture.View.ShowMachine(); return MachineSnapshot(); }, cancellationToken);
+        => ui.Invoke(() => { capture.View.OpenAsset(new AssetSummary("Machine",Path.GetFileName(Path.GetDirectoryName(path))??"Machine",path)); return MachineSnapshot(); }, cancellationToken);
 
     [McpServerTool(Name = "inspect_machine", ReadOnly = true), Description("Inspect the complete authored Machine document, runtime/platform settings, inputs, interaction, assignments, prefabs, anchors and dirty/history state.")]
     public Task<object> InspectMachine(CancellationToken cancellationToken)

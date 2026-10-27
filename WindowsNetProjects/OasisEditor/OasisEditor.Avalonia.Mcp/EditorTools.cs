@@ -14,6 +14,7 @@ public sealed partial class EditorTools(AuthoringSession session, FaceAuthoringS
         panels = session.ProjectFilePath is null ? [] : session.ListPanels(), elements = session.Elements,
         assets = session.ProjectFilePath is null ? [] : session.ListAssets(), sourceShapes = session.SourceShapes,
         recoveredInputDefinitions = session.ImportedInputDefinitions,
+        openDocuments=capture.View.InspectOpenDocuments(),
         face = new { faces.FacePath, faces.FaceTitle, faces.IsDirty, faces.CanUndo, faces.CanRedo, faces.SelectedId, elements = faces.Elements, faces.ArtworkPath, faces.LogicalWidth, faces.LogicalHeight },
         rendering = new { supported = "Panel2D and Face specialist rendering; native emulation preview; Cabinet, Prefab and Machine GPU scenes", deferred = "Native desktop interaction checks on macOS and Linux" }
     };
@@ -30,7 +31,7 @@ public sealed partial class EditorTools(AuthoringSession session, FaceAuthoringS
     public Task<object> Inspect(CancellationToken cancellationToken) => ui.Invoke(Snapshot, cancellationToken);
 
     [McpServerTool(Name = "open_panel2d"), Description("Open or activate an Assets/Panel2D/<name>/asset.panel2d tab using shared storage validation. Retains other tabs and their unsaved edits.")]
-    public Task<object> OpenPanel(string path, CancellationToken cancellationToken) => ui.Invoke(() => Act(() => session.OpenPanel(path)), cancellationToken);
+    public Task<object> OpenPanel(string path, CancellationToken cancellationToken) => ui.Invoke(() => { capture.View.OpenAsset(new AssetSummary("Panel2D",Path.GetFileName(Path.GetDirectoryName(path))??"Panel",path));return Snapshot(); }, cancellationToken);
 
     [McpServerTool(Name = "create_panel2d"), Description("Create and save a fresh schema-3 Panel2D package. Refuses existing packages.")]
     public Task<object> CreatePanel(string name, CancellationToken cancellationToken) => ui.Invoke(() => Act(() => session.CreatePanel(name)), cancellationToken);

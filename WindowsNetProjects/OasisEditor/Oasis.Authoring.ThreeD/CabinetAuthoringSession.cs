@@ -138,6 +138,21 @@ public sealed class CabinetAuthoringSession : ThreeDAuthoringSessionBase
         Changed?.Invoke();
     }
 
+    protected override void ValidateTransferPayload(string payload)
+    {
+        if (!CabinetDocumentStorage.TryRead(payload, out _)) throw new InvalidDataException("Invalid Cabinet3D history entry.");
+    }
+
+    protected override void SetTransferredPayload(string payload)
+    {
+        if (!CabinetDocumentStorage.TryRead(payload, out var document)) throw new InvalidDataException("Invalid Cabinet3D history entry.");
+        _document = Clone(document);
+        _payload = payload;
+    }
+
+    protected override void NotifyDocumentChanged() => Changed?.Invoke();
+    protected override void ResetTransferredDocument(){_document=CabinetDocument.Empty;_payload=string.Empty;}
+
     private bool Commit(CabinetDocument candidate)
     {
         EnsureEditingAsset();

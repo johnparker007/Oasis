@@ -20,12 +20,15 @@ public sealed partial class WorkspaceView
     /// <summary>Closes the current project only when every retained authored document is clean.</summary>
     public async Task CloseProjectAsync()
     {
+        EnsureAssetWindowsIdle();
         if (HasUnsavedChanges)
             throw new InvalidOperationException("Save or undo all open document edits before closing the project.");
 
         if (Preview.Backend is not null)
             await Preview.ControlAsync("stop");
 
+        if(_isAssetWindow)throw new InvalidOperationException("Close the project from the main workspace.");
+        CloseAllAssetWindows();
         Faces.CloseAllDocuments();
         _session.CloseProject();
         Machines.CloseProject();

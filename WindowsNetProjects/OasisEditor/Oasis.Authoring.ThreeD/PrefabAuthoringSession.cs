@@ -230,6 +230,20 @@ public sealed class PrefabAuthoringSession : ThreeDAuthoringSessionBase
         _document = Clone(document); _payload = payload; Changed?.Invoke();
     }
 
+    protected override void ValidateTransferPayload(string payload)
+    {
+        if (!Object3DDocumentStorage.TryRead(payload, out _, out var error)) throw new InvalidDataException(error);
+    }
+
+    protected override void SetTransferredPayload(string payload)
+    {
+        if (!Object3DDocumentStorage.TryRead(payload, out var document, out var error)) throw new InvalidDataException(error);
+        _document = Clone(document); _payload = payload;
+    }
+
+    protected override void NotifyDocumentChanged() => Changed?.Invoke();
+    protected override void ResetTransferredDocument(){_document=Object3DDocument.Create("Object3D");_payload=string.Empty;}
+
     private bool EditNode(string nodeId, Func<Object3DNodeDefinition, Object3DNodeDefinition> edit) => EditNode(nodeId, edit, out _);
     private bool EditNode(string nodeId, Func<Object3DNodeDefinition, Object3DNodeDefinition> edit, out bool found)
     {

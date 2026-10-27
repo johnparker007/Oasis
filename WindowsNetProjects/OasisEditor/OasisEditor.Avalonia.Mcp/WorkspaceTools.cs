@@ -17,10 +17,11 @@ public sealed partial class EditorTools
     }, cancellationToken);
 
     [McpServerTool(Name = "restore_workspace"), Description("Restore a saved workspace file inside the explicit workspace. Validates topology/content and refuses unsaved documents. No native desktop windows in this host.")]
-    public Task<WorkspaceState> RestoreWorkspace(string path, CancellationToken cancellationToken) => ui.Invoke(() =>
+    public Task<WorkspaceState> RestoreWorkspace(string path, CancellationToken cancellationToken) => ui.InvokeAsync(async () =>
     {
         var file = WorkspacePathPolicy.ResolveConfined(session.WorkspacePath, Path.GetRelativePath(session.WorkspacePath, Path.GetFullPath(path, session.WorkspacePath)), requireExists: true);
-        capture.View.ConfigureWorkspacePersistence(file); return capture.View.InspectWorkspaceState();
+        capture.View.ConfigureWorkspacePersistence(file);
+        await capture.View.WaitForSceneAsync();return capture.View.InspectWorkspaceState();
     }, cancellationToken);
 
     [McpServerTool(Name = "reset_layout"), Description("Reset the docking layout while retaining document contents and pending edits. Does not overwrite saved settings.")]

@@ -42,7 +42,7 @@ public sealed partial class WorkspaceView
                 }
             }
             var result = await RunWithProgressAsync((reporter, token) => Task.Run(() =>
-                new MachineRuntimeBuildService(libraryRoot: GetLibraryRoot()).BuildFromMachineDocument(project, machinePath, reporter, token), token));
+                new MachineRuntimeBuildService(libraryRoot: string.IsNullOrWhiteSpace(SceneLibraryRoot)?GetLibraryRoot():SceneLibraryRoot).BuildFromMachineDocument(project, machinePath, reporter, token), token));
             if (!result.Success)
             {
                 SetStatus(result.ErrorMessage ?? "Machine build failed.");
@@ -71,7 +71,7 @@ public sealed partial class WorkspaceView
             var destination = folders.FirstOrDefault()?.TryGetLocalPath();
             if (string.IsNullOrWhiteSpace(destination)) return;
             var result = await RunWithProgressAsync((reporter, token) => Task.Run(() =>
-                new MachineRuntimePackageExportService(new MachineRuntimeBuildService(libraryRoot: GetLibraryRoot()))
+                new MachineRuntimePackageExportService(new MachineRuntimeBuildService(libraryRoot: string.IsNullOrWhiteSpace(SceneLibraryRoot)?GetLibraryRoot():SceneLibraryRoot))
                     .Export(project, machinePath, destination, reporter, token), token));
             SetStatus(result.Success ? $"Portable Player package exported to {result.PackageDirectory}." : result.ErrorMessage!);
         }
@@ -85,7 +85,7 @@ public sealed partial class WorkspaceView
     private (EditorProject Project, string MachinePath) GetBuildInputs()
     {
         if (!_machineActive) throw new InvalidOperationException("Open a Machine before building or exporting for Oasis Player.");
-        if (HasUnsavedChanges) throw new InvalidOperationException("Save or undo all open document changes before building or exporting.");
+        if (ProjectHasUnsavedChanges) throw new InvalidOperationException("Save or undo all open document changes before building or exporting.");
         if (!Machines.IsProjectCurrent) throw new InvalidOperationException("The Machine is no longer bound to the active project. Reopen it before building.");
         Machines.EnsureSavedSourceUnchanged();
         var projectFile = _session.ProjectFilePath ?? throw new InvalidOperationException("Open an Oasis project before building.");

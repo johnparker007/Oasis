@@ -47,7 +47,7 @@ public sealed partial class EditorTools
     public Task<object> CreateFace(string name, CancellationToken cancellationToken) => ui.Invoke(() => ActFace(() => faces.CreateFace(name)), cancellationToken);
 
     [McpServerTool(Name = "open_face"), Description("Open an existing current-schema Face package for native authoring. Preserves full authored fields; refuses dirty replacement.")]
-    public Task<object> OpenFace(string path, CancellationToken cancellationToken) => ui.Invoke(() => ActFace(() => faces.OpenFace(path)), cancellationToken);
+    public Task<object> OpenFace(string path, CancellationToken cancellationToken) => ui.Invoke(() => {capture.View.OpenAsset(new AssetSummary("Face",Path.GetFileName(Path.GetDirectoryName(path))??"Face",path));return Snapshot();}, cancellationToken);
 
     [McpServerTool(Name = "select_face_element"), Description("Select a Face element by stable ID, or clear with null. Does not dirty the document.")]
     public Task<object> SelectFaceElement(CancellationToken cancellationToken, string? id = null) => ui.Invoke(() => ActFace(() => faces.Select(id)), cancellationToken);

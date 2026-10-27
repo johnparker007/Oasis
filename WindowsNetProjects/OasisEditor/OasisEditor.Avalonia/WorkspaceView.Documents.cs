@@ -5,7 +5,7 @@ using Avalonia.Media;
 
 namespace OasisEditor.Avalonia;
 
-public sealed record WorkspaceDocumentTab(string Kind,string Path,string Scope,bool IsDirty,bool IsActive,string? LibraryRoot=null);
+public sealed record WorkspaceDocumentTab(string Kind,string Path,string Scope,bool IsDirty,bool IsActive,string? LibraryRoot=null,bool IsFloating=false);
 
 public sealed partial class WorkspaceView
 {
@@ -23,10 +23,11 @@ public sealed partial class WorkspaceView
         var tabs=new ScrollViewer { Content=_documentTabs,HorizontalScrollBarVisibility=global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,VerticalScrollBarVisibility=global::Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
         scene.Children.Add(tabs);
         MenuAction(file,"Close asset",async()=>await SceneAction(CloseActiveDocumentAsync));
+        MenuAction(file,"Float active asset",async()=>{if(ActiveDocumentPath is {} path)await ScheduleAssetWindowAction(()=>FloatDocumentAsync(ActiveDocumentKind,path));});
         MenuAction(file,"Save all assets",async()=>await SceneAction(SaveAllDocumentsAsync));
         _tabsReady=true;
     }
-    public IReadOnlyList<WorkspaceDocumentTab> InspectOpenDocuments()
+    private IReadOnlyList<WorkspaceDocumentTab> InspectDockedDocuments()
     {
         var result=new List<WorkspaceDocumentTab>();
         var activePath=ActiveDocumentPath;
@@ -43,6 +44,8 @@ public sealed partial class WorkspaceView
         Add("Cabinet3D",Cabinets.OpenDocuments);Add("Prefab",Prefabs.OpenDocuments);Add("Reel",Reels.OpenDocuments);
         return result;
     }
+    public IReadOnlyList<WorkspaceDocumentTab> InspectOpenDocuments()=>InspectDockedDocuments().Concat(_assetWindows.Values
+        .SelectMany(w=>w.View.InspectDockedDocuments().Select(t=>t with {IsFloating=true,IsActive=false}))).ToArray();
     private string ActiveDocumentKind=>_sceneKind??(_faceActive?"Face":_machineActive?"Machine":"Panel2D");
     private string? ActiveDocumentPath=>ActiveDocumentKind switch {"Face"=>Faces.FacePath,"Machine"=>Machines.MachinePath,"Cabinet3D"=>Cabinets.FilePath,"Prefab"=>Prefabs.FilePath,"Reel"=>Reels.FilePath,_=>_session.PanelPath};
     private void RefreshDocumentTabs()
@@ -64,7 +67,8 @@ public sealed partial class WorkspaceView
             var button=ActionButton($"{title} · {tab.Kind}{(tab.Scope=="Library"?" · Library":"")}{(tab.IsDirty?" *":"")}",async()=>await SceneAction(()=>ActivateDocumentAsync(tab.Kind,tab.Path)));
             button.FontWeight=tab.IsActive?FontWeight.Bold:FontWeight.Normal;
             item.Children.Add(button);
-            item.Children.Add(ActionButton("×",async()=>await SceneAction(()=>CloseDocumentAsync(tab.Kind,tab.Path))));
+            if(!_isAssetWindow)item.Children.Add(ActionButton(tab.IsFloating?"Dock":"↗",async()=>await ScheduleAssetWindowAction(()=>tab.IsFloating?DockDocumentAsync(tab.Kind,tab.Path):FloatDocumentAsync(tab.Kind,tab.Path))));
+            if(!_isAssetWindow)item.Children.Add(ActionButton("×",async()=>await SceneAction(()=>CloseDocumentAsync(tab.Kind,tab.Path))));
             _documentTabs.Children.Add(item);
         }
     }
@@ -76,7 +80,9 @@ public sealed partial class WorkspaceView
     }
     public async Task ActivateDocumentAsync(string kind,string path)
     {
-        var tab=InspectOpenDocuments().FirstOrDefault(t=>t.Kind==kind && SameScenePath(t.Path,path))
+        path=Path.GetFullPath(path,_session.RequireProjectDirectory());
+        if(FindAssetWindow(kind,path) is {} window){ShowOwnedAssetWindow(window.Window);return;}
+        var tab=InspectDockedDocuments().FirstOrDefault(t=>t.Kind==kind && SameScenePath(t.Path,path))
             ??throw new KeyNotFoundException("This document is not open.");
         if(tab.Scope=="Library")
         {
@@ -104,10 +110,20 @@ public sealed partial class WorkspaceView
     }
     public async Task CloseDocumentAsync(string kind,string path)
     {
-        var before=InspectOpenDocuments();
+        path=Path.GetFullPath(path,_session.RequireProjectDirectory());
+        EnsureAssetWindowsIdle();
+        if(FindAssetWindow(kind,path) is {} floating)
+        {
+            if(floating.View.HasUnsavedChanges)throw new InvalidOperationException("Save or undo this floating asset's edits before closing it.");
+            try{_movingDocument=floating.View._movingDocument=true;await floating.View.CloseActiveDocumentAsync();_assetWindows.Remove(AssetWindowKey(kind,path));ReleaseAssetWindow(floating);}
+            finally{_movingDocument=floating.View._movingDocument=false;}
+            Refresh();StateChanged?.Invoke();return;
+        }
+        var before=InspectDockedDocuments();
         var target=before.FirstOrDefault(t=>t.Kind==kind&&SameScenePath(t.Path,path))??throw new KeyNotFoundException("This document is not open.");
         if(target.IsDirty)throw new InvalidOperationException("Save or undo this asset's edits before closing it.");
         var previous=before.FirstOrDefault(t=>t.IsActive);
+        if(target.IsActive){_sceneKind=null;_faceActive=_machineActive=false;}
         switch(kind)
         {
             case "Panel2D":_session.CloseRetainedDocument(path);break;
@@ -126,8 +142,9 @@ public sealed partial class WorkspaceView
     public Task CloseActiveDocumentAsync()=>ActiveDocumentPath is {} path?CloseDocumentAsync(ActiveDocumentKind,path):Task.CompletedTask;
     public async Task SaveAllDocumentsAsync()
     {
+        EnsureAssetWindowsIdle();
         var tabs=InspectOpenDocuments();var active=tabs.FirstOrDefault(t=>t.IsActive);
-        try{foreach(var tab in tabs.Where(t=>t.IsDirty)){await ActivateDocumentAsync(tab.Kind,tab.Path);SaveActive();}}
+        try{foreach(var tab in tabs.Where(t=>t.IsDirty)){if(tab.IsFloating)SaveFloatingDocument(tab.Kind,tab.Path);else{await ActivateDocumentAsync(tab.Kind,tab.Path);SaveActive();}}}
         finally{if(active is not null)await ActivateDocumentAsync(active.Kind,active.Path);}
     }
 }

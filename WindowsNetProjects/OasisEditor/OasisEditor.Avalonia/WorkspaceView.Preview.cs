@@ -84,7 +84,7 @@ public sealed partial class WorkspaceView
     public async Task<NativePreviewSnapshot> StartNativePreviewAsync(bool audible = false, CancellationToken cancellationToken = default)
     {
         if (Program.IsHeadless && audible) throw new InvalidOperationException("Headless preview consumes diagnostic PCM silently.");
-        if (HasUnsavedChanges || !Machines.IsProjectCurrent) throw new InvalidOperationException("Save the current project documents before previewing.");
+        if (ProjectHasUnsavedChanges || !Machines.IsProjectCurrent) throw new InvalidOperationException("Save the current project documents before previewing.");
         var machine = Machines.Document ?? throw new InvalidOperationException("Open a configured Machine first.");
         Machines.EnsureSavedSourceUnchanged();
         if (machine.Runtime is EmulationRuntimeDefinition runtime && runtime.Platform != FruitMachinePlatformType.None)
@@ -105,10 +105,13 @@ public sealed partial class WorkspaceView
     }
     private string? PreviewSource() => !Machines.IsProjectCurrent || Machines.Document is not { } machine ? null
         : _session.ProjectFilePath + "\n" + Machines.MachinePath + "\n" + MachineDocumentStorage.Serialize(machine);
+    private bool ProjectHasUnsavedChanges=>_assetWindowOwner?.HasUnsavedChanges??HasUnsavedChanges;
     private void CheckPreviewSource()
     {
+        if(_movingDocument)return;
         if (Preview.Backend is not null)
-            _previewSourceCurrent = !HasUnsavedChanges && _previewSource == PreviewSource();
+            _previewSourceCurrent = !ProjectHasUnsavedChanges && _previewSource == PreviewSource();
+        if(_assetWindowOwner is null)foreach(var window in _assetWindows.Values)window.View.CheckPreviewSource();
     }
     private async Task PreviewAction(Func<Task> action, bool report = true)
     {
