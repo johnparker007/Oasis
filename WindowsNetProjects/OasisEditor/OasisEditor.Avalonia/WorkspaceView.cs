@@ -21,6 +21,14 @@ namespace OasisEditor.Avalonia;
 public sealed partial class WorkspaceView : UserControl, IDisposable
 {
     private readonly AuthoringSession _session;
+    public OutputLogService Output { get; }
+    private static OutputLogService CreateOutputLog(bool assetWindow)
+    {
+        if (Program.IsHeadless || assetWindow) return new();
+        try { return new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Oasis", "AvaloniaEditor", "Logs", $"editor-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.log")); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return new(); }
+    }
+    private OutputPaneControl? _outputPane;
     public FaceAuthoringSession Faces { get; }
     public MachineAuthoringSession Machines { get; }
     private bool _faceActive;
@@ -55,6 +63,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     public WorkspaceView(AuthoringSession session, FaceAuthoringSession? faces = null, NativePreviewSession? preview = null, bool assetWindow = false)
     {
         _isAssetWindow=assetWindow;
+        Output = CreateOutputLog(assetWindow);
         Preview = preview ?? new NativePreviewSession();
         _session = session; Faces = faces ?? new FaceAuthoringSession(session); Machines = new MachineAuthoringSession(session);
         _viewport = new PanelViewport(session, Faces, () => _faceActive);
@@ -87,6 +96,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         { Text = a is null ? "" : $"{a.Type}   /   {a.Name}", TextTrimming = TextTrimming.CharacterEllipsis });
         _assets.DoubleTapped += (_, _) => { if (_assets.SelectedItem is AssetSummary asset) { if(_browseLibrary)_sceneTask=SceneAction(()=>OpenLibraryAssetAsync(asset.ManifestPath));else Try(() => OpenAsset(asset)); } };
         _assetSearch.TextChanged += (_, _) => RefreshAssets();
+        InitializeProjectAssetContextActions();
         var projectPanel = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto") };
         projectPanel.Children.Add(_project); Grid.SetRow(_assetSearch, 1); projectPanel.Children.Add(_assetSearch);
         Grid.SetRow(_assets, 2); projectPanel.Children.Add(_assets);
@@ -118,7 +128,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         tools.Children.Add(_mode);
         scene.Children.Add(Toolbar(tools)); Grid.SetRow(_viewport, 1); scene.Children.Add(_viewport);
         _document = new Document { Id = "Authoring", Title = "Panel 2D", Context = scene, CanClose = false };
-        _factory = new WorkspaceDockFactory(hierarchy, projectPanel, new ScrollViewer { Content = _inspector }, () => _document,_isAssetWindow);
+        _factory = new WorkspaceDockFactory(hierarchy, projectPanel, new ScrollViewer { Content = _inspector }, () => _document,_isAssetWindow, _isAssetWindow ? null : (_outputPane = new OutputPaneControl(Output)));
         var layout = _factory.CreateLayout(); _factory.InitLayout(layout);
         _document = (Document)WorkspaceLayoutState.LeafMap(layout)["Authoring"];
         _dock = new DockControl { Layout = layout };
@@ -154,6 +164,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         MenuAction(windowMenu, "Save workspace", () => Try(SaveWorkspace));
         MenuAction(windowMenu, "Restore workspace", () => Try(RestoreWorkspace));
         MenuAction(windowMenu, "Reset layout", () => Try(ResetLayout));
+        if (!_isAssetWindow) MenuAction(windowMenu, "Output", () => Try(ShowOutputPane));
         foreach (var theme in new[] { "System", "Dark", "Light" }) MenuAction(windowMenu, theme + " theme", () =>
         { Application.Current!.RequestedThemeVariant = theme == "Dark" ? ThemeVariant.Dark : theme == "Light" ? ThemeVariant.Light : ThemeVariant.Default; _viewport.InvalidateVisual(); });
         root.Children.Add(new Menu { ItemsSource = new[] { file, edit, windowMenu } });
@@ -227,12 +238,22 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     { EnsureAssetWindowsIdle(); if (HasUnsavedChanges) throw new InvalidOperationException("Save or undo document edits before changing project."); if(_isAssetWindow)throw new InvalidOperationException("Change projects in the main workspace."); var probe=new AuthoringSession(_session.WorkspacePath); probe.OpenProject(path); CloseAllAssetWindows(); Faces.CloseAllDocuments(); _session.OpenProject(path); Clear3DForProjectChange(); _documentViews.Clear(); Machines.OpenProject(path); _machineActive = false; Refresh(); RecordCurrentProject(); }
     public void CreateProject(string name)
     { EnsureAssetWindowsIdle(); if (HasUnsavedChanges) throw new InvalidOperationException("Save or undo document edits before changing project."); if(_isAssetWindow)throw new InvalidOperationException("Create projects in the main workspace."); var probe=new AuthoringSession(_session.WorkspacePath); var path=probe.CreateProject(name); CloseAllAssetWindows(); Faces.CloseAllDocuments(); _session.OpenProject(path); Clear3DForProjectChange(); _documentViews.Clear(); Machines.OpenProject(_session.ProjectFilePath!); _machineActive = false; Refresh(); RecordCurrentProject(); }
-    public void SetStatus(string text) => _status.Text = text;
+    public void SetStatus(string text) { _status.Text = text; RecordOutput(text, OutputSeverity.Info); }
+    private void RecordOutput(string text, OutputSeverity severity)
+    {
+        Output.Add(text, severity);
+        _assetWindowOwner?.Output.Add($"[{ActiveTitle}] {text}", severity);
+    }
+    public void ShowOutputPane()
+    {
+        var pane = WorkspaceLayoutState.LeafMap(_dock.Layout!)["Output"];
+        if (pane.Owner is IDock owner) owner.ActiveDockable = pane;
+    }
     public void Try(Action action)
     {
         try { action(); }
         catch (Exception e) when (e is IOException or InvalidDataException or ArgumentException or InvalidOperationException or KeyNotFoundException or System.Text.Json.JsonException or UnauthorizedAccessException)
-        { SetStatus(e.Message); }
+        { _status.Text = e.Message; RecordOutput(e.Message, OutputSeverity.Error); }
     }
 
     private async Task OpenProjectDialog()
@@ -407,10 +428,11 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         _session.Changed -= Refresh; Faces.Changed -= Refresh; Machines.Changed -= Refresh;
         if (_dock.Layout is IRootDock root) root.ExitWindows.Execute(null);
         _viewport.Dispose();
+        _outputPane?.Dispose(); Output.Dispose();
     }
 }
 
-internal sealed class WorkspaceDockFactory(Control hierarchy, Control project, Control inspector, Func<Document> document,bool assetWindow=false) : Factory
+internal sealed class WorkspaceDockFactory(Control hierarchy, Control project, Control inspector, Func<Document> document,bool assetWindow=false, Control? output=null) : Factory
 {
     public override IRootDock CreateLayout()
     {
@@ -421,9 +443,16 @@ internal sealed class WorkspaceDockFactory(Control hierarchy, Control project, C
             var tool = new Tool { Id = id, Title = id, Context = content, CanClose = false };
             return new ToolDock { Proportion = proportion, ActiveDockable = tool, VisibleDockables = CreateList<IDockable>(tool), CanClose = false };
         }
+        ToolDock ProjectPane()
+        {
+            var projectTool = new Tool { Id = "Project", Title = "Project", Context = project, CanClose = false };
+            var dock = new ToolDock { Proportion = .25, ActiveDockable = projectTool, VisibleDockables = CreateList<IDockable>(projectTool), CanClose = false };
+            if (output is not null) dock.VisibleDockables.Add(new Tool { Id = "Output", Title = "Output", Context = output, CanClose = false });
+            return dock;
+        }
         var documents=new DocumentDock {ActiveDockable=authoring,VisibleDockables=CreateList<IDockable>(authoring),Proportion=assetWindow ? .52 : .75};
         IDockable center=assetWindow?documents:new ProportionalDock { Orientation = DockOrientation.Vertical, Proportion = .60,
-            VisibleDockables = CreateList<IDockable>(documents, new ProportionalDockSplitter(), Pane("Project", project, .25)) };
+            VisibleDockables = CreateList<IDockable>(documents, new ProportionalDockSplitter(), ProjectPane()) };
         var main = new ProportionalDock { Orientation = DockOrientation.Horizontal,
             VisibleDockables = CreateList<IDockable>(Pane("Hierarchy", hierarchy, .18), new ProportionalDockSplitter(), center, new ProportionalDockSplitter(), Pane("Inspector", inspector, assetWindow ? .30 : .22)) };
         return new RootDock { Id = "Root", ActiveDockable = main, DefaultDockable = main, VisibleDockables = CreateList<IDockable>(main) };

@@ -158,6 +158,41 @@ public sealed class WorkspacePersistenceTests
     }
 
     [Fact]
+    public void LegacyLayoutAddsOutputBesideProjectWithoutChangingActiveProjectTab()
+    {
+        var hierarchy = new Tool { Id = "Hierarchy" };
+        var inspector = new Tool { Id = "Inspector" };
+        var project = new Tool { Id = "Project" };
+        var output = new Tool { Id = "Output" };
+        var document = new Document { Id = "Authoring" };
+        var known = new Dictionary<string, IDockable>
+        {
+            ["Hierarchy"] = hierarchy, ["Inspector"] = inspector, ["Project"] = project,
+            ["Output"] = output, ["Authoring"] = document
+        };
+        var legacy = new WorkspaceDockNode("Root", "Root", Children:
+        [new("Split", Orientation: "Horizontal", Children:
+            [new("Tools", Alignment: "Left", Children: [new("Tool", "Hierarchy")]), new("Splitter"),
+             new("Split", Orientation: "Vertical", Children:
+                 [new("Documents", Children: [new("Document", "Authoring")]), new("Splitter"),
+                  new("Tools", "ProjectDock", Alignment: "Left", Children: [new("Tool", "Project")])]),
+             new("Splitter"), new("Tools", Alignment: "Right", Children: [new("Tool", "Inspector")])])]);
+
+        var restored = WorkspaceLayoutState.Restore(legacy, known);
+        IDock? FindProjectDock(IDockable item)
+        {
+            if (item is not IDock dock) return null;
+            if (dock.VisibleDockables?.Any(child => child.Id == "Project") == true) return dock;
+            foreach (var child in dock.VisibleDockables ?? [])
+                if (FindProjectDock(child) is { } match) return match;
+            return null;
+        }
+        var projectDock = FindProjectDock(restored) ?? throw new InvalidDataException("Project tab was not restored.");
+        Assert.Equal(new[] { "Project", "Output" }, projectDock.VisibleDockables!.Select(item => item.Id));
+        Assert.Same(project, projectDock.ActiveDockable);
+    }
+
+    [Fact]
     public void LayoutRejectsMissingDuplicateUnknownAndUnboundedContent()
     {
         var known = new Dictionary<string, IDockable> { ["Inspector"] = new Tool { Id = "Inspector" } };
