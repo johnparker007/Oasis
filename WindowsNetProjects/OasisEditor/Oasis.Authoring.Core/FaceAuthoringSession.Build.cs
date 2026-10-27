@@ -155,6 +155,7 @@ public sealed partial class FaceAuthoringSession
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
             File.Copy(source, destination);
         }
+        var removeBackup = true;
         var historyIndex = _historyIndex;
         var oldHistory = _history.ToArray();
         try
@@ -167,7 +168,7 @@ public sealed partial class FaceAuthoringSession
                 foreach (var product in new[] { FaceGeneratedProduct.ArtworkCorrectionInput, FaceGeneratedProduct.BaseArtwork, FaceGeneratedProduct.ArtworkOutput }) MarkBuild(state, product, FaceBuildStatus.Current);
             if (model.MaskLayer is not null)
             {
-                var mask = BuildLampMask(model, root, name);
+                var mask = BuildLampMask(model, root, name, cancellationToken);
                 next = next with { MaskLayer = FaceDocumentStorage.ToFile(new FaceDocumentModel { MaskLayer = mask }).MaskLayer };
                 var authored = new FaceTrayAutoAuthoringService().AutoAuthor(FaceDocumentStorage.ToModel(next), root);
                 var illumination = FaceDocumentStorage.ToFile(new FaceDocumentModel { Trays = authored.Trays, LampEmitters = authored.Emitters });
@@ -191,25 +192,34 @@ public sealed partial class FaceAuthoringSession
             CaptureGeneratedFaceFiles(root, name);
             Changed?.Invoke();
         }
-        catch
+        catch (Exception buildError)
         {
             _history.Clear(); _history.AddRange(oldHistory); _historyIndex = historyIndex;
-            // Only this confined, link-checked generated tree is owned by the build.
-            WorkspacePathPolicy.RejectReparsePoints(root, generatedRelative, requireExists: false);
-            if (Directory.Exists(generated)) Directory.Delete(generated, true);
-            foreach (var file in Directory.EnumerateFiles(backup, "*", SearchOption.AllDirectories))
+            try
             {
-                var destination = Path.Combine(generated, Path.GetRelativePath(backup, file));
-                Directory.CreateDirectory(Path.GetDirectoryName(destination)!); File.Copy(file, destination);
+                // Only this confined, link-checked generated tree is owned by the build.
+                WorkspacePathPolicy.RejectReparsePoints(root, generatedRelative, requireExists: false);
+                if (Directory.Exists(generated)) Directory.Delete(generated, true);
+                foreach (var file in Directory.EnumerateFiles(backup, "*", SearchOption.AllDirectories))
+                {
+                    var destination = Path.Combine(generated, Path.GetRelativePath(backup, file));
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination)!); File.Copy(file, destination);
+                }
+                _savedGeneratedFiles = fingerprint;
             }
-            _savedGeneratedFiles = fingerprint;
+            catch (Exception restoreError)
+            {
+                removeBackup = false;
+                Changed?.Invoke();
+                throw new IOException($"Face Build failed and generated files could not be fully restored. Recovery files are preserved at '{backup}'.", new AggregateException(buildError, restoreError));
+            }
             Changed?.Invoke();
             throw;
         }
-        finally { Directory.Delete(backup, true); }
+        finally { if (removeBackup) Directory.Delete(backup, true); }
     }
 
-    private FaceMaskLayerModel BuildLampMask(FaceDocumentModel face, string root, string name)
+    private FaceMaskLayerModel BuildLampMask(FaceDocumentModel face, string root, string name, CancellationToken cancellationToken)
     {
         var mask = face.MaskLayer!;
         var width = face.Artwork is {} a ? (a.FinalOutputWidth > 0 ? a.FinalOutputWidth : a.OutputWidth) : mask.Width;
@@ -243,7 +253,7 @@ public sealed partial class FaceAuthoringSession
             WorkspacePathPolicy.RejectReparsePoints(root, Path.GetRelativePath(root, full), true);
         }
         return new FaceGenerationService().GenerateMaskFromSourceShape(panel, shape, width, height, lamps, face.Id, face.SourcePanel2DDocumentId,
-            root, name, destination, face.GenerationSettings.MaskExtractionThreshold, ImageProcessingExecutionPolicy.Current)
+            root, name, destination, face.GenerationSettings.MaskExtractionThreshold, ImageProcessingExecutionPolicy.Current.WithCancellation(cancellationToken))
             ?? throw new InvalidOperationException("Lamp-mask generation produced no output.");
     }
 

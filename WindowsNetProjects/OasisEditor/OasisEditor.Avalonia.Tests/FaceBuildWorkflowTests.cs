@@ -93,6 +93,32 @@ public sealed class FaceBuildWorkflowTests : IDisposable
     }
 
     [Fact]
+    public void BuildFace_PreservesRecoveryFilesWhenRollbackIsBlockedByAnOpenFile()
+    {
+        if (!OperatingSystem.IsWindows()) return; // Windows sharing rules prevent deleting an open generated output.
+        var (_, faces, root, _, _) = CreateBuildableFace("Recovery");
+        var generated = Path.Combine(root, "Generated", "Faces", "Recovery");
+        var originalFiles = Directory.GetFiles(generated, "*", SearchOption.AllDirectories).ToDictionary(path => Path.GetRelativePath(generated, path), File.ReadAllBytes);
+        var before = Payload(faces.Document!);
+        FileStream? locked = null;
+        try
+        {
+            var error = Assert.Throws<IOException>(() => faces.BuildFace(face =>
+            {
+                var path = Path.Combine(root, "Generated", "Faces", "Recovery", "held-open.txt");
+                locked = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read);
+                throw new InvalidOperationException("Export failed with a locked generated file.");
+            }));
+            var recovery = Assert.Single(Directory.GetDirectories(root, ".oasis-face-build-*"));
+            Assert.Contains(recovery, error.Message);
+            Assert.Equal(before, Payload(faces.Document!));
+            foreach (var file in originalFiles)
+                Assert.Equal(file.Value, File.ReadAllBytes(Path.Combine(recovery, file.Key)));
+        }
+        finally { locked?.Dispose(); }
+    }
+
+    [Fact]
     public void BuildFace_RestoresGeneratedFilesAndHistoryWhenCanceledAfterGeneration()
     {
         var (_, faces, root, _, authoredMask) = CreateBuildableFace("Canceled");
