@@ -20,12 +20,13 @@ namespace OasisEditor.Avalonia;
 
 public sealed partial class WorkspaceView : UserControl, IDisposable
 {
-    partial void AddFaceWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
     private readonly AuthoringSession _session;
     public FaceAuthoringSession Faces { get; }
+    public MachineAuthoringSession Machines { get; }
     private bool _faceActive;
-    public bool HasUnsavedChanges => _session.IsDirty || Faces.IsDirty;
-    public string ActiveTitle => _faceActive ? Faces.FaceTitle : _session.PanelTitle;
+    private bool _machineActive;
+    public bool HasUnsavedChanges => _session.IsDirty || Faces.IsDirty || Machines.IsDirty;
+    public string ActiveTitle => _machineActive ? Machines.MachineTitle : _faceActive ? Faces.FaceTitle : _session.PanelTitle;
     public event Action? StateChanged;
     private readonly PanelViewport _viewport;
     private readonly ListBox _hierarchy = new() { SelectionMode = SelectionMode.Multiple | SelectionMode.Toggle };
@@ -38,16 +39,20 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     private readonly TextBlock _project = new() { Margin = new Thickness(10, 7), FontWeight = FontWeight.SemiBold };
     private readonly TextBlock _mode = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0), FontSize = 11, Opacity = .65 };
     private readonly Button _undo, _redo, _save;
-    private readonly Document _document;
+    private Document _document;
+    private readonly WorkspaceDockFactory _factory;
+    private readonly DockControl _dock;
     private readonly Dictionary<string, TextBox> _fields = [];
     private CheckBox? _visible, _locked;
     private bool _refreshing;
     private string? _lastDocument, _selectedSource;
     private object? _inspected;
 
+    partial void AddMachineWorkflowMenus(MenuItem fileMenu, MenuItem createMenu);
+
     public WorkspaceView(AuthoringSession session, FaceAuthoringSession? faces = null)
     {
-        _session = session; Faces = faces ?? new FaceAuthoringSession(session);
+        _session = session; Faces = faces ?? new FaceAuthoringSession(session); Machines = new MachineAuthoringSession(session);
         _viewport = new PanelViewport(session, Faces, () => _faceActive);
         _viewport.CommandFailed += SetStatus;
         _hierarchy.ItemsSource = _rows;
@@ -84,6 +89,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         creation.Children.Add(assetName);
         creation.Children.Add(ActionButton("New panel", () => Try(() => { _session.CreatePanel(assetName.Text ?? ""); _faceActive = false; Refresh(); })));
         creation.Children.Add(ActionButton("New Face", () => Try(() => { Faces.CreateFace(assetName.Text ?? ""); _faceActive = true; Refresh(); })));
+        creation.Children.Add(ActionButton("New Machine", () => Try(() => { Machines.CreateMachine(assetName.Text ?? ""); _faceActive = false; _machineActive = true; Refresh(); })));
         Grid.SetRow(creation, 3); projectPanel.Children.Add(creation);
 
         var scene = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
@@ -106,9 +112,10 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         tools.Children.Add(_mode);
         scene.Children.Add(Toolbar(tools)); Grid.SetRow(_viewport, 1); scene.Children.Add(_viewport);
         _document = new Document { Id = "Authoring", Title = "Panel 2D", Context = scene, CanClose = false };
-        var factory = new WorkspaceDockFactory(hierarchy, projectPanel, new ScrollViewer { Content = _inspector }, _document);
-        var layout = factory.CreateLayout(); factory.InitLayout(layout);
-        var dock = new DockControl { Layout = layout };
+        _factory = new WorkspaceDockFactory(hierarchy, projectPanel, new ScrollViewer { Content = _inspector }, () => _document);
+        var layout = _factory.CreateLayout(); _factory.InitLayout(layout);
+        _document = (Document)WorkspaceLayoutState.LeafMap(layout)["Authoring"];
+        _dock = new DockControl { Layout = layout };
 
         var root = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto") };
         var file = new MenuItem { Header = "_File" };
@@ -117,6 +124,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         MenuAction(file, "Save", () => Try(SaveActive));
         MenuAction(file, "Import FML layout…", async () => await ImportFml());
         AddFaceWorkflowMenus(file, create);
+        AddMachineWorkflowMenus(file, create);
         var edit = new MenuItem { Header = "_Edit" };
         MenuAction(edit, "Undo", () => Try(UndoActive)); MenuAction(edit, "Redo", () => Try(RedoActive));
         MenuAction(edit, "Duplicate", () => Try(() => { RequirePanel(); session.DuplicateSelected(); }));
@@ -124,6 +132,9 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         MenuAction(edit, "Bring forward", () => Try(() => { RequirePanel(); session.MoveSelectionInOrder(true); }));
         MenuAction(edit, "Send backward", () => Try(() => { RequirePanel(); session.MoveSelectionInOrder(false); }));
         var windowMenu = new MenuItem { Header = "_Window" };
+        MenuAction(windowMenu, "Save workspace", () => Try(SaveWorkspace));
+        MenuAction(windowMenu, "Restore workspace", () => Try(RestoreWorkspace));
+        MenuAction(windowMenu, "Reset layout", () => Try(ResetLayout));
         foreach (var theme in new[] { "System", "Dark", "Light" }) MenuAction(windowMenu, theme + " theme", () =>
         { Application.Current!.RequestedThemeVariant = theme == "Dark" ? ThemeVariant.Dark : theme == "Light" ? ThemeVariant.Light : ThemeVariant.Default; _viewport.InvalidateVisual(); });
         root.Children.Add(new Menu { ItemsSource = new[] { file, edit, windowMenu } });
@@ -135,7 +146,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         _redo = ActionButton("Redo", () => Try(RedoActive)); toolbar.Children.Add(_redo);
         toolbar.Children.Add(new TextBlock { Text = "OASIS  /  AUTHORING", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0), FontWeight = FontWeight.SemiBold });
         var bar = Toolbar(toolbar); Grid.SetRow(bar, 1); root.Children.Add(bar);
-        Grid.SetRow(dock, 2); root.Children.Add(dock);
+        Grid.SetRow(_dock, 2); root.Children.Add(_dock);
         var status = Toolbar(_status); Grid.SetRow(status, 3); root.Children.Add(status); Content = root;
         KeyDown += (_, e) =>
         {
@@ -150,7 +161,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
                 else if (e.Key == Key.Delete) { Try(DeleteActive); e.Handled = true; }
             }
         };
-        session.Changed += Refresh; Faces.Changed += Refresh; Refresh();
+        session.Changed += Refresh; Faces.Changed += Refresh; Machines.Changed += Refresh; Refresh();
     }
 
     internal IReadOnlyList<ElementSnapshot> ActiveElements => _faceActive ? Faces.Elements.Select(ToViewportElement).ToArray() : _session.Elements;
@@ -161,29 +172,34 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     { if (_faceActive) Faces.Select(ids.FirstOrDefault()); else _session.SelectElements(ids); }
     private void RequirePanel() { if (_faceActive) throw new InvalidOperationException("Choose a Panel2D asset for this command."); }
     private void RequireFace() { if (!_faceActive) throw new InvalidOperationException("Choose a Face asset for this command."); }
-    private void SaveActive() { if (_faceActive) Faces.Save(); else _session.Save(); }
-    private void UndoActive() { if (_faceActive) Faces.Undo(); else _session.Undo(); }
-    private void RedoActive() { if (_faceActive) Faces.Redo(); else _session.Redo(); }
+    private void SaveActive() { if (_machineActive) Machines.Save(); else if (_faceActive) Faces.Save(); else _session.Save(); }
+    private void UndoActive() { if (_machineActive) Machines.Undo(); else if (_faceActive) Faces.Undo(); else _session.Undo(); }
+    private void RedoActive() { if (_machineActive) Machines.Redo(); else if (_faceActive) Faces.Redo(); else _session.Redo(); }
     private void DeleteActive()
     { if (_faceActive) Faces.DeleteSelected(); else if (_selectedSource is { } id) { _selectedSource = null; _session.DeleteSourceShape(id); } else _session.DeleteSelected(); }
 
     public void OpenAsset(AssetSummary asset)
     {
+        if (_machineActive && Machines.IsDirty && asset.Type != "Machine")
+            throw new InvalidOperationException("Save or undo Machine edits before changing the active document.");
         var path = _session.ResolveAsset(asset.ManifestPath);
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         if (asset.Type == "Panel2D")
-        { if (!string.Equals(_session.PanelPath, path, comparison)) _session.OpenPanel(asset.ManifestPath); _faceActive = false; }
+        { if (!string.Equals(_session.PanelPath, path, comparison)) _session.OpenPanel(asset.ManifestPath); _faceActive = false; _machineActive = false; }
         else if (asset.Type == "Face")
-        { if (!string.Equals(Faces.FacePath, path, comparison)) Faces.OpenFace(asset.ManifestPath); _faceActive = true; }
+        { if (!string.Equals(Faces.FacePath, path, comparison)) Faces.OpenFace(asset.ManifestPath); _faceActive = true; _machineActive = false; }
+        else if (asset.Type == "Machine")
+        { if (!string.Equals(Machines.MachinePath, path, comparison)) Machines.OpenMachine(asset.ManifestPath); _faceActive = false; _machineActive = true; }
         else { SetStatus($"{asset.Type} / {asset.Name} — authoring for this asset type is still available in the WPF Editor."); return; }
         _selectedSource = null; _inspected = null; Refresh();
     }
-    public void ShowPanel() { _faceActive = false; Refresh(); }
-    public void ShowFace() { _faceActive = true; _selectedSource = null; Refresh(); }
+    public void ShowPanel() { _faceActive = false; _machineActive = false; Refresh(); }
+    public void ShowFace() { _faceActive = true; _machineActive = false; _selectedSource = null; Refresh(); }
+    public void ShowMachine() { _faceActive = false; _machineActive = true; Refresh(); }
     public void OpenProject(string path)
-    { if (Faces.IsDirty) throw new InvalidOperationException("Save or undo Face edits before changing project."); _session.OpenProject(path); }
+    { if (Faces.IsDirty || Machines.IsDirty) throw new InvalidOperationException("Save or undo document edits before changing project."); _session.OpenProject(path); Machines.OpenProject(path); _machineActive = false; }
     public void CreateProject(string name)
-    { if (Faces.IsDirty) throw new InvalidOperationException("Save or undo Face edits before changing project."); _session.CreateProject(name); }
+    { if (Faces.IsDirty || Machines.IsDirty) throw new InvalidOperationException("Save or undo document edits before changing project."); _session.CreateProject(name); Machines.OpenProject(_session.ProjectFilePath!); _machineActive = false; }
     public void SetStatus(string text) => _status.Text = text;
     public void Try(Action action)
     {
@@ -265,7 +281,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         try
         {
             if (!Faces.IsProjectCurrent) { _faceActive = false; Faces.Close(); }
-            var elements = ActiveElements;
+            var elements = _machineActive ? [] : ActiveElements;
             if (!_rows.Select(e => e.Id).SequenceEqual(elements.Select(e => e.Id))) { _rows.Clear(); foreach (var e in elements) _rows.Add(e); }
             else for (var i = 0; i < elements.Count; i++) if (_rows[i] != elements[i]) _rows[i] = elements[i];
             _hierarchy.SelectedItems?.Clear();
@@ -273,15 +289,15 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
             var shapes = _faceActive ? [] : _session.SourceShapes;
             _sources.ItemsSource = shapes; _sources.SelectedItem = shapes.FirstOrDefault(s => s.Id == _selectedSource);
             RefreshAssets(); _project.Text = _session.ProjectName ?? "Open or create an Oasis project";
-            var title = _faceActive ? Faces.FaceTitle : _session.PanelTitle;
-            var path = _faceActive ? Faces.FacePath : _session.PanelPath;
-            var dirty = _faceActive ? Faces.IsDirty : _session.IsDirty;
-            _mode.Text = _faceActive ? "Artwork + bounds" : "Panel 2D";
+            var title = _machineActive ? Machines.MachineTitle : _faceActive ? Faces.FaceTitle : _session.PanelTitle;
+            var path = _machineActive ? Machines.MachinePath : _faceActive ? Faces.FacePath : _session.PanelPath;
+            var dirty = _machineActive ? Machines.IsDirty : _faceActive ? Faces.IsDirty : _session.IsDirty;
+            _mode.Text = _machineActive ? "Machine settings" : _faceActive ? "Artwork + bounds" : "Panel 2D";
             _document.Title = string.IsNullOrEmpty(title) ? "Authoring" : title + (dirty ? " *" : "");
-            _save.IsEnabled = dirty; _undo.IsEnabled = _faceActive ? Faces.CanUndo : _session.CanUndo; _redo.IsEnabled = _faceActive ? Faces.CanRedo : _session.CanRedo;
-            RefreshInspector();
+            _save.IsEnabled = dirty; _undo.IsEnabled = _machineActive ? Machines.CanUndo : _faceActive ? Faces.CanUndo : _session.CanUndo; _redo.IsEnabled = _machineActive ? Machines.CanRedo : _faceActive ? Faces.CanRedo : _session.CanRedo;
+            if (_machineActive) RefreshMachineInspector(); else RefreshInspector();
             SetStatus(path is null ? "Open or create a Panel2D or Face asset.  •  3D authoring is deferred."
-                : $"{(_faceActive ? "Face" : "Panel2D")}  •  {elements.Count} elements  •  {SelectedIds.Count} selected  •  {(dirty ? "Unsaved changes" : "Saved")}  •  {path}");
+                : $"{(_machineActive ? "Machine" : _faceActive ? "Face" : "Panel2D")}  •  {(dirty ? "Unsaved changes" : "Saved")}  •  {path}");
             if (_lastDocument != path) { _lastDocument = path; _viewport.ClearImages(); _viewport.RequestFit(); }
             _viewport.InvalidateVisual();
         }
@@ -345,20 +361,27 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         var border = new Border { Child = child, BorderThickness = new Thickness(0, 0, 0, 1) };
         border.Bind(BackgroundProperty, border.GetResourceObservable("ToolbarBrush")); border.Bind(Border.BorderBrushProperty, border.GetResourceObservable("DividerBrush")); return border;
     }
-    public void Dispose() { _session.Changed -= Refresh; Faces.Changed -= Refresh; _viewport.Dispose(); }
+    public void Dispose()
+    {
+        _session.Changed -= Refresh; Faces.Changed -= Refresh; Machines.Changed -= Refresh;
+        if (_dock.Layout is IRootDock root) root.ExitWindows.Execute(null);
+        _viewport.Dispose();
+    }
 }
 
-internal sealed class WorkspaceDockFactory(Control hierarchy, Control project, Control inspector, Document document) : Factory
+internal sealed class WorkspaceDockFactory(Control hierarchy, Control project, Control inspector, Func<Document> document) : Factory
 {
     public override IRootDock CreateLayout()
     {
+        var source = document();
+        var authoring = new Document { Id = source.Id, Title = source.Title, Context = source.Context, CanClose = false };
         ToolDock Pane(string id, Control content, double proportion)
         {
             var tool = new Tool { Id = id, Title = id, Context = content, CanClose = false };
             return new ToolDock { Proportion = proportion, ActiveDockable = tool, VisibleDockables = CreateList<IDockable>(tool), CanClose = false };
         }
         var center = new ProportionalDock { Orientation = DockOrientation.Vertical, Proportion = .60,
-            VisibleDockables = CreateList<IDockable>(new DocumentDock { ActiveDockable = document, VisibleDockables = CreateList<IDockable>(document), Proportion = .75 }, new ProportionalDockSplitter(), Pane("Project", project, .25)) };
+            VisibleDockables = CreateList<IDockable>(new DocumentDock { ActiveDockable = authoring, VisibleDockables = CreateList<IDockable>(authoring), Proportion = .75 }, new ProportionalDockSplitter(), Pane("Project", project, .25)) };
         var main = new ProportionalDock { Orientation = DockOrientation.Horizontal,
             VisibleDockables = CreateList<IDockable>(Pane("Hierarchy", hierarchy, .18), new ProportionalDockSplitter(), center, new ProportionalDockSplitter(), Pane("Inspector", inspector, .22)) };
         return new RootDock { Id = "Root", ActiveDockable = main, DefaultDockable = main, VisibleDockables = CreateList<IDockable>(main) };

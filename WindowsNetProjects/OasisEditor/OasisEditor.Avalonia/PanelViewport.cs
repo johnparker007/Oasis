@@ -3,6 +3,13 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
+using SkiaSharp;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
+using OasisEditor.Rendering;
 
 namespace OasisEditor.Avalonia;
 
@@ -23,11 +30,29 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
     private bool _resizing;
     private readonly Dictionary<string, Bitmap> _images = [];
     private readonly List<string> _warnings = [];
+    private Func<RuntimeOutputSnapshot>? _runtimeOutputs;
+    private static readonly IPanel2DRenderer PanelRenderer = Panel2DRendererFactory.Create("AvaloniaPanelViewport");
+    private static readonly Face2DRenderer FaceRenderer = new();
+    private Bitmap? _specialistBitmap;
+    private string? _specialistBitmapKey;
     public IReadOnlyList<string> Warnings => _warnings;
+
+    /// <summary>Connects a snapshot of real emulator outputs; authoring views use the empty authored state by default.</summary>
+    public void SetRuntimeOutputProvider(Func<RuntimeOutputSnapshot>? provider) { _runtimeOutputs = provider; InvalidateVisual(); }
+    /// <summary>Redraw after the connected runtime publishes a newer output snapshot.</summary>
+    public void RefreshRuntimeOutputs() => InvalidateVisual();
 
     public void RequestFit() { _fit = true; InvalidateVisual(); }
     public void Fit() { _fit = true; InvalidateVisual(); }
-    public void ClearImages() { foreach (var image in _images.Values) image.Dispose(); _images.Clear(); }
+    public WorkspaceViewportState CaptureViewState() => new(_zoom, _pan.X, _pan.Y, _fit);
+    public void RestoreViewState(WorkspaceViewportState state)
+    { state.Validate(); _zoom = state.Zoom; _pan = new Vector(state.PanX, state.PanY); _fit = state.Fit; InvalidateVisual(); }
+    public void ClearImages()
+    {
+        foreach (var image in _images.Values) image.Dispose();
+        _images.Clear();
+        _specialistBitmap?.Dispose(); _specialistBitmap = null; _specialistBitmapKey = null;
+    }
 
     public override void Render(DrawingContext context)
     {
@@ -52,6 +77,7 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
         const double gridSize = 32;
         for (var x = _pan.X % gridSize; x < Bounds.Width; x += gridSize) context.DrawLine(grid, new Point(x, 0), new Point(x, Bounds.Height));
         for (var y = _pan.Y % gridSize; y < Bounds.Height; y += gridSize) context.DrawLine(grid, new Point(0, y), new Point(Bounds.Width, y));
+        var specialistPipelineRendered = DrawSpecialistPipeline(context);
         foreach (var e in elements.Where(e => e.Visible))
         {
             var offset = !_resizing && _drag is not null && SelectedIds.Contains(e.Id) ? _preview : default;
@@ -59,6 +85,11 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
             var rectangle = new Rect((e.X + offset.X) * _zoom + _pan.X, (e.Y + offset.Y) * _zoom + _pan.Y,
                 Math.Max(1, e.Width + size.X) * _zoom, Math.Max(1, e.Height + size.Y) * _zoom);
             if (!rectangle.Intersects(new Rect(Bounds.Size))) continue;
+            if (specialistPipelineRendered)
+            {
+                DrawSelection(context, e.Id, rectangle);
+                continue;
+            }
             var imageDrawn = false;
             if (!string.IsNullOrWhiteSpace(e.AssetPath) && (!FaceActive || e.Kind.Equals("artwork", StringComparison.OrdinalIgnoreCase)))
             {
@@ -82,13 +113,7 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
                     using (context.PushClip(rectangle)) context.DrawText(text, rectangle.TopLeft + new Vector(6, 4));
                 }
             }
-            if (SelectedIds.Contains(e.Id))
-            {
-                var selection = Brush("SelectionColor");
-                context.DrawRectangle(null, new Pen(selection, 2), rectangle);
-                foreach (var corner in new[] { rectangle.TopLeft, rectangle.TopRight, rectangle.BottomLeft, rectangle.BottomRight })
-                    context.FillRectangle(selection, new Rect(corner - new Vector(3, 3), new Size(6, 6)));
-            }
+            DrawSelection(context, e.Id, rectangle);
         }
         if (!FaceActive)
         {
@@ -113,6 +138,169 @@ public sealed class PanelViewport(AuthoringSession session, FaceAuthoringSession
                 System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Typeface.Default, 16, Brush("MutedBrush"));
             context.DrawText(text, new Point(Math.Max(20, (Bounds.Width - text.Width) / 2), Bounds.Height / 2));
         }
+    }
+
+    private bool DrawSpecialistPipeline(DrawingContext context)
+    {
+        var panelModel = FaceActive ? null : session.RenderDocument;
+        var faceDocument = FaceActive ? faces?.Document : null;
+        var panelElements = FaceActive ? [] : session.Elements.Where(item => item.Visible).ToArray();
+        var documentWidth = FaceActive ? faces!.LogicalWidth : panelElements.Select(item => item.X + item.Width).DefaultIfEmpty(1).Max();
+        var documentHeight = FaceActive ? faces!.LogicalHeight : panelElements.Select(item => item.Y + item.Height).DefaultIfEmpty(1).Max();
+        if (Bounds.Width <= 0 || Bounds.Height <= 0 || documentWidth <= 0 || documentHeight <= 0) return false;
+        var outputs = _runtimeOutputs?.Invoke() ?? RuntimeOutputSnapshot.Empty;
+        var documentRevision = FaceActive ? faces!.RenderRevision : session.RenderRevision;
+        var projectDirectory = session.ProjectFilePath is { } project ? Path.GetDirectoryName(project) : null;
+        ProjectAssetPathResolver.ProjectDirectoryPath = projectDirectory;
+        var assetFingerprint = ComputeRendererAssetFingerprint(panelModel, faceDocument, projectDirectory);
+        var scale = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1d;
+        var width = Math.Clamp((int)Math.Ceiling(Bounds.Width * scale), 1, 8192);
+        var height = Math.Clamp((int)Math.Ceiling(Bounds.Height * scale), 1, 8192);
+        var activeDocumentPath = FaceActive ? faces?.FacePath : session.PanelPath;
+        var cacheKey = string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"{(FaceActive ? 'F' : 'P')}|{activeDocumentPath}|{documentRevision}|{outputs.Fingerprint}|{assetFingerprint}|{_zoom:R}|{_pan.X:R}|{_pan.Y:R}|{width}|{height}|{scale:R}");
+        if (_specialistBitmap is not null && string.Equals(cacheKey, _specialistBitmapKey, StringComparison.Ordinal))
+        {
+            context.DrawImage(_specialistBitmap, new Rect(Bounds.Size));
+            return true;
+        }
+        using var surface = SKSurface.Create(new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul));
+        if (surface is null) return false;
+        var canvas = surface.Canvas;
+        canvas.Clear(SKColors.Transparent);
+        canvas.Save();
+        canvas.Scale((float)scale);
+        canvas.Translate((float)_pan.X, (float)_pan.Y);
+        canvas.Scale((float)_zoom);
+        var transform = new PanelViewportTransform(_zoom, _pan.X, _pan.Y, _zoom, _zoom, _zoom);
+        var runtime = CreateRuntimeState(outputs);
+        try
+        {
+            if (FaceActive)
+            {
+                if (faceDocument is null) return false;
+                FaceRenderer.Render(canvas, faceDocument, runtime, transform);
+            }
+            else if (panelModel is not null)
+            {
+                PanelRenderer.Render(canvas, panelModel.Elements, runtime, transform);
+            }
+            else return false;
+            canvas.Restore();
+            using var image = surface.Snapshot();
+            using var rendered = SKBitmap.FromImage(image);
+            if (rendered is null) return false;
+            var bitmap = new WriteableBitmap(new PixelSize(width, height), new Vector(96 * scale, 96 * scale),
+                PixelFormat.Bgra8888, AlphaFormat.Premul);
+            using (var framebuffer = bitmap.Lock())
+            {
+                var bytesPerRow = width * 4;
+                var rowBuffer = new byte[bytesPerRow];
+                for (var row = 0; row < height; row++)
+                {
+                    Marshal.Copy(IntPtr.Add(rendered.GetPixels(), row * rendered.RowBytes), rowBuffer, 0, bytesPerRow);
+                    Marshal.Copy(rowBuffer, 0, IntPtr.Add(framebuffer.Address, row * framebuffer.RowBytes), bytesPerRow);
+                }
+            }
+            _specialistBitmap?.Dispose();
+            _specialistBitmap = bitmap;
+            _specialistBitmapKey = cacheKey;
+            context.DrawImage(_specialistBitmap, new Rect(Bounds.Size));
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or ArgumentException or InvalidOperationException or NotSupportedException)
+        {
+            _warnings.Add($"Specialist rendering: {exception.Message}");
+            return FaceActive ? faces?.Document is not null : session.RenderDocument is not null;
+        }
+    }
+
+    private static string ComputeRendererAssetFingerprint(Panel2DDocumentModel? panel, FaceDocumentModel? face, string? projectDirectory)
+    {
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Add(string? path) { if (!string.IsNullOrWhiteSpace(path)) paths.Add(path.Trim()); }
+        if (panel is not null)
+        {
+            foreach (var element in panel.Elements)
+            {
+                Add(element.AssetPath); Add(element.SecondaryAssetPath); Add(element.SourceOffImageAssetPath);
+                Add(element.ReelLampTransmissionMaskAssetPath);
+            }
+        }
+        if (face is not null)
+        {
+            foreach (var element in face.Elements)
+            {
+                switch (element)
+                {
+                    case FaceArtworkElement artwork: Add(artwork.AssetPath); break;
+                    case FaceLampWindowElement lamp: Add(lamp.BulbMaskAssetPath); break;
+                    case FaceReelMount reel: Add(reel.AssetPath); Add(reel.ReelLampTransmissionMaskAssetPath); break;
+                }
+            }
+            Add(face.MaskLayer?.AssetPath); Add(face.MaskLayer?.AuthoredAssetPath);
+            Add(face.Artwork?.CorrectionInputAssetPath); Add(face.Artwork?.BaseAssetPath); Add(face.Artwork?.OutputAssetPath);
+            Add(face.Artwork?.Override?.AssetPath);
+            var runtimeAssets = face.RuntimeRenderAssets;
+            Add(runtimeAssets?.ArtworkPath); Add(runtimeAssets?.MaskPath); Add(runtimeAssets?.TrayIdPath);
+            Add(runtimeAssets?.LampIds0Path); Add(runtimeAssets?.LampWeights0Path); Add(runtimeAssets?.LampIds1Path);
+            Add(runtimeAssets?.LampWeights1Path); Add(runtimeAssets?.TrayIdDebugPath); Add(runtimeAssets?.LampWeightsDebugPath);
+        }
+
+        var builder = new StringBuilder();
+        foreach (var asset in paths.OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+        {
+            string resolved;
+            try { resolved = Path.IsPathRooted(asset) ? Path.GetFullPath(asset) : projectDirectory is null ? asset : Path.GetFullPath(Path.Combine(projectDirectory, asset.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar))); }
+            catch (ArgumentException) { resolved = asset; }
+            builder.Append(resolved).Append('|');
+            try
+            {
+                var info = new FileInfo(resolved);
+                builder.Append(info.Exists ? info.Length : -1).Append('|').Append(info.Exists ? info.LastWriteTimeUtc.Ticks : 0);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+            { builder.Append("unavailable"); }
+            builder.Append('\n');
+        }
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
+    }
+
+    private static MachineRuntimeState CreateRuntimeState(RuntimeOutputSnapshot outputs)
+    {
+        var state = new MachineRuntimeState { FruitMachinePlatform = outputs.Platform };
+        foreach (var (id, value) in outputs.LampIntensities)
+        {
+            if (MachineObjectReference.TryParse(id, out var reference) && reference.Kind == MachineObjectKind.Lamp) state.SetLampIntensity(reference, value);
+            else state.SetLampIntensity(id, value);
+        }
+        foreach (var (id, value) in outputs.ReelPositions)
+        {
+            if (MachineObjectReference.TryParse(id, out var reference) && reference.Kind == MachineObjectKind.Reel) state.SetReelPositionIfChanged(reference, value);
+            else state.SetReelPositionIfChanged(id, value);
+        }
+        foreach (var (id, value) in outputs.TemporaryReelOffsets) state.SetTemporaryReelOffsetIfChanged(id, value);
+        foreach (var (id, masks) in outputs.SegmentMasks)
+        {
+            if (MachineObjectReference.TryParse(id, out var reference)) state.SetSegmentCellMasksIfChanged(reference, masks.ToArray());
+            else state.SetSegmentCellMasksIfChanged(id, masks.ToArray());
+        }
+        foreach (var (id, levels) in outputs.SegmentBrightness)
+        {
+            if (MachineObjectReference.TryParse(id, out var reference)) state.SetSegmentCellBrightnessIfChanged(reference, levels.ToArray());
+            else state.SetSegmentCellBrightnessIfChanged(id, levels.ToArray());
+        }
+        foreach (var (id, dots) in outputs.VfdDots) state.SetVfdDotMatrixDotsIfChanged(id, dots.ToArray());
+        return state;
+    }
+
+    private void DrawSelection(DrawingContext context, string id, Rect rectangle)
+    {
+        if (!SelectedIds.Contains(id)) return;
+        var selection = Brush("SelectionColor");
+        context.DrawRectangle(null, new Pen(selection, 2), rectangle);
+        foreach (var corner in new[] { rectangle.TopLeft, rectangle.TopRight, rectangle.BottomLeft, rectangle.BottomRight })
+            context.FillRectangle(selection, new Rect(corner - new Vector(3, 3), new Size(6, 6)));
     }
 
     private IBrush Brush(string key) => Application.Current!.TryGetResource(key, Application.Current.ActualThemeVariant, out var value) ? value switch

@@ -42,6 +42,9 @@ public sealed partial class FaceAuthoringSession
     public string FaceTitle => Current?.Title ?? string.Empty;
     public FaceArtworkModel? CurrentArtwork => Current is null ? null : FaceDocumentStorage.ToModel(Current).Artwork;
     public FaceDocumentModel? CurrentDocument => Current is null ? null : FaceDocumentStorage.ToModel(Current);
+    /// <summary>Full read-only native model for renderers; authored session state remains the source of truth.</summary>
+    public FaceDocumentModel? Document => Current is null ? null : FaceDocumentStorage.ToModel(Current);
+    internal int RenderRevision => Current is null ? 0 : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(Current);
     public string? SelectedId => _selectedId;
     public bool IsDirty => Current is not null && FaceDocumentStorage.SerializePayload(Current) != _savedPayload;
     public bool CanUndo => Current is not null && _historyIndex > 0;

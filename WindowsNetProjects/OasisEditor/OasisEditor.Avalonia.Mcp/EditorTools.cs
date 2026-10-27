@@ -55,5 +55,6 @@ public sealed partial class EditorTools(AuthoringSession session, FaceAuthoringS
 
     [McpServerTool(Name = "capture_workspace", ReadOnly = true), Description("Render the actual Avalonia docking workspace and 2D viewport to a PNG with headless Skia. No desktop capture, focus or native window. Themes System/Light/Dark.")]
     public Task<CallToolResult> Capture(CancellationToken cancellationToken, int width = 1400, int height = 900, string theme = "Dark")
-        => ui.Invoke(() => new CallToolResult { Content = [ImageContentBlock.FromBytes(capture.Capture(width, height, theme), "image/png")] }, cancellationToken);
+        => ui.Invoke(() => new CallToolResult { Content = [ImageContentBlock.FromBytes(capture.Capture(width, height, theme), "image/png"),
+            .. capture.CaptureFloatingWindows().Select(png => ImageContentBlock.FromBytes(png, "image/png"))] }, cancellationToken);
 }
