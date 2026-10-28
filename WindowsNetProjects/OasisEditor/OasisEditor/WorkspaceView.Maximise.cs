@@ -18,7 +18,8 @@ public sealed record WorkspaceTabPresentation(string? MaximisedPaneId, bool WasF
 public sealed partial class WorkspaceView
 {
     private sealed record MaximisedTab(IDockable Pane, Control Surface, Grid? MainGrid,
-        Window? FloatingHost, object? OriginalContent, IDataTemplate? OriginalTemplate, WindowState WindowState, PixelPoint Position, Size Size, NativeAssetEditor? FocusedAsset);
+        Window? FloatingHost, object? OriginalContent, IDataTemplate? OriginalTemplate, WindowState WindowState, PixelPoint Position, Size Size, NativeAssetEditor? FocusedAsset,
+        DockPanePresenter? OriginalPresenter = null, bool DockWasVisible = true);
     private MaximisedTab? _maximisedTab;
     private readonly HashSet<Window> _tabGestureHosts=[];
     private static readonly ConditionalWeakTable<Window,WorkspaceView> TabHosts=new();
@@ -175,7 +176,7 @@ public sealed partial class WorkspaceView
         header.DoubleTapped+=(_,e)=>{e.Handled=true;RestoreMaximisedTab();};
         header.ContextRequested+=(_,e)=>{e.Handled=true;header.ContextMenu=CreateTabContextMenu(paneId);header.ContextMenu.Open(header);};
         ToolTip.SetTip(header,"Double-click to restore tab");surface.Children.Add(header);
-        var presenter=new DockPanePresenter();
+        var presenter=new DockPanePresenter { IsTemporaryHost = true };
         presenter.Bind(DockPanePresenter.PaneContextProperty,new Binding(nameof(IDockable.Context)){Source=pane});
         Grid.SetRow(presenter,1);surface.Children.Add(presenter);
         if(floating is not null)
@@ -188,8 +189,11 @@ public sealed partial class WorkspaceView
         else
         {
             var grid=(Grid)_dock.Parent!;
-            _maximisedTab=new(pane,surface,grid,null,null,null,default,default,default,previousFocus);
-            grid.Children.Remove(_dock);Grid.SetRow(surface,2);grid.Children.Add(surface);
+            var originalPresenter=(pane.Context as Control)?.GetVisualAncestors().OfType<DockPanePresenter>().FirstOrDefault();
+            _maximisedTab=new(pane,surface,grid,null,null,null,default,default,default,previousFocus,originalPresenter,_dock.IsVisible);
+            // Keep tab strips attached: recreating a selected nonfirst tab on
+            // restore lets Dock's selection handlers focus an unrelated group.
+            _dock.IsVisible=false;Grid.SetRow(surface,2);grid.Children.Add(surface);
         }
         StateChanged?.Invoke();return InspectTabPresentation();
     }
@@ -205,7 +209,16 @@ public sealed partial class WorkspaceView
             if(saved.WindowState==WindowState.Normal){host.Position=saved.Position;host.Width=saved.Size.Width;host.Height=saved.Size.Height;}
         }
         else if(saved.MainGrid is {} grid)
-        {grid.Children.Remove(saved.Surface);grid.Children.Add(_dock);}
+        {
+            grid.Children.Remove(saved.Surface);
+            _dock.IsVisible=saved.DockWasVisible;
+            saved.OriginalPresenter?.RestorePresentation();
+            // A previously inactive tab can acquire its deferred presenter only
+            // after maximise, so also reclaim through its current visible host.
+            foreach(var presenter in _dock.GetVisualDescendants().OfType<DockPanePresenter>()
+                .Where(p=>p.IsEffectivelyVisible && ReferenceEquals(p.PaneContext,saved.Pane.Context)).ToArray())
+                presenter.RestorePresentation();
+        }
         if(saved.FocusedAsset is {} focused && _nativeDocuments.ContainsKey(focused.Asset.Id))FocusNativeEditor(focused);
         FocusRestoredTab(saved.Pane);
         StateChanged?.Invoke();
