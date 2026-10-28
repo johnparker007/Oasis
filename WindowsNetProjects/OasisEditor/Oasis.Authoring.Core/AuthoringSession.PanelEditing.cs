@@ -55,6 +55,18 @@ public sealed partial class AuthoringSession
         return true;
     }
 
+    public bool SetSelectedObjectState(bool? visible = null, bool? locked = null)
+    {
+        var document = RequireDocument();
+        var indices = SelectedIndices(document, _selectedIds);
+        var elements = (PanelElementFile[])document.Elements.Clone();
+        foreach (var index in indices)
+            elements[index] = elements[index] with { IsVisible = visible ?? elements[index].IsVisible, LockTransform = locked ?? elements[index].LockTransform };
+        if (elements.SequenceEqual(document.Elements)) return false;
+        Commit(document with { Elements = elements });
+        return true;
+    }
+
     public bool DeleteSelected()
     {
         var document = RequireDocument();

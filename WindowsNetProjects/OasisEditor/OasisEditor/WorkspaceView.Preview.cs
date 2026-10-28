@@ -39,6 +39,7 @@ public sealed partial class WorkspaceView
         _previewTimer.Tick += async (_, _) =>
         {
             _previewStatus.Text = Preview.State.ToString();
+            RefreshMenuState();
             if (Preview.Backend is null) return;
             if (++_previewCheckTicks % 30 == 0)
             {

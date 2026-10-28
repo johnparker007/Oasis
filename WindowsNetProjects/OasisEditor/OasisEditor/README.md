@@ -44,6 +44,36 @@ domain/rendering/emulation tests now live in `Oasis.Authoring.RegressionTests`.
 > are historical records, not validation of the current consolidated checkout. Re-run
 > the relevant checks before reporting present-day results.
 
+## Main menus
+
+The main menu hierarchy is restored from the last WPF `MainWindow.xaml` at commit
+`1fa36dbf`, with its New asset submenu named **Create** as requested:
+
+- **File**: project opening/creation, Create (Panel2D, Face, Cabinet3D, Machine,
+  Reel, Prefab), Import (MFME FML, GLB), Player build/preview/export, asset saves,
+  close and Exit.
+- **Face**: Panel2D source shapes, Face generation/validation, and grouped artwork,
+  override, illumination and build operations.
+- **Edit**: undo/redo, clipboard, duplicate/delete, Arrange, Object locking/visibility,
+  Preferences and Project Settings.
+- **Window**: Assets, Hierarchy, Inspector, Output, Play View, Input Map, floating
+  assets, workspace layout, Theme and Oasis Library tools.
+- **Emulation**: Start, Stop, checked Pause/Unthrottled controls, Reset and native
+  library configuration. Commands target the active Machine and reflect preview state.
+
+Project Settings shows the real project identity/paths; Machine settings remain on
+Machine documents. Input Map shows authored inputs/diagnostics and provides access
+to the Machine input editor and live native input controls. The current production
+sessions and document guards back the menu actions. Floating editors retain asset
+menus while project-wide operations remain disabled.
+
+`inspect_menus` exposes the actual menu tree and state through MCP. `capture_menu`
+returns real open popups in the isolated headless workspace, including nested menus:
+
+```powershell
+python WindowsNetProjects/OasisEditor/OasisEditor.Mcp/verify_menus.py --output <capture-directory>
+```
+
 ## Capabilities
 
 - Unity-inspired docking workspace with Hierarchy, Inspector, searchable Project

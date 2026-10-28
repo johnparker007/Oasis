@@ -24,11 +24,6 @@ public sealed partial class WorkspaceView
 
     private void ConfigureAssetWindowChrome(MenuItem file,MenuItem create,MenuItem windowMenu,StackPanel toolbar)
     {
-        var allowed=new HashSet<string>(StringComparer.Ordinal){"Save","Import FML layout…","Import Face artwork…","Import artwork override…",
-            "Use Panel2D artwork source","Use Panel2D lamp mask","Create artwork override from Base","Import Face lamp mask…","Build Face","Build Face runtime assets","Rebuild Face components from source…","Enable artwork override","Disable artwork override","Remove artwork override",
-            "Artwork registration and processing…","Rebuild Face artwork","Face generation settings…","Validate Face",
-            "Build Player machine…","Export portable Player package…","Launch in Oasis Player…","Emulation preview"};
-        foreach(var item in file.Items.OfType<MenuItem>().Where(m=>!allowed.Contains(m.Header?.ToString()??"")).ToArray())file.Items.Remove(item);
         foreach(var item in create.Items.OfType<MenuItem>().Where(m=>m.Header?.ToString() is "Reel…" or "Generate Face from selected source…").ToArray())create.Items.Remove(item);
         foreach(var item in windowMenu.Items.OfType<MenuItem>().Where(m=>m.Header?.ToString() is "Save workspace" or "Restore workspace").ToArray())windowMenu.Items.Remove(item);
         if(_sceneToolbarBorder is {} sceneBar && sceneBar.Child is not ScrollViewer)
