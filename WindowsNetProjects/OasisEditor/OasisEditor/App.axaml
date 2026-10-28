@@ -1,6 +1,7 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:dock="using:Dock.Avalonia.Themes.Fluent"
+             xmlns:dockControls="using:Dock.Avalonia.Controls"
              x:Class="OasisEditor.Avalonia.EditorApplication"
              RequestedThemeVariant="Dark">
   <Application.Resources>
@@ -55,6 +56,21 @@
       <Setter Property="Padding" Value="9,3" />
       <Setter Property="CornerRadius" Value="2" />
       <Setter Property="FontSize" Value="12" />
+    </Style>
+    <!-- Dock supplies the vector close glyph and command. Keep compact tab buttons
+         clear of the general authoring-button padding above. -->
+    <Style Selector="dockControls|DocumentTabStripItem Button">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="(AutomationProperties.Name)" Value="Close document" />
+      <Setter Property="ToolTip.Tip" Value="Close document" />
+    </Style>
+    <Style Selector="dockControls|DocumentTabStripItem Path#PART_ClosePath">
+      <Setter Property="Width" Value="10" />
+      <Setter Property="Height" Value="10" />
     </Style>
     <Style Selector="TextBox">
       <Setter Property="MinHeight" Value="26" />
