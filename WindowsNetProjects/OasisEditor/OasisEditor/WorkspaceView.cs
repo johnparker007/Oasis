@@ -449,6 +449,23 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
 
 internal sealed class WorkspaceDockFactory(Control hierarchy, Control project, Control inspector, Func<Document> document,bool assetWindow=false, Control? output=null) : Factory
 {
+    public event Action<Window>? HostWindowCreated;
+
+    public override void InitDockWindow(IDockWindow window, IDockable owner, IHostWindow host)
+    {
+        // Wire gestures before the first native input, including restored hosts.
+        if (host is Window nativeWindow) HostWindowCreated?.Invoke(nativeWindow);
+        base.InitDockWindow(window, owner, host);
+        if (host is Window floating && window.Layout is {} layout)
+        {
+            // A short dock allocation must not become a floating window smaller
+            // than its tool group's minimum (which can clip the title offscreen).
+            foreach (var pane in WorkspaceLayoutState.LeafMap(layout).Values)
+                if (pane.Owner is IToolDock dock && double.IsFinite(dock.MinHeight))
+                    floating.MinHeight = Math.Max(floating.MinHeight, dock.MinHeight);
+        }
+    }
+
     public override IRootDock CreateLayout()
     {
         var source = document();
@@ -461,7 +478,7 @@ internal sealed class WorkspaceDockFactory(Control hierarchy, Control project, C
         ToolDock ProjectPane()
         {
             var projectTool = new Tool { Id = "Project", Title = "Project", Context = project, CanClose = true };
-            var dock = new ToolDock { Proportion = .25, MinHeight = 230, ActiveDockable = projectTool, VisibleDockables = CreateList<IDockable>(projectTool), CanClose = true, CanCloseLastDockable = true };
+            var dock = new ToolDock { Proportion = .25, MinHeight = 280, ActiveDockable = projectTool, VisibleDockables = CreateList<IDockable>(projectTool), CanClose = true, CanCloseLastDockable = true };
             if (output is not null) dock.VisibleDockables.Add(new Tool { Id = "Output", Title = "Output", Context = output, CanClose = true });
             return dock;
         }

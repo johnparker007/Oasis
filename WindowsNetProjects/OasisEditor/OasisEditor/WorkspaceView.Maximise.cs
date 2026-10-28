@@ -33,32 +33,39 @@ public sealed partial class WorkspaceView
 
     private static readonly IDisposable TabContextHandler=Control.ContextRequestedEvent.AddClassHandler<Control>((control,e)=>
     {
-        if(TabAt(e.Source) is not {} tab || TopLevel.GetTopLevel(tab.Header) is not Window window)return;
+        if(TabAt(e.Source, includeButtons:true) is not {} tab || TopLevel.GetTopLevel(tab.Header) is not Window window)return;
         if(TabHosts.TryGetValue(window,out var workspace))workspace.TabContextRequested(control,e);
     });
 
     private void InitializeTabPresentation()
     {
         AttachedToVisualTree+=(_,_)=>{if(TopLevel.GetTopLevel(this) is Window host)AttachTabGestures(host);};
+        _factory.HostWindowCreated+=AttachTabGestures;
         _factory.WindowOpened+=(_,e)=>{if(e.Window.Host is Window host)AttachTabGestures(host);};
-        _factory.WindowClosed+=(_,e)=>{if(e.Window.Host is Window host)DetachTabGestures(host);};
+        // Dock may report a logical window close when its presentation is
+        // swapped for maximise. Keep gestures until the actual Window.Closed.
         _factory.DockableClosing+=(_,e)=>{if(ReferenceEquals(_maximisedTab?.Pane,e.Dockable))e.Cancel=true;};
     }
     private void AttachTabGestures(Window host)
     {
         if(!_tabGestureHosts.Add(host))return;
         TabHosts.Add(host,this);
+        host.AddHandler(PointerPressedEvent,TabPointerPressed,RoutingStrategies.Tunnel);
         host.AddHandler(PointerReleasedEvent,TabPointerReleased,RoutingStrategies.Tunnel);
         host.Closing+=MaximisedHostClosing;
-        host.Closed+=(_,_)=>DetachTabGestures(host);
+        host.Closed+=TabHostClosed;
     }
     private void DetachTabGestures(Window host)
     {
         if(!_tabGestureHosts.Remove(host))return;
         TabHosts.Remove(host);
         host.Closing-=MaximisedHostClosing;
+        host.Closed-=TabHostClosed;
+        host.RemoveHandler(PointerPressedEvent,TabPointerPressed);
         host.RemoveHandler(PointerReleasedEvent,TabPointerReleased);
     }
+    private void TabHostClosed(object? sender,EventArgs e)
+    {if(sender is Window host)DetachTabGestures(host);}
     private void MaximisedHostClosing(object? sender,global::Avalonia.Controls.WindowClosingEventArgs e)
     {
         if(_maximisedTab?.FloatingHost is not {} host || !ReferenceEquals(sender,host))return;
@@ -66,12 +73,12 @@ public sealed partial class WorkspaceView
         // WindowClosing runs after that destructive OnClose callback.
         e.Cancel=true;
     }
-    private static (IDockable Pane,Control Header)? TabAt(object? source)
+    private static (IDockable Pane,Control Header)? TabAt(object? source,bool includeButtons=false)
     {
         var inGrip=false;
         for(var visual=source as Visual;visual is not null;visual=visual.GetVisualParent())
         {
-            if(visual is Button)return null;
+            if(visual is Button && !includeButtons)return null;
             if(visual is not Control control)continue;
             if(control.Name=="PART_Grip")inGrip=true;
             if(control is ToolChromeControl && !inGrip)return null;
@@ -87,46 +94,39 @@ public sealed partial class WorkspaceView
         if(TabAt(e.Source) is not {} tab)return;
         e.Handled=true;Try(()=>ToggleTabMaximised(tab.Pane.Id));
     }
+    private void TabPointerPressed(object? sender,PointerPressedEventArgs e)
+    {
+        if(!e.GetCurrentPoint(sender as Control).Properties.IsLeftButtonPressed)return;
+        for(var visual=e.Source as Visual;visual is not null;visual=visual.GetVisualParent())
+        {
+            if(visual is not Button button)continue;
+            if(button.Name is not ("PART_MenuButton" or "PART_MaximizeRestoreButton"))return;
+            var chrome=button.GetVisualAncestors().OfType<ToolChromeControl>().FirstOrDefault();
+            if(chrome?.DataContext is not IDock {ActiveDockable:{} pane})return;
+            e.Handled=true;
+            if(button.Name=="PART_MenuButton")OpenTabMenu(pane,chrome);
+            else Try(()=>ToggleTabMaximised(pane.Id));
+            return;
+        }
+    }
     private void TabPointerReleased(object? sender,PointerReleasedEventArgs e)
     {
-        if(e.InitialPressMouseButton!=MouseButton.Right || TabAt(e.Source) is not {} tab)return;
+        if(e.InitialPressMouseButton!=MouseButton.Right || TabAt(e.Source,includeButtons:true) is not {} tab)return;
         e.Handled=true;OpenTabMenu(tab.Pane,tab.Header);
     }
     private void TabContextRequested(object? sender,ContextRequestedEventArgs e)
     {
-        if(TabAt(e.Source) is not {} tab)return;
+        if(TabAt(e.Source,includeButtons:true) is not {} tab)return;
         e.Handled=true;OpenTabMenu(tab.Pane,tab.Header);
     }
     private void OpenTabMenu(IDockable pane,Control header)
     {
-        var native=header switch
-        {
-            DocumentTabStripItem document=>document.DocumentContextMenu,
-            ToolTabStripItem tool=>tool.TabContextMenu,
-            _=>null
-        };
         var menu=CreateTabContextMenu(pane.Id);
-        if(native is not null)
-        {
-            native.DataContext=pane;
-            // Dock shares these template resources; copy the actions into a fresh
-            // popup rather than reparenting or mutating its stateful menu controls.
-            foreach(var item in native.Items)
-            {
-                if(item is MenuItem action && action.Header?.ToString() is "Close" or "Close Tab" or "Float")continue;
-                if(item is Control control)menu.Items.Add(CloneTabMenuItem(control));
-            }
-        }
+        // Dock's themed menu items acquire headers and commands from their
+        // templates. Cloning them produces blank rows and stale command state.
+        // Every tab surface uses this same explicit set of workspace actions.
         header.ContextMenu=menu;
         menu.Open(header);
-    }
-    private static Control CloneTabMenuItem(Control item)
-    {
-        if(item is not MenuItem original)return new Separator{IsVisible=item.IsVisible};
-        var copy=new MenuItem{Header=original.Header,Command=original.Command,CommandParameter=original.CommandParameter,
-            IsEnabled=original.IsEnabled,IsVisible=original.IsVisible,ToggleType=original.ToggleType,IsChecked=original.IsChecked};
-        foreach(var child in original.Items.OfType<Control>())copy.Items.Add(CloneTabMenuItem(child));
-        return copy;
     }
     public WorkspaceTabPresentation InspectTabPresentation()=>_documentOwner?.InspectTabPresentation()
         ??new(_maximisedTab?.Pane.Id,_maximisedTab?.FloatingHost is not null);
@@ -140,9 +140,9 @@ public sealed partial class WorkspaceView
         var maximise=new MenuItem{Name="OasisMaximiseTab",Header="Maximise",ToggleType=MenuItemToggleType.CheckBox,IsChecked=maximised};
         maximise.Click+=(_,_)=>{menu.Close();Try(()=>ToggleTabMaximised(paneId));};
         var close=new MenuItem{Header="Close Tab",IsEnabled=!maximised && pane.CanClose};
-        close.Click+=(_,_)=>Try(()=>_factory.CloseDockable(pane));
-        var floating=new MenuItem{Header="Float",IsEnabled=!maximised && pane.CanFloat};
-        floating.Click+=(_,_)=>Try(()=>{RestoreMaximisedTab();_factory.FloatDockable(pane);});
+        close.Click+=(_,_)=>{menu.Close();Try(()=>_factory.CloseDockable(pane));};
+        var floating=new MenuItem{Header="Float",IsEnabled=!maximised && pane.CanFloat && !IsFloatingDockable(pane)};
+        floating.Click+=(_,_)=>{menu.Close();Try(()=>{RestoreMaximisedTab();_factory.FloatDockable(pane);});};
         var add=new MenuItem{Header="Add Tab",IsEnabled=!maximised};
         foreach(var id in StandardWorkspaceTabs)
         {

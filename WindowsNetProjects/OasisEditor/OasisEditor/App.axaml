@@ -45,6 +45,12 @@
   <Application.Styles>
     <FluentTheme />
     <dock:DockFluentTheme />
+    <!-- Dock repeats a tool group's minimum on its nested chrome and content.
+         Keep the minimum on ToolDockControl only, so the title and bottom tabs
+         fit inside that allocation rather than pushing the tabs underneath status. -->
+    <Style Selector="dockControls|ToolChromeControl, dockControls|ToolControl">
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
     <Style Selector="Window">
       <Setter Property="FontFamily" Value="avares://Avalonia.Fonts.Inter/Assets#Inter" />
       <Setter Property="FontSize" Value="12" />

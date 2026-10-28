@@ -20,6 +20,7 @@ public sealed partial class WorkspaceView
                 throw new InvalidOperationException("The pane is not owned by a dock.");
             _factory.MoveDockable(sourceDock, targetDock, pane, target);
             _factory.SetActiveDockable(pane);
+            CloseEmptyNativeHosts();
         }
         else throw new ArgumentException("Use float or tab.", nameof(placement));
         UpdateLayout();

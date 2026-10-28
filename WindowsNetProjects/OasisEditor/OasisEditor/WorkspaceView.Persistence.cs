@@ -279,7 +279,7 @@ public sealed partial class WorkspaceView
         _factory.InitLayout(layout);
         // Dock container size constraints are runtime layout rules, absent from schema-1 snapshots.
         if (WorkspaceLayoutState.LeafMap(layout).TryGetValue("Project", out var projectPane) && projectPane.Owner is IDock projectDock)
-            projectDock.MinHeight = Math.Max(230, double.IsNaN(projectDock.MinHeight) ? 0 : projectDock.MinHeight);
+            projectDock.MinHeight = Math.Max(280, double.IsNaN(projectDock.MinHeight) ? 0 : projectDock.MinHeight);
         foreach (var floating in layout.Windows ?? []) _factory.InitDockWindow(floating, layout, new Dock.Avalonia.Controls.HostWindow());
         _dock.Layout = layout;
         if(WorkspaceLayoutState.LeafMap(layout).TryGetValue("Authoring",out var authoring)) _document=(Document)authoring;

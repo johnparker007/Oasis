@@ -297,7 +297,7 @@ public sealed class WorkspaceMaximiseTests
     [Theory]
     [InlineData("DocumentTabStripItem", "AssetDocument")]
     [InlineData("ToolTabStripItem", "Project")]
-    public async Task NativeTabRightClickKeepsDockMenuAndMaximiseRestoresFromOverlay(string targetKind, string paneId)
+    public async Task NativeTabRightClickUsesWorkspaceMenuAndMaximiseRestoresFromOverlay(string targetKind, string paneId)
     {
         await HeadlessTestHost.RunAsync(async () =>
         {
@@ -323,7 +323,7 @@ public sealed class WorkspaceMaximiseTests
                 var addTab = menuItems.Single(item => Equals(item.Header, "Add Tab"));
                 Assert.True(addTab.IsEnabled);
                 Assert.Equal(WorkspaceView.StandardWorkspaceTabs, addTab.Items.OfType<MenuItem>().Select(item => item.Header?.ToString()));
-                Assert.All(menuItems.Where(i=>i.Items.Count==0 && i.IsVisible && i.Header?.ToString() is not ("Maximise" or "Close Tab" or "Float")),i=>Assert.NotNull(i.Command));
+                Assert.Equal(new[]{"Maximise","Add Tab","Close Tab","Float"}, menuItems.Select(item=>item.Header?.ToString()));
                 maximise.RaiseEvent(new global::Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
                 Assert.Equal(pane.Id, view.InspectTabPresentation().MaximisedPaneId);
 

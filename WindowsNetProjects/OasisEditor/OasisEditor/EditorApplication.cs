@@ -7,6 +7,9 @@ using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.Controls.Templates;
+using Avalonia.Input;
+using Avalonia.VisualTree;
+using Dock.Avalonia.Controls;
 using Dock.Model.Core;
 using Avalonia.Data;
 
@@ -113,6 +116,67 @@ public sealed class WorkspaceCapture : IDisposable
         using var stream = new MemoryStream();
         bitmap.Save(stream, new PngBitmapEncoderOptions());
         return stream.ToArray();
+    }
+
+    /// <summary>Opens the tab menu through the live Dock tab's headless pointer path.</summary>
+    public ContextMenu OpenTabMenu(string paneId)
+    {
+        if (!Program.IsHeadless)
+            throw new InvalidOperationException("Live tab menu inspection requires the isolated headless host.");
+
+        // Redocking can defer creation of the destination tab strip until the
+        // next rendered frame. Inspect the same fully rendered surface we capture.
+        _ = Capture(Math.Clamp((int)_window.ClientSize.Width, 960, 1920),
+            Math.Clamp((int)_window.ClientSize.Height, 640, 1200),
+            _window.ActualThemeVariant == ThemeVariant.Light ? "Light" : "Dark");
+        _ = CaptureFloatingWindows();
+
+        // Validate the id before searching the rendered surfaces, and account for a
+        // tab temporarily represented by the workspace's maximised surface.
+        _ = View.CreateTabContextMenu(paneId);
+        var maximised = View.InspectTabPresentation().MaximisedPaneId == paneId;
+        var hosts = new[] { _window }.Concat(View.FloatingWorkspaceWindows).Distinct().ToArray();
+        foreach (var host in hosts)
+        {
+            host.UpdateLayout();
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick(2);
+            Control? target = null;
+            if (maximised)
+                target = host.GetVisualDescendants().OfType<Control>().FirstOrDefault(c => c.Name == "MaximisedTabHeader");
+
+            target ??= host.GetVisualDescendants().OfType<Control>()
+                .FirstOrDefault(c => c.IsEffectivelyVisible && c.Bounds.Width > 0 && c.Bounds.Height > 0
+                    && c is DocumentTabStripItem or ToolTabStripItem
+                    && (c.DataContext as IDockable)?.Id == paneId);
+
+            Control? grip = null;
+            if (target is null)
+            {
+                grip = host.GetVisualDescendants().OfType<Control>()
+                    .FirstOrDefault(c => c.IsEffectivelyVisible && c.Bounds.Width > 0 && c.Bounds.Height > 0 && c.Name == "PART_Grip"
+                        && c.GetVisualAncestors().OfType<ToolChromeControl>()
+                            .Any(chrome => DockableId(chrome.DataContext) == paneId));
+                if (grip is not null)
+                    target = grip.GetVisualAncestors().OfType<ToolChromeControl>().FirstOrDefault();
+            }
+
+            if (target is null) continue;
+            var inputTarget = grip ?? target;
+            var point = inputTarget.TranslatePoint(
+                new Point(inputTarget.Bounds.Width / 2, inputTarget.Bounds.Height / 2), host);
+            if (point is null) continue;
+            host.MouseDown(point.Value, MouseButton.Right);
+            host.MouseUp(point.Value, MouseButton.Right);
+            Dispatcher.UIThread.RunJobs();
+            var menu = target.ContextMenu;
+            if (menu?.IsOpen == true) return menu;
+        }
+
+        throw new InvalidOperationException($"No visible live tab menu opened for '{paneId}'.");
+
+        static string? DockableId(object? context)
+            => context is IDockable dockable ? dockable is IDock dock ? dock.ActiveDockable?.Id : dockable.Id : null;
     }
 
     public async Task<byte[]> CaptureFaceArtworkEditor(AuthoringSession session, FaceAuthoringSession faces, bool calibrationStage, string theme)

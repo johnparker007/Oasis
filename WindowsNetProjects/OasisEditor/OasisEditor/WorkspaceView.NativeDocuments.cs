@@ -324,7 +324,8 @@ public sealed partial class WorkspaceView
     }
     private void RedockNativeEditor(NativeAssetEditor entry)
     {
-        var target=WorkspaceLayoutState.LeafMap(_dock.Layout!).Values.FirstOrDefault(p => p is IDocument && !ReferenceEquals(p,entry.Document) && !IsFloatingDockable(p));
+        var target=_nativeDocuments.Values.Select(d=>d.Document)
+            .FirstOrDefault(p=>!ReferenceEquals(p,entry.Document) && !IsFloatingDockable(p));
         var mainDock = target?.Owner as IDock ?? _mainAssetDock;
         if(mainDock is null) throw new InvalidOperationException("No main document group is available.");
         _nativeLayoutOperation=true;
