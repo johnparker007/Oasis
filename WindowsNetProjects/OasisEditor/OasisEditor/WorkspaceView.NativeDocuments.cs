@@ -16,6 +16,7 @@ public sealed partial class WorkspaceView
         public WorkspaceAssetDocument Asset { get; } = asset;
         public WorkspaceView Editor { get; } = editor;
         public Document Document { get; } = document;
+        public long Revision { get; set; }
         public FloatingAssetState? ViewState;
     }
     private readonly bool _isDocumentEditor;
@@ -56,7 +57,8 @@ public sealed partial class WorkspaceView
         {
             if (_nativeDisposing || _nativeLayoutOperation) return;
             var entry = _nativeDocuments.Values.FirstOrDefault(d => ReferenceEquals(d.Document, e.Dockable));
-            if (entry?.Asset.IsDirty == true) { e.Cancel = true; entry.Editor.SetStatus("Save or undo this asset's edits before closing it."); }
+            if (entry?.Asset.IsDirty == true && !CanDiscardNativeAsset(entry))
+            { e.Cancel = true; if(!ReferenceEquals(_maximisedTab?.Pane,entry.Document))QueueNativeCloseRequest(entry.Asset.Id); }
         };
         _factory.DockableClosed += (_, e) =>
         {
@@ -217,7 +219,8 @@ public sealed partial class WorkspaceView
                 entry.ViewState = child.CaptureAssetView(new(asset.Kind, asset.Path, asset.LibraryRoot is null ? "Project" : "Library", asset.IsDirty, true, asset.LibraryRoot));
             RefreshNativeDocumentTitles(); QueueAssetDocumentSync(); StateChanged?.Invoke();
         }
-        child.StateChanged += ChildChanged; child._session.Changed += ChildChanged; child.Faces.Changed += ChildChanged; child.Machines.Changed += ChildChanged; child.Cabinets.Changed += ChildChanged; child.Prefabs.Changed += ChildChanged; child.Reels.Changed += ChildChanged;
+        void AuthoringChanged() { entry.Revision++; ChildChanged(); }
+        child.StateChanged += ChildChanged; child._session.Changed += AuthoringChanged; child.Faces.Changed += AuthoringChanged; child.Machines.Changed += AuthoringChanged; child.Cabinets.Changed += AuthoringChanged; child.Prefabs.Changed += AuthoringChanged; child.Reels.Changed += AuthoringChanged;
         child.AddHandler(PointerPressedEvent, (_, _) => { FocusNativeEditor(entry); _factory.SetActiveDockable(document); }, RoutingStrategies.Tunnel, handledEventsToo: true);
         var target = _mainAssetDock;
         target ??= _document.Owner as IDocumentDock ?? throw new InvalidOperationException("No document dock is available.");
@@ -307,7 +310,9 @@ public sealed partial class WorkspaceView
     }
     private void RemoveNativeEditor(NativeAssetEditor entry)
     {
-        _nativeDocuments.Remove(entry.Asset.Id); _assetRegistry.RemoveClean(entry.Asset.Kind,entry.Asset.Path,entry.Asset.LibraryRoot);
+        _nativeDocuments.Remove(entry.Asset.Id);
+        if(_discardCloseIds.Contains(entry.Asset.Id))_assetRegistry.RemoveDiscarded(entry.Asset.Kind,entry.Asset.Path,entry.Asset.LibraryRoot);
+        else _assetRegistry.RemoveClean(entry.Asset.Kind,entry.Asset.Path,entry.Asset.LibraryRoot);
         if(ReferenceEquals(_focusedAsset,entry))
         {
             _focusedAsset=null;
@@ -384,6 +389,7 @@ public sealed partial class WorkspaceView
     private void HandleDocumentKey(KeyEventArgs e)
     {
         var command=(e.KeyModifiers & (KeyModifiers.Control|KeyModifiers.Meta))!=0;
+        if(command && e.Key==Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Shift)){_=SaveAllFromUiAsync();e.Handled=true;return;}
         if(command && e.Key==Key.S){Try(SaveActive);e.Handled=true;return;}
         if(e.Source is TextBox)return;
         if(command && e.Key==Key.Z){Try((e.KeyModifiers&KeyModifiers.Shift)!=0?RedoActive:UndoActive);e.Handled=true;}

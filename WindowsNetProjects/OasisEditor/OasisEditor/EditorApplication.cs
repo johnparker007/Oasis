@@ -38,8 +38,7 @@ public sealed class EditorApplication : Application
             window.Content = view;
             window.Title = "Oasis Editor";
             view.StateChanged += () => window.Title = $"{view.ActiveTitle}{(view.HasUnsavedChanges ? " *" : "")} — {session.ProjectName ?? "Oasis Editor"}";
-            window.Closing += (_, e) => { if (view.HasUnsavedChanges || view.IsMovingAssetWindow) { e.Cancel = true; view.SetStatus(view.IsMovingAssetWindow?"Wait for document docking or workspace restoration to finish before closing.":"Save or undo your changes before closing."); } };
-            window.Closing += (_, e) => { if (!e.Cancel && view.CanAutoSaveWorkspace) view.Try(view.SaveWorkspace); };
+            view.AttachEditorCloseHandler(window);
             window.Closed += (_, _) => view.Dispose();
             desktop.MainWindow = window;
             view.Try(() => view.ConfigureWorkspacePersistence(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Oasis", "AvaloniaEditor", "workspace.json")));
@@ -90,6 +89,8 @@ public sealed class WorkspaceCapture : IDisposable
 {
     private readonly Window _window;
     public WorkspaceView View { get; }
+    // MCP tool instances are transient; workflow progress belongs to this session.
+    public Task<bool>? CloseWorkflowTask { get; set; }
     public WorkspaceCapture(AuthoringSession session, FaceAuthoringSession? faces = null)
     {
         if (!Program.IsHeadless)
@@ -113,6 +114,29 @@ public sealed class WorkspaceCapture : IDisposable
         AvaloniaHeadlessPlatform.ForceRenderTimerTick(2);
         using var bitmap = new RenderTargetBitmap(new PixelSize(width, height), new Vector(96, 96));
         bitmap.Render(_window);
+        using var stream = new MemoryStream();
+        bitmap.Save(stream, new PngBitmapEncoderOptions());
+        return stream.ToArray();
+    }
+
+    public byte[] CaptureUnsavedChangesDialog(string theme = "Dark")
+    {
+        if (!Program.IsHeadless)
+            throw new InvalidOperationException("Dialog capture requires the isolated headless platform; desktop capture is not supported here.");
+        var dialog = View.UnsavedChangesWindow
+            ?? throw new InvalidOperationException("There is no pending dialog to capture.");
+        Application.Current!.RequestedThemeVariant = theme.ToLowerInvariant() switch
+        {
+            "dark" => ThemeVariant.Dark, "light" => ThemeVariant.Light, "system" => ThemeVariant.Default,
+            _ => throw new ArgumentException("Theme must be System, Light or Dark.")
+        };
+        dialog.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick(2);
+        var width = Math.Max(1, (int)Math.Ceiling(dialog.Bounds.Width));
+        var height = Math.Max(1, (int)Math.Ceiling(dialog.Bounds.Height));
+        using var bitmap = new RenderTargetBitmap(new PixelSize(width, height), new Vector(96, 96));
+        bitmap.Render(dialog);
         using var stream = new MemoryStream();
         bitmap.Save(stream, new PngBitmapEncoderOptions());
         return stream.ToArray();

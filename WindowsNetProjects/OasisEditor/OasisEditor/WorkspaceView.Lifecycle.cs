@@ -21,8 +21,12 @@ public sealed partial class WorkspaceView
     public async Task CloseProjectAsync()
     {
         if(_documentOwner is {} host){await host.CloseProjectAsync();return;}
+        await CloseProjectCoreAsync(false);
+    }
+    private async Task CloseProjectCoreAsync(bool discardApproved)
+    {
         EnsureAssetWindowsIdle();
-        if (HasUnsavedChanges)
+        if (HasUnsavedChanges && !discardApproved)
             throw new InvalidOperationException("Save or undo all open document edits before closing the project.");
 
         if (Preview.Backend is not null)
@@ -30,6 +34,7 @@ public sealed partial class WorkspaceView
 
         if(_isAssetWindow)throw new InvalidOperationException("Close the project from the main workspace.");
         foreach(var d in _nativeDocuments.Values)if(d.Editor.Preview.Backend is not null)await d.Editor.Preview.ControlAsync("stop");
+        ValidateProjectCloseDecision(discardApproved);
         DisposeNativeDocuments();
         _faces.CloseAllDocuments();
         _session.CloseProject();
@@ -75,7 +80,7 @@ public sealed partial class WorkspaceView
 
     private async Task TryCloseProjectAsync()
     {
-        try { await CloseProjectAsync(); }
+        try { await RequestCloseProjectAsync(); }
         catch (Exception error) when (error is IOException or InvalidDataException or ArgumentException
             or InvalidOperationException or KeyNotFoundException or UnauthorizedAccessException)
         { SetStatus(error.Message); }
