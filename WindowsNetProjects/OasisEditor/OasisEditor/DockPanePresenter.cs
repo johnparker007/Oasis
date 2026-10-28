@@ -18,6 +18,14 @@ internal sealed class DockPanePresenter : ContentControl
     private static readonly ConditionalWeakTable<Control, Ownership> Owners = new();
     private Control? _owned;
     private bool _attached;
+    internal bool IsTemporaryHost { get; init; }
+
+    // A maximised view temporarily borrows this presenter's pane while its dock
+    // remains attached. Reclaim the pane when that temporary view is removed.
+    internal void RestorePresentation()
+    {
+        if (_attached) Present();
+    }
 
     protected override Type StyleKeyOverride => typeof(ContentControl);
 
@@ -59,6 +67,9 @@ internal sealed class DockPanePresenter : ContentControl
         var ownership = Owners.GetOrCreateValue(control);
         if (ReferenceEquals(_owned, control) && ReferenceEquals(ownership.Presenter, this)) return;
         Release();
+        // A deferred dock presenter may finish loading after maximise. It must
+        // not take the pane back from the temporary host while it is in use.
+        if (ownership.Presenter is { IsTemporaryHost: true } && !IsTemporaryHost) return;
         var previous = ownership.Presenter;
         ownership.Presenter = this;
         // Clear and measure-release the source before assigning the destination.
