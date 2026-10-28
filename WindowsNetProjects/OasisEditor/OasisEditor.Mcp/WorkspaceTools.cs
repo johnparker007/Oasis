@@ -60,27 +60,38 @@ public sealed partial class EditorTools
     public Task<object> InspectTabMenu(string paneId, CancellationToken cancellationToken)
         => ui.Invoke<object>(() =>
         {
-            static object Describe(MenuItem item) => new
+            static object Describe(Control item) => new
             {
-                header = item.Header?.ToString(),
+                type = item.GetType().Name,
+                header = (item as MenuItem)?.Header?.ToString(),
                 enabled = item.IsEnabled,
-                checkedState = item.IsChecked,
-                children = item.Items.OfType<MenuItem>().Select(Describe).ToArray()
+                visible = item.IsVisible,
+                checkedState = (item as MenuItem)?.IsChecked,
+                children = item is MenuItem menuItem
+                    ? menuItem.Items.OfType<Control>().Select(Describe).ToArray()
+                    : Array.Empty<object>()
             };
-            var items = capture.View.CreateTabContextMenu(paneId).Items.OfType<MenuItem>().Select(Describe).ToArray();
-            return new { paneId, items };
+            var menu = capture.OpenTabMenu(paneId);
+            try
+            {
+                return new { paneId,
+                    items = menu.Items.OfType<MenuItem>().Select(Describe).ToArray(),
+                    entries = menu.Items.OfType<Control>().Select(Describe).ToArray() };
+            }
+            finally { menu.Close(); }
         }, cancellationToken);
 
     [McpServerTool(Name = "capture_tab_menu", ReadOnly = true), Description("Capture the production tab action popup for a document or pane in the requested theme. Headless workspace only; no desktop input.")]
-    public Task<CallToolResult> CaptureTabMenu(string paneId, CancellationToken cancellationToken, string theme = "Dark")
+    public Task<CallToolResult> CaptureTabMenu(string paneId, CancellationToken cancellationToken, string theme = "Dark", int width = 1400, int height = 900)
         => ui.Invoke(() =>
         {
-            capture.Capture(theme: theme);
-            var menu = capture.View.CreateTabContextMenu(paneId);
+            capture.Capture(width, height, theme);
+            var menu = capture.OpenTabMenu(paneId);
             try
             {
-                menu.Open(capture.View);
-                return new CallToolResult { Content = [ImageContentBlock.FromBytes(capture.Capture(theme: theme), "image/png")] };
+                var images = new List<byte[]> { capture.Capture(width, height, theme) };
+                images.AddRange(capture.CaptureFloatingWindows());
+                return new CallToolResult { Content = [.. images.Select(image => ImageContentBlock.FromBytes(image, "image/png"))] };
             }
             finally { menu.Close(); }
         }, cancellationToken);

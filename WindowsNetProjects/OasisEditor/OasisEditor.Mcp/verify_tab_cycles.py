@@ -38,7 +38,7 @@ def assert_no_floating_windows(client):
 def capture_menu(client, output, name, pane_id, theme):
     state = client.state("inspect_layout")
     expected_images = 1 + len(state["layout"].get("windows") or [])
-    result = client.tool("capture_tab_menu", paneId=pane_id, theme=theme)
+    result = client.tool("capture_tab_menu", paneId=pane_id, theme=theme, width=1400, height=900)
     images = [item for item in result["content"] if item["type"] == "image"]
     assert len(images) == expected_images, (name, theme, len(images), expected_images)
     for index, item in enumerate(images):
