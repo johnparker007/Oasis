@@ -19,8 +19,8 @@ public sealed class EditorApplication : Application
         AvaloniaXamlLoader.Load(this);
         DataTemplates.Add(new FuncDataTemplate<IDockable>((item, _) =>
         {
-            var presenter = new ContentControl();
-            presenter.Bind(ContentControl.ContentProperty, new Binding(nameof(IDockable.Context)) { Source = item });
+            var presenter = new DockPanePresenter();
+            presenter.Bind(DockPanePresenter.PaneContextProperty, new Binding(nameof(IDockable.Context)) { Source = item });
             return presenter;
         }));
     }
