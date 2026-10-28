@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 
 namespace OasisEditor.Avalonia;
@@ -27,18 +28,20 @@ public sealed class MachineCompositionGraphView : UserControl
         toolbar.Children.Add(fit); toolbar.Children.Add(_zoomLabel);
         var content = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto") };
         content.Children.Add(toolbar);
-        _scroller = new ScrollViewer { Content = _canvas, HorizontalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+        _scroller = new ScrollViewer { Content = _canvas, Background = Brushes.Transparent, HorizontalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto };
         Grid.SetRow(_scroller, 1); content.Children.Add(_scroller);
         var diagnosticScroll = new ScrollViewer { Content = _diagnostics, MaxHeight = 135, HorizontalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
         Grid.SetRow(diagnosticScroll, 2); content.Children.Add(diagnosticScroll);
         Content = content;
         Background = Brush("WorkspaceBrush");
-        _canvas.PointerPressed += OnPointerPressed;
+        // The canvas is transformed and has empty, non-hit-testable regions.
+        // Handle navigation on the stationary viewport, before normal scrolling.
+        _scroller.AddHandler(PointerPressedEvent, OnPointerPressed, RoutingStrategies.Tunnel);
         PointerMoved += OnPointerMoved;
         PointerCaptureLost += (_,_)=>_panning=false;
         PointerReleased += OnPointerReleased;
-        _canvas.PointerWheelChanged += OnPointerWheelChanged;
+        _scroller.AddHandler(PointerWheelChangedEvent, OnPointerWheelChanged, RoutingStrategies.Tunnel);
         _scroller.SizeChanged += (_, _) => FitToContent();
         ActualThemeVariantChanged += (_, _) => { Background = Brush("WorkspaceBrush"); RedrawCurrent(); };
     }
