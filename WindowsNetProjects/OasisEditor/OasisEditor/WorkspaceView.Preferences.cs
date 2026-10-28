@@ -143,9 +143,11 @@ public sealed partial class WorkspaceView
 
     public void UpdatePreferences(AvaloniaEditorPreferences preferences)
     {
+        if(_documentOwner is {} owner){owner.UpdatePreferences(preferences);return;}
         var normalized = (preferences ?? throw new ArgumentNullException(nameof(preferences))).Normalize();
         _preferencesStore?.Save(normalized);
         Preferences = normalized;
+        foreach(var entry in _nativeDocuments.Values)entry.Editor.Preferences=normalized;
         ImageProcessingExecutionPolicy.Configure(Preferences.Processing);
         StateChanged?.Invoke();
     }
@@ -155,6 +157,7 @@ public sealed partial class WorkspaceView
 
     private async Task ShowPreferencesAsync()
     {
+        if(_documentOwner is {} host){await host.ShowPreferencesAsync();return;}
         var current = Preferences;
         var mode = new ComboBox { ItemsSource = new[] { "Auto (Recommended)", "Maximum", "Custom" }, SelectedIndex = (int)current.Processing.CpuMode, MinWidth = 190 };
         var workers = new TextBox { Text = current.Processing.CustomMaximumWorkers.ToString(CultureInfo.InvariantCulture), MinWidth = 90 };

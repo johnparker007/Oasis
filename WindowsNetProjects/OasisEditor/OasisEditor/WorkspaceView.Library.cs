@@ -71,12 +71,12 @@ public sealed partial class WorkspaceView
         await RefreshLibraryAsync();
         var asset=LibraryCatalog.Assets.FirstOrDefault(a=>a.Reference==reference)??throw new InvalidDataException("Library asset is missing or invalid. Refresh the Library and inspect its diagnostics.");
         var kind=asset.Type switch{EditorAssetType.Object3D=>"Prefab",EditorAssetType.Cabinet3D=>"Cabinet3D",_=>asset.Type.ToString()};
-        if(FindAssetWindow(kind,asset.ManifestPath) is {} owned){ShowOwnedAssetWindow(owned.Window);return;}
+        if(!_isDocumentEditor || _documentOwner is not null){await DocumentHost.OpenNativeAssetAsync(kind,asset.ManifestPath,SceneLibraryRoot);return;}
         switch(asset.Type)
         {
-            case EditorAssetType.Reel:if(!SameScenePath(Reels.FilePath,asset.ManifestPath)||!Reels.IsDirty)Reels.OpenLibrary(SceneLibraryRoot,reference.Path);_sceneKind="Reel";_selectedSceneNodeId=Reels.Document.Id;break;
-            case EditorAssetType.Cabinet3D:if(!SameScenePath(Cabinets.FilePath,asset.ManifestPath)||!Cabinets.IsDirty)Cabinets.OpenLibrary(SceneLibraryRoot,reference.Path);_sceneKind="Cabinet3D";_selectedSceneNodeId="cabinet";break;
-            case EditorAssetType.Object3D:if(!SameScenePath(Prefabs.FilePath,asset.ManifestPath)||!Prefabs.IsDirty)Prefabs.OpenLibrary(SceneLibraryRoot,reference.Path);_sceneKind="Prefab";_selectedSceneNodeId=Prefabs.Document.Root.Id;break;
+            case EditorAssetType.Reel:if(!SameScenePath(_reels.FilePath,asset.ManifestPath)||!_reels.IsDirty)_reels.OpenLibrary(SceneLibraryRoot,reference.Path);_sceneKind="Reel";_selectedSceneNodeId=_reels.Document.Id;break;
+            case EditorAssetType.Cabinet3D:if(!SameScenePath(_cabinets.FilePath,asset.ManifestPath)||!_cabinets.IsDirty)_cabinets.OpenLibrary(SceneLibraryRoot,reference.Path);_sceneKind="Cabinet3D";_selectedSceneNodeId="cabinet";break;
+            case EditorAssetType.Object3D:if(!SameScenePath(_prefabs.FilePath,asset.ManifestPath)||!_prefabs.IsDirty)_prefabs.OpenLibrary(SceneLibraryRoot,reference.Path);_sceneKind="Prefab";_selectedSceneNodeId=_prefabs.Document.Root.Id;break;
             default:throw new InvalidDataException("Unsupported Library asset type.");
         }
         _faceActive=_machineActive=false;await ReloadSceneAsync();RestoreDocumentCamera();Refresh();
@@ -113,6 +113,7 @@ public sealed partial class WorkspaceView
     }
     public void AssignMachineReel(MachineObjectReference reference,AssetReference? asset)
     {
+        if(!_isDocumentEditor && _nativeDocuments.Count>0){GetDocumentEditor("Machine").AssignMachineReel(reference,asset);return;}
         if(reference.Kind!=MachineObjectKind.Reel||reference.IsEmpty)throw new ArgumentException("A logical Reel reference is required.");
         if(asset is not null)
         {
@@ -122,11 +123,11 @@ public sealed partial class WorkspaceView
             if(Path.GetFileName(path)!=ProjectAssetPathService.ReelManifestFileName||!ReelDocumentStorage.TryRead(File.ReadAllText(path),out _,out var error))
                 throw new InvalidDataException("The selected asset must be a valid native Reel package.");
         }
-        Machines.UpdateDocument(machine=>machine with{ReelAssignments=asset is null?machine.ReelAssignments.Where(a=>a.MachineReelReference!=reference).ToArray():machine.ReelAssignments.Any(a=>a.MachineReelReference==reference)
+        _machines.UpdateDocument(machine=>machine with{ReelAssignments=asset is null?machine.ReelAssignments.Where(a=>a.MachineReelReference!=reference).ToArray():machine.ReelAssignments.Any(a=>a.MachineReelReference==reference)
             ?machine.ReelAssignments.Select(a=>a.MachineReelReference==reference?new MachineReelAssignment(reference,asset):a).ToArray():[..machine.ReelAssignments,new(reference,asset)]});
     }
-    private bool IsLibraryScene => _sceneKind switch{"Reel"=>Reels.IsLibraryAsset,"Cabinet3D"=>Cabinets.IsLibraryAsset,"Prefab"=>Prefabs.IsLibraryAsset,_=>false};
-    private string? ActiveLibraryRoot => _sceneKind switch{"Reel"=>Reels.LibraryRoot,"Cabinet3D"=>Cabinets.LibraryRoot,"Prefab"=>Prefabs.LibraryRoot,_=>null};
+    private bool IsLibraryScene => _sceneKind switch{"Reel"=>_reels.IsLibraryAsset,"Cabinet3D"=>_cabinets.IsLibraryAsset,"Prefab"=>_prefabs.IsLibraryAsset,_=>false};
+    private string? ActiveLibraryRoot => _sceneKind switch{"Reel"=>_reels.LibraryRoot,"Cabinet3D"=>_cabinets.LibraryRoot,"Prefab"=>_prefabs.LibraryRoot,_=>null};
     private async Task CopyLibraryDialogAsync(bool import)
     {
         if(_assets.SelectedItem is not AssetSummary selected||_browseLibrary!=import){SetStatus(import?"Select a Library package to import.":"Select a project Cabinet, Reel or Prefab package to copy.");return;}

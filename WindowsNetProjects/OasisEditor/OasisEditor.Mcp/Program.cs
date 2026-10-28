@@ -52,7 +52,7 @@ internal static class Program
 public sealed class EditorDispatcher
 {
     public async Task<T> InvokeAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken)
-        => await await Dispatcher.UIThread.InvokeAsync(action, DispatcherPriority.Normal, cancellationToken);
+        { try { return await await Dispatcher.UIThread.InvokeAsync(action, DispatcherPriority.Normal, cancellationToken); } catch(Exception error) { if(Environment.GetEnvironmentVariable("OASIS_MCP_DIAGNOSTICS")=="1")Console.Error.WriteLine(error); throw; } }
     public async Task<T> Invoke<T>(Func<T> action, CancellationToken cancellationToken)
-        => await Dispatcher.UIThread.InvokeAsync(action, DispatcherPriority.Normal, cancellationToken);
+        { try { return await Dispatcher.UIThread.InvokeAsync(action, DispatcherPriority.Normal, cancellationToken); } catch(Exception error) { if(Environment.GetEnvironmentVariable("OASIS_MCP_DIAGNOSTICS")=="1")Console.Error.WriteLine(error); throw; } }
 }

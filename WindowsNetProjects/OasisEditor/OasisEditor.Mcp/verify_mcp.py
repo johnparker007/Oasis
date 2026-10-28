@@ -99,6 +99,7 @@ def verify_reel_library(client, root, output, machine_path, project_directory):
     copied = client.state("copy_asset_to_library", projectManifest=reel_path)["result"]
     assert copied["success"], copied
     library_path = copied["reference"]["path"]
+    shared_path = str(library / library_path)
     client.state("open_library_asset", libraryRelativeManifest=library_path)
     client.state("update_reel", widthMm=80); client.state("save_reel")
     assert json.loads(Path(reel_path).read_text())["widthMm"] == 70
@@ -111,7 +112,9 @@ def verify_reel_library(client, root, output, machine_path, project_directory):
     client.state("save_workspace", path=settings); client.state("reset_layout")
     client.state("restore_workspace", path=settings)
     client.capture(output / "workspace-library-restored.png", "Dark")
-    assert client.state("inspect_layout")["scene3D"]["scope"] == "Library"
+    library_tabs = client.state("list_open_documents")
+    assert any(tab["kind"] == "Reel" and tab["scope"] == "Library" and tab["path"] == shared_path and tab["isActive"]
+               for tab in library_tabs), library_tabs
     imported = client.state("import_library_asset", libraryRelativeManifest=library_path, packageName="Imported Reel")["result"]
     assert imported["success"] and json.loads(Path(imported["manifestPath"]).read_text())["id"] == reel_id
     assert not client.state("copy_asset_to_library", projectManifest=reel_path)["result"]["success"]

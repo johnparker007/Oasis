@@ -47,8 +47,18 @@ domain/rendering/emulation tests now live in `Oasis.Authoring.RegressionTests`.
 ## Pane docking integration
 
 The pane layout uses `Dock.Avalonia`, `Dock.Model.Mvvm` and the Dock Fluent theme,
-version 12.1.0.12. Oasis supplies the pane content and workspace persistence. The
-independent asset-editor windows are a separate Oasis workflow.
+version 12.1.0.12. Every open asset is a real Dock document with its own authoring
+sessions, history, selection and viewport. Asset tabs and tool panes use the same
+Dock window system: assets can be tabbed, split side by side, floated and redocked
+without transferring their edits between windows. The global Hierarchy, Inspector,
+menus and commands follow the focused asset. Closing a floating host redocks its
+asset documents; closing a dirty asset tab is guarded until its edits are saved or
+undone. Panel clipboards are shared across documents in the same project.
+
+Version-2 workspace settings save every document and its Dock group, floating host,
+selection, camera and viewport. Earlier version-1 layouts migrate to native documents
+when restored. Workspace restoration preflights files and layout before replacing
+the live workspace, and refuses to replace unsaved edits.
 
 Live Dock moves can attach a destination presenter before its source detaches.
 `DockPanePresenter` transfers ownership of each stateful pane control and releases
@@ -57,14 +67,15 @@ straight to the same control's `Context` caused a visual-parent exception when
 floating or moving panes. The shared presenter applies to all pane types.
 
 The live docking regression suite uses actual factory float/move operations for
-Project, Hierarchy, Inspector, Output and Authoring, across repeated moves and theme
+Project, Hierarchy, Inspector, Output and asset documents, across repeated moves and theme
 changes. It verifies control identity, the owning window, selection and unsaved edits.
-These checks complement saved-layout restoration and independent asset-window tests.
+These checks complement saved-layout restoration and independent document tests.
 The MCP `move_workspace_pane` operation and verifier exercise the live path and return
 real main/floating captures without desktop interaction:
 
 ```powershell
 python WindowsNetProjects/OasisEditor/OasisEditor.Mcp/verify_pane_docking.py --output <capture-directory>
+python WindowsNetProjects/OasisEditor/OasisEditor.Mcp/verify_native_documents.py --output <capture-directory>
 ```
 
 ## Main menus
@@ -87,8 +98,8 @@ The main menu hierarchy is restored from the last WPF `MainWindow.xaml` at commi
 Project Settings shows the real project identity/paths; Machine settings remain on
 Machine documents. Input Map shows authored inputs/diagnostics and provides access
 to the Machine input editor and live native input controls. The current production
-sessions and document guards back the menu actions. Floating editors retain asset
-menus while project-wide operations remain disabled.
+sessions and document guards back the menu actions. The shared workspace menus follow
+the focused document, including assets in floating Dock hosts.
 
 `inspect_menus` exposes the actual menu tree and state through MCP. `capture_menu`
 returns real open popups in the isolated headless workspace, including nested menus:

@@ -25,7 +25,7 @@ public sealed class LibraryWorkspaceTests
                 var another=Path.Combine(root,"Other Library");Directory.CreateDirectory(another);
                 Assert.Throws<InvalidOperationException>(()=>view.SetSceneLibraryRoot(another));view.Reels.Save();
                 Assert.True(ReelDocumentStorage.TryRead(File.ReadAllText(projectManifest),out var original,out _));Assert.Equal(70,original.WidthMm);
-                var saved=view.InspectWorkspaceState();Assert.Equal("Library",saved.Scene3D!.Scope);Assert.Equal(copied.Reference.Path,saved.Scene3D.Reel);
+                var saved=view.InspectWorkspaceState();var libraryDoc=saved.AssetLayout!.Documents.Single(d=>d.LibraryRoot==library);Assert.Equal(copied.Reference.Path,libraryDoc.Path);
                 view.ShowPanel();view.ApplyWorkspaceState(WorkspaceLayoutState.Deserialize(WorkspaceLayoutState.Serialize(saved)));await view.WaitForSceneAsync();
                 Assert.Equal(id,view.Reels.Document.Id);Assert.Equal(80,view.Reels.Document.WidthMm);Assert.True(view.Reels.IsLibraryAsset);
                 var imported=view.ImportLibraryAsset(copied.Reference.Path,"Imported");Assert.True(imported.Success,imported.Error);

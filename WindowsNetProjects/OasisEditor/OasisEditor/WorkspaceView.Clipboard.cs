@@ -20,7 +20,8 @@ public sealed partial class WorkspaceView
         KeyDown += (_, e) =>
         {
             var command = (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta)) != 0;
-            if (!command || e.Source is TextBox) return;
+            if (e.Handled || !command || e.Source is TextBox) return;
+            if (!ReferenceEquals(CommandView,this)) { CommandView.HandleDocumentKey(e); return; }
             if (e.Key == Key.C) { CopyPanelSelection(); e.Handled = true; }
             else if (e.Key == Key.X) { CutPanelSelection(); e.Handled = true; }
             else if (e.Key == Key.V) { PastePanelSelection(); e.Handled = true; }

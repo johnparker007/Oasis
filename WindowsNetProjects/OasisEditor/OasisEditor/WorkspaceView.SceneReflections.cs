@@ -24,7 +24,7 @@ public sealed partial class WorkspaceView
         {
             try
             {
-                var manifest = _sceneKind == "Cabinet3D" ? Cabinets.FilePath : Machines.Document?.CabinetAsset is { } reference
+                var manifest = _sceneKind == "Cabinet3D" ? _cabinets.FilePath : _machines.Document?.CabinetAsset is { } reference
                     ? new AssetReferenceResolver().Resolve(_session.RequireEditorProject(), SceneLibraryRoot, reference) : null;
                 if (manifest is null) throw new InvalidOperationException("Cabinet package is unavailable.");
                 var path = WorkspacePathPolicy.ResolveConfined(Path.GetDirectoryName(manifest)!, mask!, requireExists: true);

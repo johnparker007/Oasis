@@ -19,12 +19,14 @@ public sealed class WorkspaceLifecycleTests
                 session.AddRectangle();
                 using var capture = new WorkspaceCapture(session);
                 var view = capture.View;
+                await view.SynchronizeAssetDocumentsAsync();
+                var panel = view.CommandSession;
 
                 await Assert.ThrowsAsync<InvalidOperationException>(() => view.CloseProjectAsync());
                 Assert.NotNull(session.ProjectFilePath);
-                Assert.True(session.IsDirty);
+                Assert.True(panel.IsDirty);
 
-                session.Undo();
+                panel.Undo();
                 await view.CloseProjectAsync();
                 Assert.Null(session.ProjectFilePath);
                 Assert.Null(view.Machines.MachinePath);
@@ -53,15 +55,21 @@ public sealed class WorkspaceLifecycleTests
                 session.OpenPanel(panelPath);
                 using var capture = new WorkspaceCapture(session);
                 var view = capture.View;
-                view.Faces.CreateFromPanelFaceSourceShape("front", "Front Face");
-                view.ShowFace();
+                await view.SynchronizeAssetDocumentsAsync();
+                var panel = view.CommandSession;
+                view.CommandView.Faces.CreateFromPanelFaceSourceShape("front", "Front Face");
+                view.CommandView.ShowFace();
+                await view.SynchronizeAssetDocumentsAsync();
 
-                var diagnostics = view.ValidateActiveFace();
+                var face = view.CommandView;
+                var diagnostics = face.ValidateActiveFace();
                 Assert.DoesNotContain(diagnostics, d => d.Code is "Face.SourcePanel2D.Missing" or "Face.SourceShape.Missing");
-                view.OpenFaceSourcePanel();
+                face.OpenFaceSourcePanel();
+                await view.SynchronizeAssetDocumentsAsync();
 
                 Assert.Equal("Panel2D", view.InspectWorkspaceState().ActiveDocument);
-                Assert.Equal(Path.GetFullPath(panelPath), Path.GetFullPath(session.PanelPath!));
+                Assert.Equal(Path.GetFullPath(panelPath), Path.GetFullPath(view.CommandSession.PanelPath!));
+                Assert.NotSame(session, panel);
             }
             finally { Directory.Delete(root, recursive: true); }
             await Task.CompletedTask;

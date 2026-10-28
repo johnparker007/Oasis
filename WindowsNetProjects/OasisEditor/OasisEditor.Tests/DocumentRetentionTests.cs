@@ -71,29 +71,29 @@ public sealed class DocumentTabViewTests
     }
 
     [Fact]
-    public void TabsCloseGuardsAndWorkspaceReopenUseRealSessions()
+    public async Task TabsCloseGuardsAndWorkspaceReopenUseRealSessions()
     {
-        HeadlessTestHost.Run(()=>
+        await HeadlessTestHost.RunAsync(async()=>
         {
             var root=Path.Combine(Path.GetTempPath(),"OasisWorkspaceTabs-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
             try
             {
                 var p=new AuthoringSession(root);p.CreateProject("Tabs");
                 using var capture=new WorkspaceCapture(p);var v=capture.View;
-                var a=p.CreatePanel("A");p.AddRectangle();var b=p.CreatePanel("B");v.ShowPanel();
+                var a=p.CreatePanel("A");p.AddRectangle();var b=p.CreatePanel("B");v.ShowPanel();await v.SynchronizeAssetDocumentsAsync();
                 Assert.Equal(2,v.InspectOpenDocuments().Count);Assert.True(v.HasUnsavedChanges);
-                Assert.ThrowsAsync<InvalidOperationException>(()=>v.CloseDocumentAsync("Panel2D",a)).GetAwaiter().GetResult();
-                v.ActivateDocumentAsync("Panel2D",a).GetAwaiter().GetResult();Assert.True(p.IsDirty);
-                v.SaveAllDocumentsAsync().GetAwaiter().GetResult();Assert.False(v.HasUnsavedChanges);
-                v.Faces.CreateFace("Face");v.ShowFace();
+                await Assert.ThrowsAsync<InvalidOperationException>(()=>v.CloseDocumentAsync("Panel2D",a));
+                await v.ActivateDocumentAsync("Panel2D",a);Assert.True(v.CommandSession.IsDirty);
+                await v.SaveAllDocumentsAsync();Assert.False(v.HasUnsavedChanges);
+                v.Faces.CreateFace("Face");v.ShowFace();await v.SynchronizeAssetDocumentsAsync();
                 var state=v.InspectWorkspaceState();Assert.Equal(3,state.Documents!.Length);
                 Assert.True(capture.Capture().Length>5000);
-                v.CloseProjectAsync().GetAwaiter().GetResult();Assert.Empty(v.InspectOpenDocuments());
-                v.ApplyWorkspaceState(state);Assert.Equal(3,v.InspectOpenDocuments().Count);Assert.Equal("Face",v.InspectOpenDocuments().Single(t=>t.IsActive).Kind);
+                await v.CloseProjectAsync();Assert.Empty(v.InspectOpenDocuments());
+                v.ApplyWorkspaceState(state);await v.WaitForSceneAsync();Assert.Equal(3,v.InspectOpenDocuments().Count);Assert.Equal("Face",v.InspectOpenDocuments().Single(t=>t.IsActive).Kind);
                 File.Delete(b); // Closing a clean background tab must not need its source file.
-                v.CloseDocumentAsync("Panel2D",b).GetAwaiter().GetResult();Assert.Equal(2,v.InspectOpenDocuments().Count);
+                await v.CloseDocumentAsync("Panel2D",b);Assert.Equal(2,v.InspectOpenDocuments().Count);
                 Assert.Equal("Face",v.InspectOpenDocuments().Single(t=>t.IsActive).Kind);
-                var invalid=state with{Documents=[new("Face","../escape/asset.face")]};
+                var invalid=state with{AssetLayout=state.AssetLayout! with{Documents=[state.AssetLayout.Documents[0] with{Path="../escape/asset.face"}]}};
                 Assert.ThrowsAny<Exception>(()=>v.ApplyWorkspaceState(invalid));Assert.Equal(2,v.InspectOpenDocuments().Count);
             }
             finally{Directory.Delete(root,true);}

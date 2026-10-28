@@ -207,15 +207,15 @@ public sealed class MachineAuthoringSessionTests : IDisposable
     }
 
     [Fact]
-    public void HeadlessMachineInspectorShowsTypedSettingsAndCommitsThemThroughHistory()
+    public async Task HeadlessMachineInspectorShowsTypedSettingsAndCommitsThemThroughHistory()
     {
-        HeadlessTestHost.Run(() =>
+        await HeadlessTestHost.RunAsync(async () =>
         {
         var projectFile = CreateProject();
         var session = new AuthoringSession(workspace); session.OpenProject(projectFile);
         var faces = new FaceAuthoringSession(session);
         using var capture = new WorkspaceCapture(session, faces);
-        capture.View.OpenAsset(new AssetSummary("Machine", "Machine", "Assets/Machines/Machine/asset.machine"));
+        await capture.View.OpenNativeAssetAsync("Machine", "Assets/Machines/Machine/asset.machine");
         var image = capture.Capture(width: 1280, height: 800, theme: "Dark");
         Assert.True(image.Length > 5000);
         Assert.Contains(capture.View.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "PLATFORM SETTINGS");
@@ -255,16 +255,16 @@ public sealed class MachineAuthoringSessionTests : IDisposable
     public void ClosingSharedProjectKeepsDirtyMachineButBlocksStaleEditsAndSave() => AssertStaleBinding(closeProject: true);
 
     [Fact]
-    public void MachineAssignmentCreationUsesExistingRegisteredAssetsAndExplainsMissingAssets()
+    public async Task MachineAssignmentCreationUsesExistingRegisteredAssetsAndExplainsMissingAssets()
     {
-        HeadlessTestHost.Run(() =>
+        await HeadlessTestHost.RunAsync(async () =>
         {
             var projectFile = CreateProject();
             var shared = new AuthoringSession(workspace); shared.OpenProject(projectFile);
             var faces = new FaceAuthoringSession(shared);
             using var capture = new WorkspaceCapture(shared, faces);
             var machineAsset = new AssetSummary("Machine", "Machine", "Assets/Machines/Machine/asset.machine");
-            capture.View.OpenAsset(machineAsset); capture.Capture();
+            await capture.View.OpenNativeAssetAsync("Machine",machineAsset.ManifestPath); capture.Capture();
             capture.View.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Add Face assignment")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.Contains(capture.View.GetVisualDescendants().OfType<TextBlock>(), text => text.Text?.Contains("No registered Faces asset", StringComparison.Ordinal) == true);
             faces.CreateFace("AssignedFace");
@@ -272,7 +272,7 @@ public sealed class MachineAuthoringSessionTests : IDisposable
             var objectDirectory = Path.Combine(Path.GetDirectoryName(projectFile)!, "Assets", "Object3D", "Invalid"); Directory.CreateDirectory(objectDirectory);
             File.WriteAllText(Path.Combine(objectDirectory, "asset.object3d"), "{}");
             Assert.DoesNotContain(capture.View.GetReusableAssetChoices(EditorAssetType.Object3D),choice=>choice.Reference?.Path.Contains("Invalid/")==true);
-            capture.View.OpenAsset(machineAsset); capture.Capture();
+            await capture.View.OpenNativeAssetAsync("Machine",machineAsset.ManifestPath); capture.Capture();
             capture.View.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Add Face assignment")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var face = Assert.Single(capture.View.Machines.Document!.SurfaceAssignments);
             Assert.Equal("Assets/Faces/AssignedFace/asset.face", face.FaceAssetPath);

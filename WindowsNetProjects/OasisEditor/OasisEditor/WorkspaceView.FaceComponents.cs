@@ -8,9 +8,9 @@ public sealed partial class WorkspaceView
 {
     private void InitializeFaceComponents(MenuItem create)
     {
-        Add("Face button", () => Faces.AddButton("Button", 24, 24));
-        Add("7 segment display", () => Faces.AddSevenSegmentDisplay("Seven-Segment Display", 24, 24));
-        Add("Alpha display", () => Faces.AddAlphaDisplay("Alpha Display", 24, 24));
+        Add("Face button", () => _faces.AddButton("Button", 24, 24));
+        Add("7 segment display", () => _faces.AddSevenSegmentDisplay("Seven-Segment Display", 24, 24));
+        Add("Alpha display", () => _faces.AddAlphaDisplay("Alpha Display", 24, 24));
         var settings = new MenuItem { Header = "Face generation settings…" };
         settings.Click += async (_, _) => await EditGenerationSettings();
         create.Items.Add(settings);
@@ -25,7 +25,7 @@ public sealed partial class WorkspaceView
 
     private async Task EditGenerationSettings()
     {
-        if (!_faceActive || Faces.Document is null) { SetStatus("Open a Face before editing its generation settings."); return; }
+        if (!_faceActive || _faces.Document is null) { SetStatus("Open a Face before editing its generation settings."); return; }
         if (TopLevel.GetTopLevel(this) is not Window owner) return;
         var saved = await FaceGenerationSettingsDialog.ShowAsync(owner, Faces);
         if (saved) { _inspected = null; Refresh(); }
@@ -33,7 +33,7 @@ public sealed partial class WorkspaceView
 
     private void AppendFaceComponentInspector(string id)
     {
-        var element = Faces.Document?.Elements.FirstOrDefault(candidate => string.Equals(candidate.ObjectId, id, StringComparison.Ordinal));
+        var element = _faces.Document?.Elements.FirstOrDefault(candidate => string.Equals(candidate.ObjectId, id, StringComparison.Ordinal));
         if (element is null || element is not (FaceButtonElement or FaceSevenSegmentDisplayElement or FaceAlphaDisplayElement)) return;
 
         Heading("COMPONENT SETTINGS");
@@ -76,7 +76,7 @@ public sealed partial class WorkspaceView
             var logicalReference = displayIndex is int value
                 ? element is FaceSevenSegmentDisplayElement ? MachineObjectReference.SevenSegmentDisplay(value) : MachineObjectReference.AlphaDisplay(value)
                 : (MachineObjectReference?)null;
-            Faces.UpdateFaceComponent(id, new FaceComponentUpdateOptions
+            _faces.UpdateFaceComponent(id, new FaceComponentUpdateOptions
             {
                 LogicalReference = logicalReference,
                 ClearLogicalReference = element is not FaceButtonElement && logicalReference is null,

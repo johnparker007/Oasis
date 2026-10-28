@@ -13,9 +13,9 @@ public sealed class KeyboardRoutingVerificationTests
     [Theory]
     [InlineData(RawInputModifiers.Control)]
     [InlineData(RawInputModifiers.Meta)]
-    public void WorkspaceShortcutsReachTheSceneWhenFocusIsOutsideTextInputs(RawInputModifiers modifier)
+    public async Task WorkspaceShortcutsReachTheSceneWhenFocusIsOutsideTextInputs(RawInputModifiers modifier)
     {
-        HeadlessTestHost.Run(() =>
+        await HeadlessTestHost.RunAsync(async () =>
         {
             var folder = CreateProject(out var session, out var first, out var second);
             Window? window = null;
@@ -25,6 +25,8 @@ public sealed class KeyboardRoutingVerificationTests
                 window = new Window { Content = view, Width = 1200, Height = 800 };
                 window.Show();
                 window.UpdateLayout();
+                await view.SynchronizeAssetDocumentsAsync();
+                session = view.CommandSession;
                 view.Focusable = true;
                 Assert.True(view.Focus());
 
@@ -91,6 +93,7 @@ public sealed class KeyboardRoutingVerificationTests
                 using var capture = new WorkspaceCapture(session);
                 _ = capture.Capture();
                 var view = capture.View;
+                session = view.CommandSession;
                 var window = Assert.IsType<Window>(TopLevel.GetTopLevel(view));
                 var textBox = view.GetVisualDescendants().OfType<TextBox>().Single(box => box.Text == "Pending scene edit");
                 Assert.True(textBox.Focus());

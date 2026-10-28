@@ -16,7 +16,7 @@ public sealed partial class WorkspaceView
     {
         if (Is3DActive) { RefreshMountedFaceOutputs(); return; }
         if (_previewOutputs is not { } outputs) return;
-        var frame = outputs.Capture(_faceActive ? null : _session.RenderDocument, _faceActive ? Faces.Document : null);
+        var frame = outputs.Capture(_faceActive ? null : _session.RenderDocument, _faceActive ? _faces.Document : null);
         if (frame.Fingerprint == _previewFrame.Fingerprint) return;
         _previewFrame = frame;
         _viewport.RefreshRuntimeOutputs();

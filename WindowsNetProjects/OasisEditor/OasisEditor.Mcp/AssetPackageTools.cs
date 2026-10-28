@@ -15,7 +15,7 @@ public sealed partial class EditorTools
         {
             var result = capture.View.RenameProjectAssetPackage(manifestPath, packageName, expectedFingerprint);
             if (!result.Success) throw new InvalidOperationException(result.Error);
-            return new { result.ManifestPath, result.RecoveryPath, assets = session.ListAssets() };
+            return new { result.ManifestPath, result.RecoveryPath, assets = rootSession.ListAssets() };
         }, cancellationToken);
 
     [McpServerTool(Name = "delete_project_asset_package"), Description("Move one saved project asset package to Generated/Trash for recovery. Set confirm=true to proceed. Refuses open, dirty, referenced, changed or unsafe packages.")]
@@ -25,6 +25,6 @@ public sealed partial class EditorTools
             if (!confirm) throw new InvalidOperationException("Deletion was not confirmed. Call again with confirm=true after reviewing the selected package.");
             var result = capture.View.MoveProjectAssetPackageToTrash(manifestPath, expectedFingerprint);
             if (!result.Success) throw new InvalidOperationException(result.Error);
-            return new { result.ManifestPath, result.RecoveryPath, assets = session.ListAssets() };
+            return new { result.ManifestPath, result.RecoveryPath, assets = rootSession.ListAssets() };
         }, cancellationToken);
 }
