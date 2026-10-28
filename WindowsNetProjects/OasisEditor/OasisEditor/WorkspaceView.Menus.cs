@@ -44,10 +44,10 @@ public sealed partial class WorkspaceView
             return item;
         }
         bool Project() => _session.ProjectFilePath is not null;
-        bool MainProject() => Project() && !_isAssetWindow;
-        bool Face() => _faceActive && Faces.Document is not null;
+        bool MainProject() => Project();
+        bool Face() => _faceActive && _faces.Document is not null;
         bool Panel() => !Is3DActive && !_faceActive && _session.PanelPath is not null;
-        bool Machine() => _machineActive && Machines.Document is not null;
+        bool Machine() => _machineActive && _machines.Document is not null;
 
         var assetCreate = Group("_Create");
         foreach (var kind in new[] { "Panel2D", "Face", "Cabinet3D", "Machine", "Reel", "Prefab" })
@@ -56,8 +56,8 @@ public sealed partial class WorkspaceView
             Take(registrations, "Import FML layout…", "MFME ._FML…", Panel),
             Take(registrations, "Import Cabinet GLB…", "_GLB Model…", MainProject));
         var file = Group("_File",
-            Take(registrations, "New project…", enabled: () => !_isAssetWindow),
-            Take(registrations, "Open project…", enabled: () => !_isAssetWindow),
+            Take(registrations, "New project…"),
+            Take(registrations, "Open project…"),
             assetCreate, new Separator(), import,
             Group("_Open asset", Take(registrations, "Open Machine…", "_Machine…", MainProject)),
             new Separator(),
@@ -66,17 +66,17 @@ public sealed partial class WorkspaceView
             Group("_Export", Take(registrations, "Export portable Player package…", enabled: Machine)),
             new Separator(),
             Take(registrations, "Save", "_Save Asset", () => _save.IsEnabled),
-            Take(registrations, "Save all assets", enabled: () => Project() && !_isAssetWindow),
-            Take(registrations, "Close asset", enabled: () => !_isAssetWindow && ActiveDocumentPath is not null),
+            Take(registrations, "Save all assets", enabled: Project),
+            Take(registrations, "Close asset", enabled: () => ActiveDocumentPath is not null),
             Take(registrations, "Close project", "_Close Project", MainProject),
-            new Separator(), Action("E_xit", async () => await ExitFromMenuAsync(), () => !_isAssetWindow));
+            new Separator(), Action("E_xit", async () => await ExitFromMenuAsync()));
         // Asset creation is now reachable through File > Create rather than a mixed File list.
         registrations.Items.Remove(registrations.Items.OfType<MenuItem>().Single(m => Equals(m.Header, "Create Machine…")));
         registrations.Items.Remove(registrations.Items.OfType<MenuItem>().Single(m => Equals(m.Header, "Create Prefab…")));
 
         var face = Group("_Face",
             Action("Add Panel2D Face Source _Shape", () => Try(() => { RequirePanel(); _selectedSource = _session.AddSourceShape("Face source region"); _session.Select(null); Refresh(); }), Panel),
-            Action("Create Face from Selected Panel2D Source _Shape", async () => await GenerateFaceFromSelectedShape(), () => Panel() && _selectedSource is not null && !_isAssetWindow),
+            Action("Create Face from Selected Panel2D Source _Shape", async () => await GenerateFaceFromSelectedShape(), () => Panel() && _selectedSource is not null),
             Take(registrations, "Validate Face", "_Validate Face", Face), new Separator(),
             Group("_Artwork",
                 Take(registrations, "Import Face artwork…", enabled: Face),
@@ -111,19 +111,18 @@ public sealed partial class WorkspaceView
             Action("_Hide", () => Try(() => SetSelectionObjectState(visible: false)), () => !Is3DActive && SelectedIds.Count > 0),
             Action("_Show", () => Try(() => SetSelectionObjectState(visible: true)), () => !Is3DActive && SelectedIds.Count > 0)));
         edit.Items.Add(new Separator());
-        edit.Items.Add(Take(registrations, "Preferences…", "_Preferences", () => !_isAssetWindow));
+        edit.Items.Add(Take(registrations, "Preferences…", "_Preferences"));
         edit.Items.Add(Action("_Project Settings", async () => await ShowProjectSettingsFromMenuAsync(), MainProject));
 
         var window = Group("_Window");
         foreach (var pane in new[] { "Assets", "Hierarchy", "Inspector", "Output" })
-            window.Items.Add(Action("_" + pane, () => Try(() => ShowWorkspacePane(pane)), () => pane != "Output" || !_isAssetWindow));
+            window.Items.Add(Action("_" + pane, () => Try(() => ShowWorkspacePane(pane))));
         window.Items.Add(Action("_Play View", ShowPlayViewFromMenu, Machine));
         window.Items.Add(Action("_Input Map", ShowInputMapFromMenu, Machine));
         window.Items.Add(new Separator());
-        window.Items.Add(Take(registrations, "Float active asset", enabled: () => !_isAssetWindow && ActiveDocumentPath is not null));
+        window.Items.Add(Take(registrations, "Float active asset", enabled: () => ActiveDocumentPath is not null));
         foreach (var label in new[] { "Save workspace", "Restore workspace", "Reset layout" })
         {
-            if (_isAssetWindow && label != "Reset layout") continue;
             var item = windowRegistrations.Items.OfType<MenuItem>().FirstOrDefault(m => Equals(m.Header, label));
             if (item is not null) { windowRegistrations.Items.Remove(item); window.Items.Add(item); }
         }
@@ -134,7 +133,7 @@ public sealed partial class WorkspaceView
         window.Items.Add(Group("Oasis _Library", Take(registrations, "Set Oasis Library folder…", enabled: MainProject), Take(registrations, "Refresh Oasis Library", enabled: MainProject)));
 
         var preview = Take(registrations, "Emulation preview");
-        var emulation = Group("_Emulation", Take(preview, "Play", "_Start", () => Machine() && Machines.Document!.Runtime is EmulationRuntimeDefinition && Preview.State is EmulationBackendState.Stopped or EmulationBackendState.Failed), Take(preview, "Stop", "_Stop", () => Preview.Backend is not null));
+        var emulation = Group("_Emulation", Take(preview, "Play", "_Start", () => Machine() && _machines.Document!.Runtime is EmulationRuntimeDefinition && Preview.State is EmulationBackendState.Stopped or EmulationBackendState.Failed), Take(preview, "Stop", "_Stop", () => Preview.Backend is not null));
         _pauseMenu = Action("_Pause", async () => await PreviewAction(() => Preview.ControlAsync(Preview.State == EmulationBackendState.Paused ? "resume" : "pause")), () => Preview.State is EmulationBackendState.Running or EmulationBackendState.Paused);
         _unthrottledMenu = Action("_Unthrottled", async () => await PreviewAction(() => Preview.ControlAsync(Preview.Backend?.IsThrottleEnabled == true ? "unthrottle" : "throttle")), () => Preview.Backend is not null);
         _pauseMenu.ToggleType = _unthrottledMenu.ToggleType = MenuItemToggleType.CheckBox;
@@ -158,6 +157,7 @@ public sealed partial class WorkspaceView
 
     public EditorMenuEntry[] InspectMenus()
     {
+        if(!ReferenceEquals(CommandView,this))return CommandView.InspectMenus();
         RefreshMenuState();
         EditorMenuEntry Entry(object? value) => value is MenuItem item
             ? new(item.Header?.ToString()?.Replace("_", "") ?? "", item.IsEnabled, item.IsChecked, item.InputGesture?.ToString(), item.Items.Select(Entry).ToArray())
@@ -167,6 +167,7 @@ public sealed partial class WorkspaceView
 
     internal MenuItem FindMenu(params string[] path)
     {
+        if(!ReferenceEquals(CommandView,this))return CommandView.FindMenu(path);
         IEnumerable<object?> items = _mainMenu!.Items;
         MenuItem? found = null;
         foreach (var header in path)
@@ -194,6 +195,7 @@ public sealed partial class WorkspaceView
 
     internal void CloseMenus()
     {
+        if(!ReferenceEquals(CommandView,this)){CommandView.CloseMenus();return;}
         foreach (var root in _mainMenu!.Items.OfType<MenuItem>()) root.IsSubMenuOpen = false;
     }
 }

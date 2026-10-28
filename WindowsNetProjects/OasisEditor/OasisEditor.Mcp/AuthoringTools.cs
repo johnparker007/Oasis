@@ -7,7 +7,7 @@ public sealed partial class EditorTools
 {
     [McpServerTool(Name = "import_fml"), Description("Import a workspace FML through the shared real decoder, mapper and artwork/mask processors. Refuses existing import packages; commits panel elements as one undoable command. Recovered input definitions are returned for Machine setup, not persisted in Panel2D.")]
     public Task<object> ImportFml(string path, CancellationToken cancellationToken)
-        => ui.Invoke<object>(() => { var result = session.ImportFml(path); capture.View.ShowPanel(); return new { result, workspace = Snapshot() }; }, cancellationToken);
+        => ui.Invoke<object>(() => { var result = session.ImportFml(path); capture.View.CommandView.ShowPanel(); return new { result, workspace = Snapshot() }; }, cancellationToken);
     [McpServerTool(Name = "select_elements"), Description("Replace Panel2D multi-selection by stable IDs. Validates every ID first; does not dirty the document.")]
     public Task<object> SelectElements(string[] ids, CancellationToken cancellationToken) => ui.Invoke(() => Act(() => session.SelectElements(ids)), cancellationToken);
 
@@ -44,10 +44,10 @@ public sealed partial class EditorTools
     public Task<object> DeleteSourceShape(string id, CancellationToken cancellationToken) => ui.Invoke(() => Act(() => session.DeleteSourceShape(id)), cancellationToken);
 
     [McpServerTool(Name = "create_face"), Description("Create and save a native blank Face package with the current shared Oasis schema. Refuses existing packages.")]
-    public Task<object> CreateFace(string name, CancellationToken cancellationToken) => ui.Invoke(() => ActFace(() => faces.CreateFace(name)), cancellationToken);
+    public Task<object> CreateFace(string name, CancellationToken cancellationToken) => ui.InvokeAsync<object>(async () => { var path = faces.CreateFace(name); await capture.View.OpenNativeAssetAsync("Face", path); return Snapshot(); }, cancellationToken);
 
     [McpServerTool(Name = "open_face"), Description("Open an existing current-schema Face package for native authoring. Preserves full authored fields; refuses dirty replacement.")]
-    public Task<object> OpenFace(string path, CancellationToken cancellationToken) => ui.Invoke(() => {capture.View.OpenAsset(new AssetSummary("Face",Path.GetFileName(Path.GetDirectoryName(path))??"Face",path));return Snapshot();}, cancellationToken);
+    public Task<object> OpenFace(string path, CancellationToken cancellationToken) => ui.InvokeAsync<object>(async () => { await capture.View.OpenNativeAssetAsync("Face", path); return Snapshot();}, cancellationToken);
 
     [McpServerTool(Name = "select_face_element"), Description("Select a Face element by stable ID, or clear with null. Does not dirty the document.")]
     public Task<object> SelectFaceElement(CancellationToken cancellationToken, string? id = null) => ui.Invoke(() => ActFace(() => faces.Select(id)), cancellationToken);

@@ -15,7 +15,7 @@ public sealed partial class WorkspaceView
         item.Click += (_, _) => Try(() =>
         {
             RequireFace();
-            Faces.AddReelMount("Reel mount", 24, 24, 120, 80, reelIndex: 0);
+            _faces.AddReelMount("Reel mount", 24, 24, 120, 80, reelIndex: 0);
             Refresh();
         });
         create.Items.Add(item);
@@ -23,7 +23,7 @@ public sealed partial class WorkspaceView
 
     private void AppendFaceReelInspector(string id)
     {
-        var reel = Faces.Document?.Elements.OfType<FaceReelMount>()
+        var reel = _faces.Document?.Elements.OfType<FaceReelMount>()
             .FirstOrDefault(element => string.Equals(element.ObjectId, id, StringComparison.Ordinal));
         if (reel is null) return;
 
@@ -46,7 +46,7 @@ public sealed partial class WorkspaceView
         _inspector.Children.Add(ActionButton("Import symbol-band image…", () => ImportSymbolBand(id)));
         _inspector.Children.Add(ActionButton("Generate transmission mask", () => Try(() =>
         {
-            Faces.GenerateTransmissionMask(id);
+            _faces.GenerateTransmissionMask(id);
             _inspected = null;
             Refresh();
         })));
@@ -84,7 +84,7 @@ public sealed partial class WorkspaceView
             var top = ReadInt(topLamp, "Top lamp number");
             var middle = ReadInt(middleLamp, "Middle lamp number");
             var bottom = ReadInt(bottomLamp, "Bottom lamp number");
-            Faces.UpdateReelMount(id, new FaceReelMountUpdateOptions
+            _faces.UpdateReelMount(id, new FaceReelMountUpdateOptions
             {
                 LogicalReelIndex = reelIndex,
                 ClearLogicalReelReference = reelIndex is null,
@@ -124,7 +124,7 @@ public sealed partial class WorkspaceView
 
     private async void ImportSymbolBand(string elementId)
     {
-        if (!_faceActive || Faces.FacePath is null) { SetStatus("Open a Face asset before importing a reel symbol band."); return; }
+        if (!_faceActive || _faces.FacePath is null) { SetStatus("Open a Face asset before importing a reel symbol band."); return; }
         if (TopLevel.GetTopLevel(this)?.StorageProvider is not { CanOpen: true } storage) return;
         var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
         {
@@ -132,7 +132,7 @@ public sealed partial class WorkspaceView
             FileTypeFilter = [new FilePickerFileType("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp"] }]
         });
         if (files.Count > 0 && files[0].TryGetLocalPath() is string path)
-            Try(() => WithSelectedImportFile(path, source => Faces.ImportSymbolBand(elementId, source)));
+            Try(() => WithSelectedImportFile(path, source => _faces.ImportSymbolBand(elementId, source)));
         _inspected = null;
         Refresh();
     }

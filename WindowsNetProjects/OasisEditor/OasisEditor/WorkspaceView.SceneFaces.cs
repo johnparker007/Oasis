@@ -34,7 +34,7 @@ public sealed partial class WorkspaceView
             {
                 var path = _session.ResolveAsset(plane.FaceAssetPath);
                 FaceDocumentModel face;
-                if (SameScenePath(path, Faces.FacePath) && Faces.Document is { } openFace) face = openFace;
+                if (SameScenePath(path, _faces.FacePath) && _faces.Document is { } openFace) face = openFace;
                 else
                 {
                     if (!FaceDocumentStorage.TryReadValidated(File.ReadAllText(path), out var file, out var error)) throw new InvalidDataException(error);

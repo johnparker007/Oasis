@@ -16,7 +16,7 @@ public sealed partial class EditorTools
 
     [McpServerTool(Name = "validate_face"), Description("Run portable Face source-panel and tray/emitter validation. Returns diagnostics without changing authored data.")]
     public Task<object> ValidateFace(CancellationToken cancellationToken)
-        => ui.Invoke<object>(() => new { workspace = Snapshot(), diagnostics = capture.View.ValidateActiveFace() }, cancellationToken);
+        => ui.Invoke<object>(() => new { workspace = Snapshot(), diagnostics = capture.View.GetDocumentEditor("Face").ValidateActiveFace() }, cancellationToken);
 
     [McpServerTool(Name = "open_face_source_panel"), Description("Open the saved Panel2D manifest recorded by the active Face. Fails safely if the Face has no source path or the saved source is unavailable.")]
     public Task<object> OpenFaceSourcePanel(CancellationToken cancellationToken)

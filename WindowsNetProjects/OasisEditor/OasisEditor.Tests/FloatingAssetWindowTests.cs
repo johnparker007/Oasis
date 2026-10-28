@@ -53,16 +53,24 @@ public sealed class FloatingAssetWindowTests
                 Assert.True(view.HasUnsavedChanges);await Assert.ThrowsAsync<InvalidOperationException>(view.CloseProjectAsync);
                 capture.Capture();Assert.Equal(2,capture.CaptureFloatingWindows().Count);
                 var child=view.GetFloatingDocumentView("Panel2D",a);
-                var name=child.GetVisualDescendants().OfType<TextBox>().Single(b=>b.Text=="Rectangle");name.Text="Floating edit";
-                child.GetVisualDescendants().OfType<Button>().Single(b=>Equals(b.Content,"Apply")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                await view.ActivateDocumentAsync("Panel2D",a);
+                capture.Capture();
+                var name=view.GetVisualDescendants().OfType<TextBox>().Single(b=>b.Text=="Rectangle");name.Text="Floating edit";
+                view.GetVisualDescendants().OfType<Button>().Single(b=>Equals(b.Content,"Apply")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 view.UpdateFloatingElement("Face",face,lamp,name:"Independent lamp");
                 view.FloatingDocumentHistory("Panel2D",a);Assert.Equal(original,File.ReadAllText(a));
                 view.FloatingDocumentHistory("Panel2D",a,true);
                 Assert.Equal("Independent lamp",view.GetFloatingDocumentView("Face",face).Faces.Elements.Single().Name);
-                child.GetVisualDescendants().OfType<ListBox>().Single(l=>l.ItemsSource is IReadOnlyList<FaceSourceShapeSnapshot>).SelectedIndex=0;
-                var window=view.FloatingWorkspaceWindows.Single(w=>ReferenceEquals(w.Content,child));window.Close();await view.WaitForSceneAsync();
-                Assert.Single(view.InspectFloatingDocuments());Assert.Equal(a,session.PanelPath);Assert.Equal("Floating edit",session.Elements.Single().Name);Assert.Equal(source,view.InspectWorkspaceState().SourceSelection);
-                session.Undo();Assert.Equal("Rectangle",session.Elements.Single().Name);session.Redo();
+                view.GetVisualDescendants().OfType<ListBox>().Single(l=>l.ItemsSource is IReadOnlyList<FaceSourceShapeSnapshot>).SelectedIndex=0;
+                var window=Assert.IsAssignableFrom<Window>(TopLevel.GetTopLevel(child));
+                Assert.Contains(window,view.FloatingWorkspaceWindows);
+                window.Close();await view.WaitForSceneAsync();
+                Assert.Single(view.InspectFloatingDocuments());
+                var redockedPanel=view.GetDocumentEditor("Panel2D").CommandSession;
+                Assert.Equal(a,redockedPanel.PanelPath);Assert.Equal("Floating edit",redockedPanel.Elements.Single().Name);
+                var panelState=Assert.Single(Assert.IsType<AssetWorkspaceLayout>(view.InspectWorkspaceState().AssetLayout).Documents.Where(document=>document.Kind=="Panel2D" && document.Path.EndsWith("Controls/asset.panel2d")));
+                Assert.Equal(source,panelState.SourceSelection);
+                redockedPanel.Undo();Assert.Equal("Rectangle",redockedPanel.Elements.Single().Name);redockedPanel.Redo();
                 await view.SaveAllDocumentsAsync();Assert.False(view.HasUnsavedChanges);
                 await view.DockDocumentAsync("Face",face);Assert.Empty(view.InspectFloatingDocuments());
                 Assert.Equal("Independent lamp",view.Faces.Elements.Single().Name);Assert.True(view.Faces.CanUndo);
@@ -84,7 +92,7 @@ public sealed class FloatingAssetWindowTests
                 await view.FloatDocumentAsync("Panel2D",panel,new(130,160,1100,760));
                 var reel=view.Reels.Create("Reel");await view.OpenReelAsync(reel);await view.FloatDocumentAsync("Reel",reel,new(180,190,1150,800));
                 var reelView=view.GetFloatingDocumentView("Reel",reel);reelView.SceneView.SetCamera(reelView.SceneView.Camera with {Distance=2,Yaw=.6f});
-                var state=view.InspectWorkspaceState();Assert.Equal(2,state.FloatingDocuments!.Length);
+                var state=view.InspectWorkspaceState();Assert.Equal(2,view.InspectFloatingDocuments().Count);
                 await view.CloseProjectAsync();Assert.Empty(view.FloatingWorkspaceWindows);
                 view.ApplyWorkspaceState(state);await view.WaitForSceneAsync();
                 Assert.Equal(2,view.InspectFloatingDocuments().Count);
@@ -92,7 +100,10 @@ public sealed class FloatingAssetWindowTests
                 Assert.Equal(2,view.GetFloatingDocumentView("Reel",reel).SceneView.Camera.Distance);
                 Assert.Equal(.6f,view.GetFloatingDocumentView("Reel",reel).SceneView.Camera.Yaw);
                 Assert.Contains(view.FloatingWorkspaceWindows,w=>w.Position.X==130&&w.Position.Y==160&&w.Width==1100);
-                var invalid=state with{FloatingDocuments=[state.FloatingDocuments[0] with{Bounds=new(0,0,double.NaN,800)}]};
+                var nativeLayout=Assert.IsType<AssetWorkspaceLayout>(state.AssetLayout);
+                var firstWindow=Assert.IsType<WorkspaceFloatingWindow>(nativeLayout.Layout.Windows!.First());
+                var invalidLayout=nativeLayout with{Layout=nativeLayout.Layout with{Windows=[firstWindow with{Bounds=new(0,0,double.NaN,800)},..nativeLayout.Layout.Windows.Skip(1)]}};
+                var invalid=state with{AssetLayout=invalidLayout};
                 Assert.Throws<InvalidDataException>(()=>view.ApplyWorkspaceState(invalid));Assert.Equal(2,view.InspectFloatingDocuments().Count);
                 await view.DockDocumentAsync("Reel",reel);Assert.Single(view.InspectFloatingDocuments());
                 view.Reels.Update(widthMm:72);await view.WaitForSceneAsync();Assert.Equal(2,view.SceneView.Camera.Distance);
@@ -110,10 +121,16 @@ public sealed class FloatingAssetWindowTests
             try
             {
                 var session=new AuthoringSession(root);session.CreateProject("Floating");using var capture=new WorkspaceCapture(session);var view=capture.View;
-                var panel=session.CreatePanel("Panel");var id=session.AddRectangle();File.Delete(panel);
+                var panel=session.CreatePanel("Panel");var id=session.AddRectangle();
+                // Materialize the native document before simulating an external
+                // deletion; reopening a missing file is expected to fail.
+                await view.OpenNativeAssetAsync("Panel2D",panel);
+                File.Delete(panel);
                 await view.FloatDocumentAsync("Panel2D",panel);view.UpdateFloatingElement("Panel2D",panel,id,name:"Still retained");
-                await view.DockDocumentAsync("Panel2D",panel);Assert.Equal("Still retained",session.Elements.Single().Name);
-                Assert.False(File.Exists(panel));Assert.ThrowsAny<IOException>(session.Save);
+                await view.DockDocumentAsync("Panel2D",panel);
+                var documentSession=view.GetDocumentEditor("Panel2D").CommandSession;
+                Assert.Equal("Still retained",documentSession.Elements.Single().Name);
+                Assert.False(File.Exists(panel));Assert.ThrowsAny<IOException>(documentSession.Save);
             }
             finally{Directory.Delete(root,true);}
         });

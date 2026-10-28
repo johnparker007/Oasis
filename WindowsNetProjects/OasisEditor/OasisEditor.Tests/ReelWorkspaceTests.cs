@@ -20,10 +20,10 @@ public sealed class ReelWorkspaceTests
                 Assert.True(view.HasUnsavedChanges);Assert.Equal(.145f,view.SceneView.Scene.Maximum.Y,5);
                 Assert.Equal(.035f,view.SceneView.Scene.Maximum.X,5);
                 view.Reels.Save();Assert.True(view.Reels.IsProjectCurrent);
-                Assert.Equal("Reel",view.SceneKind);Assert.NotNull(view.Reels.FilePath);var state=view.InspectWorkspaceState();Assert.True(state.Scene3D!.Reel is not null,WorkspaceLayoutState.Serialize(state));
+                Assert.Equal("Reel",view.SceneKind);Assert.NotNull(view.Reels.FilePath);var state=view.InspectWorkspaceState();Assert.NotNull(state.AssetLayout!.Documents.Single(d=>d.Kind=="Reel").Scene);
                 view.ShowPanel();view.ApplyWorkspaceState(WorkspaceLayoutState.Deserialize(WorkspaceLayoutState.Serialize(state)));await view.WaitForSceneAsync();
                 Assert.Equal("Reel",view.SceneKind);Assert.Equal(id,view.Reels.Document.Id);Assert.Equal(290,view.Reels.Document.DiameterMm);
-                Assert.Throws<InvalidDataException>(()=>view.ApplyWorkspaceState(state with{Scene3D=state.Scene3D with{Reel="../escape"}}));
+                Assert.Throws<InvalidDataException>(()=>view.ApplyWorkspaceState(state with{AssetLayout=state.AssetLayout! with{Documents=[state.AssetLayout.Documents.Single(d=>d.Kind=="Reel") with{Path="../escape"}]}}));
                 Assert.Equal(id,view.Reels.Document.Id);
             }
             finally{Directory.Delete(root,true);}

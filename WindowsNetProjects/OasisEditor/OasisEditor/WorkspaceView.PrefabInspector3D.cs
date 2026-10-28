@@ -22,7 +22,7 @@ public sealed partial class WorkspaceView
         _inspector.Children.Clear();
         _fields.Clear();
 
-        var document = Prefabs.Document;
+        var document = _prefabs.Document;
         if (document is null)
         {
             Heading("PREFAB");
@@ -37,14 +37,14 @@ public sealed partial class WorkspaceView
 
         Heading($"PREFAB NODE  /  {NodePath(root, node.Id)}");
         Field("Node name", node.Name);
-        _inspector.Children.Add(ActionButton("Apply name", () => Try(() => Prefabs.RenameNode(node.Id, _fields["Node name"].Text ?? ""))));
+        _inspector.Children.Add(ActionButton("Apply name", () => Try(() => _prefabs.RenameNode(node.Id, _fields["Node name"].Text ?? ""))));
 
         Heading("LOCAL TRANSFORM");
         var transform = node.Transform;
         Field("Position X", transform.Position.X); Field("Position Y", transform.Position.Y); Field("Position Z", transform.Position.Z);
         Field("Rotation X", transform.Rotation.X); Field("Rotation Y", transform.Rotation.Y); Field("Rotation Z", transform.Rotation.Z);
         Field("Scale X", transform.Scale.X); Field("Scale Y", transform.Scale.Y); Field("Scale Z", transform.Scale.Z);
-        _inspector.Children.Add(ActionButton("Apply transform", () => Try(() => Prefabs.SetTransform(node.Id, new MachineObjectTransform(
+        _inspector.Children.Add(ActionButton("Apply transform", () => Try(() => _prefabs.SetTransform(node.Id, new MachineObjectTransform(
             new MachineVector3(Number("Position X"), Number("Position Y"), Number("Position Z")),
             new MachineVector3(Number("Rotation X"), Number("Rotation Y"), Number("Rotation Z")),
             new MachineVector3(Number("Scale X"), Number("Scale Y"), Number("Scale Z")))))));
@@ -53,14 +53,14 @@ public sealed partial class WorkspaceView
         Field("Child name", "New node");
         _inspector.Children.Add(ActionButton("Add child", () => Try(() =>
         {
-            var childId = Prefabs.AddNode(node.Id, _fields["Child name"].Text ?? "");
+            var childId = _prefabs.AddNode(node.Id, _fields["Child name"].Text ?? "");
             SelectSceneNode(childId);
         })));
         if (location.Parent is not null)
         {
             _inspector.Children.Add(ActionButton("Remove node", () => Try(() =>
             {
-                Prefabs.RemoveNode(node.Id);
+                _prefabs.RemoveNode(node.Id);
                 SelectSceneNode(location.Parent.Id);
             })));
 
@@ -83,7 +83,7 @@ public sealed partial class WorkspaceView
             {
                 if (parentPicker.SelectedItem is not SceneNodeOption selectedParent)
                     throw new ArgumentException("Choose a new parent node.");
-                Prefabs.ReparentNode(node.Id, selectedParent.Id);
+                _prefabs.ReparentNode(node.Id, selectedParent.Id);
                 SelectSceneNode(node.Id);
             })));
         }
@@ -113,7 +113,7 @@ public sealed partial class WorkspaceView
         Heading("MODEL");
         if (model is null)
         {
-            _inspector.Children.Add(ActionButton("Add Model component", () => Try(() => Prefabs.AddComponent(nodeId, Object3DComponentDefinition.ModelKind))));
+            _inspector.Children.Add(ActionButton("Add Model component", () => Try(() => _prefabs.AddComponent(nodeId, Object3DComponentDefinition.ModelKind))));
             _inspector.Children.Add(ActionButton("Import GLB…", () => _ = ImportPrefabModelDialogAsync(nodeId)));
             return;
         }
@@ -121,10 +121,10 @@ public sealed partial class WorkspaceView
         Field("Model path", model.Path); Field("Model intrinsic scale", model.Scale);
         var upAxis = new ComboBox { ItemsSource = new[] { "X", "Y", "Z" }, SelectedItem = model.UpAxis };
         AddLabeledControl("Model up-axis", upAxis);
-        _inspector.Children.Add(ActionButton("Apply Model", () => Try(() => Prefabs.SetModel(nodeId, new Object3DModelDefinition(
+        _inspector.Children.Add(ActionButton("Apply Model", () => Try(() => _prefabs.SetModel(nodeId, new Object3DModelDefinition(
             _fields["Model path"].Text ?? "", Number("Model intrinsic scale"), upAxis.SelectedItem as string ?? "Y")))));
         _inspector.Children.Add(ActionButton("Import GLB…", () => _ = ImportPrefabModelDialogAsync(nodeId)));
-        _inspector.Children.Add(ActionButton("Remove Model component", () => Try(() => Prefabs.RemoveComponent(nodeId, Object3DComponentDefinition.ModelKind))));
+        _inspector.Children.Add(ActionButton("Remove Model component", () => Try(() => _prefabs.RemoveComponent(nodeId, Object3DComponentDefinition.ModelKind))));
     }
 
     private void AddColliderInspector(string nodeId, Object3DColliderDefinition? collider)
@@ -132,7 +132,7 @@ public sealed partial class WorkspaceView
         Heading("COLLIDER");
         if (collider is null)
         {
-            _inspector.Children.Add(ActionButton("Add Collider component", () => Try(() => Prefabs.AddComponent(nodeId, Object3DComponentDefinition.ColliderKind))));
+            _inspector.Children.Add(ActionButton("Add Collider component", () => Try(() => _prefabs.AddComponent(nodeId, Object3DComponentDefinition.ColliderKind))));
             return;
         }
 
@@ -170,9 +170,9 @@ public sealed partial class WorkspaceView
                 Object3DColliderKind.Mesh => new(parsedKind, SourceFrame: frame, IsTrigger: isTrigger.IsChecked == true),
                 _ => throw new ArgumentOutOfRangeException(nameof(kind))
             };
-            Prefabs.SetCollider(nodeId, definition);
+            _prefabs.SetCollider(nodeId, definition);
         })));
-        _inspector.Children.Add(ActionButton("Remove Collider component", () => Try(() => Prefabs.RemoveComponent(nodeId, Object3DComponentDefinition.ColliderKind))));
+        _inspector.Children.Add(ActionButton("Remove Collider component", () => Try(() => _prefabs.RemoveComponent(nodeId, Object3DComponentDefinition.ColliderKind))));
     }
 
     private void AddRigidbodyInspector(string nodeId, Object3DRigidbodyDefinition? rigidbody)
@@ -180,7 +180,7 @@ public sealed partial class WorkspaceView
         Heading("RIGIDBODY");
         if (rigidbody is null)
         {
-            _inspector.Children.Add(ActionButton("Add Rigidbody component", () => Try(() => Prefabs.AddComponent(nodeId, Object3DComponentDefinition.RigidbodyKind))));
+            _inspector.Children.Add(ActionButton("Add Rigidbody component", () => Try(() => _prefabs.AddComponent(nodeId, Object3DComponentDefinition.RigidbodyKind))));
             return;
         }
 
@@ -205,9 +205,9 @@ public sealed partial class WorkspaceView
                 throw new ArgumentException("Choose a supported Rigidbody mode.");
             double? mass = parsedMode == Object3DRigidbodyMode.Dynamic ? Number("Rigidbody mass") : null;
             var useGravity = (gravity.SelectedItem as NullableBoolOption)?.Value;
-            Prefabs.SetRigidbody(nodeId, new Object3DRigidbodyDefinition(parsedMode, mass, useGravity));
+            _prefabs.SetRigidbody(nodeId, new Object3DRigidbodyDefinition(parsedMode, mass, useGravity));
         })));
-        _inspector.Children.Add(ActionButton("Remove Rigidbody component", () => Try(() => Prefabs.RemoveComponent(nodeId, Object3DComponentDefinition.RigidbodyKind))));
+        _inspector.Children.Add(ActionButton("Remove Rigidbody component", () => Try(() => _prefabs.RemoveComponent(nodeId, Object3DComponentDefinition.RigidbodyKind))));
     }
 
     private void ReorderNode(Object3DNodeDefinition parent, string nodeId, int delta)
@@ -217,7 +217,7 @@ public sealed partial class WorkspaceView
         var target = index + delta;
         if (index < 0 || target < 0 || target >= children.Count) return;
         (children[index], children[target]) = (children[target], children[index]);
-        Prefabs.ReorderChildren(parent.Id, children);
+        _prefabs.ReorderChildren(parent.Id, children);
         SelectSceneNode(nodeId);
     }
 

@@ -9,7 +9,7 @@ namespace OasisEditor.Avalonia.Mcp;
 
 public sealed partial class EditorTools
 {
-    private MachineAuthoringSession Machines => capture.View.Machines;
+    private MachineAuthoringSession Machines => capture.View.GetDocumentEditor("Machine").Machines;
 
     [McpServerTool(Name = "list_machines"), Description("List native schema-11 Machine manifests in the open project.")]
     public Task<object> ListMachines(CancellationToken cancellationToken)
@@ -17,11 +17,11 @@ public sealed partial class EditorTools
 
     [McpServerTool(Name = "create_machine"), Description("Create a real native schema-11 Machine package in the open project. Refuses existing packages and unsaved document replacement.")]
     public Task<object> CreateMachine(string name, CancellationToken cancellationToken)
-        => ui.Invoke(() => { var path = Machines.CreateMachine(name); capture.View.ShowMachine(); return MachineSnapshot(path); }, cancellationToken);
+        => ui.InvokeAsync<object>(async () => { var path = Machines.CreateMachine(name); await capture.View.OpenNativeAssetAsync("Machine", path); return MachineSnapshot(path); }, cancellationToken);
 
     [McpServerTool(Name = "open_machine"), Description("Open a current-schema Machine package through the shared storage validator. Confined to Assets/Machines and rejects dirty replacement.")]
     public Task<object> OpenMachine(string path, CancellationToken cancellationToken)
-        => ui.Invoke(() => { capture.View.OpenAsset(new AssetSummary("Machine",Path.GetFileName(Path.GetDirectoryName(path))??"Machine",path)); return MachineSnapshot(); }, cancellationToken);
+        => ui.InvokeAsync<object>(async () => { await capture.View.OpenNativeAssetAsync("Machine", path); return MachineSnapshot(); }, cancellationToken);
 
     [McpServerTool(Name = "inspect_machine", ReadOnly = true), Description("Inspect the complete authored Machine document, runtime/platform settings, inputs, interaction, assignments, prefabs, anchors and dirty/history state.")]
     public Task<object> InspectMachine(CancellationToken cancellationToken)
@@ -122,7 +122,7 @@ public sealed partial class EditorTools
 
     private object ActMachine(Action action)
     {
-        action(); capture.View.ShowMachine();
+        action(); capture.View.CommandView.ShowMachine();
         return MachineSnapshot();
     }
 

@@ -35,7 +35,7 @@ public sealed class EditorApplication : Application
             window.Content = view;
             window.Title = "Oasis Editor";
             view.StateChanged += () => window.Title = $"{view.ActiveTitle}{(view.HasUnsavedChanges ? " *" : "")} — {session.ProjectName ?? "Oasis Editor"}";
-            window.Closing += (_, e) => { if (view.HasUnsavedChanges || view.IsMovingAssetWindow) { e.Cancel = true; view.SetStatus(view.IsMovingAssetWindow?"Wait for asset windows to finish moving before closing.":"Save or undo your changes before closing."); } };
+            window.Closing += (_, e) => { if (view.HasUnsavedChanges || view.IsMovingAssetWindow) { e.Cancel = true; view.SetStatus(view.IsMovingAssetWindow?"Wait for document docking or workspace restoration to finish before closing.":"Save or undo your changes before closing."); } };
             window.Closing += (_, e) => { if (!e.Cancel && view.CanAutoSaveWorkspace) view.Try(view.SaveWorkspace); };
             window.Closed += (_, _) => view.Dispose();
             desktop.MainWindow = window;

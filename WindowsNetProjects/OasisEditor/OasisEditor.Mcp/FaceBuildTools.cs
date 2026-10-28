@@ -9,7 +9,7 @@ public sealed partial class EditorTools
         => ui.Invoke(() => ActFace(() => faces.ImportLampMask(ResolveWorkspaceFile(path))), cancellationToken);
     [McpServerTool(Name="build_face"), Description("Rebuild active Face artwork, lamp mask and native auto-authored trays. Optional standalone runtime export uses real native texture generation; missing Machine composition dependencies fail explicitly. Rolls back on failure. Does not save the authored manifest.")]
     public Task<object> BuildFace(CancellationToken cancellationToken, bool runtimeAssets=false)
-        => ui.Invoke(() => { capture.View.ShowFace(); capture.View.BuildActiveFace(runtimeAssets,cancellationToken); return Snapshot(); }, cancellationToken);
+        => ui.Invoke(() => { capture.View.GetDocumentEditor("Face").ShowFace(); capture.View.GetDocumentEditor("Face").BuildActiveFace(runtimeAssets,cancellationToken); return Snapshot(); }, cancellationToken);
     [McpServerTool(Name="rebuild_face_components_from_source"), Description("Replace local Face component edits from its saved source Panel2D as one undoable edit. Requires explicit confirmation. Artwork and illumination are preserved.")]
     public Task<object> RebuildFaceComponents(bool confirm, CancellationToken cancellationToken)
         => ui.Invoke(() => ActFace(() => { if(!confirm) throw new ArgumentException("Confirm replacement of local component edits."); faces.RebuildComponentsFromSource(); }), cancellationToken);

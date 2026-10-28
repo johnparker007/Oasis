@@ -16,10 +16,13 @@ public sealed record SceneHierarchyRow(string Id, string Name, string Kind, int 
 
 public sealed partial class WorkspaceView
 {
-    public CabinetAuthoringSession Cabinets { get; private set; } = null!;
-    public PrefabAuthoringSession Prefabs { get; private set; } = null!;
-    public SceneViewport SceneView { get; } = new();
-    public string? SceneKind => _sceneKind;
+    private CabinetAuthoringSession _cabinets = null!;
+    public CabinetAuthoringSession Cabinets { get => !_isDocumentEditor && _nativeDocuments.Count>0 ? GetDocumentEditor("Cabinet3D")._cabinets : _cabinets; private set => _cabinets=value; }
+    private PrefabAuthoringSession _prefabs = null!;
+    public PrefabAuthoringSession Prefabs { get => !_isDocumentEditor && _nativeDocuments.Count>0 ? GetDocumentEditor("Prefab")._prefabs : _prefabs; private set => _prefabs=value; }
+    private readonly SceneViewport _sceneView = new();
+    public SceneViewport SceneView => !_isDocumentEditor && _nativeDocuments.Count>0 ? CommandView._sceneView : _sceneView;
+    public string? SceneKind => !_isDocumentEditor && _nativeDocuments.Count>0 ? CommandView._sceneKind : _sceneKind;
     public string SceneLibraryRoot { get; private set; } = string.Empty;
     private string? _sceneKind, _selectedSceneNodeId, _sceneIdentity;
     private readonly ListBox _sceneHierarchy = new();
@@ -38,7 +41,7 @@ public sealed partial class WorkspaceView
 
     private void Initialize3DAuthoring(Grid hierarchy, Grid scene, StackPanel twoDTools, MenuItem file)
     {
-        Cabinets = new(_session); Prefabs = new(_session);
+        Cabinets = _assetSessionBundle?.Cabinets ?? new(_session); Prefabs = _assetSessionBundle?.Prefabs ?? new(_session);
         _twoDToolbar=twoDTools.Parent as Control;
         _sourceRegionHeading=hierarchy.Children.OfType<TextBlock>().FirstOrDefault();
         if (!Program.IsHeadless && !_isAssetWindow) SceneLibraryRoot = GetLibraryRoot();
@@ -48,61 +51,64 @@ public sealed partial class WorkspaceView
         _sceneHierarchy.SelectionChanged += (_, _) =>
         { if (!_sceneHierarchyUpdating) SelectSceneNode((_sceneHierarchy.SelectedItem as SceneHierarchyRow)?.Id); };
         hierarchy.Children.Add(_sceneHierarchy);
-        Grid.SetRow(SceneView, 1); SceneView.IsVisible = false; scene.Children.Add(SceneView);
-        SceneView.Failed += SetStatus; SceneView.Picked += hit => SelectSceneNode(hit is null ? null : _meshNodeIds.GetValueOrDefault(hit.Id));
-        _sceneTools.Children.Add(ActionButton("Frame all", SceneView.FrameAll));
+        Grid.SetRow(_sceneView, 1); _sceneView.IsVisible = false; scene.Children.Add(_sceneView);
+        _sceneView.Failed += SetStatus; _sceneView.Picked += hit => SelectSceneNode(hit is null ? null : _meshNodeIds.GetValueOrDefault(hit.Id));
+        _sceneTools.Children.Add(ActionButton("Frame all", _sceneView.FrameAll));
         _sceneTools.Children.Add(ActionButton("Frame selection", FrameSceneSelection));
         _sceneTools.Children.Add(ActionButton("Reload", async () => await SceneAction(() => ReloadSceneAsync())));
         foreach (var label in new[] { "Visual meshes", "Colliders", "Triggers" })
         {
             var check = new CheckBox { Content = label, IsChecked = label == "Visual meshes", VerticalAlignment = VerticalAlignment.Center };
-            check.IsCheckedChanged += (_, _) => { if (label == "Visual meshes") SceneView.ShowVisuals = check.IsChecked == true;
-                else if (label == "Colliders") SceneView.ShowColliders = check.IsChecked == true; else SceneView.ShowTriggers = check.IsChecked == true; };
+            check.IsCheckedChanged += (_, _) => { if (label == "Visual meshes") _sceneView.ShowVisuals = check.IsChecked == true;
+                else if (label == "Colliders") _sceneView.ShowColliders = check.IsChecked == true; else _sceneView.ShowTriggers = check.IsChecked == true; };
             _sceneTools.Children.Add(check);
-            SceneView.VisibilityChanged += () => check.IsChecked = label == "Visual meshes" ? SceneView.ShowVisuals : label == "Colliders" ? SceneView.ShowColliders : SceneView.ShowTriggers;
+            _sceneView.VisibilityChanged += () => check.IsChecked = label == "Visual meshes" ? _sceneView.ShowVisuals : label == "Colliders" ? _sceneView.ShowColliders : _sceneView.ShowTriggers;
         }
         _sceneToolbarBorder=Toolbar(new ScrollViewer { Content = _sceneTools, HorizontalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto, VerticalScrollBarVisibility = global::Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled }); scene.Children.Add(_sceneToolbarBorder);
         MenuAction(file, "Import Cabinet GLB…", async () => await Create3DAssetDialog(false));
         MenuAction(file, "Create Prefab…", async () => await Create3DAssetDialog(true));
-        Cabinets.Changed += On3DAssetChanged; Prefabs.Changed += On3DAssetChanged;
-        Machines.Changed += OnMachineSceneChanged;
-        Faces.Changed += OnMachineSceneChanged;
+        _cabinets.Changed += On3DAssetChanged; _prefabs.Changed += On3DAssetChanged;
+        _machines.Changed += OnMachineSceneChanged;
+        _faces.Changed += OnMachineSceneChanged;
     }
     public async Task OpenCabinet3DAsync(string path)
     {
-        if(FindAssetWindow("Cabinet3D",Path.GetFullPath(path,_session.RequireProjectDirectory())) is {} owned){ShowOwnedAssetWindow(owned.Window);return;}
-        if (Cabinets.FilePath is null || !SameScenePath(Cabinets.FilePath, Path.GetFullPath(path, _session.RequireProjectDirectory())) || !Cabinets.IsDirty) Cabinets.Open(path);
+        if(!_isDocumentEditor || _documentOwner is not null){await DocumentHost.OpenNativeAssetAsync("Cabinet3D",path);return;}
+        if (_cabinets.FilePath is null || !SameScenePath(_cabinets.FilePath, Path.GetFullPath(path, _session.RequireProjectDirectory())) || !_cabinets.IsDirty) _cabinets.Open(path);
         _faceActive = _machineActive = false; _sceneKind = "Cabinet3D"; _selectedSceneNodeId = "cabinet";
         await ReloadSceneAsync(); RestoreDocumentCamera(); Refresh();
     }
     public async Task OpenPrefab3DAsync(string path)
     {
-        if(FindAssetWindow("Prefab",Path.GetFullPath(path,_session.RequireProjectDirectory())) is {} owned){ShowOwnedAssetWindow(owned.Window);return;}
-        if (Prefabs.FilePath is null || !SameScenePath(Prefabs.FilePath, Path.GetFullPath(path, _session.RequireProjectDirectory())) || !Prefabs.IsDirty) Prefabs.Open(path);
-        _faceActive = _machineActive = false; _sceneKind = "Prefab"; _selectedSceneNodeId = Prefabs.Document.Root.Id;
+        if(!_isDocumentEditor || _documentOwner is not null){await DocumentHost.OpenNativeAssetAsync("Prefab",path);return;}
+        if (_prefabs.FilePath is null || !SameScenePath(_prefabs.FilePath, Path.GetFullPath(path, _session.RequireProjectDirectory())) || !_prefabs.IsDirty) _prefabs.Open(path);
+        _faceActive = _machineActive = false; _sceneKind = "Prefab"; _selectedSceneNodeId = _prefabs.Document.Root.Id;
         await ReloadSceneAsync(); RestoreDocumentCamera(); Refresh();
     }
-    public Task WaitForSceneAsync() => Task.WhenAll(new[]{_sceneTask,_assetWindowTask}.Concat(_assetWindows.Values.Select(w=>w.View.WaitForSceneAsync())));
+    public async Task WaitForSceneAsync() { if(!_isDocumentEditor){ await _nativeRestoreTask; await SynchronizeAssetDocumentsAsync(); } await Task.WhenAll(new[]{_sceneTask,_assetWindowTask}.Concat(_nativeDocuments.Values.Select(d=>d.Editor._sceneTask))); }
     public void SelectScene3DNode(string? id)
     {
+        if(!ReferenceEquals(CommandView,this)){CommandView.SelectScene3DNode(id);return;}
         if (id is not null && !_sceneRows.Any(row => row.Id == id)) throw new ArgumentException("Scene node does not exist: " + id, nameof(id));
         SelectSceneNode(id);
     }
     public object? PickScene3D(float normalizedX, float normalizedY)
     {
-        var hit = SceneView.Pick(normalizedX, normalizedY);
+        if(!ReferenceEquals(CommandView,this))return CommandView.PickScene3D(normalizedX,normalizedY);
+        var hit = _sceneView.Pick(normalizedX, normalizedY);
         SelectSceneNode(hit is null ? null : _meshNodeIds.GetValueOrDefault(hit.Id));
         return hit is null ? null : new { hit.Id, hit.Name, position = new[] { hit.Position.X, hit.Position.Y, hit.Position.Z },
             uv = new[] { hit.TextureCoordinate.X, hit.TextureCoordinate.Y }, hit.Distance, nodeId = _selectedSceneNodeId };
     }
     public object InspectScene3D()
     {
-        var camera = SceneView.Camera; var frame = SceneView.LastFrame;
+        if(!ReferenceEquals(CommandView,this))return CommandView.InspectScene3D();
+        var camera = _sceneView.Camera; var frame = _sceneView.LastFrame;
         return new { kind = _sceneKind, selectedNodeId = _selectedSceneNodeId, hierarchy = _sceneRows.ToArray(),
             camera = new { target = new[] { camera.Target.X, camera.Target.Y, camera.Target.Z }, camera.Distance, camera.Yaw, camera.Pitch, camera.FieldOfView },
-            visibility = new { SceneView.ShowVisuals, SceneView.ShowColliders, SceneView.ShowTriggers },
+            visibility = new { _sceneView.ShowVisuals, _sceneView.ShowColliders, _sceneView.ShowTriggers },
             bounds = new { minimum = new[] { _baseScene.Minimum.X, _baseScene.Minimum.Y, _baseScene.Minimum.Z }, maximum = new[] { _baseScene.Maximum.X, _baseScene.Maximum.Y, _baseScene.Maximum.Z } },
-            meshes = _baseScene.Meshes.Count, diagnostics = _baseScene.Diagnostics, SceneView.RenderingError,
+            meshes = _baseScene.Meshes.Count, diagnostics = _baseScene.Diagnostics, _sceneView.RenderingError,
             mountedFaces = _faceOutputKeys.Select(pair => new { id = pair.Key, outputFingerprint = pair.Value }).ToArray(),
             faceTargets = _composition?.CabinetFaceTargets.Select(target => new { target.Id, target.DisplayName, target.IsValid, target.ErrorMessage,
                 corners = target.Corners.Select(p => new[] {p.X,p.Y,p.Z}).ToArray(), normal = new[] {target.Normal.X,target.Normal.Y,target.Normal.Z} }).ToArray(),
@@ -112,16 +118,19 @@ public sealed partial class WorkspaceView
     }
     public void SetSceneLibraryRoot(string path)
     {
+        if(_documentOwner is {} owner){owner.SetSceneLibraryRoot(path);return;}
+        if(_nativeDocuments.Values.Any(d=>d.Asset.LibraryRoot is not null && d.Asset.IsDirty))throw new InvalidOperationException("Save or undo Library asset edits before changing the Library folder.");
         var full = Path.GetFullPath(path);
         WorkspacePathPolicy.RejectRootReparsePoints(full, requireExists: true);
         if(!Directory.Exists(full))throw new DirectoryNotFoundException("The Oasis Library folder does not exist.");
-        if(!SameScenePath(SceneLibraryRoot,full) && (Reels.IsLibraryAsset&&Reels.IsDirty || Cabinets.IsLibraryAsset&&Cabinets.IsDirty || Prefabs.IsLibraryAsset&&Prefabs.IsDirty))throw new InvalidOperationException("Save or undo Library asset edits before changing the Library folder.");
-        if(IsLibraryScene&&!SameScenePath(ActiveLibraryRoot,full)){_sceneKind=null;SceneView.SuspendRendering();}
+        if(!SameScenePath(SceneLibraryRoot,full) && (_reels.IsLibraryAsset&&_reels.IsDirty || _cabinets.IsLibraryAsset&&_cabinets.IsDirty || _prefabs.IsLibraryAsset&&_prefabs.IsDirty))throw new InvalidOperationException("Save or undo Library asset edits before changing the Library folder.");
+        if(IsLibraryScene&&!SameScenePath(ActiveLibraryRoot,full)){_sceneKind=null;_sceneView.SuspendRendering();}
         SceneLibraryRoot = full;
+        foreach(var entry in _nativeDocuments.Values)if(entry.Asset.LibraryRoot is null){entry.Editor.SceneLibraryRoot=full;if(entry.Editor.Is3DActive)entry.Editor.QueueSceneReload();}
         RestartLibraryWatcher();_libraryTask=RefreshLibraryAsync();Refresh();
         if (Is3DActive) QueueSceneReload();
     }
-    private void QueueSceneReload() => _sceneTask = SceneAction(async () => { await ReloadSceneAsync(); RestoreDocumentCamera(); });
+    private void QueueSceneReload() => _sceneTask = SceneAction(ReloadSceneAsync);
     private async Task SceneAction(Func<Task> action)
     { try { await action(); } catch (OperationCanceledException) { } catch (Exception e) when (e is not OutOfMemoryException) { SetStatus(e.Message); } }
     private void On3DAssetChanged() { if(_movingDocument)return; CheckPreviewSource(); if (Is3DActive) { Refresh(); QueueSceneReload(); StateChanged?.Invoke(); } }
@@ -133,12 +142,12 @@ public sealed partial class WorkspaceView
         var old = _sceneCancellation; _sceneCancellation = new(); old.Cancel(); old.Dispose();
         var token = _sceneCancellation.Token;
         var project = _session.RequireEditorProject(); var kind = _sceneKind;
-        var identity = kind + ":" + (kind == "Cabinet3D" ? Cabinets.FilePath : kind == "Prefab" ? Prefabs.FilePath : Machines.MachinePath);
+        var identity = kind + ":" + (kind == "Cabinet3D" ? _cabinets.FilePath : kind == "Prefab" ? _prefabs.FilePath : _machines.MachinePath);
         var result = kind switch
         {
-            "Cabinet3D" => await _sceneComposer.ComposeCabinetAsync(project, Cabinets.Document, Cabinets.FilePath!, MachineForCabinet(project), token),
-            "Prefab" => await _sceneComposer.ComposePrefabAsync(project, Prefabs.Document, Prefabs.FilePath!, token),
-            "Machine" when Machines.Document is { } machine => await _sceneComposer.ComposeMachineAsync(project, machine, SceneLibraryRoot, token),
+            "Cabinet3D" => await _sceneComposer.ComposeCabinetAsync(project, _cabinets.Document, _cabinets.FilePath!, MachineForCabinet(project), token),
+            "Prefab" => await _sceneComposer.ComposePrefabAsync(project, _prefabs.Document, _prefabs.FilePath!, token),
+            "Machine" when _machines.Document is { } machine => await _sceneComposer.ComposeMachineAsync(project, machine, SceneLibraryRoot, token),
             _ => new Portable3DCompositionResult([], [], [], [], BoundingBox3.Empty, ["Open a Machine before viewing its composition."])
         };
         token.ThrowIfCancellationRequested();
@@ -168,8 +177,8 @@ public sealed partial class WorkspaceView
     }
     private MachineDocument? MachineForCabinet(EditorProject project)
     {
-        if (!Machines.IsProjectCurrent || Machines.Document is not { CabinetAsset: { } reference } machine) return null;
-        try { return SameScenePath(new AssetReferenceResolver().Resolve(project, SceneLibraryRoot, reference), Cabinets.FilePath) ? machine : null; }
+        if (!_machines.IsProjectCurrent || _machines.Document is not { CabinetAsset: { } reference } machine) return null;
+        try { return SameScenePath(new AssetReferenceResolver().Resolve(project, SceneLibraryRoot, reference), _cabinets.FilePath) ? machine : null; }
         catch (Exception e) when (e is IOException or ArgumentException or InvalidOperationException) { return null; }
     }
     private void RebuildSceneHierarchy(Portable3DCompositionResult result)
@@ -178,12 +187,12 @@ public sealed partial class WorkspaceView
         try
         {
             var rows = new List<SceneHierarchyRow>();
-            if (_sceneKind == "Prefab") AddPrefab(Prefabs.Document.Root, 0);
+            if (_sceneKind == "Prefab") AddPrefab(_prefabs.Document.Root, 0);
             else
             {
                 if (result.CabinetDocument is not null) rows.Add(new("cabinet", "Cabinet", "Cabinet", 0));
                 foreach (var target in result.CabinetFaceTargets) rows.Add(new("target:" + target.Id, target.DisplayName, "Face target", 1));
-                if (_sceneKind == "Machine" && Machines.Document is { } machine)
+                if (_sceneKind == "Machine" && _machines.Document is { } machine)
                 {
                     var visited = new HashSet<string>();
                     foreach (var item in machine.ObjectInstances.Where(i => i.ParentId is null)) AddInstance(item, 0);
@@ -214,7 +223,7 @@ public sealed partial class WorkspaceView
         var palette = CurrentScenePalette(); var meshes = _baseScene.Meshes.ToList();
         meshes.Add(SceneRenderAdapter.Grid(_baseScene.Minimum, _baseScene.Maximum, palette.Grid));
         if (SelectedSceneBounds() is { } bounds) meshes.Add(SceneRenderAdapter.Bounds("selection", bounds.Min, bounds.Max, palette.Selection));
-        SceneView.SetScene(_baseScene with { Meshes = meshes }, frame);
+        _sceneView.SetScene(_baseScene with { Meshes = meshes }, frame);
     }
     private (Vector3 Min, Vector3 Max)? SelectedSceneBounds()
     {
@@ -225,12 +234,15 @@ public sealed partial class WorkspaceView
         return any ? (min,max) : null;
     }
     private void FrameSceneSelection()
-    { if (SelectedSceneBounds() is { } bounds) SceneView.SetCamera(SceneCameraState.Frame(bounds.Min,bounds.Max)); else SceneView.FrameAll(); }
+    { if (SelectedSceneBounds() is { } bounds) _sceneView.SetCamera(SceneCameraState.Frame(bounds.Min,bounds.Max)); else _sceneView.FrameAll(); }
     private ScenePalette CurrentScenePalette()
     {
         Vector4 Get(string key)
         {
-            if (!this.TryFindResource(key, ActualThemeVariant, out var value) || value is not Color c) throw new InvalidOperationException("Missing scene theme color: " + key);
+            var found = this.TryFindResource(key, ActualThemeVariant, out var value);
+            if(!found && _documentOwner is {} owner) found=owner.TryFindResource(key,owner.ActualThemeVariant,out value);
+            if(!found && Application.Current is {} app)found=app.TryFindResource(key,app.ActualThemeVariant,out value);
+            if (!found || value is not Color c) throw new InvalidOperationException("Missing scene theme color: " + key);
             return new(c.R/255f,c.G/255f,c.B/255f,c.A/255f);
         }
         return new(Get("ViewportGrid"),Get("SelectionColor"),Get("SceneColliderColor"),Get("SceneTriggerColor"));
@@ -249,10 +261,10 @@ public sealed partial class WorkspaceView
         {
             try
             {
-                if(prefab) { var path=Prefabs.Create(name.Text??""); await OpenPrefab3DAsync(path); }
+                if(prefab) { var path=_prefabs.Create(name.Text??""); await OpenPrefab3DAsync(path); }
                 else { var files=await owner.StorageProvider.OpenFilePickerAsync(new(){Title="Choose Cabinet GLB",AllowMultiple=false,FileTypeFilter=[new("GLB models"){Patterns=["*.glb"]}]});
                     if(files.FirstOrDefault()?.TryGetLocalPath() is not { } path)return;
-                    WithSelectedModelFile(path,source=>Cabinets.Create(name.Text??"",source)); await OpenCabinet3DAsync(Cabinets.FilePath!); }
+                    WithSelectedModelFile(path,source=>_cabinets.Create(name.Text??"",source)); await OpenCabinet3DAsync(_cabinets.FilePath!); }
                 dialog.Close();
             }
             catch(Exception e) when(e is not OutOfMemoryException) {error.Text=e.Message;}
@@ -272,21 +284,21 @@ public sealed partial class WorkspaceView
     {
         if(TopLevel.GetTopLevel(this)?.StorageProvider is not {CanOpen:true} storage)return;
         var files=await storage.OpenFilePickerAsync(new(){Title="Import Prefab GLB",AllowMultiple=false,FileTypeFilter=[new("GLB models"){Patterns=["*.glb"]}]});
-        if(files.FirstOrDefault()?.TryGetLocalPath() is { } path) Try(()=>WithSelectedModelFile(path,source=>Prefabs.ImportModel(nodeId,source)));
+        if(files.FirstOrDefault()?.TryGetLocalPath() is { } path) Try(()=>WithSelectedModelFile(path,source=>_prefabs.ImportModel(nodeId,source)));
     }
     private void Clear3DForProjectChange()
     {
-        _sceneKind=null; _sceneCancellation.Cancel(); Cabinets.CloseAllDocuments(); Prefabs.CloseAllDocuments(); Reels.CloseAllDocuments(); _composition=null; _sceneRows.Clear(); _baseScene=SceneRenderData.Empty; SceneView.SetScene(SceneRenderData.Empty);
+        _sceneKind=null; _sceneCancellation.Cancel(); _cabinets.CloseAllDocuments(); _prefabs.CloseAllDocuments(); _reels.CloseAllDocuments(); _composition=null; _sceneRows.Clear(); _baseScene=SceneRenderData.Empty; _sceneView.SetScene(SceneRenderData.Empty);
     }
     private void Dispose3D()
     {
         _sceneDisposed=true; _sceneKind=null; _sceneCancellation.Cancel(); _sceneCancellation.Dispose();
-        Reels.Changed-=On3DAssetChanged; Cabinets.Changed-=On3DAssetChanged; Prefabs.Changed-=On3DAssetChanged; Machines.Changed-=OnMachineSceneChanged; Faces.Changed-=OnMachineSceneChanged; SceneView.Dispose();
+        _reels.Changed-=On3DAssetChanged; _cabinets.Changed-=On3DAssetChanged; _prefabs.Changed-=On3DAssetChanged; _machines.Changed-=OnMachineSceneChanged; _faces.Changed-=OnMachineSceneChanged; _sceneView.Dispose();
     }
     private void UpdateSceneModeUI()
     {
         var active=Is3DActive;
-        _viewport.IsVisible=!active;SceneView.IsVisible=active&&!(_sceneKind=="Machine"&&IsMachineGraphActive);_hierarchy.IsVisible=!active;_sceneHierarchy.IsVisible=active;
+        _viewport.IsVisible=!active;_sceneView.IsVisible=active&&!(_sceneKind=="Machine"&&IsMachineGraphActive);_hierarchy.IsVisible=!active;_sceneHierarchy.IsVisible=active;
         SetCompositionGraphVisible(active&&_sceneKind=="Machine"&&IsMachineGraphActive);
         _sources.IsVisible=!active;if(_sourceRegionHeading is not null)_sourceRegionHeading.IsVisible=!active;
         _sceneTools.IsVisible=active;if(_sceneToolbarBorder is not null)_sceneToolbarBorder.IsVisible=active;if(_twoDToolbar is not null)_twoDToolbar.IsVisible=!active;
@@ -294,10 +306,10 @@ public sealed partial class WorkspaceView
     private void Refresh3DWorkspaceChrome()
     {
         RefreshAssets();_project.Text=_browseLibrary?"Oasis Library · "+SceneLibraryRoot:_session.ProjectName??"Open or create an Oasis project";
-        var dirty=_sceneKind=="Reel"?Reels.IsDirty:_sceneKind=="Cabinet3D"?Cabinets.IsDirty:_sceneKind=="Prefab"?Prefabs.IsDirty:Machines.IsDirty;
+        var dirty=_sceneKind=="Reel"?_reels.IsDirty:_sceneKind=="Cabinet3D"?_cabinets.IsDirty:_sceneKind=="Prefab"?_prefabs.IsDirty:_machines.IsDirty;
         _document.Title=ActiveTitle+(IsLibraryScene?" [Library]":"")+(dirty?" *":"");_mode.Text=_sceneKind+(IsLibraryScene?" · Library":"");_save.IsEnabled=dirty;
-        _undo.IsEnabled=_sceneKind=="Reel"?Reels.CanUndo:_sceneKind=="Cabinet3D"?Cabinets.CanUndo:_sceneKind=="Prefab"?Prefabs.CanUndo:Machines.CanUndo;
-        _redo.IsEnabled=_sceneKind=="Reel"?Reels.CanRedo:_sceneKind=="Cabinet3D"?Cabinets.CanRedo:_sceneKind=="Prefab"?Prefabs.CanRedo:Machines.CanRedo;
+        _undo.IsEnabled=_sceneKind=="Reel"?_reels.CanUndo:_sceneKind=="Cabinet3D"?_cabinets.CanUndo:_sceneKind=="Prefab"?_prefabs.CanUndo:_machines.CanUndo;
+        _redo.IsEnabled=_sceneKind=="Reel"?_reels.CanRedo:_sceneKind=="Cabinet3D"?_cabinets.CanRedo:_sceneKind=="Prefab"?_prefabs.CanRedo:_machines.CanRedo;
         Refresh3DInspector();StateChanged?.Invoke();
     }
 }

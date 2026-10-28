@@ -7,12 +7,6 @@ public sealed partial class WorkspaceView
 {
     private async Task CreateAssetFromMenuAsync(string kind)
     {
-        if (_isAssetWindow)
-        {
-            SetStatus("Create project assets from the main workspace.");
-            return;
-        }
-
         if (_session.ProjectFilePath is null)
         {
             SetStatus("Open or create a project before creating an asset.");
@@ -27,7 +21,7 @@ public sealed partial class WorkspaceView
                 await CreateNamedProjectAssetFromMenuAsync("Panel2D", "New Panel2D", _session.CreatePanel, ShowPanel);
                 break;
             case "face":
-                await CreateNamedProjectAssetFromMenuAsync("Face", "New Face", name => Faces.CreateFace(name), ShowFace);
+                await CreateNamedProjectAssetFromMenuAsync("Face", "New Face", name => _faces.CreateFace(name), ShowFace);
                 break;
             case "cabinet":
             case "cabinet 3d":
@@ -95,13 +89,13 @@ public sealed partial class WorkspaceView
 
         if (_faceActive)
         {
-            if (Faces.SelectedId is not { } faceId)
+            if (_faces.SelectedId is not { } faceId)
             {
                 SetStatus("Select a Face element first.");
                 return;
             }
 
-            Try(() => Faces.UpdateElement(faceId, visible: visible, locked: locked));
+            Try(() => _faces.UpdateElement(faceId, visible: visible, locked: locked));
             return;
         }
 
@@ -120,6 +114,7 @@ public sealed partial class WorkspaceView
 
     private void ShowWorkspacePane(string id)
     {
+        if(_documentOwner is {} host){host.ShowWorkspacePane(id);return;}
         var requested = (id ?? string.Empty).Trim();
         var paneId = requested.ToLowerInvariant() switch
         {
@@ -158,13 +153,13 @@ public sealed partial class WorkspaceView
         }
         content.Children.Add(new TextBlock { Text = "Machine runtime settings are edited from each Machine document.", TextWrapping = global::Avalonia.Media.TextWrapping.Wrap });
         var dialog = new Window { Title = "Project Settings", Width = 600, Height = 360, Content = content };
-        if (Machines.Document is not null) content.Children.Add(ActionButton("Edit Machine runtime settings", () => { ShowMachine(); ShowWorkspacePane("Inspector"); dialog.Close(); }));
+        if (_machines.Document is not null) content.Children.Add(ActionButton("Edit Machine runtime settings", () => { ShowMachine(); ShowWorkspacePane("Inspector"); dialog.Close(); }));
         return dialog.ShowDialog(owner);
     }
 
     private void ShowInputMapFromMenu()
     {
-        if (TopLevel.GetTopLevel(this) is not Window owner || Machines.Document is not {} machine) return;
+        if (TopLevel.GetTopLevel(this) is not Window owner || _machines.Document is not {} machine) return;
         var content = new StackPanel { Margin = new global::Avalonia.Thickness(18), Spacing = 8 };
         content.Children.Add(new TextBlock { Text = "Input Map — " + machine.DisplayName, FontSize = 18 });
         foreach (var input in machine.InputDefinitions)
@@ -178,23 +173,20 @@ public sealed partial class WorkspaceView
 
     private void ShowPlayViewFromMenu()
     {
+        if(_documentOwner is {} host){host.FocusNativeDockable(host._focusedAsset?.Document);_viewport.Focus();return;}
         ShowWorkspacePane("Authoring");
         if (Is3DActive)
-            SceneView.Focus();
+            _sceneView.Focus();
         else
             _viewport.Focus();
     }
 
     private Task ExitFromMenuAsync()
     {
-        if (_isAssetWindow)
-        {
-            SetStatus("Exit Oasis Editor from the main workspace.");
-            return Task.CompletedTask;
-        }
+        if(_documentOwner is {} host)return host.ExitFromMenuAsync();
         if (IsMovingAssetWindow)
         {
-            SetStatus("Wait for asset windows to finish moving before closing.");
+            SetStatus("Wait for document docking or workspace restoration to finish before closing.");
             return Task.CompletedTask;
         }
         if (HasUnsavedChanges)

@@ -149,7 +149,7 @@ public sealed class WorkspaceMenuTests
     }
 
     [Fact]
-    public async Task FloatingFaceWindowKeepsMenuHierarchyAndDisablesProjectWideCreation()
+    public async Task FloatingFaceUsesTheWorkspaceMenuAndKeepsProjectCreationAvailable()
     {
         await HeadlessTestHost.RunAsync(async () =>
         {
@@ -162,7 +162,8 @@ public sealed class WorkspaceMenuTests
             var menu = floating.InspectMenus();
 
             Assert.Equal(new[] { "File", "Face", "Edit", "Window", "Emulation" }, menu.Select(item => item.Header));
-            Assert.All(floating.FindMenu("File", "Create").Items.OfType<MenuItem>(), item => Assert.False(item.IsEnabled));
+            Assert.All(floating.FindMenu("File", "Create").Items.OfType<MenuItem>(), item => Assert.True(item.IsEnabled));
+            Assert.Same(floating,view.CommandView);
             Assert.True(floating.FindMenu("Face", "Validate Face") is not null);
             Assert.True(floating.FindMenu("Emulation", "Start") is not null);
         });
@@ -197,6 +198,7 @@ public sealed class WorkspaceMenuTests
                 .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Dispatcher.UIThread.RunJobs();
 
+            session=view.CommandSession;
             Assert.NotNull(session.PanelPath);
             Assert.True(File.Exists(session.PanelPath));
             Assert.Equal("Created from menu", session.PanelTitle);

@@ -23,6 +23,14 @@ public sealed partial class AuthoringSession
         set => _panelClipboardState.ProjectRoot = value;
     }
 
+    /// <summary>Shares the workspace clipboard between document sessions for the same project.</summary>
+    public void ShareClipboardWith(AuthoringSession destination)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        EnsureSameProject(_projectFilePath,destination._projectFilePath);
+        destination._panelClipboardState=_panelClipboardState;
+    }
+
     /// <summary>Whether this authoring session has a reusable Panel2D clipboard payload.</summary>
     public bool CanPasteClipboard => _panelClipboard.Length > 0 && _panelClipboardProjectRoot is not null && _projectDirectory is not null
         && PathComparer.Equals(_panelClipboardProjectRoot, Path.GetFullPath(RequireProject()));

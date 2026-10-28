@@ -45,12 +45,13 @@ public sealed partial class EditorTools
         => ui.InvokeAsync<object>(async () =>
         {
             await capture.View.OpenLibraryAssetAsync(libraryRelativeManifest);
+            await capture.View.SynchronizeAssetDocumentsAsync();
             capture.View.SetAssetBrowserSource(library: true);
-            await capture.View.WaitForSceneAsync();
+            await capture.View.CommandView.WaitForSceneAsync();
             return new
             {
                 libraryRoot = capture.View.SceneLibraryRoot,
-                sceneKind = capture.View.SceneKind,
+                sceneKind = capture.View.CommandView.SceneKind,
                 scene = Scene3DSnapshot()
             };
         }, cancellationToken);

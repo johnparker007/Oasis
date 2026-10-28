@@ -3,6 +3,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Dock.Avalonia.Controls;
 using Dock.Model.Core;
+using Dock.Model.Mvvm.Controls;
 using OasisEditor.Avalonia;
 using Xunit;
 
@@ -16,10 +17,10 @@ public sealed class WorkspacePaneDockingTests
     [InlineData("Hierarchy")]
     [InlineData("Inspector")]
     [InlineData("Output")]
-    [InlineData("Authoring")]
-    public void LiveDockableCanFloatRedockAndRenderAcrossThemes(string dockableId)
+    [InlineData("AssetDocument")]
+    public async Task LiveDockableCanFloatRedockAndRenderAcrossThemes(string dockableId)
     {
-        HeadlessTestHost.Run(() =>
+        await HeadlessTestHost.RunAsync(async () =>
         {
             var root = Path.Combine(Path.GetTempPath(), "OasisPaneDocking-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(root);
@@ -30,19 +31,22 @@ public sealed class WorkspacePaneDockingTests
                 session.CreatePanel("Panel");
                 using var capture = new WorkspaceCapture(session);
                 var view = capture.View;
+                await view.SynchronizeAssetDocumentsAsync();
+                var commandSession = view.CommandSession;
                 var dockControl = view.GetVisualDescendants().OfType<DockControl>().Single();
                 var layout = Assert.IsAssignableFrom<IDockable>(dockControl.Layout);
                 var factory = dockControl.Factory ?? layout.Factory;
                 Assert.NotNull(factory);
                 var leaves = WorkspaceLayoutState.LeafMap(layout);
-                var dockable = leaves[dockableId];
-                var anchor = leaves[dockableId == "Authoring" ? "Project" : "Authoring"];
+                var assetDocument = Assert.Single(leaves.Values.OfType<Document>().Where(document => document.Context is WorkspaceView));
+                var dockable = dockableId == "AssetDocument" ? assetDocument : leaves[dockableId];
+                var anchor = dockableId == "Project" ? assetDocument : leaves["Project"];
                 var context = Assert.IsAssignableFrom<Control>(dockable.Context);
                 var mainWindow = Assert.IsType<Window>(TopLevel.GetTopLevel(view));
-                var rectangle = session.AddRectangle();
-                session.UpdateElement(rectangle, name: "Pane move keeps authoring edits");
-                session.SelectElements([rectangle]);
-                var initialSelection = session.SelectedIds.ToArray();
+                var rectangle = commandSession.AddRectangle();
+                commandSession.UpdateElement(rectangle, name: "Pane move keeps authoring edits");
+                commandSession.SelectElements([rectangle]);
+                var initialSelection = commandSession.SelectedIds.ToArray();
 
                 // Establish the rendered main host before invoking the same factory APIs
                 // used by Dock.Avalonia's title-bar/drag operations.
@@ -56,16 +60,17 @@ public sealed class WorkspacePaneDockingTests
                     Assert.NotEmpty(view.FloatingWorkspaceWindows);
                     var floatingWindow = Assert.Single(view.FloatingWorkspaceWindows);
                     Assert.NotEmpty(capture.CaptureFloatingWindows());
-                    Assert.Same(floatingWindow, TopLevel.GetTopLevel(context));
-                    Assert.NotSame(mainWindow, TopLevel.GetTopLevel(context));
-                    Assert.Same(context, dockable.Context);
+                    var floatingContext = Assert.IsAssignableFrom<Control>(dockable.Context);
+                    Assert.Same(floatingWindow, TopLevel.GetTopLevel(floatingContext));
+                    Assert.NotSame(mainWindow, TopLevel.GetTopLevel(floatingContext));
+                    if (dockableId == "AssetDocument") Assert.Same(context, floatingContext);
                     AssertAuthoringStatePreserved();
 
                     foreach (var theme in new[] { "Dark", "Light", "System" })
                     {
                         Assert.NotEmpty(capture.Capture(theme: theme));
                         Assert.NotEmpty(capture.CaptureFloatingWindows());
-                        Assert.Same(floatingWindow, TopLevel.GetTopLevel(context));
+                        Assert.Same(floatingWindow, TopLevel.GetTopLevel(Assert.IsAssignableFrom<Control>(dockable.Context)));
                     }
 
                     var floatingOwner = Assert.IsAssignableFrom<IDock>(dockable.Owner);
@@ -77,16 +82,16 @@ public sealed class WorkspacePaneDockingTests
                         Assert.NotEmpty(capture.CaptureFloatingWindows());
                     Assert.NotEmpty(capture.Capture(theme: cycle % 2 == 0 ? "Dark" : "Light"));
                     Assert.Same(destinationOwner, dockable.Owner);
-                    Assert.Same(mainWindow, TopLevel.GetTopLevel(context));
-                    Assert.Same(context, dockable.Context);
+                    Assert.Same(mainWindow, TopLevel.GetTopLevel(Assert.IsAssignableFrom<Control>(dockable.Context)));
+                    if (dockableId == "AssetDocument") Assert.Same(context, dockable.Context);
                     AssertAuthoringStatePreserved();
                 }
 
                 void AssertAuthoringStatePreserved()
                 {
-                    Assert.True(session.IsDirty);
-                    Assert.Equal(initialSelection, session.SelectedIds);
-                    Assert.Equal("Pane move keeps authoring edits", session.Elements.Single(item => item.Id == rectangle).Name);
+                    Assert.True(commandSession.IsDirty);
+                    Assert.Equal(initialSelection, commandSession.SelectedIds);
+                    Assert.Equal("Pane move keeps authoring edits", commandSession.Elements.Single(item => item.Id == rectangle).Name);
                 }
             }
             finally

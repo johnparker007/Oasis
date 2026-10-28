@@ -10,8 +10,8 @@ public sealed partial class EditorTools
         => ui.Invoke<object>(() => new
         {
             project = session.ProjectFilePath,
-            machine = capture.View.Machines.MachinePath,
-            diagnostics = capture.View.GetMachineInputDiagnostics(),
+            machine = capture.View.GetDocumentEditor("Machine").Machines.MachinePath,
+            diagnostics = capture.View.CommandView.GetMachineInputDiagnostics(),
             visualScope = "Currently open Panel2D and Face documents"
         }, cancellationToken);
     [McpServerTool(Name="configure_recent_projects"), Description("Configure the welcome page using an explicit recent-project settings file inside this workspace. Headless sessions never access personal recents.")]

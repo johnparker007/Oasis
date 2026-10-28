@@ -133,6 +133,7 @@ public sealed class SpecialistRendererPixelTests
             session.OpenProject(project); session.CreatePanel("Panel"); session.ImportImage(sourcePath, "Blue artwork");
             using var capture = new WorkspaceCapture(session);
             var png = capture.Capture(1200, 800, "Dark");
+            session = capture.View.CommandSession;
             using var frame = SKBitmap.Decode(png);
             Assert.NotNull(frame);
             var bluePixels = 0;

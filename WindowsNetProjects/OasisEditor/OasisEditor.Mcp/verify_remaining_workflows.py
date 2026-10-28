@@ -73,7 +73,9 @@ def main():
             client.state("close_project"); assert not client.state("list_open_documents")
             client.state("restore_workspace", path=settings)
             assert len(client.state("list_open_documents")) == 4
-            assert client.state("inspect_layout")["machineGraph"]
+            restored_layout = client.state("inspect_layout")
+            assert any(document["kind"] == "Machine" and document["machineGraph"]
+                       for document in restored_layout["assetLayout"]["documents"]), restored_layout
             client.state("close_document", kind="Panel2D", path=other_path)
             client.state("activate_document", kind="Face", path=face_path)
             assert len(client.state()["face"]["elements"]) == 3

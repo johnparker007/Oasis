@@ -33,8 +33,9 @@ public sealed class WorkspacePersistenceTests
                 view.SceneView.SetCamera(cabinetCamera);
                 view.SceneView.ShowVisuals = false; view.SceneView.ShowColliders = true; view.SceneView.ShowTriggers = true;
                 var savedCabinet = view.InspectWorkspaceState();
-                Assert.Equal("Cabinet3D", savedCabinet.Scene3D?.Mode);
-                Assert.Equal(Path.GetRelativePath(Path.GetDirectoryName(session.ProjectFilePath!)!, cabinetPath).Replace('\\', '/'), savedCabinet.Scene3D?.Cabinet);
+                var savedCabinetDocument = Assert.Single(Assert.IsType<AssetWorkspaceLayout>(savedCabinet.AssetLayout).Documents);
+                Assert.Equal("Cabinet3D", savedCabinetDocument.Scene?.Mode);
+                Assert.Equal(Path.GetRelativePath(Path.GetDirectoryName(session.ProjectFilePath!)!, cabinetPath).Replace('\\', '/'), savedCabinetDocument.Scene?.Cabinet);
 
                 view.SaveWorkspace();
                 view.RestoreWorkspace();
@@ -51,22 +52,30 @@ public sealed class WorkspacePersistenceTests
                 var prefabCamera = new OasisEditor.Avalonia.Rendering3D.SceneCameraState(new(-1, 4, 2), 3.5f, -.2f, .6f, 72);
                 view.SceneView.SetCamera(prefabCamera);
                 var savedPrefab = view.InspectWorkspaceState();
-                Assert.Equal("Prefab", savedPrefab.Scene3D?.Mode);
-                Assert.Equal(Path.GetRelativePath(Path.GetDirectoryName(session.ProjectFilePath!)!, prefabPath).Replace('\\', '/'), savedPrefab.Scene3D?.Prefab);
+                var savedPrefabLayout = Assert.IsType<AssetWorkspaceLayout>(savedPrefab.AssetLayout);
+                var savedPrefabDocument = Assert.Single(savedPrefabLayout.Documents.Where(document => document.Kind == "Prefab"));
+                Assert.Equal("Prefab", savedPrefabDocument.Scene?.Mode);
+                Assert.Equal(Path.GetRelativePath(Path.GetDirectoryName(session.ProjectFilePath!)!, prefabPath).Replace('\\', '/'), savedPrefabDocument.Scene?.Prefab);
 
                 view.SaveWorkspace();
                 view.RestoreWorkspace();
                 await view.WaitForSceneAsync();
                 Assert.Equal("Prefab", view.SceneKind);
-                Assert.Equal(child, view.InspectWorkspaceState().Scene3D?.Selection);
+                Assert.Equal(child, Assert.Single(Assert.IsType<AssetWorkspaceLayout>(view.InspectWorkspaceState().AssetLayout).Documents.Where(document => document.Kind == "Prefab")).Scene?.Selection);
                 Assert.Equal(prefabCamera, view.SceneView.Camera);
                 Assert.Equal("Screen", view.Prefabs.Document.Root.Children.Single().Name);
 
                 var activePath = view.Prefabs.FilePath;
-                Assert.Throws<InvalidDataException>(() => view.ApplyWorkspaceState(savedPrefab with
+                var invalidPrefab = savedPrefab with
                 {
-                    Scene3D = savedPrefab.Scene3D! with { Prefab = "../outside/asset.object3d" }
-                }));
+                    AssetLayout = savedPrefabLayout with
+                    {
+                        Documents = savedPrefabLayout.Documents.Select(document => document.Id == savedPrefabDocument.Id
+                            ? savedPrefabDocument with { Scene = savedPrefabDocument.Scene! with { Prefab = "../outside/asset.object3d" } }
+                            : document).ToArray()
+                    }
+                };
+                Assert.Throws<InvalidDataException>(() => view.ApplyWorkspaceState(invalidPrefab));
                 Assert.Equal(activePath, view.Prefabs.FilePath);
                 Assert.Equal("Prefab", view.SceneKind);
             }
@@ -75,9 +84,9 @@ public sealed class WorkspacePersistenceTests
     }
 
     [Fact]
-    public void MachineAndNativeLibrarySettingsRestoreWithoutStartingPreview()
+    public async Task MachineAndNativeLibrarySettingsRestoreWithoutStartingPreview()
     {
-        HeadlessTestHost.Run(() =>
+        await HeadlessTestHost.RunAsync(async () =>
         {
             var folder = Path.Combine(Path.GetTempPath(), "OasisMachineWorkspace-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(folder);
@@ -87,12 +96,15 @@ public sealed class WorkspacePersistenceTests
                 using var capture = new WorkspaceCapture(session);
                 var view = capture.View;
                 view.Machines.OpenMachine(view.Machines.ListMachines().Single().ManifestPath); view.ShowMachine();
+                await view.WaitForSceneAsync();
                 view.ConfigureNativePreview(new() { FabricRuntimeLibraryPath = "unused-native-library", AudioBufferLengthMilliseconds = 75 });
                 var saved = view.InspectWorkspaceState();
-                Assert.Equal("Machine", saved.ActiveDocument); Assert.NotNull(saved.Machine);
+                var savedMachine = Assert.Single(Assert.IsType<AssetWorkspaceLayout>(saved.AssetLayout).Documents);
+                Assert.Equal("Machine", savedMachine.Kind); Assert.Equal("Machine", savedMachine.Scene?.Mode);
                 view.ShowPanel(); view.ConfigureNativePreview(new());
                 view.ApplyWorkspaceState(saved);
-                Assert.Equal("Machine", view.InspectWorkspaceState().ActiveDocument);
+                await view.WaitForSceneAsync();
+                Assert.Equal("Machine", Assert.Single(Assert.IsType<AssetWorkspaceLayout>(view.InspectWorkspaceState().AssetLayout).Documents).Kind);
                 Assert.Equal("unused-native-library", view.NativePreviewPreferences.FabricRuntimeLibraryPath);
                 Assert.Equal(75, view.NativePreviewPreferences.AudioBufferLengthMilliseconds);
                 Assert.Null(view.Preview.Backend);
@@ -104,9 +116,9 @@ public sealed class WorkspacePersistenceTests
     }
 
     [Fact]
-    public void FloatingPaneReopensInAHeadlessWindowAndResetRetainsTheDocument()
+    public async Task FloatingPaneReopensInAHeadlessWindowAndResetRetainsTheDocument()
     {
-        HeadlessTestHost.Run(() =>
+        await HeadlessTestHost.RunAsync(async () =>
         {
             var folder = Path.Combine(Path.GetTempPath(), "OasisFloatingTest-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(folder);
@@ -116,17 +128,19 @@ public sealed class WorkspacePersistenceTests
                 var id = session.AddRectangle(); session.Save();
                 using var capture = new WorkspaceCapture(session);
                 capture.Capture();
-                var state = capture.View.InspectWorkspaceState(); var main = state.Layout.Children![0];
-                var floating = state with { Layout = state.Layout with { Children = [main with { Children = main.Children!.Take(3).ToArray() }],
-                    Windows = [new(new(100, 100, 320, 520), new("Root", "Floating", Children: [main.Children![4]]))] } };
-                capture.View.ApplyWorkspaceState(floating);
+                // Move the real Project pane through Dock.Model so both the native
+                // layout and the v2 asset-document graph stay in sync.
+                capture.View.MoveWorkspacePane("Project", "float");
+                var state = capture.View.InspectWorkspaceState();
+                Assert.Single(Assert.IsType<AssetWorkspaceLayout>(state.AssetLayout).Layout.Windows!);
+                await capture.View.WaitForSceneAsync();
                 capture.Capture();
                 Assert.Single(capture.View.FloatingWorkspaceWindows);
                 Assert.True(Assert.Single(capture.CaptureFloatingWindows()).Length > 1000);
                 var path = Path.Combine(folder, "floating.json"); capture.View.ConfigureWorkspacePersistence(path, restore: false); capture.View.SaveWorkspace();
                 capture.View.ResetLayout(); Assert.Empty(capture.View.FloatingWorkspaceWindows);
-                capture.View.RestoreWorkspace(); Assert.Single(capture.View.FloatingWorkspaceWindows);
-                Assert.Equal(id, Assert.Single(session.Elements).Id);
+                capture.View.RestoreWorkspace(); await capture.View.WaitForSceneAsync(); Assert.Single(capture.View.FloatingWorkspaceWindows);
+                Assert.Equal(id, Assert.Single(capture.View.GetDocumentEditor("Panel2D").CommandSession.Elements).Id);
                 capture.View.ResetLayout();
             }
             finally { Directory.Delete(folder, recursive: true); }
@@ -220,9 +234,9 @@ public sealed class WorkspacePersistenceTests
     }
 
     [Fact]
-    public void SavedWorkspaceReopensDocumentsAndSelectionAndProtectsPendingEditsAndExternalSettings()
+    public async Task SavedWorkspaceReopensDocumentsAndSelectionAndProtectsPendingEditsAndExternalSettings()
     {
-        HeadlessTestHost.Run(() =>
+        await HeadlessTestHost.RunAsync(async () =>
         {
             var folder = Path.Combine(Path.GetTempPath(), "OasisWorkspaceTest-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(folder);
@@ -232,44 +246,66 @@ public sealed class WorkspacePersistenceTests
                 var id = session.AddRectangle(); session.UpdateElement(id, name: "Retained element"); session.Save();
                 using var capture = new WorkspaceCapture(session);
                 var view = capture.View;
-                view.Faces.CreateFace("Face"); var lamp = view.Faces.AddLamp("Lamp", 10, 20, 30, 40, 7); view.Faces.Save(); view.ShowFace();
+                await view.WaitForSceneAsync();
+                var initialEditor = view.GetDocumentEditor("Panel2D");
+                var facePath = initialEditor.Faces.CreateFace("Face");
+                var lamp = initialEditor.Faces.AddLamp("Lamp", 10, 20, 30, 40, 7);
+                initialEditor.Faces.Save();
+                await view.SynchronizeAssetDocumentsAsync();
+                await view.ActivateDocumentAsync("Face", facePath);
                 var state = view.InspectWorkspaceState();
-                var main = state.Layout.Children![0];
-                var reversed = state with { Theme = "Light", AssetSearch = "Face", Viewport = new(.8, 12, 34, false), Layout = state.Layout with
-                    { Children = [main with { Children = main.Children!.Reverse().ToArray() }] } };
+                var assetLayout = Assert.IsType<AssetWorkspaceLayout>(state.AssetLayout);
+                var faceState = Assert.Single(assetLayout.Documents.Where(document => document.Kind == "Face"));
+                var reversed = state with { Theme = "Light", AssetSearch = "Face", AssetLayout = assetLayout with
+                    { Documents = assetLayout.Documents.Select(document => document.Id == faceState.Id
+                        ? document with { Viewport = new(.8, 12, 34, false) } : document).ToArray() } };
                 view.ApplyWorkspaceState(reversed);
+                await view.WaitForSceneAsync();
                 var file = Path.Combine(folder, "workspace.json");
                 view.ConfigureWorkspacePersistence(file, restore: false); view.SaveWorkspace();
                 var saved = File.ReadAllText(file);
                 Assert.DoesNotContain(folder.Replace('\\', '/'), saved);
                 Assert.Equal("Light", view.InspectWorkspaceState().Theme);
-                session.UpdateElement(id, name: "Unsaved edit");
+                var panelEditor = view.GetDocumentEditor("Panel2D");
+                panelEditor.CommandSession.UpdateElement(id, name: "Unsaved edit");
                 Assert.Throws<InvalidOperationException>(view.RestoreWorkspace);
                 view.ResetLayout();
-                Assert.Equal("Unsaved edit", Assert.Single(session.Elements).Name);
+                Assert.Equal("Unsaved edit", Assert.Single(panelEditor.CommandSession.Elements).Name);
                 Assert.Equal(saved, File.ReadAllText(file));
-                session.Undo();
+                panelEditor.CommandSession.Undo();
                 File.AppendAllText(file, "\n");
                 Assert.Throws<IOException>(view.SaveWorkspace);
                 view.ConfigureWorkspacePersistence(file, restore: false);
                 Assert.Throws<IOException>(view.SaveWorkspace);
                 view.RestoreWorkspace();
+                await view.WaitForSceneAsync();
                 var reopened = view.InspectWorkspaceState();
-                Assert.Equal("Face", reopened.ActiveDocument); Assert.Equal("Face", reopened.AssetSearch);
-                Assert.Equal("Light", reopened.Theme); Assert.Equal(lamp, view.Faces.SelectedId);
-                Assert.Equal(new WorkspaceViewportState(.8, 12, 34, false), reopened.Viewport);
-                Assert.Equal(id, session.SelectedId); Assert.Equal("Retained element", Assert.Single(session.Elements).Name);
-                Assert.Equal("Inspector", reopened.Layout.Children![0].Children![0].Children![0].Id);
-                view.Faces.UpdateElement(lamp, name: "Pending Face edit");
-                Assert.Throws<InvalidOperationException>(view.RestoreWorkspace); view.Faces.Undo();
+                var reopenedAssets = Assert.IsType<AssetWorkspaceLayout>(reopened.AssetLayout);
+                var reopenedPanel = Assert.Single(reopenedAssets.Documents.Where(document => document.Kind == "Panel2D"));
+                var reopenedFace = Assert.Single(reopenedAssets.Documents.Where(document => document.Kind == "Face"));
+                Assert.Equal(reopenedFace.Id, reopenedAssets.ActiveId); Assert.Equal("Face", reopened.AssetSearch);
+                Assert.Equal("Light", reopened.Theme); Assert.Equal(lamp, Assert.Single(reopenedFace.Selection ?? []));
+                Assert.Equal(new WorkspaceViewportState(.8, 12, 34, false), reopenedFace.Viewport);
+                Assert.Equal(new[] { id }, reopenedPanel.Selection);
+                panelEditor = view.GetDocumentEditor("Panel2D");
+                Assert.Equal("Retained element", Assert.Single(panelEditor.CommandSession.Elements).Name);
+                Assert.False(panelEditor.CommandSession.IsDirty);
+                var faceEditor = view.GetDocumentEditor("Face");
+                Assert.Equal("Retained element", Assert.Single(panelEditor.CommandSession.Elements).Name);
+                faceEditor.Faces.UpdateElement(lamp, name: "Pending Face edit");
+                Assert.Throws<InvalidOperationException>(view.RestoreWorkspace); faceEditor.Faces.Undo();
                 var before = view.InspectWorkspaceState();
                 Assert.Throws<InvalidDataException>(() => view.ApplyWorkspaceState(before with { Project = "../outside.oasisproj" }));
                 Assert.Throws<InvalidDataException>(() => view.ApplyWorkspaceState(before with { Layout = null! }));
-                Assert.Throws<InvalidDataException>(() => view.ApplyWorkspaceState(before with { Layout = before.Layout with { Children = [null!] } }));
+                var beforeAssetLayout = Assert.IsType<AssetWorkspaceLayout>(before.AssetLayout);
+                Assert.Throws<InvalidDataException>(() => view.ApplyWorkspaceState(before with
+                {
+                    AssetLayout = beforeAssetLayout with { Layout = beforeAssetLayout.Layout with { Children = [null!] } }
+                }));
                 Assert.Equal(before.Project, view.InspectWorkspaceState().Project);
                 Assert.Equal(ThemeVariant.Light, Application.Current!.RequestedThemeVariant);
                 Assert.True(capture.Capture(theme: "Light").Length > 5000);
-                view.ApplyWorkspaceState(view.InspectWorkspaceState() with { Project = null, Panel = null, Face = null, Documents = null });
+                await view.CloseProjectAsync();
                 Assert.Null(session.ProjectFilePath); Assert.Empty(session.Elements); Assert.Empty(view.Faces.Elements);
             }
             finally { Directory.Delete(folder, recursive: true); }

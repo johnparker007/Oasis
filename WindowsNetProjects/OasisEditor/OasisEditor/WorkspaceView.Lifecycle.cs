@@ -11,7 +11,7 @@ public sealed partial class WorkspaceView
         {
             var diagnostics = ValidateActiveFace();
             SetStatus(diagnostics.Count == 0
-                ? $"Face validation completed for '{Faces.FaceTitle}' with no diagnostics."
+                ? $"Face validation completed for '{_faces.FaceTitle}' with no diagnostics."
                 : $"Face validation: {diagnostics.Count} diagnostic(s). " + string.Join(" · ", diagnostics.Select(d => $"{d.Severity}: {d.Message}")));
         }));
         MenuAction(fileMenu, "Open source Panel2D", () => Try(OpenFaceSourcePanel));
@@ -20,6 +20,7 @@ public sealed partial class WorkspaceView
     /// <summary>Closes the current project only when every retained authored document is clean.</summary>
     public async Task CloseProjectAsync()
     {
+        if(_documentOwner is {} host){await host.CloseProjectAsync();return;}
         EnsureAssetWindowsIdle();
         if (HasUnsavedChanges)
             throw new InvalidOperationException("Save or undo all open document edits before closing the project.");
@@ -28,10 +29,11 @@ public sealed partial class WorkspaceView
             await Preview.ControlAsync("stop");
 
         if(_isAssetWindow)throw new InvalidOperationException("Close the project from the main workspace.");
-        CloseAllAssetWindows();
-        Faces.CloseAllDocuments();
+        foreach(var d in _nativeDocuments.Values)if(d.Editor.Preview.Backend is not null)await d.Editor.Preview.ControlAsync("stop");
+        DisposeNativeDocuments();
+        _faces.CloseAllDocuments();
         _session.CloseProject();
-        Machines.CloseProject();
+        _machines.CloseProject();
         Clear3DForProjectChange();
         _faceActive = false;
         _machineActive = false;
@@ -44,19 +46,27 @@ public sealed partial class WorkspaceView
 
     public IReadOnlyList<FaceValidationDiagnostic> ValidateActiveFace()
     {
-        if (!_faceActive || Faces.Document is not { } document)
+        if(!ReferenceEquals(CommandView,this))return CommandView.ValidateActiveFace();
+        if (!_faceActive || _faces.Document is not { } document)
             throw new InvalidOperationException("Open a Face asset before validating it.");
 
-        return Faces.Validate();
+        return _faces.Validate();
     }
 
     public void OpenFaceSourcePanel()
     {
-        if (!_faceActive || Faces.Document is not { } face)
+        if(!ReferenceEquals(CommandView,this)){CommandView.OpenFaceSourcePanel();return;}
+        if (!_faceActive || _faces.Document is not { } face)
             throw new InvalidOperationException("Open a Face asset before opening its source Panel2D.");
         if (string.IsNullOrWhiteSpace(face.SourcePanel2DDocumentPath))
             throw new InvalidOperationException("This Face does not record a source Panel2D path.");
 
+        if(_documentOwner is {} owner)
+        {
+            _=OpenSourceAsync();
+            async Task OpenSourceAsync(){await owner.OpenNativeAssetAsync("Panel2D",face.SourcePanel2DDocumentPath);owner.CommandView._selectedSource=face.SourceFaceShapeId;owner.CommandView.Refresh();}
+            return;
+        }
         _session.OpenPanel(face.SourcePanel2DDocumentPath);
         _selectedSource = face.SourceFaceShapeId;
         ShowPanel();
