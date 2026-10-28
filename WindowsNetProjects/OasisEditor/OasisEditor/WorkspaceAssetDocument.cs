@@ -327,6 +327,14 @@ public sealed class AssetDocumentRegistry
         return document;
     }
 
+    /// <summary>Remove an asset after an explicit discard decision; leaves its package on disk.</summary>
+    public WorkspaceAssetDocument RemoveDiscarded(string kind, string path, string? libraryRoot = null)
+    {
+        var document = Find(kind, path, libraryRoot) ?? throw new KeyNotFoundException("Asset document is not registered.");
+        _documents.Remove(document.Id);
+        return document;
+    }
+
     private static bool PathEquals(string? left, string? right)
         => left is not null && right is not null && string.Equals(
             System.IO.Path.GetFullPath(left), System.IO.Path.GetFullPath(right),

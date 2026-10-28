@@ -67,10 +67,10 @@ public sealed partial class WorkspaceView
                 if (project.Diagnostic is not null)
                     detail.Children.Add(new TextBlock { Text = project.Diagnostic, TextWrapping = global::Avalonia.Media.TextWrapping.Wrap, FontSize = 11 });
                 button.Content = detail;
-                button.Click += (_, _) =>
+                button.Click += async (_, _) =>
                 {
                     if (!project.CanOpen) return;
-                    Try(() => OpenProject(project.Path));
+                    try { await RequestOpenProjectAsync(project.Path); } catch(Exception error) when(error is not OutOfMemoryException){await ShowCloseErrorAsync(error);}
                     RecordCurrentProject();
                     RefreshWelcomePage();
                 };

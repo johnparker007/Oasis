@@ -181,22 +181,5 @@ public sealed partial class WorkspaceView
             _viewport.Focus();
     }
 
-    private Task ExitFromMenuAsync()
-    {
-        if(_documentOwner is {} host)return host.ExitFromMenuAsync();
-        if (IsMovingAssetWindow)
-        {
-            SetStatus("Wait for document docking or workspace restoration to finish before closing.");
-            return Task.CompletedTask;
-        }
-        if (HasUnsavedChanges)
-        {
-            SetStatus("Save or undo your changes before closing.");
-            return Task.CompletedTask;
-        }
-
-        if (TopLevel.GetTopLevel(this) is Window window)
-            window.Close();
-        return Task.CompletedTask;
-    }
+    private async Task ExitFromMenuAsync() => await RequestEditorExitAsync();
 }

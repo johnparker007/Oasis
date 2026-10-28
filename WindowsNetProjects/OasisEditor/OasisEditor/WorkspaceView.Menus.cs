@@ -66,10 +66,11 @@ public sealed partial class WorkspaceView
             Group("_Export", Take(registrations, "Export portable Player package…", enabled: Machine)),
             new Separator(),
             Take(registrations, "Save", "_Save Asset", () => _save.IsEnabled),
-            Take(registrations, "Save all assets", enabled: Project),
+            Take(registrations, "Save All", "Save _All", enabled: Project),
             Take(registrations, "Close asset", enabled: () => ActiveDocumentPath is not null),
             Take(registrations, "Close project", "_Close Project", MainProject),
             new Separator(), Action("E_xit", async () => await ExitFromMenuAsync()));
+        file.Items.OfType<MenuItem>().Single(item=>Equals(item.Header,"Save _All")).InputGesture=KeyGesture.Parse("Ctrl+Shift+S");
         // Asset creation is now reachable through File > Create rather than a mixed File list.
         registrations.Items.Remove(registrations.Items.OfType<MenuItem>().Single(m => Equals(m.Header, "Create Machine…")));
         registrations.Items.Remove(registrations.Items.OfType<MenuItem>().Single(m => Equals(m.Header, "Create Prefab…")));

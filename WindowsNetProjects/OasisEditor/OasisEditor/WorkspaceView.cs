@@ -193,6 +193,8 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         {
             var command = (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta)) != 0;
             if (e.Handled) return;
+            if(command && e.Key==Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            { _=SaveAllFromUiAsync(); e.Handled=true; return; }
             if (!_isDocumentEditor && !ReferenceEquals(CommandView,this)) { CommandView.HandleDocumentKey(e); return; }
             if (command && e.Key == Key.S) { Try(SaveActive); e.Handled = true; }
             else if (e.Source is not TextBox)
@@ -246,10 +248,12 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     public void ShowMachine() { if(!_isDocumentEditor && _nativeDocuments.Count>0){var editor=GetDocumentEditor("Machine"); editor.ShowMachine(); FocusEditorIfOwned(editor,"Machine");return;} _sceneKind = "Machine"; _faceActive = false; _machineActive = true; Refresh(); QueueSceneReload(); }
     public void OpenProject(string path)
     { EnsureAssetWindowsIdle(); OpenProjectCore(path); }
-    private void OpenProjectCore(string path)
-    { if (HasUnsavedChanges) throw new InvalidOperationException("Save or undo document edits before changing project."); if(_isAssetWindow)throw new InvalidOperationException("Change projects in the main workspace."); var probe=new AuthoringSession(_session.WorkspacePath); probe.OpenProject(path); DisposeNativeDocuments(); _faces.CloseAllDocuments(); _session.OpenProject(path); Clear3DForProjectChange(); _documentViews.Clear(); _machines.OpenProject(path); _machineActive = false; Refresh(); RecordCurrentProject(); }
+    private void OpenProjectCore(string path, bool discardApproved = false)
+    { if (HasUnsavedChanges && !discardApproved) throw new InvalidOperationException("Save or undo document edits before changing project."); if(_isAssetWindow)throw new InvalidOperationException("Change projects in the main workspace."); var probe=new AuthoringSession(_session.WorkspacePath); probe.OpenProject(path); DisposeNativeDocuments(); _faces.CloseAllDocuments(); _session.OpenProject(path); Clear3DForProjectChange(); _documentViews.Clear(); _machines.OpenProject(path); _machineActive = false; Refresh(); RecordCurrentProject(); }
     public void CreateProject(string name)
-    { EnsureAssetWindowsIdle(); if (HasUnsavedChanges) throw new InvalidOperationException("Save or undo document edits before changing project."); if(_isAssetWindow)throw new InvalidOperationException("Create projects in the main workspace."); var probe=new AuthoringSession(_session.WorkspacePath); var path=probe.CreateProject(name); DisposeNativeDocuments(); _faces.CloseAllDocuments(); _session.OpenProject(path); Clear3DForProjectChange(); _documentViews.Clear(); _machines.OpenProject(_session.ProjectFilePath!); _machineActive = false; Refresh(); RecordCurrentProject(); }
+    { EnsureAssetWindowsIdle(); CreateProjectCore(name); }
+    private void CreateProjectCore(string name, bool discardApproved = false)
+    { if (HasUnsavedChanges && !discardApproved) throw new InvalidOperationException("Save or undo document edits before changing project."); if(_isAssetWindow)throw new InvalidOperationException("Create projects in the main workspace."); var probe=new AuthoringSession(_session.WorkspacePath); var path=probe.CreateProject(name); DisposeNativeDocuments(); _faces.CloseAllDocuments(); _session.OpenProject(path); Clear3DForProjectChange(); _documentViews.Clear(); _machines.OpenProject(_session.ProjectFilePath!); _machineActive = false; Refresh(); RecordCurrentProject(); }
     public void SetStatus(string text) { _status.Text = text; RecordOutput(text, OutputSeverity.Info); }
     private void RecordOutput(string text, OutputSeverity severity)
     {
@@ -273,7 +277,8 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         if (TopLevel.GetTopLevel(this)?.StorageProvider is not { CanOpen: true } storage) return;
         var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
         { Title = "Open Oasis project", FileTypeFilter = [new FilePickerFileType("Oasis project") { Patterns = ["*.oasisproj"] }] });
-        if (files.Count > 0 && files[0].TryGetLocalPath() is string path) Try(() => OpenProject(path));
+        if (files.Count > 0 && files[0].TryGetLocalPath() is string path)
+            try { await RequestOpenProjectAsync(path); } catch(Exception error) when(error is not OutOfMemoryException){await ShowCloseErrorAsync(error);}
     }
     private async Task NewProjectDialog()
     {
@@ -284,9 +289,9 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         var panel = new StackPanel { Margin = new Thickness(20), Spacing = 12 };
         panel.Children.Add(message); panel.Children.Add(name);
         var dialog = new Window { Title = "New Oasis project", Width = 440, Height = 220, Content = panel, CanResize = false };
-        panel.Children.Add(ActionButton("Create project", () =>
+        panel.Children.Add(ActionButton("Create project", async () =>
         {
-            try { CreateProject(name.Text ?? ""); dialog.Close(); }
+            try { if(await RequestCreateProjectAsync(name.Text ?? ""))dialog.Close(); }
             catch (Exception e) when (e is IOException or ArgumentException or InvalidOperationException or UnauthorizedAccessException) { message.Text = e.Message; }
         }));
         await dialog.ShowDialog(owner);

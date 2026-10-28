@@ -19,7 +19,7 @@ public sealed partial class WorkspaceView
         _cabinets.EnableDocumentRetention();_prefabs.EnableDocumentRetention();_reels.EnableDocumentRetention();
         MenuAction(file,"Close asset",async()=>await SceneAction(CloseActiveDocumentAsync));
         MenuAction(file,"Float active asset",async()=>{if(ActiveDocumentPath is {} path)await ScheduleAssetWindowAction(()=>FloatDocumentAsync(ActiveDocumentKind,path));});
-        MenuAction(file,"Save all assets",async()=>await SceneAction(SaveAllDocumentsAsync));
+        MenuAction(file,"Save All",async()=>await SaveAllFromUiAsync());
         _tabsReady=true;
     }
     private IReadOnlyList<WorkspaceDocumentTab> InspectDockedDocuments()
@@ -123,12 +123,14 @@ public sealed partial class WorkspaceView
         if(next is not null)await ActivateDocumentAsync(next.Kind,next.Path);
         else{_sceneKind=null;_faceActive=_machineActive=false;_sceneView.SuspendRendering();Refresh();}
     }
-    public Task CloseActiveDocumentAsync()=>!ReferenceEquals(CommandView,this)?CommandView.CloseActiveDocumentAsync():ActiveDocumentPath is {} path?CloseDocumentAsync(ActiveDocumentKind,path):Task.CompletedTask;
+    public async Task CloseActiveDocumentAsync()
+    { var view=CommandView; if(view.ActiveDocumentPath is {} path)await DocumentHost.RequestCloseDocumentAsync(view.ActiveDocumentKind,path); }
     public async Task SaveAllDocumentsAsync()
     {
         if(_documentOwner is {} host){await host.SaveAllDocumentsAsync();return;}
         if(!_isDocumentEditor)await SynchronizeAssetDocumentsAsync();
-        if(_nativeDocuments.Count>0){foreach(var d in _nativeDocuments.Values)d.Asset.Save(); RefreshNativeDocumentTitles();return;}
+        EnsureAssetWindowsIdle();
+        if(_nativeDocuments.Count>0){foreach(var d in _nativeDocuments.Values.Where(d=>d.Asset.IsDirty).ToArray())SaveNativeAsset(d); RefreshNativeDocumentTitles();return;}
         EnsureAssetWindowsIdle();
         var tabs=InspectOpenDocuments();var active=tabs.FirstOrDefault(t=>t.IsActive);
         try{foreach(var tab in tabs.Where(t=>t.IsDirty)){if(tab.IsFloating)SaveFloatingDocument(tab.Kind,tab.Path);else{await ActivateDocumentAsync(tab.Kind,tab.Path);SaveActive();}}}

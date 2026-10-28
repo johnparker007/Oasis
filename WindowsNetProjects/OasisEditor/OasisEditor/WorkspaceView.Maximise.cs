@@ -51,6 +51,7 @@ public sealed partial class WorkspaceView
         if(!_tabGestureHosts.Add(host))return;
         TabHosts.Add(host,this);
         host.AddHandler(PointerPressedEvent,TabPointerPressed,RoutingStrategies.Tunnel);
+        host.AddHandler(KeyDownEvent,BlockKeysDuringClose,RoutingStrategies.Tunnel);
         host.AddHandler(PointerReleasedEvent,TabPointerReleased,RoutingStrategies.Tunnel);
         host.Closing+=MaximisedHostClosing;
         host.Closed+=TabHostClosed;
@@ -62,13 +63,17 @@ public sealed partial class WorkspaceView
         host.Closing-=MaximisedHostClosing;
         host.Closed-=TabHostClosed;
         host.RemoveHandler(PointerPressedEvent,TabPointerPressed);
+        host.RemoveHandler(KeyDownEvent,BlockKeysDuringClose);
         host.RemoveHandler(PointerReleasedEvent,TabPointerReleased);
     }
     private void TabHostClosed(object? sender,EventArgs e)
     {if(sender is Window host)DetachTabGestures(host);}
     private void MaximisedHostClosing(object? sender,global::Avalonia.Controls.WindowClosingEventArgs e)
     {
-        if(_maximisedTab?.FloatingHost is not {} host || !ReferenceEquals(sender,host))return;
+        if(sender is not Window host)return;
+        if(e.CloseReason is WindowCloseReason.OwnerWindowClosing or WindowCloseReason.ApplicationShutdown ||
+            !ReferenceEquals(_maximisedTab?.FloatingHost,host))
+        { PreserveFloatingDocumentsOnHostClose(host,e); return; }
         // Cancel before HostWindow asks Dock to close its content. Factory
         // WindowClosing runs after that destructive OnClose callback.
         e.Cancel=true;
@@ -96,6 +101,7 @@ public sealed partial class WorkspaceView
     }
     private void TabPointerPressed(object? sender,PointerPressedEventArgs e)
     {
+        if(_closeWorkflowActive){e.Handled=true;return;}
         if(!e.GetCurrentPoint(sender as Control).Properties.IsLeftButtonPressed)return;
         for(var visual=e.Source as Visual;visual is not null;visual=visual.GetVisualParent())
         {
@@ -109,6 +115,8 @@ public sealed partial class WorkspaceView
             return;
         }
     }
+    private void BlockKeysDuringClose(object? sender,KeyEventArgs e)
+    {if(_closeWorkflowActive)e.Handled=true;}
     private void TabPointerReleased(object? sender,PointerReleasedEventArgs e)
     {
         if(e.InitialPressMouseButton!=MouseButton.Right || TabAt(e.Source,includeButtons:true) is not {} tab)return;
