@@ -167,7 +167,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         if (!_isAssetWindow) MenuAction(windowMenu, "Output", () => Try(ShowOutputPane));
         foreach (var theme in new[] { "System", "Dark", "Light" }) MenuAction(windowMenu, theme + " theme", () =>
         { Application.Current!.RequestedThemeVariant = theme == "Dark" ? ThemeVariant.Dark : theme == "Light" ? ThemeVariant.Light : ThemeVariant.Default; _viewport.InvalidateVisual(); });
-        root.Children.Add(new Menu { ItemsSource = new[] { file, edit, windowMenu } });
+        root.Children.Add(BuildMainMenu(file, edit, windowMenu, create));
         var toolbar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(8, 5) };
         toolbar.Children.Add(ActionButton("New project…", async () => await NewProjectDialog()));
         toolbar.Children.Add(ActionButton("Open project…", async () => await OpenProjectDialog()));
@@ -356,7 +356,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
             if (_lastDocument != path) { _lastDocument = path; _viewport.ClearImages(); _viewport.RequestFit(); }
             _viewport.InvalidateVisual();
         }
-        finally { _refreshing = false; }
+        finally { _refreshing = false; RefreshMenuState(); }
         StateChanged?.Invoke();
     }
 
