@@ -96,7 +96,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
 
         _assets.ItemTemplate = new FuncDataTemplate<AssetSummary>((a, _) => new TextBlock
         { Text = a is null ? "" : $"{a.Type}   /   {a.Name}", TextTrimming = TextTrimming.CharacterEllipsis });
-        _assets.DoubleTapped += (_, _) => { if (_assets.SelectedItem is AssetSummary asset) { if(_browseLibrary)_sceneTask=SceneAction(()=>OpenLibraryAssetAsync(asset.ManifestPath));else Try(() => OpenAsset(asset)); } };
+        _assets.DoubleTapped += (_, _) => { if (_assets.SelectedItem is AssetSummary asset) _ = ScheduleAssetWindowAction(() => OpenAssetFromBrowserAsync(asset)); };
         _assetSearch.TextChanged += (_, _) => RefreshAssets();
         InitializeProjectAssetContextActions();
         var projectPanel = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto") };
@@ -455,14 +455,14 @@ internal sealed class WorkspaceDockFactory(Control hierarchy, Control project, C
         var authoring = new Document { Id = source.Id, Title = source.Title, Context = source.Context, CanClose = false };
         ToolDock Pane(string id, Control content, double proportion)
         {
-            var tool = new Tool { Id = id, Title = id, Context = content, CanClose = false };
-            return new ToolDock { Proportion = proportion, ActiveDockable = tool, VisibleDockables = CreateList<IDockable>(tool), CanClose = false };
+            var tool = new Tool { Id = id, Title = id, Context = content, CanClose = true };
+            return new ToolDock { Proportion = proportion, ActiveDockable = tool, VisibleDockables = CreateList<IDockable>(tool), CanClose = true, CanCloseLastDockable = true };
         }
         ToolDock ProjectPane()
         {
-            var projectTool = new Tool { Id = "Project", Title = "Project", Context = project, CanClose = false };
-            var dock = new ToolDock { Proportion = .25, MinHeight = 230, ActiveDockable = projectTool, VisibleDockables = CreateList<IDockable>(projectTool), CanClose = false };
-            if (output is not null) dock.VisibleDockables.Add(new Tool { Id = "Output", Title = "Output", Context = output, CanClose = false });
+            var projectTool = new Tool { Id = "Project", Title = "Project", Context = project, CanClose = true };
+            var dock = new ToolDock { Proportion = .25, MinHeight = 230, ActiveDockable = projectTool, VisibleDockables = CreateList<IDockable>(projectTool), CanClose = true, CanCloseLastDockable = true };
+            if (output is not null) dock.VisibleDockables.Add(new Tool { Id = "Output", Title = "Output", Context = output, CanClose = true });
             return dock;
         }
         var documents=new DocumentDock {IsCollapsable=false,ActiveDockable=authoring,VisibleDockables=CreateList<IDockable>(authoring),Proportion=assetWindow ? .52 : .75};

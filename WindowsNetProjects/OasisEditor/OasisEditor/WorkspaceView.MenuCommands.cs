@@ -136,8 +136,8 @@ public sealed partial class WorkspaceView
             return;
         }
 
-        _factory.RestoreDockable(pane);
-        _factory.SetActiveDockable(pane);
+        RestoreMaximisedTab();
+        ReopenStandardPane(pane);
     }
 
     private Task ShowProjectSettingsFromMenuAsync()

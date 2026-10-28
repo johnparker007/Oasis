@@ -73,7 +73,10 @@ public sealed class WorkspaceMaximiseTests
 
                 var restoredMenu = MenuItems(view.CreateTabContextMenu(pane.Id!));
                 Assert.False(restoredMenu.Single(item => Equals(item.Header, "Maximise")).IsChecked);
-                Assert.Equal(pane is Document, restoredMenu.Single(item => Equals(item.Header, "Close Tab")).IsEnabled);
+                Assert.True(restoredMenu.Single(item => Equals(item.Header, "Close Tab")).IsEnabled);
+                var addTab = restoredMenu.Single(item => Equals(item.Header, "Add Tab"));
+                Assert.True(addTab.IsEnabled);
+                Assert.Equal(WorkspaceView.StandardWorkspaceTabs.Count, addTab.Items.OfType<MenuItem>().Count());
 
                 view.CommandSession.Undo();
                 Assert.Equal("Rectangle", view.CommandSession.Elements.Single(item => item.Id == rectangle).Name);
@@ -168,7 +171,7 @@ public sealed class WorkspaceMaximiseTests
                 Assert.NotEmpty(capture.CaptureFloatingWindows());
                 var restoredMenu = MenuItems(view.CreateTabContextMenu(pane.Id!));
                 Assert.False(restoredMenu.Single(item => Equals(item.Header, "Maximise")).IsChecked);
-                Assert.Equal(pane is Document, restoredMenu.Single(item => Equals(item.Header, "Close Tab")).IsEnabled);
+                Assert.True(restoredMenu.Single(item => Equals(item.Header, "Close Tab")).IsEnabled);
 
                 commands.Undo();
                 Assert.Equal("Rectangle", commands.Elements.Single(item => item.Id == rectangle).Name);
@@ -317,6 +320,9 @@ public sealed class WorkspaceMaximiseTests
                 var maximise = menuItems.Single(item => item.Name == "OasisMaximiseTab");
                 Assert.Contains(menuItems, item => Equals(item.Header, "Close Tab"));
                 Assert.Contains(menuItems, item => Equals(item.Header, "Float"));
+                var addTab = menuItems.Single(item => Equals(item.Header, "Add Tab"));
+                Assert.True(addTab.IsEnabled);
+                Assert.Equal(WorkspaceView.StandardWorkspaceTabs, addTab.Items.OfType<MenuItem>().Select(item => item.Header?.ToString()));
                 Assert.All(menuItems.Where(i=>i.Items.Count==0 && i.IsVisible && i.Header?.ToString() is not ("Maximise" or "Close Tab" or "Float")),i=>Assert.NotNull(i.Command));
                 maximise.RaiseEvent(new global::Avalonia.Interactivity.RoutedEventArgs(MenuItem.ClickEvent));
                 Assert.Equal(pane.Id, view.InspectTabPresentation().MaximisedPaneId);

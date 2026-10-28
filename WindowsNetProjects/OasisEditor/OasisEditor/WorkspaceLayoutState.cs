@@ -118,7 +118,7 @@ public static class WorkspaceLayoutState
             {
                 "Root" => new RootDock(),
                 "Split" => new ProportionalDock { Orientation = Parse<Dock.Model.Core.Orientation>(node.Orientation) },
-                "Tools" => new ToolDock { Alignment = Parse<Alignment>(node.Alignment), CanClose = false },
+                "Tools" => new ToolDock { Alignment = Parse<Alignment>(node.Alignment), CanClose = true, CanCloseLastDockable = true },
                 "Documents" => new DocumentDock { CanCloseLastDockable = false },
                 "Splitter" => new ProportionalDockSplitter(),
                 _ => throw new InvalidDataException("Workspace contains an unsupported layout type.")

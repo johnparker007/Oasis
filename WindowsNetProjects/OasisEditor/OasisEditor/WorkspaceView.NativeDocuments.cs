@@ -43,6 +43,7 @@ public sealed partial class WorkspaceView
 
     private void InitializeNativeDocuments(Grid root)
     {
+        _factory.HideToolsOnClose=true;
         InitializeTabPresentation();
         _mainAssetDock = _document.Owner as IDocumentDock;
         _editorMenu = (Menu)_menuSlot.Content!;
@@ -62,6 +63,7 @@ public sealed partial class WorkspaceView
             if (_nativeDisposing || _nativeLayoutOperation) return;
             var entry = _nativeDocuments.Values.FirstOrDefault(d => ReferenceEquals(d.Document, e.Dockable));
             if (entry is not null) RemoveNativeEditor(entry);
+            else if(e.Dockable is {} pane)RetainClosedStandardPane(pane);
         };
         _factory.WindowClosing += (_, e) =>
         {
@@ -193,7 +195,7 @@ public sealed partial class WorkspaceView
                 if (!changed) break;
             }
             _sceneKind=null; _faceActive=_machineActive=false; _sceneCancellation.Cancel(); _sceneView.SuspendRendering();
-            if(_nativeDocuments.Values.FirstOrDefault(d=>d.Asset.Kind==wantedKind && SameScenePath(d.Asset.Path,wantedPath)) is {} wanted)
+            if(_nativeDocuments.Values.FirstOrDefault(d=>d.Asset.Kind==wantedKind && SameScenePath(d.Asset.Path,wantedPath)) is {} wanted && !ReferenceEquals(_focusedAsset,wanted))
             {_factory.SetActiveDockable(wanted.Document);FocusNativeEditor(wanted);}
             RefreshNativeDocumentTitles();
         }
@@ -247,7 +249,8 @@ public sealed partial class WorkspaceView
             var asset=_assetRegistry.Open(_session.WorkspacePath,_session.ProjectFilePath!,kind,path,libraryRoot);
             entry=await AddNativeEditorAsync(asset);
         }
-        _factory.SetActiveDockable(entry.Document);FocusNativeEditor(entry);
+        FocusWorkspaceTab(entry.Document);
+        NativeWindowFor(entry)?.Activate();
     }
     private static IDocumentDock? FindMainDocumentDock(IDockable layout)
     {
