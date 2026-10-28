@@ -30,6 +30,7 @@ public sealed partial class WorkspaceView
         if(_nativeLayoutOperation||!_nativeRestoreTask.IsCompleted)
             throw new InvalidOperationException("Wait for document docking or workspace restoration to finish.");
         await SynchronizeAssetDocumentsAsync();
+        RestoreMaximisedTab();
         var entry=FindNativeEditor(kind,path);
         _nativeLayoutOperation=true;
         try
@@ -48,6 +49,7 @@ public sealed partial class WorkspaceView
         if(_nativeLayoutOperation||!_nativeRestoreTask.IsCompleted)
             throw new InvalidOperationException("Wait for document docking or workspace restoration to finish.");
         await SynchronizeAssetDocumentsAsync();
+        RestoreMaximisedTab();
         RedockNativeEditor(FindNativeEditor(kind,path));
     }
 

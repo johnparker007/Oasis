@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using Avalonia.Controls;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace OasisEditor.Avalonia.Mcp;
@@ -20,6 +22,51 @@ public sealed partial class EditorTools
 
     [McpServerTool(Name = "inspect_layout", ReadOnly = true), Description("Inspect actual dock topology, floating panes, theme, window bounds and clean document reopen state.")]
     public Task<WorkspaceState> InspectLayout(CancellationToken cancellationToken) => ui.Invoke(capture.View.InspectWorkspaceState, cancellationToken);
+
+    [McpServerTool(Name = "toggle_tab_maximised"), Description("Maximise a live document or pane in its current dock host, or restore it to its exact docked/floating placement. Keeps document contents and history intact.")]
+    public Task<WorkspaceTabPresentation> ToggleTabMaximised(string paneId, CancellationToken cancellationToken)
+        => ui.InvokeAsync(async () =>
+        {
+            if (capture.View.InspectTabPresentation().MaximisedPaneId != paneId)
+                await capture.View.SynchronizeAssetDocumentsAsync();
+            return capture.View.ToggleTabMaximised(paneId);
+        }, cancellationToken);
+
+    [McpServerTool(Name = "inspect_tab_presentation", ReadOnly = true), Description("Inspect whether a document or pane is currently maximised in its Dock host.")]
+    public Task<WorkspaceTabPresentation> InspectTabPresentation(CancellationToken cancellationToken)
+        => ui.Invoke(capture.View.InspectTabPresentation, cancellationToken);
+
+    [McpServerTool(Name = "inspect_tab_menu", ReadOnly = true), Description("Inspect the live Dock tab context menu, including Maximise state and whether Close Tab is available.")]
+    public Task<object> InspectTabMenu(string paneId, CancellationToken cancellationToken)
+        => ui.Invoke<object>(() =>
+        {
+            var items = capture.View.CreateTabContextMenu(paneId).Items.OfType<MenuItem>()
+                .Select(item => new { header = item.Header?.ToString(), enabled = item.IsEnabled, checkedState = item.IsChecked })
+                .ToArray();
+            return new { paneId, items };
+        }, cancellationToken);
+
+    [McpServerTool(Name = "capture_tab_menu", ReadOnly = true), Description("Capture the production tab action popup for a document or pane in the requested theme. Headless workspace only; no desktop input.")]
+    public Task<CallToolResult> CaptureTabMenu(string paneId, CancellationToken cancellationToken, string theme = "Dark")
+        => ui.Invoke(() =>
+        {
+            capture.Capture(theme: theme);
+            var menu = capture.View.CreateTabContextMenu(paneId);
+            try
+            {
+                menu.Open(capture.View);
+                return new CallToolResult { Content = [ImageContentBlock.FromBytes(capture.Capture(theme: theme), "image/png")] };
+            }
+            finally { menu.Close(); }
+        }, cancellationToken);
+
+    [McpServerTool(Name = "restore_maximised_tab"), Description("Restore the maximised document or pane to its exact original docked or floating placement.")]
+    public Task<WorkspaceTabPresentation> RestoreMaximisedTab(CancellationToken cancellationToken)
+        => ui.Invoke(() =>
+        {
+            capture.View.RestoreMaximisedTab();
+            return capture.View.InspectTabPresentation();
+        }, cancellationToken);
 
     [McpServerTool(Name = "save_workspace"), Description("Save actual workspace layout/theme/window/document paths to an explicit settings file inside the workspace. Does not save authored documents.")]
     public Task<WorkspaceState> SaveWorkspace(string path, CancellationToken cancellationToken) => ui.Invoke(() =>

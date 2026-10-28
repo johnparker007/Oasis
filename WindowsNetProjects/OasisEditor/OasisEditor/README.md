@@ -60,6 +60,14 @@ selection, camera and viewport. Earlier version-1 layouts migrate to native docu
 when restored. Workspace restoration preflights files and layout before replacing
 the live workspace, and refuses to replace unsaved edits.
 
+Double-click a document tab, tool tab or pane title to maximise it; double-click
+the maximised header to restore it. The tab context menu also has a checked
+**Maximise** item, and **Close Tab** is disabled until the tab is restored.
+Maximising a docked tab fills the Editor workspace; maximising a floating tab
+fills its existing window. Restore retains the original Dock graph, floating
+window bounds, document instances, pending edits and undo history. This is a
+transient view state; saved workspace layouts retain the original arrangement.
+
 Live Dock moves can attach a destination presenter before its source detaches.
 `DockPanePresenter` transfers ownership of each stateful pane control and releases
 its old visual parent before attaching it again. Binding each transient presenter

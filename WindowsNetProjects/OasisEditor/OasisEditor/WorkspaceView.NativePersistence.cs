@@ -34,7 +34,7 @@ public sealed partial class WorkspaceView
             return new AssetDocumentViewState(entry.Asset.Kind, relativePath, entry.Asset.LibraryRoot, entry.Asset.Id,
                 captured.Viewport, selection, captured.SourceSelection, captured.Scene, captured.MachineGraph);
         }).ToArray();
-        var layout = WorkspaceLayoutState.Capture(_dock.Layout ?? throw new InvalidOperationException("Workspace has no layout."));
+        var layout = CapturePresentedLayout();
         var projectRelative = projectFile is null ? null : Path.GetRelativePath(_session.WorkspacePath, projectFile).Replace('\\', '/');
         var state = new WorkspaceState(2, theme == ThemeVariant.Dark ? "Dark" : theme == ThemeVariant.Light ? "Light" : "System", layout,
             Project: projectRelative, ActiveDocument: _focusedAsset?.Asset.Kind is "Panel2D" or "Face" or "Machine" ? _focusedAsset.Asset.Kind : "Panel2D", AssetSearch: _assetSearch.Text, MainWindow: bounds,
