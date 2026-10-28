@@ -36,15 +36,40 @@ public sealed partial class WorkspaceView
     public void InitializeProjectAssetContextActions()
     {
         var menu = new ContextMenu();
+        var open = ContextAction("Open", (Func<Task>)(() => ScheduleAssetWindowAction(() => OpenAssetFromBrowserAsync(_assets.SelectedItem as AssetSummary))));
+        menu.Items.Add(open);
         menu.Items.Add(ContextAction("Reveal in File Explorer", () => RevealProjectAsset(_assets.SelectedItem as AssetSummary)));
         menu.Items.Add(ContextAction("Rename…", (Func<Task>)(() => RenameProjectAssetAsync(_assets.SelectedItem as AssetSummary))));
         menu.Items.Add(ContextAction("Delete…", (Func<Task>)(() => DeleteProjectAssetAsync(_assets.SelectedItem as AssetSummary))));
         _assets.ContextMenu = menu;
+        void UpdateMenuState()
+        {
+            var hasSelection = _assets.SelectedItem is AssetSummary;
+            open.IsEnabled = hasSelection;
+            foreach (var item in menu.Items.OfType<MenuItem>().Where(item => !ReferenceEquals(item, open)))
+                item.IsEnabled = !_browseLibrary && hasSelection;
+        }
+        _assets.SelectionChanged += (_, _) => UpdateMenuState();
         _assets.ContextRequested += (_, e) =>
         {
             if (_assets.SelectedItem is not AssetSummary) e.Handled = true;
-            foreach (var item in menu.Items.OfType<MenuItem>()) item.IsEnabled = !_browseLibrary && _assets.SelectedItem is AssetSummary;
+            UpdateMenuState();
         };
+        UpdateMenuState();
+    }
+
+    /// <summary>Open the currently selected Project or Library package in its canonical native document.</summary>
+    public async Task OpenAssetFromBrowserAsync(AssetSummary? asset)
+    {
+        if (asset is null) return;
+        if (_browseLibrary)
+        {
+            await OpenLibraryAssetAsync(asset.ManifestPath);
+            return;
+        }
+
+        var kind = asset.Type == "Object3D" ? "Prefab" : asset.Type;
+        await DocumentHost.OpenNativeAssetAsync(kind, asset.ManifestPath);
     }
 
     public void RevealProjectAsset(AssetSummary? asset)

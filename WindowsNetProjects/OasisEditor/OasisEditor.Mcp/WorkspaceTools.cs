@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -10,6 +11,25 @@ public sealed partial class EditorTools
     [McpServerTool(Name = "move_workspace_pane"), Description("Move an actual live Dock pane (Project, Hierarchy, Inspector, Output or Authoring): float, or tab beside targetId. Exercises production pane presenters; no desktop input or authored changes.")]
     public Task<WorkspaceState> MovePane(string paneId, string placement, CancellationToken cancellationToken, string targetId = "Authoring")
         => ui.Invoke(() => capture.View.MoveWorkspacePane(paneId, placement, targetId), cancellationToken);
+
+    [McpServerTool(Name = "add_workspace_tab"), Description("Reopen or move a standard workspace tab into the tab group containing targetPaneId.")]
+    public Task<WorkspaceState> AddWorkspaceTab(string paneId, string targetPaneId, CancellationToken cancellationToken)
+        => ui.Invoke(() =>
+        {
+            capture.View.AddWorkspaceTab(paneId, targetPaneId);
+            return capture.View.InspectWorkspaceState();
+        }, cancellationToken);
+
+    [McpServerTool(Name = "close_workspace_tab"), Description("Close a standard workspace tab using the production tab context-menu action.")]
+    public Task<WorkspaceState> CloseWorkspaceTab(string paneId, CancellationToken cancellationToken)
+        => ui.Invoke(() =>
+        {
+            var menu = capture.View.CreateTabContextMenu(paneId);
+            var close = menu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Close Tab"));
+            if (!close.IsEnabled) throw new InvalidOperationException($"Workspace tab '{paneId}' cannot be closed in its current state.");
+            close.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            return capture.View.InspectWorkspaceState();
+        }, cancellationToken);
 
     [McpServerTool(Name = "split_document"), Description("Split two open native asset documents into adjacent Dock document groups. Keeps each asset's own editor, pending edits and command history.")]
     public Task<WorkspaceState> SplitDocument(string kind, string path, string targetKind, string targetPath,
@@ -40,9 +60,14 @@ public sealed partial class EditorTools
     public Task<object> InspectTabMenu(string paneId, CancellationToken cancellationToken)
         => ui.Invoke<object>(() =>
         {
-            var items = capture.View.CreateTabContextMenu(paneId).Items.OfType<MenuItem>()
-                .Select(item => new { header = item.Header?.ToString(), enabled = item.IsEnabled, checkedState = item.IsChecked })
-                .ToArray();
+            static object Describe(MenuItem item) => new
+            {
+                header = item.Header?.ToString(),
+                enabled = item.IsEnabled,
+                checkedState = item.IsChecked,
+                children = item.Items.OfType<MenuItem>().Select(Describe).ToArray()
+            };
+            var items = capture.View.CreateTabContextMenu(paneId).Items.OfType<MenuItem>().Select(Describe).ToArray();
             return new { paneId, items };
         }, cancellationToken);
 

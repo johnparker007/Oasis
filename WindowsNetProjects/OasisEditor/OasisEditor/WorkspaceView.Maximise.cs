@@ -142,7 +142,14 @@ public sealed partial class WorkspaceView
         close.Click+=(_,_)=>Try(()=>_factory.CloseDockable(pane));
         var floating=new MenuItem{Header="Float",IsEnabled=!maximised && pane.CanFloat};
         floating.Click+=(_,_)=>Try(()=>{RestoreMaximisedTab();_factory.FloatDockable(pane);});
-        menu.Items.Add(maximise);menu.Items.Add(new Separator());menu.Items.Add(close);menu.Items.Add(floating);
+        var add=new MenuItem{Header="Add Tab",IsEnabled=!maximised};
+        foreach(var id in StandardWorkspaceTabs)
+        {
+            var item=new MenuItem{Header=id};
+            item.Click+=(_,_)=>{menu.Close();Try(()=>AddWorkspaceTab(id,paneId));};
+            add.Items.Add(item);
+        }
+        menu.Items.Add(maximise);menu.Items.Add(add);menu.Items.Add(new Separator());menu.Items.Add(close);menu.Items.Add(floating);
         return menu;
     }
     private IDockable FindWorkspaceTab(string paneId)
@@ -157,7 +164,7 @@ public sealed partial class WorkspaceView
         if(ReferenceEquals(_maximisedTab?.Pane,pane)){RestoreMaximisedTab();return InspectTabPresentation();}
         RestoreMaximisedTab();
         var previousFocus=_focusedAsset;
-        FocusNativeDockable(pane);
+        FocusWorkspaceTab(pane);
         var floating=(_dock.Layout as IRootDock)?.Windows?.FirstOrDefault(w=>w.Layout is not null && WorkspaceLayoutState.LeafMap(w.Layout).ContainsKey(paneId))?.Host as Window;
         var surface=new Grid{RowDefinitions=new RowDefinitions("Auto,*")};
         surface.Bind(BackgroundProperty,this.GetResourceObservable("WorkspaceBrush"));
@@ -200,6 +207,7 @@ public sealed partial class WorkspaceView
         else if(saved.MainGrid is {} grid)
         {grid.Children.Remove(saved.Surface);grid.Children.Add(_dock);}
         if(saved.FocusedAsset is {} focused && _nativeDocuments.ContainsKey(focused.Asset.Id))FocusNativeEditor(focused);
+        FocusRestoredTab(saved.Pane);
         StateChanged?.Invoke();
     }
     private WorkspaceDockNode CapturePresentedLayout()
