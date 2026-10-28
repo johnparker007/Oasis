@@ -31,7 +31,7 @@ public sealed partial class WorkspaceView
             Math.Max(100, window.ClientSize.Width), Math.Max(100, window.ClientSize.Height), window.WindowState.ToString());
         var theme = Application.Current!.RequestedThemeVariant;
         return new(1, theme == ThemeVariant.Dark ? "Dark" : theme == ThemeVariant.Light ? "Light" : "System",
-            WorkspaceLayoutState.Capture(_dock.Layout ?? throw new InvalidOperationException("Workspace has no layout.")),
+            CapturePresentedLayout(),
             _session.ProjectFilePath is null ? null : Path.GetRelativePath(_session.WorkspacePath, _session.ProjectFilePath).Replace('\\', '/'),
             Relative(_session.PanelPath), Relative(_faces.FacePath), _machineActive ? "Machine" : _faceActive ? "Face" : "Panel2D",
             _session.SelectedIds.ToArray(), _faces.SelectedId, _assetSearch.Text, bounds, _selectedSource, _viewport.CaptureViewState(),
@@ -255,6 +255,7 @@ public sealed partial class WorkspaceView
 
     public void ResetLayout()
     {
+        RestoreMaximisedTab();
         if(_documentOwner is {} host){host.ResetLayout();return;}
         if(_nativeDocuments.Count>0){ResetNativeLayout();return;}
         ReplaceLayout(_factory.CreateLayout());
@@ -263,6 +264,7 @@ public sealed partial class WorkspaceView
 
     private void ReplaceLayout(IRootDock layout)
     {
+        RestoreMaximisedTab();
         var contexts = _dock.Layout is null ? new Dictionary<string, object?>()
             : WorkspaceLayoutState.LeafMap(_dock.Layout).ToDictionary(pair => pair.Key, pair => pair.Value.Context);
         if (_dock.Layout is IRootDock previous)

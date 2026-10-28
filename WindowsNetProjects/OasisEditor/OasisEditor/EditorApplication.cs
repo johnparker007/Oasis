@@ -138,6 +138,8 @@ public sealed class WorkspaceCapture : IDisposable
         foreach (var window in View.FloatingWorkspaceWindows)
         {
             window.UpdateLayout();
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick(2);
             var width = Math.Clamp((int)Math.Ceiling(window.ClientSize.Width), 1, 1920);
             var height = Math.Clamp((int)Math.Ceiling(window.ClientSize.Height), 1, 1200);
             using var bitmap = new RenderTargetBitmap(new PixelSize(width, height), new Vector(96, 96));

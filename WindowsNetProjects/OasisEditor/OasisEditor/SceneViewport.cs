@@ -103,7 +103,9 @@ public sealed class SceneViewport : Control, IDisposable
     }
     private Color ColorResource(string key)
     {
-        return this.TryFindResource(key, ActualThemeVariant, out var value) ? value switch
+        var found=this.TryFindResource(key, ActualThemeVariant, out var value);
+        if(!found && Application.Current is {} app)found=app.TryFindResource(key,app.ActualThemeVariant,out value);
+        return found ? value switch
         { ISolidColorBrush brush => brush.Color, Color color => color, _ => throw new InvalidOperationException($"Theme resource {key} is not a color.") }
         : throw new InvalidOperationException($"Theme resource {key} is missing.");
     }

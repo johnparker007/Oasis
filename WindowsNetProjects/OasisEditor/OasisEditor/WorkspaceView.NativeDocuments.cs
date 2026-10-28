@@ -43,6 +43,7 @@ public sealed partial class WorkspaceView
 
     private void InitializeNativeDocuments(Grid root)
     {
+        InitializeTabPresentation();
         _mainAssetDock = _document.Owner as IDocumentDock;
         _editorMenu = (Menu)_menuSlot.Content!;
         root.Children.Remove(_editorToolbar); root.Children.Remove(_editorStatus);
@@ -87,6 +88,7 @@ public sealed partial class WorkspaceView
     private void FocusNativeEditor(NativeAssetEditor entry)
     {
         if (_nativeDisposing) return;
+        if(_maximisedTab?.Pane is {} maximised && _nativeDocuments.Values.Any(d=>ReferenceEquals(d.Document,maximised)) && !ReferenceEquals(maximised,entry.Document))RestoreMaximisedTab();
         _focusedAsset = entry;
         _menuSlot.Content = entry.Editor._editorMenu;
         _toolbarSlot.Content = entry.Editor._editorToolbar;
@@ -237,6 +239,7 @@ public sealed partial class WorkspaceView
         if (_documentOwner is {} host) { await host.OpenNativeAssetAsync(kind,path,libraryRoot); return; }
         if(_nativeLayoutOperation||!_nativeRestoreTask.IsCompleted)throw new InvalidOperationException("Wait for workspace restoration to finish before opening an asset.");
         await SynchronizeAssetDocumentsAsync();
+        RestoreMaximisedTab();
         path=Path.GetFullPath(path,libraryRoot??_session.RequireProjectDirectory());
         var entry=_nativeDocuments.Values.FirstOrDefault(d=>d.Asset.Kind==kind && SameScenePath(d.Asset.Path,path));
         if(entry is null)
@@ -264,6 +267,7 @@ public sealed partial class WorkspaceView
     {
         if(_documentOwner is {} host){await host.SplitDocumentAsync(kind,path,targetKind,targetPath,side);return;}
         await SynchronizeAssetDocumentsAsync();
+        RestoreMaximisedTab();
         var source=FindNativeEditor(kind,path);var target=FindNativeEditor(targetKind,targetPath);
         if(ReferenceEquals(source,target))throw new ArgumentException("Choose a different document to split beside.");
         var operation=side.ToLowerInvariant() switch {"left"=>DockOperation.Left,"right"=>DockOperation.Right,"top"=>DockOperation.Top,"bottom"=>DockOperation.Bottom,_=>throw new ArgumentException("Use left, right, top or bottom.",nameof(side))};
@@ -294,6 +298,7 @@ public sealed partial class WorkspaceView
     private void CloseNativeDocument(string kind,string path)
     {
         var entry=FindNativeEditor(kind,path);
+        if(ReferenceEquals(_maximisedTab?.Pane,entry.Document))throw new InvalidOperationException("Restore the tab before closing it.");
         if(entry.Asset.IsDirty)throw new InvalidOperationException("Save or undo this asset's edits before closing it.");
         _factory.CloseDockable(entry.Document);
     }
@@ -335,6 +340,7 @@ public sealed partial class WorkspaceView
     private bool IsFloatingDockable(IDockable pane) => (_dock.Layout as IRootDock)?.Windows?.Any(w=>w.Layout is not null && WorkspaceLayoutState.LeafMap(w.Layout).ContainsKey(pane.Id))==true;
     private void DisposeNativeDocuments()
     {
+        if(!_isDocumentEditor)RestoreMaximisedTab();
         if(_isDocumentEditor || _nativeDocuments.Count==0)return;
         _nativeDisposing=true;
         try
@@ -355,6 +361,7 @@ public sealed partial class WorkspaceView
     }
     private void ResetNativeLayout()
     {
+        RestoreMaximisedTab();
         _nativeLayoutOperation=true;
         try
         {

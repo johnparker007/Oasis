@@ -8,6 +8,7 @@ public sealed partial class WorkspaceView
     /// <summary>Use the same live Dock factory operations as pane title-bar commands.</summary>
     public WorkspaceState MoveWorkspacePane(string paneId, string placement, string targetId = "Authoring")
     {
+        RestoreMaximisedTab();
         var panes = WorkspaceLayoutState.LeafMap(_dock.Layout ?? throw new InvalidOperationException("The workspace has no layout."));
         if (!panes.TryGetValue(paneId, out var pane)) throw new ArgumentException("Unknown workspace pane.", nameof(paneId));
         if (placement == "float") _factory.FloatDockable(pane);
