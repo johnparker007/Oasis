@@ -44,6 +44,29 @@ domain/rendering/emulation tests now live in `Oasis.Authoring.RegressionTests`.
 > are historical records, not validation of the current consolidated checkout. Re-run
 > the relevant checks before reporting present-day results.
 
+## Pane docking integration
+
+The pane layout uses `Dock.Avalonia`, `Dock.Model.Mvvm` and the Dock Fluent theme,
+version 12.1.0.12. Oasis supplies the pane content and workspace persistence. The
+independent asset-editor windows are a separate Oasis workflow.
+
+Live Dock moves can attach a destination presenter before its source detaches.
+`DockPanePresenter` transfers ownership of each stateful pane control and releases
+its old visual parent before attaching it again. Binding each transient presenter
+straight to the same control's `Context` caused a visual-parent exception when
+floating or moving panes. The shared presenter applies to all pane types.
+
+The live docking regression suite uses actual factory float/move operations for
+Project, Hierarchy, Inspector, Output and Authoring, across repeated moves and theme
+changes. It verifies control identity, the owning window, selection and unsaved edits.
+These checks complement saved-layout restoration and independent asset-window tests.
+The MCP `move_workspace_pane` operation and verifier exercise the live path and return
+real main/floating captures without desktop interaction:
+
+```powershell
+python WindowsNetProjects/OasisEditor/OasisEditor.Mcp/verify_pane_docking.py --output <capture-directory>
+```
+
 ## Main menus
 
 The main menu hierarchy is restored from the last WPF `MainWindow.xaml` at commit

@@ -5,6 +5,10 @@ namespace OasisEditor.Avalonia.Mcp;
 
 public sealed partial class EditorTools
 {
+    [McpServerTool(Name = "move_workspace_pane"), Description("Move an actual live Dock pane (Project, Hierarchy, Inspector, Output or Authoring): float, or tab beside targetId. Exercises production pane presenters; no desktop input or authored changes.")]
+    public Task<WorkspaceState> MovePane(string paneId, string placement, CancellationToken cancellationToken, string targetId = "Authoring")
+        => ui.Invoke(() => capture.View.MoveWorkspacePane(paneId, placement, targetId), cancellationToken);
+
     [McpServerTool(Name = "inspect_layout", ReadOnly = true), Description("Inspect actual dock topology, floating panes, theme, window bounds and clean document reopen state.")]
     public Task<WorkspaceState> InspectLayout(CancellationToken cancellationToken) => ui.Invoke(capture.View.InspectWorkspaceState, cancellationToken);
 
