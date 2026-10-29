@@ -402,6 +402,6 @@ public sealed partial class FaceAuthoringSession
     {
         if (!Panel2DDocumentStorage.TryReadValidated(File.ReadAllText(path), out var file, out var error))
             throw new InvalidDataException(error);
-        return Panel2DDocumentStorage.ToModel(file);
+        return PanelHierarchy.ResolveDocument(Panel2DDocumentStorage.ToModel(file));
     }
 }

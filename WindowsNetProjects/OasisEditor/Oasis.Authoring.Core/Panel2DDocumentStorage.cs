@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 internal static class Panel2DDocumentStorage
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
     public const int LegacySchemaVersion = 1;
 
     internal static PanelElementKind ParseElementKind(string? kind)
@@ -157,9 +157,9 @@ internal static class Panel2DDocumentStorage
 
     public static bool TryMigrateToCurrentSchema(Panel2DDocumentFile source, out Panel2DDocumentFile migrated, out string errorMessage)
     {
-        if (source.SchemaVersion == CurrentSchemaVersion)
+        if (source.SchemaVersion == CurrentSchemaVersion || source.SchemaVersion == 3)
         {
-            migrated = source;
+            migrated = source with { SchemaVersion = CurrentSchemaVersion };
             errorMessage = string.Empty;
             return true;
         }
@@ -253,11 +253,14 @@ internal static class Panel2DDocumentStorage
             normalizedElements.Add(normalizedElement);
         }
 
+        try { AuthoringSession.ValidateGroups(source with {Elements=normalizedElements.ToArray()}); }
+        catch (ArgumentException error) { normalized = new(); errorMessage = error.Message; return false; }
         normalized = source with
         {
             Elements = normalizedElements.ToArray(),
             FaceSourceShapes = (source.FaceSourceShapes ?? []).Select(NormalizeFaceSourceShape).ToArray()
         };
+        normalized = AuthoringSession.NormalizeHierarchy(normalized);
         errorMessage = string.Empty;
         return true;
     }
@@ -307,6 +310,7 @@ internal static class Panel2DDocumentStorage
                 .Select(NormalizeElement)
                 .Select(ToModel)
                 .ToArray(),
+            Groups = document.Groups,
             FaceSourceShapes = (document.FaceSourceShapes ?? []).Select(ToModel).ToArray()
         };
     }
@@ -323,7 +327,7 @@ internal static class Panel2DDocumentStorage
         var normalized = NormalizeElement(element);
         return new PanelElementModel
         {
-            ObjectId = normalized.ObjectId,
+            ObjectId = normalized.ObjectId, ParentId = normalized.ParentId, Transform = normalized.Transform,
             Name = normalized.Name,
             Kind = ParseElementKind(normalized.Kind),
             X = normalized.X,
@@ -384,7 +388,7 @@ internal static class Panel2DDocumentStorage
 
         return NormalizeElement(new PanelElementFile
         {
-            ObjectId = element.ObjectId,
+            ObjectId = element.ObjectId, ParentId = element.ParentId, Transform = element.Transform,
             Name = element.Name,
             Kind = SerializeElementKind(element.Kind),
             X = element.X,
@@ -627,7 +631,7 @@ internal static class Panel2DDocumentStorage
 
         return element with
         {
-            ObjectId = normalizedObjectId,
+            ObjectId = normalizedObjectId, ParentId = element.ParentId, Transform = element.Transform,
             Name = NormalizeElementName(element.Name, normalizedKind, normalizedObjectId),
             Kind = SerializeElementKind(normalizedKind),
             AssetPath = normalizedAssetPath,
@@ -929,6 +933,8 @@ internal sealed record Panel2DDocumentFile
     public string Summary { get; init; } = string.Empty;
     public DateTime SavedAtUtc { get; init; }
     public PanelElementFile[] Elements { get; init; } = [];
+    public PanelGroup[] Groups { get; init; } = [];
+    public string[] HierarchyOrder { get; init; } = [];
     public PanelFaceSourceShapeFile[] FaceSourceShapes { get; init; } = [];
 }
 
@@ -944,6 +950,8 @@ internal readonly record struct PanelPointFile(double X, double Y);
 
 internal sealed record PanelElementFile : IPanelSelectableObject
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ParentId { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public PanelTransform? Transform { get; init; }
     public string ObjectId { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string Kind { get; init; } = string.Empty;

@@ -16,7 +16,7 @@ public sealed partial class AuthoringSession
     {
         ArgumentNullException.ThrowIfNull(ids);
         var elements = RequireDocument().Elements;
-        var known = elements.Select(element => element.ObjectId).ToHashSet(StringComparer.Ordinal);
+        var known = NodeIds(RequireDocument()).ToHashSet(StringComparer.Ordinal);
         var selection = new List<string>(ids.Count);
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var id in ids)
@@ -36,44 +36,42 @@ public sealed partial class AuthoringSession
     {
         ValidateGeometry(dx, dy, null, null);
         var document = RequireDocument();
-        var indices = SelectedIndices(document, _selectedIds);
-        if (dx == 0 && dy == 0 || indices.Length == 0) return false;
-        foreach (var index in indices)
-            if (document.Elements[index].LockTransform)
-                throw new InvalidOperationException($"Element '{document.Elements[index].ObjectId}' has locked geometry.");
-
-        var updated = (PanelElementFile[])document.Elements.Clone();
-        foreach (var index in indices)
+        if (dx == 0 && dy == 0 || _selectedIds.Count == 0) return false;
+        var roots=SelectionRoots(document,_selectedIds).ToHashSet(); var tree=Tree;
+        PanelTransform Move(string? parent,PanelTransform t,bool locked)
         {
-            var element = updated[index];
-            var x = element.X + dx;
-            var y = element.Y + dy;
-            ValidateGeometry(x, y, null, null);
-            updated[index] = element with { X = x, Y = y };
+            var state=tree.Resolve(parent); if(state.Locked||locked)throw new InvalidOperationException("The selection has locked geometry.");
+            var inverse=state.Transform.Inverse(); var next=t with {X=t.X+inverse.A*dx+inverse.C*dy,Y=t.Y+inverse.B*dx+inverse.D*dy};next.Validate();return next;
         }
-        Commit(document with { Elements = updated });
-        return true;
+        var elements=document.Elements.Select(e=>
+        {
+            if(!roots.Contains(e.ObjectId))return e;
+            var state=tree.Resolve(e.ParentId);if(state.Locked||e.LockTransform)throw new InvalidOperationException("The selection has locked geometry.");
+            var inverse=state.Transform.Inverse();return TranslateLocal(e,inverse.A*dx+inverse.C*dy,inverse.B*dx+inverse.D*dy);
+        }).ToArray();
+        Commit(document with {Elements=elements,Groups=document.Groups.Select(g=>roots.Contains(g.Id)?g with {Transform=Move(g.ParentId,g.Transform,g.Locked)}:g).ToArray()});return true;
     }
 
     public bool SetSelectedObjectState(bool? visible = null, bool? locked = null)
     {
         var document = RequireDocument();
-        var indices = SelectedIndices(document, _selectedIds);
+        var selected=_selectedIds.ToHashSet();
+        var indices = document.Elements.Select((e,i)=>(e,i)).Where(v=>selected.Contains(v.e.ObjectId)).Select(v=>v.i).ToArray();
         var elements = (PanelElementFile[])document.Elements.Clone();
         foreach (var index in indices)
             elements[index] = elements[index] with { IsVisible = visible ?? elements[index].IsVisible, LockTransform = locked ?? elements[index].LockTransform };
-        if (elements.SequenceEqual(document.Elements)) return false;
-        Commit(document with { Elements = elements });
+        var groups=document.Groups.Select(g=>selected.Contains(g.Id)?g with {Visible=visible??g.Visible,Locked=locked??g.Locked}:g).ToArray();
+        if (elements.SequenceEqual(document.Elements)&&groups.SequenceEqual(document.Groups)) return false;
+        Commit(document with { Elements = elements, Groups=groups });
         return true;
     }
 
     public bool DeleteSelected()
     {
         var document = RequireDocument();
-        var indices = SelectedIndices(document, _selectedIds);
-        if (indices.Length == 0) return false;
-        var removed = indices.Select(index => document.Elements[index].ObjectId).ToHashSet(StringComparer.Ordinal);
-        Commit(document with { Elements = document.Elements.Where(element => !removed.Contains(element.ObjectId)).ToArray() }, notify: false);
+        if (_selectedIds.Count==0) return false;
+        var removed=Descendants(document,_selectedIds);
+        Commit(document with {Elements=document.Elements.Where(e=>!removed.Contains(e.ObjectId)).ToArray(),Groups=document.Groups.Where(g=>!removed.Contains(g.Id)).ToArray(),HierarchyOrder=document.HierarchyOrder.Where(id=>!removed.Contains(id)).ToArray()},notify:false);
         _selectedIds = [];
         _selectedId = null;
         StorePanelState();
@@ -84,29 +82,15 @@ public sealed partial class AuthoringSession
     public IReadOnlyList<string> DuplicateSelected(double offsetX = 16, double offsetY = 16)
     {
         ValidateGeometry(offsetX, offsetY, null, null);
-        var document = RequireDocument();
-        var indices = SelectedIndices(document, _selectedIds);
-        if (indices.Length == 0) return [];
-        var copies = new List<PanelElementFile>(indices.Length);
-        foreach (var index in indices)
-        {
-            var source = document.Elements[index];
-            var x = source.X + offsetX;
-            var y = source.Y + offsetY;
-            ValidateGeometry(x, y, source.Width, source.Height);
-            copies.Add(source with { ObjectId = Guid.NewGuid().ToString("N"), X = x, Y = y });
-        }
-        Commit(document with { Elements = [.. document.Elements, .. copies] }, notify: false);
-        _selectedIds = copies.Select(copy => copy.ObjectId).ToList();
-        _selectedId = _selectedIds.FirstOrDefault();
-        StorePanelState();
-        Changed?.Invoke();
-        return _selectedIds.ToArray();
+        var previous=_panelClipboardState;_panelClipboardState=new();
+        try {return CopySelectedToClipboard()?PasteClipboard(offsetX,offsetY):[];}
+        finally {_panelClipboardState=previous;}
     }
 
     public bool MoveSelectionInOrder(bool forward)
     {
         var document = RequireDocument();
+        if(document.Groups.Length>0||document.HierarchyOrder.Length>0)return MoveHierarchySelection(forward);
         var selected = _selectedIds.ToHashSet(StringComparer.Ordinal);
         if (selected.Count == 0) return false;
         var elements = document.Elements.ToList();
@@ -159,7 +143,7 @@ public sealed partial class AuthoringSession
         double left, top, shapeWidth, shapeHeight;
         if (x.HasValue || y.HasValue || width.HasValue || height.HasValue)
         {
-            var visible = document.Elements.Where(element => element.IsVisible != false).ToArray();
+            var visible = ViewportElements.Where(element => element.Kind!="group"&&element.Visible).ToArray();
             var defaultBounds = visible.Length == 0
                 ? (X: 0d, Y: 0d, Width: 640d, Height: 480d)
                 : (X: visible.Min(element => element.X), Y: visible.Min(element => element.Y),
@@ -170,7 +154,7 @@ public sealed partial class AuthoringSession
         }
         else
         {
-            var visible = document.Elements.Where(element => element.IsVisible != false).ToArray();
+            var visible = ViewportElements.Where(element => element.Kind!="group"&&element.Visible).ToArray();
             if (visible.Length == 0) (left, top, shapeWidth, shapeHeight) = (0, 0, 640, 480);
             else
             {

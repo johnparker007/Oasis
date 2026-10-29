@@ -3,8 +3,19 @@ namespace OasisEditor;
 public sealed partial class AuthoringSession
 {
     internal int RenderRevision => _document is null ? 0 : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(_document);
+    private Panel2DDocumentFile? _renderVersion;
+    private Panel2DDocumentModel? _renderModel;
     /// <summary>Returns the full immutable authored model consumed by specialist renderers.</summary>
-    public Panel2DDocumentModel? RenderDocument => _document is null ? null : Panel2DDocumentStorage.ToModel(_document);
+    public Panel2DDocumentModel? RenderDocument
+    {
+        get
+        {
+            if(_document is null)return null;
+            if(!ReferenceEquals(_renderVersion,_document))
+            {_renderModel=PanelHierarchy.ResolveDocument(Panel2DDocumentStorage.ToModel(_document));_renderVersion=_document;}
+            return _renderModel;
+        }
+    }
 }
 
 /// <summary>Immutable view of real emulator outputs for a render frame.</summary>

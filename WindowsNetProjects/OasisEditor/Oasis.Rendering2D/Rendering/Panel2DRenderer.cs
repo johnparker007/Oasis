@@ -52,7 +52,11 @@ internal sealed class Panel2DRenderer : IPanel2DRenderer
             }
 
             var sw = Stopwatch.StartNew();
-            renderer.Render(context, element);
+            using (var restore = new SKAutoCanvasRestore(canvas))
+            {
+                if(element.Transform is {} t) canvas.Concat(new SKMatrix((float)t.A,(float)t.C,(float)t.X,(float)t.B,(float)t.D,(float)t.Y,0,0,1));
+                renderer.Render(context, element);
+            }
             sw.Stop();
 
             switch (element.Kind)

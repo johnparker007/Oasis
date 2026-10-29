@@ -54,7 +54,7 @@ internal static class FaceSourceShapeTransformService
     internal static SKBitmap? TryGenerateBackgroundBitmap(Panel2DDocumentModel panel, PanelFaceSourceShapeModel shape,
         int width, int height, string projectDirectory)
     {
-        var background = panel.Elements.FirstOrDefault(e => e.Kind == PanelElementKind.Background && !string.IsNullOrWhiteSpace(e.AssetPath));
+        var background = PanelHierarchy.ResolveDocument(panel).Elements.FirstOrDefault(e => e.Kind == PanelElementKind.Background && e.IsVisible && !string.IsNullOrWhiteSpace(e.AssetPath));
         if (background is null) return null;
         var sourcePath = Path.IsPathRooted(background.AssetPath!) ? background.AssetPath! : Path.Combine(projectDirectory, background.AssetPath!);
         if (!File.Exists(sourcePath)) return null;
@@ -255,9 +255,9 @@ internal static class FaceSourceShapeTransformService
         var dx = a.X - b.X; var dy = a.Y - b.Y; return Math.Sqrt(dx * dx + dy * dy);
     }
 
-    private static FacePointModel PanelPointToBitmap(FacePointModel point, PanelElementModel element, SKBitmap bitmap) => new()
+    private static FacePointModel PanelPointToBitmap(FacePointModel point, PanelElementModel element, SKBitmap bitmap)
     {
-        X = (point.X - element.X) / Math.Max(1d, element.Width) * bitmap.Width,
-        Y = (point.Y - element.Y) / Math.Max(1d, element.Height) * bitmap.Height
-    };
+        var local=(element.Transform??PanelTransform.Identity).Inverse().Map(point.X,point.Y);
+        return new() {X=(local.X-element.X)/Math.Max(1d,element.Width)*bitmap.Width,Y=(local.Y-element.Y)/Math.Max(1d,element.Height)*bitmap.Height};
+    }
 }

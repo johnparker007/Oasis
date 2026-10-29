@@ -1,0 +1,97 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Layout;
+using Avalonia.Media;
+
+namespace OasisEditor.Avalonia;
+
+public sealed partial class WorkspaceView
+{
+    private static readonly DataFormat<WorkspaceView> GroupDragFormat=DataFormat.CreateInProcessFormat<WorkspaceView>("Oasis.PanelHierarchy");
+    private readonly HashSet<string> _expandedPanelGroups = new(StringComparer.Ordinal);
+    public IReadOnlyList<string> ExpandedPanelGroups => _session.Groups.Where(g=>_expandedPanelGroups.Contains(g.Id)).Select(g=>g.Id).ToArray();
+    public IReadOnlyList<ElementSnapshot> InspectPanelHierarchyRows() => _rows.ToArray();
+    private void CreatePanelGroupFromUi(bool selection=true,string? parentId=null)
+    {var id=_session.CreateGroup(parentId:parentId,groupSelection:selection);SetPanelGroupExpanded(id,true);}
+    public void SetPanelGroupExpanded(string id,bool expanded)
+    {
+        if(!_session.Groups.Any(g=>g.Id==id))throw new KeyNotFoundException("Group not found.");
+        if(expanded)_expandedPanelGroups.Add(id);else _expandedPanelGroups.Remove(id);Refresh();
+    }
+    private IReadOnlyList<ElementSnapshot> VisibleHierarchyRows()
+    {
+        if(_faceActive)return ActiveElements;
+        var groups=_session.Groups.ToDictionary(g=>g.Id);
+        return _session.HierarchyElements.Where(e=>
+        {for(var parent=e.ParentId;parent is not null;parent=groups[parent].ParentId)if(!_expandedPanelGroups.Contains(parent))return false;return true;}).ToArray();
+    }
+    private Control PanelHierarchyRow(ElementSnapshot? e)
+    {
+        if(e is null)return new TextBlock();
+        var inherited=_faceActive?(PanelTransform.Identity,true,false):new PanelHierarchy(_session.Groups).Resolve(e.ParentId);
+        var group=e.Kind=="group";var kind=group&&Enum.TryParse<EditorIconKind>(e.Icon,out var icon)?icon:EditorIcons.ForComponent(e.Kind);
+        var label=e.Locked||inherited.Item3?$"▣  {e.Name}":kind==EditorIconKind.None?$"◇  {e.Name}":e.Name;
+        var row=new StackPanel {Tag=e.Id,Orientation=Orientation.Horizontal,Spacing=2,Margin=new Thickness(e.Depth*16,0,0,0),Background=Brushes.Transparent};
+        if(group)
+        {
+            var toggle=new Button {Name="TogglePanelGroup",Width=16,Height=20,MinHeight=0,MinWidth=0,Padding=new Thickness(2),Focusable=false,
+                Content=new PathIcon {Width=8,Height=8,Data=Geometry.Parse(_expandedPanelGroups.Contains(e.Id)?"M0 1 L8 1 L4 6 Z":"M1 0 L6 4 L1 8 Z")}};
+            global::Avalonia.Automation.AutomationProperties.SetName(toggle,(_expandedPanelGroups.Contains(e.Id)?"Collapse ":"Expand ")+e.Name);
+            toggle.Click+=(_,_)=>SetPanelGroupExpanded(e.Id,!_expandedPanelGroups.Contains(e.Id));row.Children.Add(toggle);
+        }
+        else row.Children.Add(new Border {Width=16});
+        row.Children.Add(EditorIcons.Label(kind,label));row.Opacity=e.Visible&&inherited.Item2?1:.45;
+        if(_faceActive)return row;
+        var menu=new ContextMenu();row.ContextMenu=menu;
+        void PopulateMenu()
+        {
+            menu.Items.Clear();
+            void Item(string text,Action action,bool enabled=true){var item=new MenuItem {Header=text,IsEnabled=enabled};item.Click+=(_,_)=>Try(action);menu.Items.Add(item);}
+            Item("Create Group",()=>CreatePanelGroupFromUi(false,group?e.Id:e.ParentId));
+            Item("Group Selection",()=>CreatePanelGroupFromUi());Item("Ungroup",_session.UngroupSelection,group);
+            var move=new MenuItem {Header="Move to Group"};
+            var root=new MenuItem {Header="Panel root"};root.Click+=(_,_)=>Try(()=>_session.ReparentSelection(null));move.Items.Add(root);
+            foreach(var g in _session.Groups)
+            {var target=new MenuItem {Header=g.Name,IsEnabled=!_session.SelectionContainsDescendant(g.Id)};target.Click+=(_,_)=>Try(()=>_session.ReparentSelection(g.Id));move.Items.Add(target);}
+            menu.Items.Add(move);menu.Items.Add(new Separator());
+            Item("Move Earlier",()=>_session.MoveSelectionInOrder(false));Item("Move Later",()=>_session.MoveSelectionInOrder(true));
+            Item("Duplicate",()=>_session.DuplicateSelected());Item("Delete",()=>_session.DeleteSelected());
+        }
+        PopulateMenu();
+        menu.Opening+=(_,_)=>{if(!SelectedIds.Contains(e.Id))_session.Select(e.Id);PopulateMenu();};
+        Point? pressed=null;PointerPressedEventArgs? pressArgs=null;
+        row.PointerPressed+=(_,args)=>{if(args.GetCurrentPoint(row).Properties.IsLeftButtonPressed&&args.Source is not Button&&(!group||args.GetPosition(row).X>18)){pressed=args.GetPosition(row);pressArgs=args;}};
+        row.PointerReleased+=(_,_)=>pressed=null;
+        row.PointerMoved+=async(_,args)=>
+        {
+            if(pressed is not {} start||!args.GetCurrentPoint(row).Properties.IsLeftButtonPressed||Math.Abs(args.GetPosition(row).X-start.X)+Math.Abs(args.GetPosition(row).Y-start.Y)<5)return;
+            var dragArgs=pressArgs!;pressed=null;pressArgs=null;if(!SelectedIds.Contains(e.Id))_session.Select(e.Id);
+            var item=new DataTransferItem();item.Set(GroupDragFormat,this);using var data=new DataTransfer();data.Add(item);
+            try {await DragDrop.DoDragDropAsync(dragArgs,data,DragDropEffects.Move);}
+            catch(Exception error) when(error is InvalidOperationException or NotSupportedException){SetStatus(error.Message);}
+        };
+        DragDrop.SetAllowDrop(row,true);
+        row.AddHandler(DragDrop.DragOverEvent,(_,args)=>{args.DragEffects=ReferenceEquals(args.DataTransfer.TryGetValue(GroupDragFormat),this)?DragDropEffects.Move:DragDropEffects.None;args.Handled=true;});
+        row.AddHandler(DragDrop.DropEvent,(_,args)=>
+        {
+            if(!ReferenceEquals(args.DataTransfer.TryGetValue(GroupDragFormat),this))return;
+            args.Handled=true;var y=args.GetPosition(row).Y;
+            Try(()=>{if(group&&y>row.Bounds.Height*.25&&y<row.Bounds.Height*.75)_session.ReparentSelection(e.Id);else _session.ReorderSelection(e.Id,y>=row.Bounds.Height*.5);});
+        });
+        return row;
+    }
+    private void AppendGroupInspector(string id)
+    {
+        var g=_session.Groups.Single(g=>g.Id==id);var parts=g.Transform.Decompose();Heading("GROUP");
+        string Display(double value)=>value.ToString("G12",System.Globalization.CultureInfo.InvariantCulture);
+        Field("Name",g.Name);Field("X",Display(g.Transform.X));Field("Y",Display(g.Transform.Y));Field("Rotation",Display(parts.Rotation));Field("Scale X",Display(parts.ScaleX));Field("Scale Y",Display(parts.ScaleY));
+        var icons=new ComboBox {Name="PanelGroupIcon",ItemsSource=PanelHierarchy.Icons,SelectedItem=g.Icon,
+            ItemTemplate=new global::Avalonia.Controls.Templates.FuncDataTemplate<string>((value,_)=>EditorIcons.Label(Enum.Parse<EditorIconKind>(value!),value))};
+        _inspector.Children.Add(new TextBlock {Text="Icon"});_inspector.Children.Add(icons);
+        var visible=new CheckBox {Content="Visible",IsChecked=g.Visible};var locked=new CheckBox {Content="Lock transform",IsChecked=g.Locked};
+        _inspector.Children.Add(visible);_inspector.Children.Add(locked);
+        _inspector.Children.Add(ActionButton("Apply",()=>Try(()=>_session.UpdateGroup(id,_fields["Name"].Text,Number("X"),Number("Y"),Number("Rotation"),Number("Scale X"),Number("Scale Y"),icons.SelectedItem as string,visible.IsChecked==true,locked.IsChecked==true))));
+        _inspector.Children.Add(ActionButton("Ungroup",()=>Try(_session.UngroupSelection)));
+    }
+}

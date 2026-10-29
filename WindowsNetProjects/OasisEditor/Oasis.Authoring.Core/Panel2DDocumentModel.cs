@@ -8,6 +8,7 @@ public sealed class Panel2DDocumentModel
     public string Title { get; init; } = string.Empty;
     public string Summary { get; init; } = string.Empty;
     public IReadOnlyList<PanelElementModel> Elements { get; init; } = [];
+    public IReadOnlyList<PanelGroup> Groups { get; init; } = [];
     public IReadOnlyList<PanelFaceSourceShapeModel> FaceSourceShapes { get; init; } = [];
 }
 
@@ -34,6 +35,8 @@ public sealed class PanelFaceSourceShapeModel
 
 public sealed class PanelElementModel
 {
+    public string? ParentId { get; init; }
+    public PanelTransform? Transform { get; init; }
     public string ObjectId { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public PanelElementKind Kind { get; init; }

@@ -7,6 +7,9 @@ public sealed partial class AuthoringSession
     private sealed class PanelClipboardState
     {
         public PanelElementFile[] Elements = [];
+        public PanelGroup[] Groups = [];
+        public string[] Order = [];
+        public string[] Roots = [];
         public string? ProjectRoot;
     }
 
@@ -32,19 +35,28 @@ public sealed partial class AuthoringSession
     }
 
     /// <summary>Whether this authoring session has a reusable Panel2D clipboard payload.</summary>
-    public bool CanPasteClipboard => _panelClipboard.Length > 0 && _panelClipboardProjectRoot is not null && _projectDirectory is not null
+    public bool CanPasteClipboard => (_panelClipboard.Length > 0 || _panelClipboardState.Groups.Length>0) && _panelClipboardProjectRoot is not null && _projectDirectory is not null
         && PathComparer.Equals(_panelClipboardProjectRoot, Path.GetFullPath(RequireProject()));
 
     /// <summary>Copy the selected Panel2D elements in stacking order to this session's internal clipboard.</summary>
     public bool CopySelectedToClipboard()
     {
         var document = RequireDocument();
-        var selected = _selectedIds.ToHashSet(StringComparer.Ordinal);
-        if (selected.Count == 0) return false;
-        _panelClipboard = document.Elements.Where(element => selected.Contains(element.ObjectId))
-            .Select(CloneElement).ToArray();
-        _panelClipboardProjectRoot = Path.GetFullPath(RequireProject());
-        return _panelClipboard.Length > 0;
+        if(_selectedIds.Count==0)return false;
+        var roots=SelectionRoots(document,_selectedIds);var selected=Descendants(document,roots);var tree=Tree;
+        _panelClipboard=document.Elements.Where(e=>selected.Contains(e.ObjectId)).Select(e=>
+        {
+            var state=tree.Resolve(e.ParentId);var root=e.ParentId is null||!selected.Contains(e.ParentId);
+            return (root?WithLocalTransform(CloneElement(e),(e.Transform??PanelTransform.Identity).Then(state.Transform),null):CloneElement(e)) with {
+                IsVisible=(e.IsVisible??true)&&(!root||state.Visible),LockTransform=e.LockTransform||(root&&state.Locked)};
+        }).ToArray();
+        _panelClipboardState.Groups=document.Groups.Where(g=>selected.Contains(g.Id)).Select(g=>
+        {
+            var root=g.ParentId is null||!selected.Contains(g.ParentId);var state=tree.Resolve(g.Id);
+            return root?g with {ParentId=null,Transform=state.Transform,Visible=state.Visible,Locked=state.Locked}:g;
+        }).ToArray();
+        _panelClipboardState.Order=OrderedIds(document).Where(selected.Contains).ToArray();_panelClipboardState.Roots=roots;
+        _panelClipboardProjectRoot=Path.GetFullPath(RequireProject());return true;
     }
 
     /// <summary>Copy and delete the current selection as one normal document history edit.</summary>
@@ -58,30 +70,20 @@ public sealed partial class AuthoringSession
     public IReadOnlyList<string> PasteClipboard(double offsetX = 16, double offsetY = 16)
     {
         ValidateGeometry(offsetX, offsetY, null, null);
-        if (_panelClipboard.Length == 0) return [];
-        var document = RequireDocument();
-        var projectRoot = Path.GetFullPath(RequireProject());
-        if (_panelClipboardProjectRoot is null || !PathComparer.Equals(_panelClipboardProjectRoot, projectRoot))
-            throw new InvalidOperationException("The copied elements belong to another project. Copy them again before pasting.");
-        var existing = document.Elements.Select(element => element.ObjectId).ToHashSet(StringComparer.Ordinal);
-        var copies = new PanelElementFile[_panelClipboard.Length];
-        for (var i = 0; i < _panelClipboard.Length; i++)
+        if (_panelClipboard.Length == 0 && _panelClipboardState.Groups.Length==0) return [];
+        var document=RequireDocument();var projectRoot=Path.GetFullPath(RequireProject());
+        if(_panelClipboardProjectRoot is null||!PathComparer.Equals(_panelClipboardProjectRoot,projectRoot))throw new InvalidOperationException("The copied objects belong to another project.");
+        var ids=_panelClipboard.Select(e=>e.ObjectId).Concat(_panelClipboardState.Groups.Select(g=>g.Id)).ToDictionary(id=>id,_=>Guid.NewGuid().ToString("N"));
+        var elements=_panelClipboard.Select(e=>
         {
-            var source = CloneElement(_panelClipboard[i]);
-            ValidateClipboardAssetReferences(projectRoot, source);
-            var id = Guid.NewGuid().ToString("N");
-            while (!existing.Add(id)) id = Guid.NewGuid().ToString("N");
-            var x = source.X + offsetX;
-            var y = source.Y + offsetY;
-            ValidateGeometry(x, y, source.Width, source.Height);
-            copies[i] = source with { ObjectId = id, X = x, Y = y };
-        }
-        Commit(document with { Elements = [.. document.Elements, .. copies] }, notify: false);
-        _selectedIds = copies.Select(copy => copy.ObjectId).ToList();
-        _selectedId = _selectedIds.FirstOrDefault();
-        StorePanelState();
-        Changed?.Invoke();
-        return _selectedIds.ToArray();
+            ValidateClipboardAssetReferences(projectRoot,e);
+            var copy=CloneElement(e) with {ObjectId=ids[e.ObjectId],ParentId=e.ParentId is null?null:ids[e.ParentId]};
+            if(e.ParentId is null)copy=TranslateLocal(copy,offsetX,offsetY);
+            return copy;
+        }).ToArray();
+        var groups=_panelClipboardState.Groups.Select(g=>g with {Id=ids[g.Id],ParentId=g.ParentId is null?null:ids[g.ParentId],Transform=g.ParentId is null?g.Transform with {X=g.Transform.X+offsetX,Y=g.Transform.Y+offsetY}:g.Transform}).ToArray();
+        Commit(document with {Elements=[..document.Elements,..elements],Groups=[..document.Groups,..groups],HierarchyOrder=[..OrderedIds(document),.._panelClipboardState.Order.Select(id=>ids[id])]},notify:false);
+        _selectedIds=_panelClipboardState.Roots.Select(id=>ids[id]).ToList();_selectedId=_selectedIds.FirstOrDefault();StorePanelState();Changed?.Invoke();return _selectedIds.ToArray();
     }
 
     /// <summary>Move the selected elements to the top of the stacking order, preserving their relative order.</summary>
@@ -95,6 +97,7 @@ public sealed partial class AuthoringSession
     private bool MoveSelectionToEnd()
     {
         var document = RequireDocument();
+        if(document.Groups.Length>0||document.HierarchyOrder.Length>0)return MoveHierarchySelection(true,toEnd:true);
         var selected = _selectedIds.ToHashSet(StringComparer.Ordinal);
         if (selected.Count == 0) return false;
         var reordered = document.Elements.Where(element => !selected.Contains(element.ObjectId))
@@ -107,6 +110,7 @@ public sealed partial class AuthoringSession
     private bool MoveSelectionToStart()
     {
         var document = RequireDocument();
+        if(document.Groups.Length>0||document.HierarchyOrder.Length>0)return MoveHierarchySelection(false,toEnd:true);
         var selected = _selectedIds.ToHashSet(StringComparer.Ordinal);
         if (selected.Count == 0) return false;
         var reordered = document.Elements.Where(element => selected.Contains(element.ObjectId))

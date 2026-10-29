@@ -27,7 +27,7 @@ internal sealed class FaceSemanticElementConversionService
 
         var buttonsByVisualId = CreateButtonsByVisualId(inputDefinitions);
         var converted = new List<FaceElementModel>();
-        foreach (var sourceElement in sourcePanel.Elements)
+        foreach (var sourceElement in PanelHierarchy.ResolveDocument(sourcePanel).Elements)
         {
             var element = ConvertSupportedElement(sourceElement, sourceShape, faceWidth, faceHeight, projectDirectory, buttonsByVisualId);
             if (element is not null)
@@ -54,7 +54,8 @@ internal sealed class FaceSemanticElementConversionService
         var transformed = new List<FacePointModel>(4);
         foreach (var corner in sourceCorners)
         {
-            if (!FaceSourceShapeTransformService.TryTransformPanelPointToFace(sourceShape, faceWidth, faceHeight, corner.X, corner.Y, out var point))
+            var world=(sourceElement.Transform??PanelTransform.Identity).Map(corner.X,corner.Y);
+            if (!FaceSourceShapeTransformService.TryTransformPanelPointToFace(sourceShape, faceWidth, faceHeight, world.X, world.Y, out var point))
             {
                 return null;
             }
@@ -83,7 +84,8 @@ internal sealed class FaceSemanticElementConversionService
             return false;
         }
 
-        return FaceSourceShapeTransformService.ContainsPanelPoint(sourceShape, element.X + (element.Width / 2d), element.Y + (element.Height / 2d));
+        var center=(element.Transform??PanelTransform.Identity).Map(element.X+element.Width/2,element.Y+element.Height/2);
+        return FaceSourceShapeTransformService.ContainsPanelPoint(sourceShape, center.X, center.Y);
     }
 
     private FaceElementModel? ConvertSupportedElement(

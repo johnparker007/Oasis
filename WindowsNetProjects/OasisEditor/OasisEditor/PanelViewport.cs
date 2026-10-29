@@ -17,7 +17,7 @@ namespace OasisEditor.Avalonia;
 public sealed partial class PanelViewport(AuthoringSession session, FaceAuthoringSession? faces = null, Func<bool>? isFace = null) : Control, IDisposable
 {
     private bool FaceActive => isFace?.Invoke() == true;
-    private IReadOnlyList<ElementSnapshot> Elements => FaceActive ? faces!.Elements.Select(WorkspaceView.ToViewportElement).ToArray() : session.Elements;
+    private IReadOnlyList<ElementSnapshot> Elements => FaceActive ? faces!.Elements.Select(WorkspaceView.ToViewportElement).ToArray() : session.ViewportElements;
     private IReadOnlyList<string> SelectedIds => FaceActive ? faces!.SelectedId is { } id ? [id] : [] : session.SelectedIds;
     public event Action<string>? CommandFailed;
     public Func<bool>? PreviewIsActive { get; set; }
@@ -94,6 +94,7 @@ public sealed partial class PanelViewport(AuthoringSession session, FaceAuthorin
                 DrawSelection(context, e.Id, rectangle);
                 continue;
             }
+            if(e.Kind=="group") {DrawSelection(context,e.Id,rectangle);continue;}
             var imageDrawn = false;
             if (!string.IsNullOrWhiteSpace(e.AssetPath) && (!FaceActive || e.Kind.Equals("artwork", StringComparison.OrdinalIgnoreCase)))
             {
@@ -150,10 +151,10 @@ public sealed partial class PanelViewport(AuthoringSession session, FaceAuthorin
     {
         var panelModel = FaceActive ? null : session.RenderDocument;
         var faceDocument = FaceActive ? faces?.Document : null;
-        var panelElements = FaceActive ? [] : session.Elements.Where(item => item.Visible).ToArray();
+        var panelElements = FaceActive ? [] : session.ViewportElements.Where(item => item.Visible).ToArray();
         var documentWidth = FaceActive ? faces!.LogicalWidth : panelElements.Select(item => item.X + item.Width).DefaultIfEmpty(1).Max();
         var documentHeight = FaceActive ? faces!.LogicalHeight : panelElements.Select(item => item.Y + item.Height).DefaultIfEmpty(1).Max();
-        if (Bounds.Width <= 0 || Bounds.Height <= 0 || documentWidth <= 0 || documentHeight <= 0) return false;
+        if (Bounds.Width <= 0 || Bounds.Height <= 0 || (FaceActive && (documentWidth <= 0 || documentHeight <= 0))) return false;
         var outputs = _runtimeOutputs?.Invoke() ?? RuntimeOutputSnapshot.Empty;
         var documentRevision = FaceActive ? faces!.RenderRevision : session.RenderRevision;
         var projectDirectory = session.ProjectFilePath is { } project ? Path.GetDirectoryName(project) : null;
@@ -331,14 +332,19 @@ public sealed partial class PanelViewport(AuthoringSession session, FaceAuthorin
                 return;
             }
             if(BeginRegionDrag(position)){e.Pointer.Capture(this);e.Handled=true;return;}
-            var hit = Elements.LastOrDefault(item => item.Visible && new Rect(item.X, item.Y, item.Width, item.Height).Contains(documentPoint));
+            var hitId=FaceActive?null:session.HitTestPanel(documentPoint.X,documentPoint.Y);
+            var hit = FaceActive ? Elements.LastOrDefault(item => item.Visible && new Rect(item.X, item.Y, item.Width, item.Height).Contains(documentPoint))
+                : Elements.FirstOrDefault(item=>item.Id==hitId);
+            if(!FaceActive && hit is not null && session.SelectionContainsDescendant(hit.Id))
+                hit=Elements.FirstOrDefault(item=>item.Kind=="group"&&SelectedIds.Contains(item.Id)&&session.SelectionContainsDescendant(hit.Id))??hit;
+            if(!FaceActive && hit is null)hit=Elements.LastOrDefault(item=>item.Kind=="group"&&item.Visible&&SelectedIds.Contains(item.Id)&&new Rect(item.X,item.Y,item.Width,item.Height).Contains(documentPoint));
             var toggle = (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta | KeyModifiers.Shift)) != 0;
             if (FaceActive) faces!.Select(hit?.Id);
             else if (toggle && hit is not null) session.SelectElements(SelectedIds.Contains(hit.Id) ? SelectedIds.Where(id => id != hit.Id).ToArray() : [.. SelectedIds, hit.Id]);
             else if (hit is null || !SelectedIds.Contains(hit.Id)) session.Select(hit?.Id);
             if (hit is { Locked: false } && SelectedIds.Contains(hit.Id))
             {
-                _resizing = SelectedIds.Count == 1 && new Rect(new Point((hit.X + hit.Width) * _zoom + _pan.X - 7,
+                _resizing = hit.Kind!="group" && SelectedIds.Count == 1 && new Rect(new Point((hit.X + hit.Width) * _zoom + _pan.X - 7,
                     (hit.Y + hit.Height) * _zoom + _pan.Y - 7), new Size(14, 14)).Contains(position);
                 _press = position; _drag = hit; _preview = default; e.Pointer.Capture(this);
             }
@@ -370,7 +376,7 @@ public sealed partial class PanelViewport(AuthoringSession session, FaceAuthorin
                 if (resizing)
                 {
                     if (FaceActive) faces!.UpdateElement(drag.Id, width: Math.Max(1, drag.Width + offset.X), height: Math.Max(1, drag.Height + offset.Y));
-                    else session.UpdateElement(drag.Id, width: Math.Max(1, drag.Width + offset.X), height: Math.Max(1, drag.Height + offset.Y));
+                    else session.ResizeElementInWorld(drag.Id,offset.X,offset.Y);
                 }
                 else if (FaceActive) faces!.UpdateElement(drag.Id, x: drag.X + offset.X, y: drag.Y + offset.Y);
                 else session.MoveSelected(offset.X, offset.Y);

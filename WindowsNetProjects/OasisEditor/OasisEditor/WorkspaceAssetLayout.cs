@@ -9,7 +9,7 @@ namespace OasisEditor.Avalonia;
 /// <summary>View state for one opened asset document in a persisted workspace.</summary>
 public sealed record AssetDocumentViewState(string Kind, string Path, string? LibraryRoot, string Id,
     WorkspaceViewportState? Viewport = null, string[]? Selection = null, string? SourceSelection = null,
-    WorkspaceSceneState? Scene = null, bool MachineGraph = false);
+    WorkspaceSceneState? Scene = null, bool MachineGraph = false, string[]? ExpandedGroups = null);
 
 /// <summary>Version 2 workspace layout with one dock document per opened asset.</summary>
 public sealed record AssetWorkspaceLayout(int Version, WorkspaceDockNode Layout,
@@ -100,6 +100,8 @@ public static class AssetWorkspaceLayoutState
                 throw new InvalidDataException("Duplicate workspace document path.");
 
             document.Viewport?.Validate();
+            if(document.ExpandedGroups is {Length:>MaxSelectionItems}||document.ExpandedGroups?.Any(v=>string.IsNullOrWhiteSpace(v)||v.Length>1024||v.Any(char.IsControl))==true)
+                throw new InvalidDataException("Invalid expanded group list.");
             if (document.Selection is { Length: > MaxSelectionItems } ||
                 document.Selection?.Any(value => value is null || value.Length > 1024 || value.Any(char.IsControl)) == true)
                 throw new InvalidDataException("Workspace document selection is invalid.");

@@ -60,13 +60,14 @@ internal sealed class FaceGenerationService
     {
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceShape);
+        sourcePanel=PanelHierarchy.ResolveDocument(sourcePanel);
         cancellationToken.ThrowIfCancellationRequested();
         var output = FaceSourceShapeTransformService.EstimateOutputSize(sourceShape, targetAspectRatio);
         var pathService = new ProjectAssetPathService();
         var resolvedFaceAssetName = pathService.SanitizePathSegment(string.IsNullOrWhiteSpace(faceAssetName) ? title : faceAssetName);
         var faceArtworkPath = ResolveFaceAuthoredAssetPath(projectDirectory, generatedDirectory, faceAssetDirectory, resolvedFaceAssetName, ProjectAssetPathService.FaceArtworkFileName);
         var region = FaceSourceRegionGeometryAdapter.FromRect(new Rect(0, 0, output.Width, output.Height));
-        var sourceBackground = sourcePanel.Elements.FirstOrDefault(element => element.Kind == PanelElementKind.Background);
+        var sourceBackground = sourcePanel.Elements.FirstOrDefault(element => element.Kind == PanelElementKind.Background && element.IsVisible);
         var artworkState = new FaceArtworkModel
         {
             Source = new FaceArtworkSourceModel
@@ -304,6 +305,7 @@ internal sealed class FaceGenerationService
             return default;
         var sourcePixels = new BitmapPixelBuffer(lampBitmap);
         if (!sourcePixels.IsDirect) options = options with { MaxDegreeOfParallelism = 1 };
+        var inverse=(sourceLamp.Transform??PanelTransform.Identity).Inverse();
         var lampRight = sourceLamp.X + sourceLamp.Width;
         var lampBottom = sourceLamp.Y + sourceLamp.Height;
         var scaleX = lampBitmap.Width / Math.Max(1d, sourceLamp.Width);
@@ -323,7 +325,8 @@ internal sealed class FaceGenerationService
             {
                 if (double.IsFinite(denominator) && Math.Abs(denominator) >= 1e-9)
                 {
-                    var panelX = nx / denominator; var panelY = ny / denominator;
+                    var local=inverse.Map(nx/denominator,ny/denominator);
+                    var panelX = local.X; var panelY = local.Y;
                     if (double.IsFinite(panelX) && double.IsFinite(panelY) && panelX >= sourceLamp.X && panelY >= sourceLamp.Y
                         && panelX <= lampRight && panelY <= lampBottom)
                     {
@@ -430,7 +433,8 @@ internal sealed class FaceGenerationService
         var transformed = new List<FacePointModel>(4);
         foreach (var corner in sourceCorners)
         {
-            if (!FaceSourceShapeTransformService.TryTransformPanelPointToFace(sourceShape, faceWidth, faceHeight, corner.X, corner.Y, out var point))
+            var world=(sourceElement.Transform??PanelTransform.Identity).Map(corner.X,corner.Y);
+            if (!FaceSourceShapeTransformService.TryTransformPanelPointToFace(sourceShape, faceWidth, faceHeight, world.X, world.Y, out var point))
             {
                 return null;
             }

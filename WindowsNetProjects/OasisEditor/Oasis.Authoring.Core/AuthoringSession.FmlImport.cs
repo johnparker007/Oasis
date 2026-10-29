@@ -82,7 +82,27 @@ public sealed partial class AuthoringSession
                 var additions = result.ImportedElements
                     .Select(element => PanelElementModelCloner.Clone(element, objectId: Guid.NewGuid().ToString("N")))
                     .Select(Panel2DDocumentStorage.ToStorageElement).ToArray();
-                Commit(document with { Elements = [.. document.Elements, .. additions] }, notify: false);
+                var groups = new List<PanelGroup>(); var order = OrderedIds(document).ToList(); string? previous = null; PanelGroup? group = null;
+                for(var i=0;i<additions.Length;i++)
+                {
+                    var element=additions[i];var button=result.InputDefinitions.Any(input=>Guid.TryParse(result.ImportedElements[i].ObjectId,out var visualId)&&input.LinkedVisualElementId==visualId);
+                    var category=button?"Buttons":element.ElementKind switch
+                    {
+                        PanelElementKind.Lamp=>"Lamps",PanelElementKind.Reel=>"Reels",PanelElementKind.SevenSegment=>"7-segment displays",
+                        PanelElementKind.Alpha=>"Alpha displays",PanelElementKind.Background=>"Backgrounds",PanelElementKind.Label=>"Labels",_=>"Other components"
+                    };
+                    if(category!=previous)
+                    {
+                        var existing=document.Groups.Concat(groups).Count(g=>g.Name==category||g.Name.StartsWith(category+" (",StringComparison.Ordinal));
+                        group=new PanelGroup {Id=Guid.NewGuid().ToString("N"),Name=existing==0?category:$"{category} ({existing+1})",
+                            Icon=button?"Button":element.ElementKind switch {PanelElementKind.Lamp=>"Lamp",PanelElementKind.Reel=>"Reel",PanelElementKind.SevenSegment=>"SevenSegment",_=>"Hierarchy"}};
+                        groups.Add(group);order.Add(group.Id);previous=category;
+                    }
+                    foreach(var input in result.InputDefinitions)
+                        if(Guid.TryParse(result.ImportedElements[i].ObjectId,out var sourceId)&&input.LinkedVisualElementId==sourceId)input.LinkedVisualElementId=Guid.Parse(element.ObjectId);
+                    additions[i]=element with {ParentId=group!.Id};order.Add(element.ObjectId);
+                }
+                Commit(document with { Elements = [.. document.Elements, .. additions], Groups=[..document.Groups,..groups],HierarchyOrder=order.ToArray() }, notify: false);
             }
             if (_panelPath is not null)
             {
