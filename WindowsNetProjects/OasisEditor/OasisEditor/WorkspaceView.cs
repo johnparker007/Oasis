@@ -195,6 +195,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         else InitializeNativeDocuments(root);
         KeyDown += (_, e) =>
         {
+            if (IsProjectLauncherVisible) return;
             var command = (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta)) != 0;
             if (e.Handled) return;
             if(command && e.Key==Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Shift))

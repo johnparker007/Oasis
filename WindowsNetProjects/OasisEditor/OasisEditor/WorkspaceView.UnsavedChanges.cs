@@ -168,7 +168,7 @@ public sealed partial class WorkspaceView
                 // Preserve layout/reopen paths before disposal, even on Discard.
                 // Preserve the existing best-effort layout autosave behaviour.
                 // Asset save failures already abort before reaching this commit.
-                if (CanAutoSaveWorkspace) Try(SaveWorkspace);
+                if (CanAutoSaveWorkspace && !IsProjectLauncherVisible) Try(SaveWorkspace);
                 DisposeNativeDocuments();
                 _editorCloseApproved = true;
                 if (TopLevel.GetTopLevel(this) is Window owner) owner.Close();

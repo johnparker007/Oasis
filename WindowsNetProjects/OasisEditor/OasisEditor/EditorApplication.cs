@@ -36,15 +36,19 @@ public sealed class EditorApplication : Application
             var window = new Window { Width = 1440, Height = 900, MinWidth = 960, MinHeight = 640 };
             var view = new WorkspaceView(session);
             window.Content = view;
-            window.Title = "Oasis Editor";
-            view.StateChanged += () => window.Title = $"{view.ActiveTitle}{(view.HasUnsavedChanges ? " *" : "")} — {session.ProjectName ?? "Oasis Editor"}";
+            window.Title = "Oasis Project Launcher";
+            view.StateChanged += () => window.Title = session.ProjectFilePath is null ? "Oasis Project Launcher"
+                : $"{view.ActiveTitle}{(view.HasUnsavedChanges ? " *" : "")} — {session.ProjectName}";
             view.AttachEditorCloseHandler(window);
             window.Closed += (_, _) => view.Dispose();
             desktop.MainWindow = window;
-            view.Try(() => view.ConfigureWorkspacePersistence(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Oasis", "AvaloniaEditor", "workspace.json")));
+            if (!Program.IsHeadless)
+            {
+                var settings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Oasis", "AvaloniaEditor");
+                view.ConfigureProjectLauncher(Path.Combine(settings, "workspace.json"), new RecentProjectService(Path.Combine(settings, "recent-projects.json")));
+            }
             if (Program.Project is not null && !string.Equals(session.ProjectFilePath, Program.Project, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
                 view.Try(() => view.OpenProject(Program.Project));
-            if (!Program.IsHeadless) view.Try(() => view.ConfigureWelcomePage(new RecentProjectService(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Oasis", "AvaloniaEditor", "recent-projects.json"))));
         }
         base.OnFrameworkInitializationCompleted();
     }
