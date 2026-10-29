@@ -80,8 +80,12 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
             _selectedSource = null;
             Try(() => SelectActive(_hierarchy.SelectedItems?.OfType<ElementSnapshot>().Select(e => e.Id).ToArray() ?? []));
         };
-        _hierarchy.ItemTemplate = new FuncDataTemplate<ElementSnapshot>((e, _) => new TextBlock
-        { Text = e is null ? "" : $"{(e.Locked ? "▣" : "◇")}  {e.Name}", Opacity = e?.Visible == false ? .45 : 1, TextTrimming = TextTrimming.CharacterEllipsis });
+        _hierarchy.ItemTemplate = new FuncDataTemplate<ElementSnapshot>((e, _) =>
+        {
+            var kind = EditorIcons.ForComponent(e?.Kind);
+            var label = e is null ? "" : e.Locked ? $"▣  {e.Name}" : kind == EditorIconKind.None ? $"◇  {e.Name}" : e.Name;
+            var row = EditorIcons.Label(kind, label); row.Opacity = e?.Visible == false ? .45 : 1; return row;
+        });
         _sources.ItemTemplate = new FuncDataTemplate<FaceSourceShapeSnapshot>((s, _) => new TextBlock { Text = "▱  " + s?.Name });
         _sources.SelectionChanged += (_, _) =>
         {
@@ -94,8 +98,8 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         Grid.SetRow(sourceLabel, 1); hierarchy.Children.Add(sourceLabel);
         Grid.SetRow(_sources, 2); hierarchy.Children.Add(_sources);
 
-        _assets.ItemTemplate = new FuncDataTemplate<AssetSummary>((a, _) => new TextBlock
-        { Text = a is null ? "" : $"{a.Type}   /   {a.Name}", TextTrimming = TextTrimming.CharacterEllipsis });
+        _assets.ItemTemplate = new FuncDataTemplate<AssetSummary>((a, _) =>
+            EditorIcons.Label(EditorIcons.ForComponent(a?.Type), a is null ? "" : $"{a.Type}   /   {a.Name}"));
         _assets.DoubleTapped += (_, _) => { if (_assets.SelectedItem is AssetSummary asset) _ = ScheduleAssetWindowAction(() => OpenAssetFromBrowserAsync(asset)); };
         _assetSearch.TextChanged += (_, _) => RefreshAssets();
         InitializeProjectAssetContextActions();

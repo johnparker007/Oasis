@@ -177,8 +177,8 @@ public sealed partial class WorkspaceView
         var floating=(_dock.Layout as IRootDock)?.Windows?.FirstOrDefault(w=>w.Layout is not null && WorkspaceLayoutState.LeafMap(w.Layout).ContainsKey(paneId))?.Host as Window;
         var surface=new Grid{RowDefinitions=new RowDefinitions("Auto,*")};
         surface.Bind(BackgroundProperty,this.GetResourceObservable("WorkspaceBrush"));
-        var title=new TextBlock{Margin=new Thickness(9,5),VerticalAlignment=VerticalAlignment.Center};
-        title.Bind(TextBlock.TextProperty,new Binding(nameof(IDockable.Title)){Source=pane});
+        var title=new WorkspacePaneHeaderTemplate().Build(pane);
+        title.Margin=new Thickness(9,5);
         var header=new Border{Child=title,Name="MaximisedTabHeader"};
         header.Bind(BackgroundProperty,this.GetResourceObservable("ToolbarBrush"));
         header.DoubleTapped+=(_,e)=>{e.Handled=true;RestoreMaximisedTab();};

@@ -46,8 +46,11 @@ public sealed partial class WorkspaceView
         _sourceRegionHeading=hierarchy.Children.OfType<TextBlock>().FirstOrDefault();
         if (!Program.IsHeadless && !_isAssetWindow) SceneLibraryRoot = GetLibraryRoot();
         _sceneHierarchy.ItemsSource = _sceneRows; _sceneHierarchy.IsVisible = false;
-        _sceneHierarchy.ItemTemplate = new FuncDataTemplate<SceneHierarchyRow>((row, _) => new TextBlock
-        { Text = row is null ? "" : new string(' ', row.Depth * 2) + "◇  " + row.Name, TextTrimming = TextTrimming.CharacterEllipsis });
+        _sceneHierarchy.ItemTemplate = new FuncDataTemplate<SceneHierarchyRow>((row, _) =>
+        {
+            var kind = EditorIcons.ForComponent(row?.Kind);
+            return EditorIcons.Label(kind, row is null ? "" : kind == EditorIconKind.None ? "◇  " + row.Name : row.Name, (row?.Depth ?? 0) * 8);
+        });
         _sceneHierarchy.SelectionChanged += (_, _) =>
         { if (!_sceneHierarchyUpdating) SelectSceneNode((_sceneHierarchy.SelectedItem as SceneHierarchyRow)?.Id); };
         hierarchy.Children.Add(_sceneHierarchy);
