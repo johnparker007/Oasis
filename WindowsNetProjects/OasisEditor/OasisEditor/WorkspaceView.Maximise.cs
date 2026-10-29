@@ -104,6 +104,7 @@ public sealed partial class WorkspaceView
     private void TabPointerPressed(object? sender,PointerPressedEventArgs e)
     {
         if(_closeWorkflowActive){e.Handled=true;return;}
+        CommandView.CommitInspectorText(e.Source);
         if(!e.GetCurrentPoint(sender as Control).Properties.IsLeftButtonPressed)return;
         for(var visual=e.Source as Visual;visual is not null;visual=visual.GetVisualParent())
         {

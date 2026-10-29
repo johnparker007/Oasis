@@ -390,7 +390,7 @@ public sealed partial class WorkspaceView
     {
         var command=(e.KeyModifiers & (KeyModifiers.Control|KeyModifiers.Meta))!=0;
         if(command && e.Key==Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Shift)){_=SaveAllFromUiAsync();e.Handled=true;return;}
-        if(command && e.Key==Key.S){Try(SaveActive);e.Handled=true;return;}
+        if(command && e.Key==Key.S){Try(()=>{if(!CommitInspectorText())throw new InvalidOperationException("Correct invalid Inspector fields before saving.");SaveActive();});e.Handled=true;return;}
         if(e.Source is TextBox)return;
         if(command && e.Key==Key.Z){Try((e.KeyModifiers&KeyModifiers.Shift)!=0?RedoActive:UndoActive);e.Handled=true;}
         else if(command && e.Key==Key.Y){Try(RedoActive);e.Handled=true;}

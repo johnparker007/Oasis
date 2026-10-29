@@ -64,8 +64,7 @@ public sealed partial class WorkspaceView
             }
         }
 
-        _inspector.Children.Add(ActionButton("Apply component settings", () => Try(() =>
-        {
+        BindInspectorEdits(() => {
             int? displayIndex = null;
             if (element is not FaceButtonElement && !string.IsNullOrWhiteSpace(reference.Text))
                 displayIndex = int.TryParse(reference.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed >= 0
@@ -95,7 +94,7 @@ public sealed partial class WorkspaceView
             });
             _inspected = null;
             Refresh();
-        })));
+        });
 
         void Field(string label, Control control)
         {

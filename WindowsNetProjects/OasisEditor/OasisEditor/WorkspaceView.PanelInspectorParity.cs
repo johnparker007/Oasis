@@ -31,8 +31,7 @@ public sealed partial class WorkspaceView
             Add("Display Text", settings.DisplayText);
             Add("Text Color", settings.TextColorHex);
         }
-        _inspector.Children.Add(ActionButton("Apply asset and label settings", () => Try(() =>
-        {
+        BindInspectorEdits(() => {
             int? lampNumber = null;
             if (element.Kind == "label" && !string.IsNullOrWhiteSpace(fields["Lamp Number"].Text))
                 lampNumber = int.TryParse(fields["Lamp Number"].Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
@@ -44,6 +43,6 @@ public sealed partial class WorkspaceView
                 element.Kind == "label" ? lampNumber : settings.LampNumber,
                 element.Kind == "label" ? fields["Text Color"].Text : settings.TextColorHex,
                 element.Kind == "label" ? fields["Display Text"].Text : settings.DisplayText));
-        })));
+        });
     }
 }

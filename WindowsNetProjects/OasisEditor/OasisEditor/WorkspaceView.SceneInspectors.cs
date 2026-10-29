@@ -11,10 +11,10 @@ public sealed partial class WorkspaceView
     private string? _selectedReflectionId;
     private void RefreshCabinet3DInspector()
     {
-        _inspector.Children.Clear();_fields.Clear();var document=_cabinets.Document;
+        ClearInspector();var document=_cabinets.Document;
         Heading("CABINET");Field("Model scale",document.Model.Scale);Field("Up axis",document.Model.UpAxis);
         _inspector.Children.Add(new TextBlock{Text=document.Model.Path,TextWrapping=TextWrapping.Wrap,Opacity=.7});
-        _inspector.Children.Add(ActionButton("Apply model settings",()=>Try(()=>_cabinets.SetModel(Number("Model scale"),_fields["Up axis"].Text))));
+        BindInspectorEdits(() => _cabinets.SetModel(Number("Model scale"),_fields["Up axis"].Text));
         _inspector.Children.Add(ActionButton("Replace model…",async()=>await ImportCabinetModelDialogAsync()));
         if(_composition is not { } scene)return;
         var targetId=_selectedSceneNodeId?.StartsWith("target:",StringComparison.Ordinal)==true?_selectedSceneNodeId[7..]:null;
@@ -27,7 +27,7 @@ public sealed partial class WorkspaceView
             var rotation=new ComboBox{ItemsSource=new[]{0,90,180,270},SelectedItem=settings.FaceRotation};
             var flip=new CheckBox{Content="Flip artwork horizontally",IsChecked=settings.FaceFlipHorizontal};
             AddLabeledControl("Front side",side);AddLabeledControl("Face rotation",rotation);_inspector.Children.Add(flip);
-            _inspector.Children.Add(ActionButton("Apply Face orientation",()=>Try(()=>_cabinets.SetSurfaceTarget(new(target.Id,(string?)side.SelectedItem??"normal",(int?)rotation.SelectedItem??0,flip.IsChecked==true)))));
+            BindInspectorEdits(() => _cabinets.SetSurfaceTarget(new(target.Id,(string?)side.SelectedItem??"normal",(int?)rotation.SelectedItem??0,flip.IsChecked==true)));
             if(!target.IsValid)_inspector.Children.Add(new TextBlock{Text=target.ErrorMessage,TextWrapping=TextWrapping.Wrap});
         }
         Heading("FACE TARGETS");foreach(var face in scene.CabinetFaceTargets)
@@ -60,6 +60,7 @@ public sealed partial class WorkspaceView
         _selectedReflectionId=(string?)chooser.SelectedItem;AddLabeledControl("Reflection",chooser);
         chooser.SelectionChanged+=(_,_)=>{_selectedReflectionId=(string?)chooser.SelectedItem;RefreshCabinet3DInspector();};
         var reflection=definitions.FirstOrDefault(r=>r.Id==_selectedReflectionId)??definitions[0];
+        IgnoreInspectorActionFields(); // Receiver/definition pickers select an editing target.
         Field("Reflection ID",reflection.Id);Field("Target path",reflection.TargetId);Field("Material slot",reflection.MaterialSlot);Field("Visibility mask",reflection.VisibilityMask??"");
         var settings=reflection.Settings with{};var settingFields=BuildTypedFields(settings,0);foreach(var control in settingFields.Controls)_inspector.Children.Add(control);
         var sourceEditors=new List<Action>();var sources=reflection.Sources.ToList();
@@ -75,6 +76,7 @@ public sealed partial class WorkspaceView
             {Heading(new[]{"PLANE SIZE","ORIGIN","RIGHT AXIS","UP AXIS"}[pair.i]);foreach(var control in pair.e.Controls)_inspector.Children.Add(control);}
             sourceEditors.Add(()=>
             {
+                plane=source.Plane with{Origin=source.Plane.Origin with{},Right=source.Plane.Right with{},Up=source.Plane.Up with{},Normal=source.Plane.Normal is null?null:source.Plane.Normal with{}};
                 var id=(string?)faceSource.SelectedItem??source.SourceSurfaceTargetId;
                 var planeSource=(string?)mode.SelectedItem??CabinetReflectionPlaneSource.Automatic;
                 if(planeSource==CabinetReflectionPlaneSource.Automatic)
@@ -85,22 +87,22 @@ public sealed partial class WorkspaceView
                 else {edits[0].Apply(plane);edits[1].Apply(plane.Origin);edits[2].Apply(plane.Right);edits[3].Apply(plane.Up);}
                 sources[sourceIndex]=new(id,plane,planeSource);
             });
-            _inspector.Children.Add(ActionButton("Remove source",()=>Try(()=>_cabinets.SetReflections(definitions.Select(r=>r.Id==reflection.Id?r with{Sources=r.Sources.Where((_,i)=>i!=sourceIndex).ToArray()}:r)))));
+            _inspector.Children.Add(ActionButton("Remove source",()=>Try(()=>_cabinets.SetReflections((_cabinets.Document.Reflections??[]).Select(r=>r.Id==_selectedReflectionId?r with{Sources=r.Sources.Where((_,i)=>i!=sourceIndex).ToArray()}:r)))));
         }
         _inspector.Children.Add(ActionButton("Add source Face target",()=>Try(()=>
         {
             if(sources.Count>=CabinetReflectionContract.MaximumSources)throw new InvalidOperationException("A receiver supports at most four source _faces.");
             var actual=_composition!.CabinetFaceTargets.FirstOrDefault(t=>t.IsValid)??throw new InvalidOperationException("No valid Face target is available.");
             if(!CabinetReflectionPlaneDeriver.TryDerive(actual,out var plane,out var error))throw new InvalidOperationException(error);
-            _cabinets.SetReflections(definitions.Select(r=>r.Id==reflection.Id?r with{Sources=r.Sources.Append(new(actual.Id,plane)).ToArray()}:r));
+            _cabinets.SetReflections((_cabinets.Document.Reflections??[]).Select(r=>r.Id==_selectedReflectionId?r with{Sources=r.Sources.Append(new(actual.Id,plane)).ToArray()}:r));
         })));
-        _inspector.Children.Add(ActionButton("Apply reflection",()=>Try(()=>
-        {
-            settingFields.Apply(settings);foreach(var edit in sourceEditors)edit();
-            var updated=reflection with{Id=_fields["Reflection ID"].Text??"",TargetId=_fields["Target path"].Text??"",MaterialSlot=Integer("Material slot"),VisibilityMask=_fields["Visibility mask"].Text,Settings=settings,Sources=sources.ToArray()};
-            _selectedReflectionId=updated.Id;_cabinets.SetReflections(definitions.Select(r=>r.Id==reflection.Id?updated:r));
-        })));
-        _inspector.Children.Add(ActionButton("Remove reflection",()=>Try(()=>_cabinets.SetReflections(definitions.Where(r=>r.Id!=reflection.Id)))));
+        BindInspectorEdits(() => {
+            var current=(_cabinets.Document.Reflections??[]);var oldId=_selectedReflectionId;
+            var nextSettings=settings with{};settingFields.Apply(nextSettings);foreach(var edit in sourceEditors)edit();
+            var updated=reflection with{Id=_fields["Reflection ID"].Text??"",TargetId=_fields["Target path"].Text??"",MaterialSlot=Integer("Material slot"),VisibilityMask=_fields["Visibility mask"].Text,Settings=nextSettings,Sources=sources.ToArray()};
+            _cabinets.SetReflections(current.Select(r=>r.Id==oldId?updated:r));_selectedReflectionId=updated.Id;
+        });
+        _inspector.Children.Add(ActionButton("Remove reflection",()=>Try(()=>_cabinets.SetReflections((_cabinets.Document.Reflections??[]).Where(r=>r.Id!=_selectedReflectionId)))));
     }
     private void RefreshMachine3DInspector()
     {
@@ -110,7 +112,7 @@ public sealed partial class WorkspaceView
         if(selected is null&&anchor is null)RefreshMachineInspector();
         else
         {
-            _inspector.Children.Clear();_fields.Clear();Heading(anchor is null?"PLACED OBJECT":"ANCHOR");
+            ClearInspector();Heading(anchor is null?"PLACED OBJECT":"ANCHOR");
             Field("Display name",selected?.DisplayName??anchor!.DisplayName);SceneTransformFields(selected?.Transform??new(anchor!.Position,anchor.Rotation,MachineVector3.One),anchor is null);
             var descendants = new HashSet<string>();
             if (selected is not null)
@@ -127,12 +129,11 @@ public sealed partial class WorkspaceView
                 objectAsset=ReusableAssetCombo(EditorAssetType.Object3D,selected.ObjectAsset);
                 AddLabeledControl("Prefab asset",objectAsset);
             }
-            _inspector.Children.Add(ActionButton("Apply placement",()=>Try(()=>
-            {
+            BindInspectorEdits(() => {
                 var transform=ReadSceneTransform(anchor is null);
                 _machines.UpdateDocument(current=>selected is not null?current with{ObjectInstances=current.ObjectInstances.Select(i=>i.Id==selected.Id?i with{DisplayName=_fields["Display name"].Text??i.DisplayName,Transform=transform,Active=active.IsChecked==true,ParentId=string.IsNullOrWhiteSpace((string?)parent.SelectedItem)?null:(string?)parent.SelectedItem,ObjectAsset=(objectAsset!.SelectedItem as ReusableAssetChoice)?.Reference}:i).ToArray()}
                     :current with{Anchors=current.Anchors.Select(a=>a.Id==anchor!.Id?a with{DisplayName=_fields["Display name"].Text??a.DisplayName,Position=transform.Position,Rotation=transform.Rotation}:a).ToArray()});
-            })));
+            });
             _inspector.Children.Add(ActionButton("Remove selection",()=>Try(DeleteSceneSelection)));
         }
         Heading("COMPOSITION");_inspector.Children.Add(ActionButton("Machine settings",()=>SelectSceneNode(null)));

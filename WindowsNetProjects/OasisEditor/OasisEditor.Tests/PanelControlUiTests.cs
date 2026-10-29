@@ -26,7 +26,7 @@ public sealed class PanelControlUiTests
                 var owner=(Window)TopLevel.GetTopLevel(capture.View)!;
                 Assert.Contains(owner.GetVisualDescendants().OfType<Expander>(),e=>Equals(e.Header,"Lamp channels (12)"));
                 var input=owner.GetVisualDescendants().OfType<TextBox>().Single(t=>t.Text=="5");input.Text="7";
-                owner.GetVisualDescendants().OfType<Button>().Single(b=>Equals(b.Content,"Apply input")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                InspectorTestInput.Commit(input);
                 Assert.Equal("7",session.ImportedInputDefinitions.Single().ButtonNumber);session.Undo();Assert.Equal("5",session.ImportedInputDefinitions.Single().ButtonNumber);
                 var output=Environment.GetEnvironmentVariable("OASIS_CONTROL_VERIFICATION_OUTPUT");
                 if(output is not null){Directory.CreateDirectory(output);File.WriteAllBytes(Path.Combine(output,$"control-{theme.ToLowerInvariant()}.png"),capture.Capture(theme:theme));}

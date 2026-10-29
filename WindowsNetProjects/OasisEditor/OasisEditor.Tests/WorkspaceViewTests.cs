@@ -35,8 +35,7 @@ public sealed class WorkspaceViewTests
             capture.Capture();
             var name = workspace.GetVisualDescendants().OfType<TextBox>().Single(box => box.Text == "First");
             name.Text = "Edited through inspector";
-            var apply = workspace.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Apply"));
-            apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            InspectorTestInput.Commit(name);
             Assert.Equal("Edited through inspector", panel.Elements.Single(element => element.Id == first).Name);
             Assert.True(panel.IsDirty);
             panel.Undo(); Assert.False(panel.IsDirty);
@@ -72,7 +71,7 @@ public sealed class WorkspaceViewTests
             faces = faceEditor.Faces;
             var lampId = workspace.GetVisualDescendants().OfType<TextBox>().Single(box => box.Text == "7");
             lampId.Text = "12";
-            workspace.GetVisualDescendants().OfType<Button>().Single(button => Equals(button.Content, "Apply")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            InspectorTestInput.Commit(lampId);
             Assert.Equal(12, faces.Elements.Single().LampId);
             Assert.True(workspace.HasUnsavedChanges);
             Assert.Throws<InvalidOperationException>(() => workspace.OpenProject(project));

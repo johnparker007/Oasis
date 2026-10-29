@@ -57,11 +57,11 @@ public sealed partial class WorkspaceView
     }
     private void RefreshReelInspector()
     {
-        _inspector.Children.Clear();_fields.Clear();var reel=_reels.Document;
+        ClearInspector();var reel=_reels.Document;
         Heading("PHYSICAL REEL");
         _inspector.Children.Add(new TextBlock{Text="ID: "+reel.Id,TextWrapping=TextWrapping.Wrap,Opacity=.7});
         Field("Display name",reel.DisplayName);Field("Diameter mm",reel.DiameterMm);Field("Width mm",reel.WidthMm);
-        _inspector.Children.Add(ActionButton("Apply Reel settings",()=>Try(()=>_reels.Update(_fields["Display name"].Text,Number("Diameter mm"),Number("Width mm")))));
+        BindInspectorEdits(() => _reels.Update(_fields["Display name"].Text,Number("Diameter mm"),Number("Width mm")));
         _inspector.Children.Add(new TextBlock{Text="This reusable asset defines the physical reel. Symbol artwork and lamp windows are authored on the Face; the Machine assigns the Reel to a reel reference.",TextWrapping=TextWrapping.Wrap,Margin=new(0,12,0,0),Opacity=.7});
     }
     private async Task CreateReelDialogAsync()

@@ -29,7 +29,7 @@ public sealed class ToolHeaderButtonTests
                 if (output is not null) { Directory.CreateDirectory(output); File.WriteAllBytes(System.IO.Path.Combine(output, $"tool-buttons-{theme}.png"), image); }
                 Check(capture.View);
                 // Chrome styles must not shrink ordinary buttons inside tool content.
-                Assert.True(capture.View.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, "Apply")).Bounds.Width > 30);
+                Assert.True(capture.View.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, "Copy to Library…")).Bounds.Width > 30);
                 capture.View.MoveWorkspacePane("Hierarchy", "float"); capture.Capture(theme: theme); capture.CaptureFloatingWindows();
                 Check(Assert.Single(capture.View.FloatingWorkspaceWindows));
             }

@@ -235,24 +235,24 @@ public sealed class DocumentTransferTests
         source.OpenProject(fixture.ProjectPath);
         source.EnableDocumentRetention();
         var path = source.CreatePanel("Imported Panel");
-        var importedInputs = (Dictionary<string, InputDefinitionModel[]>)typeof(AuthoringSession)
-            .GetField("_importedInputDefinitions", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .GetValue(source)!;
-        var recovered = new InputDefinitionModel { Id = "fml-input-1", Name = "Start" };
-        importedInputs[path] = [recovered];
+        // Recovered inputs now belong to persisted control groups, rather than
+        // the retired private cache this fixture originally injected into.
+        PanelControlTests.InstallControl(source, 1);
+        source.EnableDocumentRetention();
+        var recovered = Assert.Single(source.ImportedInputDefinitions);
 
         var destination = new AuthoringSession(fixture.Root);
         destination.OpenProject(fixture.ProjectPath);
         destination.EnableDocumentRetention();
         source.MoveDocumentTo(path, destination);
-        Assert.Same(recovered, Assert.Single(destination.ImportedInputDefinitions));
-        Assert.False(importedInputs.ContainsKey(path));
+        Assert.Equal(recovered.Id, Assert.Single(destination.ImportedInputDefinitions).Id);
+        Assert.Equal(recovered.ButtonNumber, Assert.Single(destination.ImportedInputDefinitions).ButtonNumber);
+        Assert.Empty(source.ImportedInputDefinitions);
 
         destination.MoveDocumentTo(path, source);
-        Assert.Same(recovered, Assert.Single(source.ImportedInputDefinitions));
-        Assert.False(((Dictionary<string, InputDefinitionModel[]>)typeof(AuthoringSession)
-            .GetField("_importedInputDefinitions", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-            .GetValue(destination)!).ContainsKey(path));
+        Assert.Equal(recovered.Id, Assert.Single(source.ImportedInputDefinitions).Id);
+        Assert.Equal(recovered.ButtonNumber, Assert.Single(source.ImportedInputDefinitions).ButtonNumber);
+        Assert.Empty(destination.ImportedInputDefinitions);
     }
 
     private sealed class Fixture : IDisposable

@@ -24,14 +24,19 @@ public sealed partial class WorkspaceView
     public event Action<Window>? CloseErrorDialogOpened;
 
     private IReadOnlyList<UnsavedChangesTarget> ModifiedNativeAssets(HashSet<string>? ids = null)
-        => _nativeDocuments.Values.Where(d => (ids is null || ids.Contains(d.Asset.Id)) && d.Asset.IsDirty)
+    {
+        foreach (var entry in _nativeDocuments.Values.Where(d => ids is null || ids.Contains(d.Asset.Id)))
+            if (!entry.Editor.CommitInspectorText()) throw new InvalidOperationException("Correct invalid Inspector fields before closing.");
+        return _nativeDocuments.Values.Where(d => (ids is null || ids.Contains(d.Asset.Id)) && d.Asset.IsDirty)
             .Select(d => new UnsavedChangesTarget(new(d.Asset.Id, d.Editor.ActiveTitle, d.Asset.Kind,
                 (d.Asset.LibraryRoot is null ? "Project: " : "Library: ") + Path.GetRelativePath(
                     d.Asset.LibraryRoot ?? _session.RequireProjectDirectory(), d.Asset.Path), false),
                 () => { SaveNativeAsset(d); return Task.CompletedTask; })).ToArray();
+    }
 
     private void SaveNativeAsset(NativeAssetEditor entry)
     {
+        if (!entry.Editor.CommitInspectorText()) throw new InvalidOperationException("Correct invalid Inspector fields before saving.");
         try { entry.Asset.Save(); }
         catch(Exception error) when(error is not (OutOfMemoryException or OperationCanceledException))
         { throw new IOException($"Could not save {entry.Asset.Kind} '{entry.Editor.ActiveTitle}': {error.Message}",error); }
