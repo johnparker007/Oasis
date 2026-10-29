@@ -97,7 +97,7 @@ public sealed partial class WorkspaceView
         var panel = new StackPanel { Margin = new Thickness(18), Spacing = 10 };
         panel.Children.Add(name); panel.Children.Add(message);
         var dialog = new Window { Title = "Generate Face", Width = 430, Height = 190, Content = panel, CanResize = false };
-        panel.Children.Add(ActionButton("Generate Face", () =>
+        panel.Children.Add(TextEntryDialog.Actions(dialog, name, ActionButton("Generate Face", () =>
         {
             try
             {
@@ -106,7 +106,7 @@ public sealed partial class WorkspaceView
             }
             catch (Exception ex) when (ex is IOException or ArgumentException or InvalidOperationException or KeyNotFoundException or UnauthorizedAccessException)
             { message.Text = ex.Message; }
-        }));
+        })));
         await dialog.ShowDialog(owner);
     }
 

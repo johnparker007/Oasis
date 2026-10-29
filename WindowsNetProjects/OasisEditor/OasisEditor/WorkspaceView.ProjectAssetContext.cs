@@ -103,7 +103,7 @@ public sealed partial class WorkspaceView
             var message = new TextBlock { Text = "The package contents and native asset IDs will be preserved.", TextWrapping = global::Avalonia.Media.TextWrapping.Wrap };
             var dialog = new Window { Title = "Rename asset package", Width = 440, Height = 220, CanResize = false };
             var body = new StackPanel { Margin = new Thickness(18), Spacing = 10, Children = { new TextBlock { Text = "Package name" }, name, message } };
-            body.Children.Add(ActionButton("Rename", () =>
+            body.Children.Add(TextEntryDialog.Actions(dialog, name, ActionButton("Rename", () =>
             {
                 try
                 {
@@ -116,7 +116,7 @@ public sealed partial class WorkspaceView
                 }
                 catch (Exception error) when (error is IOException or InvalidDataException or InvalidOperationException or UnauthorizedAccessException or ArgumentException)
                 { message.Text = error.Message; }
-            }));
+            })));
             dialog.Content = body;
             await dialog.ShowDialog(owner);
         }

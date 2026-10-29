@@ -135,8 +135,8 @@ public sealed partial class WorkspaceView
         var name=new TextBox{Text=Path.GetFileName(Path.GetDirectoryName(selected.ManifestPath))};var error=new TextBlock{TextWrapping=TextWrapping.Wrap};
         var content=new StackPanel{Margin=new(16),Spacing=10,Children={new TextBlock{Text="Destination package name"},name,error}};
         var dialog=new Window{Title=import?"Import Library package":"Copy package to Library",Width=430,Height=210,Content=content};
-        content.Children.Add(ActionButton(import?"Import":"Copy",async()=>{try{var result=import?ImportLibraryAsset(selected.ManifestPath,name.Text):CopyProjectAssetToLibrary(selected.ManifestPath,name.Text);
-            if(!result.Success){error.Text=result.Error;return;}await RefreshLibraryAsync();SetStatus("Package copied to "+result.ManifestPath);dialog.Close();}catch(Exception e)when(e is not OutOfMemoryException){error.Text=e.Message;}}));
+        content.Children.Add(TextEntryDialog.Actions(dialog, name, ActionButton(import?"Import":"Copy",async()=>{try{var result=import?ImportLibraryAsset(selected.ManifestPath,name.Text):CopyProjectAssetToLibrary(selected.ManifestPath,name.Text);
+            if(!result.Success){error.Text=result.Error;return;}await RefreshLibraryAsync();SetStatus("Package copied to "+result.ManifestPath);dialog.Close();}catch(Exception e)when(e is not OutOfMemoryException){error.Text=e.Message;}})));
         await dialog.ShowDialog(owner);
     }
 }

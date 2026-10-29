@@ -60,7 +60,7 @@ public sealed partial class WorkspaceView
         content.Children.Add(name);
         content.Children.Add(message);
         var dialog = new Window { Title = dialogTitle, Width = 420, Height = 190, Content = content, CanResize = false };
-        content.Children.Add(ActionButton($"Create {assetKind}", () =>
+        content.Children.Add(TextEntryDialog.Actions(dialog, name, ActionButton($"Create {assetKind}", () =>
         {
             try
             {
@@ -73,7 +73,7 @@ public sealed partial class WorkspaceView
             {
                 message.Text = error.Message;
             }
-        }));
+        })));
         await dialog.ShowDialog(owner);
     }
 

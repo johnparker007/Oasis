@@ -70,7 +70,7 @@ public sealed partial class WorkspaceView
         var name=new TextBox{PlaceholderText="Reel name"};var error=new TextBlock{TextWrapping=TextWrapping.Wrap};
         var content=new StackPanel{Margin=new(16),Spacing=10,Children={name,error}};
         var dialog=new Window{Title="Create Reel",Width=400,Height=200,Content=content};
-        content.Children.Add(ActionButton("Create Reel",async()=>{try{var path=_reels.Create(name.Text??"");await OpenReelAsync(path);dialog.Close();}catch(Exception e) when(e is not OutOfMemoryException){error.Text=e.Message;}}));
+        content.Children.Add(TextEntryDialog.Actions(dialog, name, ActionButton("Create Reel",async()=>{try{var path=_reels.Create(name.Text??"");await OpenReelAsync(path);dialog.Close();}catch(Exception e) when(e is not OutOfMemoryException){error.Text=e.Message;}})));
         await dialog.ShowDialog(owner);
     }
 }

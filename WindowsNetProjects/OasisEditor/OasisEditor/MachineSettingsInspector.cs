@@ -40,11 +40,11 @@ public sealed partial class WorkspaceView
         var panel = new StackPanel { Margin = new global::Avalonia.Thickness(20), Spacing = 12 };
         panel.Children.Add(message); panel.Children.Add(name);
         var dialog = new Window { Title = "New Machine", Width = 420, Height = 210, Content = panel, CanResize = false };
-        panel.Children.Add(ActionButton("Create Machine", () =>
+        panel.Children.Add(TextEntryDialog.Actions(dialog, name, ActionButton("Create Machine", () =>
         {
             try { Machines.CreateMachine(name.Text ?? string.Empty); ShowMachine(); dialog.Close(); }
             catch (Exception e) when (e is IOException or ArgumentException or InvalidOperationException or UnauthorizedAccessException) { message.Text = e.Message; }
-        }));
+        })));
         await dialog.ShowDialog(owner);
     }
 
