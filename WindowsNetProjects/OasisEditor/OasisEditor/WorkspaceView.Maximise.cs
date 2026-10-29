@@ -180,7 +180,8 @@ public sealed partial class WorkspaceView
         var title=new WorkspacePaneHeaderTemplate().Build(pane);
         title.Margin=new Thickness(9,5);
         var header=new Border{Child=title,Name="MaximisedTabHeader"};
-        header.Bind(BackgroundProperty,this.GetResourceObservable("ToolbarBrush"));
+        header.Bind(BackgroundProperty,this.GetResourceObservable("DockSurfaceHeaderActiveBrush"));
+        header.Bind(global::Avalonia.Controls.Documents.TextElement.ForegroundProperty,this.GetResourceObservable("DockTabActiveForegroundBrush"));
         header.DoubleTapped+=(_,e)=>{e.Handled=true;RestoreMaximisedTab();};
         header.ContextRequested+=(_,e)=>{e.Handled=true;header.ContextMenu=CreateTabContextMenu(paneId);header.ContextMenu.Open(header);};
         ToolTip.SetTip(header,"Double-click to restore tab");surface.Children.Add(header);
