@@ -158,7 +158,8 @@ python WindowsNetProjects/OasisEditor/OasisEditor.Mcp/verify_menus.py --output <
 - Actual FML decoder, mapper, asset copier, lamp/mask and background compositing
   shared authoring services. Portable Skia bitmap adapters preserve palette alpha and straight
   color bytes. Imports have fresh IDs and enter history as one command; existing
-  import packages are refused. Failure cleanup only removes owned reserved output.
+  import packages are preserved, with a numbered package allocated for each repeat
+  import. Failure cleanup only removes owned reserved output.
 - Full current-schema Machine loading/creation, typed settings for every supported
   Emulation platform, Oasis runtime/script editing with real compiler diagnostics,
   interaction and input authoring, and cabinet/Face/reel/prefab/anchor/surface

@@ -26,17 +26,21 @@ public sealed class FmlImportWorkflowTests : IDisposable
         Assert.Throws<ArgumentException>(() => session.ImportFml(source, copyAssets: false));
     }
 
-    [Fact]
-    public void ImportFml_RefusesExistingImportDestinationBeforeReadingSource()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ImportFml_UsesNumberedDestinationAndOnlyCleansItsOwnFailedImport(bool validSource)
     {
         var session = OpenPanel();
         var source = Path.Combine(_workspace, "Layout.bin");
-        File.WriteAllBytes(source, []);
+        File.WriteAllBytes(source, validSource ? [] : [0xFF, 0x00, 0xA5]);
         var destination = Path.Combine(Path.GetDirectoryName(session.ProjectFilePath)!, "Assets", "FmlImport", "Layout");
         Directory.CreateDirectory(destination);
         File.WriteAllText(Path.Combine(destination, "authored.txt"), "preserve");
 
-        Assert.Throws<InvalidOperationException>(() => session.ImportFml(source));
+        var result = session.ImportFml(source);
+        Assert.Equal(validSource, result.Succeeded);
+        Assert.Equal(validSource, Directory.Exists(destination + "_2"));
         Assert.Equal("preserve", File.ReadAllText(Path.Combine(destination, "authored.txt")));
         Assert.DoesNotContain(Directory.EnumerateFileSystemEntries(Path.GetDirectoryName(destination)!),
             path => Path.GetFileName(path).StartsWith(".oasis-import-reservation-", StringComparison.Ordinal));

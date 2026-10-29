@@ -10,6 +10,30 @@ import shutil
 import tempfile
 
 from verify_mcp import Client
+from verify_unsaved_changes import request, response
+
+
+def verify_retry_after_discard(client, root, samples):
+    sample = next(p for p in samples if "Button/WithoutAngle" in p.as_posix())
+    source = root / "retry.fml"; shutil.copyfile(sample, source)
+    state = client.state(); project = state["projectFilePath"]; panel = state["panelPath"]
+    project_root = Path(project).parent
+    first = client.state("import_fml", path=str(source))["result"]
+    assert first["succeeded"] and first["importedElementCount"] > 0, first
+    originals = {p: (project_root / p).read_bytes() for p in first["copiedAssetRelativePaths"]}
+    request(client, "project"); assert response(client, "discard")["result"]
+    client.state("open_project", path=project); client.state("open_panel2d", path=panel)
+    assert not client.state()["elements"]
+    second = client.state("import_fml", path=str(source))["result"]
+    assert second["succeeded"] and second["importedElementCount"] == first["importedElementCount"], second
+    assert all(p.startswith("Assets/FmlImport/retry_2/") for p in second["copiedAssetRelativePaths"]), second
+    client.state("save_panel2d")
+    client.state("create_panel2d", name="Retry in new panel")
+    third = client.state("import_fml", path=str(source))["result"]
+    assert third["succeeded"] and third["importedElementCount"] == first["importedElementCount"], third
+    assert all(p.startswith("Assets/FmlImport/retry_3/") for p in third["copiedAssetRelativePaths"]), third
+    for path, data in originals.items(): assert (project_root / path).read_bytes() == data
+    client.state("history"); assert not client.state()["elements"] and not client.state()["isDirty"]
 
 
 def main():
@@ -28,6 +52,7 @@ def main():
         try:
             client.state("create_project", name="FML Smoke")
             client.state("create_panel2d", name="Import")
+            verify_retry_after_discard(client, root, samples)
             for index, sample in enumerate(samples):
                 source = root / f"source-{index}.fml"
                 shutil.copyfile(sample, source)
@@ -57,7 +82,7 @@ def main():
         finally:
             client.close()
             (args.output / "results.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
-    print(f"Imported {len(results)} upstream encrypted layouts; undo/redo and malformed-input checks passed.")
+    print(f"Imported {len(results)} upstream encrypted layouts; discard/reopen/reimport into old/new panels, undo/redo and malformed-input checks passed.")
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ namespace OasisEditor.Features.FmlImport;
 
 internal interface IFmlImportService
 {
-    LayoutImportResult ImportFromFml(string fmlPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true);
+    LayoutImportResult ImportFromFml(string fmlPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true, string? packageName = null);
 }
 
 internal sealed class FmlImportService : IFmlImportService
@@ -27,7 +27,7 @@ internal sealed class FmlImportService : IFmlImportService
         _diagnosticsWriter = diagnosticsWriter ?? new FmlImportDiagnosticsWriter();
     }
 
-    public LayoutImportResult ImportFromFml(string fmlPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true)
+    public LayoutImportResult ImportFromFml(string fmlPath, string projectRootPath, string projectAssetsPath, bool copyAssets = true, string? packageName = null)
     {
         if (string.IsNullOrWhiteSpace(fmlPath))
         {
@@ -132,7 +132,7 @@ internal sealed class FmlImportService : IFmlImportService
         var assetCopyStopwatch = Stopwatch.StartNew();
         var assetResult = _assetCopier.CopyAssetsFromStaging(
             stagingDirectory,
-            Path.GetFileNameWithoutExtension(fullFmlPath),
+            packageName ?? Path.GetFileNameWithoutExtension(fullFmlPath),
             projectAssetsPath,
             copyAssets,
             mapResult.Elements,

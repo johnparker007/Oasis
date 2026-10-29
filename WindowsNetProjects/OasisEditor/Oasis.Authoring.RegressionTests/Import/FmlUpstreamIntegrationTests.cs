@@ -126,7 +126,48 @@ public sealed class FmlUpstreamIntegrationTests
         finally { Directory.Delete(root, true); }
     }
 
-    private static byte[] ButtonPayload(bool explicitButton)
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReimportAfterDiscardKeepsEarlierArtworkAndUsesAnIndependentPackage(bool newPanel)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "OasisFmlRetry-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var session = new AuthoringSession(root);
+            var project = session.CreateProject("Retry"); var panel = session.CreatePanel("Panel");
+            var source = Path.Combine(root, "Layout.fml");
+            File.WriteAllBytes(source, FmlDecryptor.Encode(Layout("20.1", ButtonPayload(true, artwork: true)), "01279247"));
+            var first = session.ImportFml(source);
+            Assert.True(first.Succeeded, string.Join("; ", first.Errors)); Assert.NotEmpty(first.CopiedAssetRelativePaths);
+            var projectRoot = Path.GetDirectoryName(project)!;
+            var preserved = first.CopiedAssetRelativePaths.ToDictionary(p => p, p => File.ReadAllBytes(Path.Combine(projectRoot, p)));
+
+            // A fresh session reads the initial saved (empty) panel, just as
+            // closing/discarding and reopening does. Imported files remain.
+            var reopened = new AuthoringSession(root); reopened.OpenProject(project);
+            if (newPanel) reopened.CreatePanel("Another"); else reopened.OpenPanel(panel);
+            Assert.Empty(reopened.Elements);
+            var second = reopened.ImportFml(source);
+            Assert.True(second.Succeeded, string.Join("; ", second.Errors)); Assert.NotEmpty(second.CopiedAssetRelativePaths);
+            Assert.All(second.CopiedAssetRelativePaths, p => Assert.StartsWith("Assets/FmlImport/Layout_2/", p));
+            Assert.All(second.CopiedAssetRelativePaths, p => Assert.True(File.Exists(Path.Combine(projectRoot, p))));
+            foreach (var pair in preserved) Assert.Equal(pair.Value, File.ReadAllBytes(Path.Combine(projectRoot, pair.Key)));
+
+            reopened.Save(); var savedCount = reopened.Elements.Count;
+            var savedArtwork = second.CopiedAssetRelativePaths.ToDictionary(p => p, p => File.ReadAllBytes(Path.Combine(projectRoot, p)));
+            var third = reopened.ImportFml(source);
+            Assert.True(third.Succeeded, string.Join("; ", third.Errors));
+            Assert.All(third.CopiedAssetRelativePaths, p => Assert.StartsWith("Assets/FmlImport/Layout_3/", p));
+            reopened.Undo(); Assert.Equal(savedCount, reopened.Elements.Count); Assert.False(reopened.IsDirty);
+            reopened.Redo(); Assert.Equal(2 * savedCount, reopened.Elements.Count);
+            foreach (var pair in savedArtwork) Assert.Equal(pair.Value, File.ReadAllBytes(Path.Combine(projectRoot, pair.Key)));
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    private static byte[] ButtonPayload(bool explicitButton, bool artwork = false)
     {
         using var data = new MemoryStream(); using var writer = new BinaryWriter(data);
         writer.Write(new byte[] { 0x3D, 0, 0, 0, 0 });
@@ -135,6 +176,15 @@ public sealed class FmlUpstreamIntegrationTests
         writer.Write(new byte[] { 7, 1 });
         if (explicitButton) { writer.Write((byte)0x18); writer.Write(0u); }
         writer.Write(new byte[] { 0x4C, 0, 0 });
+        if (artwork)
+        {
+            var bmp = new byte[58]; bmp[0] = (byte)'B'; bmp[1] = (byte)'M';
+            BitConverter.GetBytes(58).CopyTo(bmp, 2); BitConverter.GetBytes(54).CopyTo(bmp, 10);
+            BitConverter.GetBytes(40).CopyTo(bmp, 14); BitConverter.GetBytes(1).CopyTo(bmp, 18);
+            BitConverter.GetBytes(1).CopyTo(bmp, 22); BitConverter.GetBytes((ushort)1).CopyTo(bmp, 26);
+            BitConverter.GetBytes((ushort)24).CopyTo(bmp, 28); BitConverter.GetBytes(4).CopyTo(bmp, 34);
+            bmp[56] = 255; writer.Write((byte)0x06); writer.Write(bmp);
+        }
         writer.Write((byte)0x0D); writer.Write(-2);
         writer.Write((byte)0x0E); writer.Write(-1);
         writer.Write((byte)0);
