@@ -260,7 +260,7 @@ public sealed partial class WorkspaceView
         var name = new TextBox { PlaceholderText = "Asset name" }; var error = new TextBlock { TextWrapping=TextWrapping.Wrap };
         var content=new StackPanel { Margin=new Thickness(16),Spacing=10,Children={name,error} };
         var dialog=new Window { Title=prefab?"Create Prefab":"Import Cabinet GLB", Width=420,Height=200,Content=content };
-        content.Children.Add(ActionButton(prefab?"Create Prefab":"Choose GLB…",async()=>
+        content.Children.Add(TextEntryDialog.Actions(dialog, name, ActionButton(prefab?"Create Prefab":"Choose GLB…",async()=>
         {
             try
             {
@@ -271,7 +271,7 @@ public sealed partial class WorkspaceView
                 dialog.Close();
             }
             catch(Exception e) when(e is not OutOfMemoryException) {error.Text=e.Message;}
-        }));
+        })));
         await dialog.ShowDialog(owner);
     }
     private void WithSelectedModelFile(string path,Action<string> import)

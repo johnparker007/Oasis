@@ -294,11 +294,11 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         var panel = new StackPanel { Margin = new Thickness(20), Spacing = 12 };
         panel.Children.Add(message); panel.Children.Add(name);
         var dialog = new Window { Title = "New Oasis project", Width = 440, Height = 220, Content = panel, CanResize = false };
-        panel.Children.Add(ActionButton("Create project", async () =>
+        panel.Children.Add(TextEntryDialog.Actions(dialog, name, ActionButton("Create project", async () =>
         {
             try { if(await RequestCreateProjectAsync(name.Text ?? ""))dialog.Close(); }
             catch (Exception e) when (e is IOException or ArgumentException or InvalidOperationException or UnauthorizedAccessException) { message.Text = e.Message; }
-        }));
+        })));
         await dialog.ShowDialog(owner);
     }
     private async Task ImportImage()
