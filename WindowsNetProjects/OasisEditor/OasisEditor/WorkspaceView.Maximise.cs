@@ -52,6 +52,7 @@ public sealed partial class WorkspaceView
         TabHosts.Add(host,this);
         host.AddHandler(PointerPressedEvent,TabPointerPressed,RoutingStrategies.Tunnel);
         host.AddHandler(KeyDownEvent,BlockKeysDuringClose,RoutingStrategies.Tunnel);
+        host.AddHandler(KeyDownEvent,HostDocumentKey,RoutingStrategies.Bubble);
         host.AddHandler(PointerReleasedEvent,TabPointerReleased,RoutingStrategies.Tunnel);
         host.Closing+=MaximisedHostClosing;
         host.Closed+=TabHostClosed;
@@ -64,6 +65,7 @@ public sealed partial class WorkspaceView
         host.Closed-=TabHostClosed;
         host.RemoveHandler(PointerPressedEvent,TabPointerPressed);
         host.RemoveHandler(KeyDownEvent,BlockKeysDuringClose);
+        host.RemoveHandler(KeyDownEvent,HostDocumentKey);
         host.RemoveHandler(PointerReleasedEvent,TabPointerReleased);
     }
     private void TabHostClosed(object? sender,EventArgs e)
@@ -117,6 +119,18 @@ public sealed partial class WorkspaceView
     }
     private void BlockKeysDuringClose(object? sender,KeyEventArgs e)
     {if(_closeWorkflowActive)e.Handled=true;}
+    private void HostDocumentKey(object? sender,KeyEventArgs e)
+    {
+        // Deleting the focused hierarchy row (or closing its menu) can leave
+        // focus on the host rather than a descendant of the workspace.
+        if(e.Handled || _closeWorkflowActive || IsProjectLauncherVisible) return;
+        var ancestors = e.Source is Visual source ? source.GetVisualAncestors().Prepend(source).ToArray() : [];
+        if(ancestors.Any(v=>v is TextBox)) return;
+        var undoRedo = (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta)) != 0 && e.Key is Key.Z or Key.Y;
+        var editor = CommandView;
+        // Floated tool panes also live outside the WorkspaceView event route.
+        if(undoRedo || ancestors.Contains(editor._hierarchy)) editor.HandleDocumentKey(e);
+    }
     private void TabPointerReleased(object? sender,PointerReleasedEventArgs e)
     {
         if(e.InitialPressMouseButton!=MouseButton.Right || TabAt(e.Source,includeButtons:true) is not {} tab)return;

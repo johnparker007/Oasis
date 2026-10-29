@@ -83,6 +83,15 @@ public sealed class HierarchySelectionTests
                 Arrow(Key.Down, PhysicalKey.ArrowDown, RawInputModifiers.Shift); AssertSelection(ids[1], ids[2], ids[3]);
                 Arrow(Key.Up, PhysicalKey.ArrowUp, RawInputModifiers.Shift); AssertSelection(ids[1], ids[2]);
                 Arrow(Key.Up, PhysicalKey.ArrowUp); AssertSelection(ids[1]);
+                window.UpdateLayout();
+                var empty = hierarchy.TranslatePoint(new Point(hierarchy.Bounds.Width / 2, hierarchy.Bounds.Height - 12), window)!.Value;
+                window.MouseDown(empty, MouseButton.Left);
+                window.MouseUp(empty, MouseButton.Left);
+                AssertSelection();
+                Click(2); AssertSelection(ids[2]);
+                window.MouseDown(empty, MouseButton.Right);
+                window.MouseUp(empty, MouseButton.Right);
+                AssertSelection(ids[2]);
             }
             finally { Directory.Delete(root, true); }
         });

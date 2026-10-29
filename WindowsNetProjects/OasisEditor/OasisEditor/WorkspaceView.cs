@@ -8,6 +8,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using Dock.Avalonia.Controls;
 using Dock.Model.Controls;
 using Dock.Model.Core;
@@ -73,6 +74,16 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         _viewport.SelectedSourceRegion=()=>_selectedSource;
         _viewport.SourceRegionSelected+=id=>{_selectedSource=id;_session.Select(null);Refresh();};
         _hierarchy.ItemsSource = _rows;
+        _hierarchy.PointerPressed += (_, args) =>
+        {
+            if (!args.GetCurrentPoint(_hierarchy).Properties.IsLeftButtonPressed || args.Source is not Visual source) return;
+            var ancestors = source.GetVisualAncestors().Prepend(source).ToArray();
+            if (ancestors.Any(v => v is ListBoxItem or global::Avalonia.Controls.Primitives.ScrollBar)) return;
+            _selectedSource = null;
+            Try(() => SelectActive([]));
+            _hierarchy.Focusable = true;
+            _hierarchy.Focus();
+        };
         this.Bind(BackgroundProperty, this.GetResourceObservable("WorkspaceBrush"));
         _hierarchy.SelectionChanged += (_, _) =>
         {
