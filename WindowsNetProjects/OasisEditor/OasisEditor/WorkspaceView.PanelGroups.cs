@@ -101,7 +101,7 @@ public sealed partial class WorkspaceView
         _inspector.Children.Add(new TextBlock {Text="Icon"});_inspector.Children.Add(icons);
         var visible=new CheckBox {Content="Visible",IsChecked=g.Visible};var locked=new CheckBox {Content="Lock transform",IsChecked=g.Locked};
         _inspector.Children.Add(visible);_inspector.Children.Add(locked);
-        _inspector.Children.Add(ActionButton("Apply",()=>Try(()=>_session.UpdateGroup(id,string.IsNullOrWhiteSpace(_fields["Name"].Text)?null:_fields["Name"].Text,Number("X"),Number("Y"),Number("Rotation"),Number("Scale X"),Number("Scale Y"),icons.SelectedItem as string=="Automatic"?null:icons.SelectedItem as string,visible.IsChecked==true,locked.IsChecked==true,automaticName:string.IsNullOrWhiteSpace(_fields["Name"].Text),automaticIcon:Equals(icons.SelectedItem,"Automatic")))));
+        BindInspectorEdits(() => _session.UpdateGroup(id,string.IsNullOrWhiteSpace(_fields["Name"].Text)?null:_fields["Name"].Text,Number("X"),Number("Y"),Number("Rotation"),Number("Scale X"),Number("Scale Y"),icons.SelectedItem as string=="Automatic"?null:icons.SelectedItem as string,visible.IsChecked==true,locked.IsChecked==true,automaticName:string.IsNullOrWhiteSpace(_fields["Name"].Text),automaticIcon:Equals(icons.SelectedItem,"Automatic")));
         if(g.Control is null)_inspector.Children.Add(ActionButton("Ungroup",()=>Try(_session.UngroupSelection)));
         else AppendControlInspector(g);
     }

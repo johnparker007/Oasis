@@ -128,6 +128,8 @@ public sealed partial class WorkspaceView
     public async Task SaveAllDocumentsAsync()
     {
         if(_documentOwner is {} host){await host.SaveAllDocumentsAsync();return;}
+        foreach(var entry in _nativeDocuments.Values)
+            if(!entry.Editor.CommitInspectorText())throw new InvalidOperationException("Correct invalid Inspector fields before saving.");
         if(!_isDocumentEditor)await SynchronizeAssetDocumentsAsync();
         EnsureAssetWindowsIdle();
         if(_nativeDocuments.Count>0){foreach(var d in _nativeDocuments.Values.Where(d=>d.Asset.IsDirty).ToArray())SaveNativeAsset(d); RefreshNativeDocumentTitles();return;}

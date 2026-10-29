@@ -26,13 +26,13 @@ public sealed partial class WorkspaceView
         Field("Input name",binding?.Name??group.Name);Field("Button",binding?.ButtonNumber??"");Field("Shortcut",binding?.KeyboardShortcut??"");
         var coin=new CheckBox {Content="Coin input",IsChecked=binding?.CoinInput==true};_inspector.Children.Add(coin);
         var inverted=new CheckBox {Content="Inverted",IsChecked=binding?.Inverted==true};_inspector.Children.Add(inverted);
-        _inspector.Children.Add(ActionButton("Apply input",()=>Try(()=>
-        {
-            var next=enabled.IsChecked==true||binding is not null?(binding??new PanelInputBinding {Id=Guid.NewGuid().ToString("N")}) with
+        BindInspectorEdits(() => {
+            var current=_session.Groups.Single(g=>g.Id==group.Id).Control!.Input;
+            var next=enabled.IsChecked==true||current is not null?(current??new PanelInputBinding {Id=Guid.NewGuid().ToString("N")}) with
             {Enabled=enabled.IsChecked==true,Name=_fields["Input name"].Text??"",ButtonNumber=_fields["Button"].Text??"",KeyboardShortcut=_fields["Shortcut"].Text??"",
                 CoinInput=coin.IsChecked==true,Kind=coin.IsChecked==true?InputDefinitionKind.Coin:InputDefinitionKind.Button,Inverted=inverted.IsChecked==true}:null;
             _session.UpdateControlInput(group.Id,next);
-        })));
+        });
         if(!string.IsNullOrWhiteSpace(binding?.Notes))_inspector.Children.Add(new TextBlock {Text=binding.Notes,TextWrapping=TextWrapping.Wrap});
     }
 }

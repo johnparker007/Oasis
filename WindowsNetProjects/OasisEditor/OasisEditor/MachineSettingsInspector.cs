@@ -50,8 +50,9 @@ public sealed partial class WorkspaceView
 
     private void RefreshMachineInspector()
     {
+        if (_inspectorCommitting) return;
         _inspected = Machines.MachinePath;
-        _inspector.Children.Clear(); _fields.Clear();
+        ClearInspector();
         var machine = Machines.Document;
         if (machine is null)
         {

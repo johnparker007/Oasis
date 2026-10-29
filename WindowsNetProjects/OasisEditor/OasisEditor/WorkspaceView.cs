@@ -413,18 +413,18 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
 
     private void RefreshInspector()
     {
+        if (_inspectorCommitting) return;
         var shape = !_faceActive ? _session.SourceShapes.FirstOrDefault(s => s.Id == _selectedSource) : null;
         var selected = ActiveElements.FirstOrDefault(e => SelectedIds.Contains(e.Id));
-        object key = shape is not null ? (object)shape : SelectedIds.Count > 1 ? string.Join("|", SelectedIds)
-            : _faceActive ? (_faces.Elements.FirstOrDefault(e => e.Id == selected?.Id),_faces.RenderRevision) : selected?.Kind=="group" ? (_session.Groups.First(g=>g.Id==selected.Id),_session.RenderRevision) : (object?)selected ?? "none";
+        var key = InspectorKey();
         if (Equals(_inspected, key)) return;
-        _inspected = key; _inspector.Children.Clear(); _fields.Clear();
+        _inspected = key; ClearInspector();
         if (shape is not null)
         {
             Heading("FACE SOURCE REGION"); Field("Name", shape.Name);
             for (var i = 0; i < 4; i++) { Field($"P{i + 1} X", shape.Points[i].X); Field($"P{i + 1} Y", shape.Points[i].Y); }
-            _inspector.Children.Add(ActionButton("Apply region", () => Try(() => _session.UpdateSourceShape(shape.Id, _fields["Name"].Text ?? "",
-                Enumerable.Range(1, 4).Select(i => new PointSnapshot(Number($"P{i} X"), Number($"P{i} Y"))).ToArray()))));
+            BindInspectorEdits(() => _session.UpdateSourceShape(shape.Id, _fields["Name"].Text ?? "",
+                Enumerable.Range(1, 4).Select(i => new PointSnapshot(Number($"P{i} X"), Number($"P{i} Y"))).ToArray()));
             return;
         }
         if (SelectedIds.Count > 1)
@@ -441,12 +441,11 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         if (lampIndex.HasValue) Field("Lamp ID", lampIndex.Value);
         _visible = new CheckBox { Content = "Visible", IsChecked = selected.Visible }; _locked = new CheckBox { Content = "Lock transform", IsChecked = selected.Locked };
         _inspector.Children.Add(_visible); _inspector.Children.Add(_locked);
-        _inspector.Children.Add(ActionButton("Apply", () => Try(() =>
-        {
+        BindInspectorEdits(() => {
             if (_faceActive) _faces.UpdateElement(selected.Id, _fields["Name"].Text, Number("X"), Number("Y"), Number("Width"), Number("Height"), _visible.IsChecked == true, _locked.IsChecked == true,
                 _fields.ContainsKey("Lamp ID") ? Integer("Lamp ID") : null);
             else _session.UpdateElement(selected.Id, _fields["Name"].Text, Number("X"), Number("Y"), Number("Width"), Number("Height"), _visible.IsChecked == true, _locked.IsChecked == true);
-        })));
+        });
         if (selected.AssetPath is not null) _inspector.Children.Add(new TextBlock { Text = selected.AssetPath, TextWrapping = TextWrapping.Wrap, Opacity = .65 });
         if(_faceActive) { AppendFaceReelInspector(selected.Id); AppendFaceComponentInspector(selected.Id); }
         else { AppendPanelComponentInspector(selected.Id); AppendPanelInspectorParity(selected.Id); }

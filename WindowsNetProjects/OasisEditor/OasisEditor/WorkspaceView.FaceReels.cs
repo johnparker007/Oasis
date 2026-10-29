@@ -66,8 +66,7 @@ public sealed partial class WorkspaceView
             TextWrapping = Media.TextWrapping.Wrap,
             Opacity = .7
         });
-        _inspector.Children.Add(ActionButton("Apply reel settings", () => Try(() =>
-        {
+        BindInspectorEdits(() => {
             int? ReadInt(TextBox box, string label) => string.IsNullOrWhiteSpace(box.Text)
                 ? null
                 : int.TryParse(box.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)
@@ -110,7 +109,7 @@ public sealed partial class WorkspaceView
             });
             _inspected = null;
             Refresh();
-        })));
+        });
 
         void AddField(string label, Control control)
         {

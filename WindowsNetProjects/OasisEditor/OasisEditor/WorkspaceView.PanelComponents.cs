@@ -55,25 +55,25 @@ public sealed partial class WorkspaceView
             AddControl("Segment Type", combo);
             var decimalPoint = AddCheck("Decimal Point", settings.ShowDecimalPoint);
             var comma = AddCheck("Comma", settings.ShowCommaTail);
-            _inspector.Children.Add(ActionButton("Apply component settings", () => Apply(settings with
+            BindInspectorEdits(() => Apply(settings with
             {
                 OnColorHex = Read("On Color"), TextColorHex = Read("Text Color"), DisplayText = Read("Display Text"),
                 SegmentDisplayType = combo.SelectedItem?.ToString(), ShowDecimalPoint = decimalPoint.IsChecked == true,
                 ShowCommaTail = comma.IsChecked == true
-            })));
+            }));
             return;
         }
         if (element.Kind == "lamp")
         {
             var border = AddCheck("Border", settings.HasBorder);
-            _inspector.Children.Add(ActionButton("Apply component settings", () => Apply(settings with
-            { DisplayNumber = ReadInt("Display Number"), OnColorHex = Read("On Color"), OffColorHex = Read("Off Color"), TextColorHex = Read("Text Color"), DisplayText = Read("Display Text"), HasBorder = border.IsChecked == true })));
+            BindInspectorEdits(() => Apply(settings with
+            { DisplayNumber = ReadInt("Display Number"), OnColorHex = Read("On Color"), OffColorHex = Read("Off Color"), TextColorHex = Read("Text Color"), DisplayText = Read("Display Text"), HasBorder = border.IsChecked == true }));
             return;
         }
         if (element.Kind is "sevenSegment" or "vfdDotMatrix")
         {
-            _inspector.Children.Add(ActionButton("Apply component settings", () => Apply(settings with
-            { DisplayNumber = element.Kind == "sevenSegment" ? ReadInt("Display Number") : settings.DisplayNumber, OnColorHex = Read("On Color") })));
+            BindInspectorEdits(() => Apply(settings with
+            { DisplayNumber = element.Kind == "sevenSegment" ? ReadInt("Display Number") : settings.DisplayNumber, OnColorHex = Read("On Color") }));
             return;
         }
 
@@ -82,19 +82,19 @@ public sealed partial class WorkspaceView
         var reversed = AddCheck("Reversed", settings.IsReversed);
         var lamps = AddCheck("Lamps Enabled", settings.ReelLampsEnabled);
         Add("Top Lamp Number", NumberText(settings.TopLampNumber)); Add("Middle Lamp Number", NumberText(settings.MiddleLampNumber)); Add("Bottom Lamp Number", NumberText(settings.BottomLampNumber));
-        _inspector.Children.Add(ActionButton("Apply component settings", () => Apply(settings with
+        BindInspectorEdits(() => Apply(settings with
         {
             DisplayNumber = ReadInt("Display Number"), Stops = ReadInt("Stops"), VisibleScale = ReadDouble("Visible Scale"),
             BandOffset = ReadDouble("Band Offset"), IsReversed = reversed.IsChecked == true, ReelLampsEnabled = lamps.IsChecked == true,
             TopLampNumber = ReadInt("Top Lamp Number"), MiddleLampNumber = ReadInt("Middle Lamp Number"), BottomLampNumber = ReadInt("Bottom Lamp Number")
-        })));
+        }));
 
         string? Read(string label) => fields[label].Text;
         int? ReadInt(string label) => string.IsNullOrWhiteSpace(fields[label].Text) ? null
             : int.TryParse(fields[label].Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : throw new ArgumentException($"{label} must be a whole number.");
         double? ReadDouble(string label) => double.TryParse(fields[label].Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && double.IsFinite(value)
             ? value : throw new ArgumentException($"{label} must be a finite number.");
-        void Apply(PanelSpecialistSettings updated) => Try(() => _session.UpdateSpecialistSettings(id, updated));
+        void Apply(PanelSpecialistSettings updated) => _session.UpdateSpecialistSettings(id, updated);
         void AddControl(string label, Control control)
         {
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8 };

@@ -150,6 +150,9 @@ public sealed class KeyboardRoutingVerificationTests
                 Assert.Equal("Pending scene edit", session.Elements.Single(e => e.Id == elementId).Name);
 
                 Press(window, Key.S, RawInputModifiers.Control);
+                Assert.True(session.IsDirty); // A blank pending name must not be silently saved.
+                Press(window, Key.Escape);
+                Press(window, Key.S, RawInputModifiers.Control);
                 Assert.False(session.IsDirty);
                 Assert.Equal("Pending scene edit", session.Elements.Single(e => e.Id == elementId).Name);
             }

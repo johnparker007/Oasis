@@ -56,7 +56,7 @@ public sealed class FloatingAssetWindowTests
                 await view.ActivateDocumentAsync("Panel2D",a);
                 capture.Capture();
                 var name=view.GetVisualDescendants().OfType<TextBox>().Single(b=>b.Text=="Rectangle");name.Text="Floating edit";
-                view.GetVisualDescendants().OfType<Button>().Single(b=>Equals(b.Content,"Apply")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                InspectorTestInput.Commit(name);
                 view.UpdateFloatingElement("Face",face,lamp,name:"Independent lamp");
                 view.FloatingDocumentHistory("Panel2D",a);Assert.Equal(original,File.ReadAllText(a));
                 view.FloatingDocumentHistory("Panel2D",a,true);

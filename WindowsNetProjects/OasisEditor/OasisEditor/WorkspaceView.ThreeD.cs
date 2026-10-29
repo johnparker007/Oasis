@@ -133,15 +133,16 @@ public sealed partial class WorkspaceView
         RestartLibraryWatcher();_libraryTask=RefreshLibraryAsync();Refresh();
         if (Is3DActive) QueueSceneReload();
     }
-    private void QueueSceneReload() => _sceneTask = SceneAction(ReloadSceneAsync);
+    private void QueueSceneReload() => _sceneTask = SceneAction(() => ReloadSceneAsync(_inspectorCommitting));
     private async Task SceneAction(Func<Task> action)
     { try { await action(); } catch (OperationCanceledException) { } catch (Exception e) when (e is not OutOfMemoryException) { SetStatus(e.Message); } }
-    private void On3DAssetChanged() { if(_movingDocument)return; CheckPreviewSource(); if (Is3DActive) { Refresh(); QueueSceneReload(); StateChanged?.Invoke(); } }
-    private void OnMachineSceneChanged() { if(_movingDocument)return; RefreshCompositionGraph(); if (_sceneKind is "Machine" or "Cabinet3D") QueueSceneReload(); }
-    public async Task ReloadSceneAsync()
+    private void On3DAssetChanged() { if(_movingDocument)return; _sceneInspectorRevision++; CheckPreviewSource(); if (Is3DActive) { Refresh(); QueueSceneReload(); StateChanged?.Invoke(); } }
+    private void OnMachineSceneChanged() { if(_movingDocument)return; _sceneInspectorRevision++; RefreshCompositionGraph(); if (_sceneKind is "Machine" or "Cabinet3D") QueueSceneReload(); }
+    public Task ReloadSceneAsync() => ReloadSceneAsync(false);
+    private async Task ReloadSceneAsync(bool preserveInspector)
     {
         if (!Is3DActive || _sceneDisposed) return;
-        if (_sceneKind == "Reel") { _sceneCancellation.Cancel(); ReloadReelScene(); return; }
+        if (_sceneKind == "Reel") { _sceneCancellation.Cancel(); if(!preserveInspector)_sceneInspectorRevision++; ReloadReelScene(); return; }
         var old = _sceneCancellation; _sceneCancellation = new(); old.Cancel(); old.Dispose();
         var token = _sceneCancellation.Token;
         var project = _session.RequireEditorProject(); var kind = _sceneKind;
@@ -174,6 +175,7 @@ public sealed partial class WorkspaceView
         var frameFirstGeometry = !_baseScene.Meshes.Any(mesh => mesh.Kind is "visual" or "face") && meshes.Any(mesh => mesh.Kind is "visual" or "face");
         var diagnostics = result.Diagnostics.Concat(faceDiagnostics).Concat(reflectionDiagnostics).ToArray();
         _baseScene = new(meshes, bounds.IsEmpty ? Vector3.Zero : bounds.Minimum, bounds.IsEmpty ? Vector3.Zero : bounds.Maximum, diagnostics);
+        if(!preserveInspector)_sceneInspectorRevision++;
         RebuildSceneHierarchy(result); UpdateSceneDisplay(identity != _sceneIdentity || frameFirstGeometry); _sceneIdentity = identity;
         Refresh3DInspector();
         SetStatus($"{kind}: {meshes.Count} mesh primitives" + (diagnostics.Length > 0 ? " • " + string.Join(" • ", diagnostics) : ""));
@@ -251,8 +253,12 @@ public sealed partial class WorkspaceView
         return new(Get("ViewportGrid"),Get("SelectionColor"),Get("SceneColliderColor"),Get("SceneTriggerColor"));
     }
     private void Refresh3DInspector()
-    {        _inspected = null; // A 3D inspector replaces the cached Panel/Face controls.
-        if (_sceneKind == "Reel") RefreshReelInspector(); else if (_sceneKind == "Prefab") RefreshPrefab3DInspector(); else if (_sceneKind == "Cabinet3D") RefreshCabinet3DInspector(); else RefreshMachine3DInspector();        if(IsLibraryScene)_inspector.Children.Insert(0,new TextBlock{Text="Shared Library asset · Save updates this package for projects that reference it.",TextWrapping=TextWrapping.Wrap,Opacity=.7});    }
+    {        if (_inspectorCommitting) return;
+        if (Equals(_sceneInspectorKey, SceneInspectorKey())) return;
+        _inspected = null; // A 3D inspector replaces the cached Panel/Face controls.
+        if (_sceneKind == "Reel") RefreshReelInspector(); else if (_sceneKind == "Prefab") RefreshPrefab3DInspector(); else if (_sceneKind == "Cabinet3D") RefreshCabinet3DInspector(); else RefreshMachine3DInspector();        if(IsLibraryScene)_inspector.Children.Insert(0,new TextBlock{Text="Shared Library asset · Save updates this package for projects that reference it.",TextWrapping=TextWrapping.Wrap,Opacity=.7});
+        _sceneInspectorKey = SceneInspectorKey();
+    }
     private static bool SameScenePath(string? left,string? right) => !string.IsNullOrWhiteSpace(left) && !string.IsNullOrWhiteSpace(right) && string.Equals(Path.GetFullPath(left),Path.GetFullPath(right),OperatingSystem.IsWindows()?StringComparison.OrdinalIgnoreCase:StringComparison.Ordinal);
     private async Task Create3DAssetDialog(bool prefab)
     {

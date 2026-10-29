@@ -19,8 +19,7 @@ public sealed partial class WorkspaceView
     /// <summary>Renders typed editable fields for the selected node in the active schema 2 Prefab.</summary>
     private void RefreshPrefab3DInspector()
     {
-        _inspector.Children.Clear();
-        _fields.Clear();
+        ClearInspector();
 
         var document = _prefabs.Document;
         if (document is null)
@@ -37,17 +36,17 @@ public sealed partial class WorkspaceView
 
         Heading($"PREFAB NODE  /  {NodePath(root, node.Id)}");
         Field("Node name", node.Name);
-        _inspector.Children.Add(ActionButton("Apply name", () => Try(() => _prefabs.RenameNode(node.Id, _fields["Node name"].Text ?? ""))));
+        BindInspectorEdits(() => _prefabs.RenameNode(node.Id, _fields["Node name"].Text ?? ""));
 
         Heading("LOCAL TRANSFORM");
         var transform = node.Transform;
         Field("Position X", transform.Position.X); Field("Position Y", transform.Position.Y); Field("Position Z", transform.Position.Z);
         Field("Rotation X", transform.Rotation.X); Field("Rotation Y", transform.Rotation.Y); Field("Rotation Z", transform.Rotation.Z);
         Field("Scale X", transform.Scale.X); Field("Scale Y", transform.Scale.Y); Field("Scale Z", transform.Scale.Z);
-        _inspector.Children.Add(ActionButton("Apply transform", () => Try(() => _prefabs.SetTransform(node.Id, new MachineObjectTransform(
+        BindInspectorEdits(() => _prefabs.SetTransform(node.Id, new MachineObjectTransform(
             new MachineVector3(Number("Position X"), Number("Position Y"), Number("Position Z")),
             new MachineVector3(Number("Rotation X"), Number("Rotation Y"), Number("Rotation Z")),
-            new MachineVector3(Number("Scale X"), Number("Scale Y"), Number("Scale Z")))))));
+            new MachineVector3(Number("Scale X"), Number("Scale Y"), Number("Scale Z")))));
 
         Heading("HIERARCHY");
         Field("Child name", "New node");
@@ -92,6 +91,7 @@ public sealed partial class WorkspaceView
             _inspector.Children.Add(new TextBlock { Text = "The Prefab root stays at the top of the hierarchy and cannot be removed or reparented.", TextWrapping = global::Avalonia.Media.TextWrapping.Wrap, Opacity = .7 });
         }
 
+        IgnoreInspectorActionFields(); // Child creation/reparenting are explicit actions.
         Heading("COMPONENTS");
         var modelComponent = node.Components.FirstOrDefault(component => component.Kind == Object3DComponentDefinition.ModelKind);
         var colliderComponent = node.Components.FirstOrDefault(component => component.Kind == Object3DComponentDefinition.ColliderKind);
@@ -121,8 +121,8 @@ public sealed partial class WorkspaceView
         Field("Model path", model.Path); Field("Model intrinsic scale", model.Scale);
         var upAxis = new ComboBox { ItemsSource = new[] { "X", "Y", "Z" }, SelectedItem = model.UpAxis };
         AddLabeledControl("Model up-axis", upAxis);
-        _inspector.Children.Add(ActionButton("Apply Model", () => Try(() => _prefabs.SetModel(nodeId, new Object3DModelDefinition(
-            _fields["Model path"].Text ?? "", Number("Model intrinsic scale"), upAxis.SelectedItem as string ?? "Y")))));
+        BindInspectorEdits(() => _prefabs.SetModel(nodeId, new Object3DModelDefinition(
+            _fields["Model path"].Text ?? "", Number("Model intrinsic scale"), upAxis.SelectedItem as string ?? "Y")));
         _inspector.Children.Add(ActionButton("Import GLB…", () => _ = ImportPrefabModelDialogAsync(nodeId)));
         _inspector.Children.Add(ActionButton("Remove Model component", () => Try(() => _prefabs.RemoveComponent(nodeId, Object3DComponentDefinition.ModelKind))));
     }
@@ -152,8 +152,7 @@ public sealed partial class WorkspaceView
         AddLabeledControl("Collider source frame", sourceFrame);
         var isTrigger = new CheckBox { Content = "Is trigger", IsChecked = collider.IsTrigger };
         _inspector.Children.Add(isTrigger);
-        _inspector.Children.Add(ActionButton("Apply Collider", () => Try(() =>
-        {
+        BindInspectorEdits(() => {
             if (kind.SelectedItem is not string kindName || !Enum.TryParse<Object3DColliderKind>(kindName, out var parsedKind))
                 throw new ArgumentException("Choose a supported collider kind.");
             if (sourceFrame.SelectedItem is not string frameName || !Enum.TryParse<Object3DColliderSourceFrame>(frameName, out var frame))
@@ -171,7 +170,7 @@ public sealed partial class WorkspaceView
                 _ => throw new ArgumentOutOfRangeException(nameof(kind))
             };
             _prefabs.SetCollider(nodeId, definition);
-        })));
+        });
         _inspector.Children.Add(ActionButton("Remove Collider component", () => Try(() => _prefabs.RemoveComponent(nodeId, Object3DComponentDefinition.ColliderKind))));
     }
 
@@ -199,14 +198,13 @@ public sealed partial class WorkspaceView
             SelectedItem = gravityOptions.First(option => option.Value == rigidbody.UseGravity)
         };
         AddLabeledControl("Use gravity", gravity);
-        _inspector.Children.Add(ActionButton("Apply Rigidbody", () => Try(() =>
-        {
+        BindInspectorEdits(() => {
             if (mode.SelectedItem is not string modeName || !Enum.TryParse<Object3DRigidbodyMode>(modeName, out var parsedMode))
                 throw new ArgumentException("Choose a supported Rigidbody mode.");
             double? mass = parsedMode == Object3DRigidbodyMode.Dynamic ? Number("Rigidbody mass") : null;
             var useGravity = (gravity.SelectedItem as NullableBoolOption)?.Value;
             _prefabs.SetRigidbody(nodeId, new Object3DRigidbodyDefinition(parsedMode, mass, useGravity));
-        })));
+        });
         _inspector.Children.Add(ActionButton("Remove Rigidbody component", () => Try(() => _prefabs.RemoveComponent(nodeId, Object3DComponentDefinition.RigidbodyKind))));
     }
 

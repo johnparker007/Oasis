@@ -61,7 +61,7 @@ public sealed class PanelGroupUiTests
                 toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Assert.Equal(3,editor.InspectPanelHierarchyRows().Count);Assert.False(session.IsDirty);
                 session.Select(group);capture.Capture(theme:theme);
                 var icon=owner.GetVisualDescendants().OfType<ComboBox>().Single(c=>c.Name=="PanelGroupIcon");icon.SelectedItem="Reel";
-                owner.GetVisualDescendants().OfType<Button>().Single(b=>Equals(b.Content,"Apply")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
                 Assert.Equal("Reel",session.Groups.Single().Icon);session.Undo();Assert.Equal("Lamp",session.Groups.Single().Icon);Assert.False(session.IsDirty);
                 var output=Environment.GetEnvironmentVariable("OASIS_GROUP_VERIFICATION_OUTPUT");
                 if(output is not null){Directory.CreateDirectory(output);File.WriteAllBytes(Path.Combine(output,$"groups-{theme.ToLowerInvariant()}.png"),capture.Capture(theme:theme));}

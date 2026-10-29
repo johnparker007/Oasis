@@ -29,13 +29,13 @@ public sealed class InspectorTransitionVerificationTests
                 capture.Capture();
                 var reel=view.Reels.Create("Physical Reel");await view.OpenReelAsync(reel);await view.SynchronizeAssetDocumentsAsync();capture.Capture();
                 var reelEditor=view.GetDocumentEditor("Reel");
-                Assert.Contains(view.GetVisualDescendants().OfType<Button>(),b=>Equals(b.Content,"Apply Reel settings"));
+                Assert.Contains(view.GetVisualDescendants().OfType<TextBox>(),b=>b.Text=="Physical Reel");
                 await view.ActivateDocumentAsync(face?"Face":"Panel2D",path);capture.Capture();
                 Assert.DoesNotContain(view.GetVisualDescendants().OfType<Button>(),b=>Equals(b.Content,"Apply Reel settings"));
                 var editor=view.CommandView;
                 var name=view.GetVisualDescendants().OfType<TextBox>().Single(b=>b.Text==(face?"Face lamp":"Panel rectangle"));
                 name.Text="Edited after returning";
-                view.GetVisualDescendants().OfType<Button>().Single(b=>Equals(b.Content,"Apply")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                InspectorTestInput.Commit(name);
                 Assert.Equal("Edited after returning",face?Assert.Single(editor.Faces.Elements).Name:Assert.Single(editor.CommandSession.Elements).Name);
                 Assert.Equal("Physical Reel",reelEditor.Reels.Document.DisplayName);
             }
