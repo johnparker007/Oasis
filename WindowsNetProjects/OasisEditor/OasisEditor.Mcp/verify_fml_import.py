@@ -22,18 +22,36 @@ def verify_retry_after_discard(client, root, samples):
     assert first["succeeded"] and first["importedElementCount"] > 0, first
     originals = {p: (project_root / p).read_bytes() for p in first["copiedAssetRelativePaths"]}
     request(client, "project"); assert response(client, "discard")["result"]
+    assert all(not (project_root / p).exists() for p in originals)
+    assert not (project_root / "Assets/FmlImport/retry").exists()
     client.state("open_project", path=project); client.state("open_panel2d", path=panel)
     assert not client.state()["elements"]
     second = client.state("import_fml", path=str(source))["result"]
     assert second["succeeded"] and second["importedElementCount"] == first["importedElementCount"], second
-    assert all(p.startswith("Assets/FmlImport/retry_2/") for p in second["copiedAssetRelativePaths"]), second
+    assert all(p.startswith("Assets/FmlImport/retry/") for p in second["copiedAssetRelativePaths"]), second
     client.state("save_panel2d")
     client.state("create_panel2d", name="Retry in new panel")
     third = client.state("import_fml", path=str(source))["result"]
     assert third["succeeded"] and third["importedElementCount"] == first["importedElementCount"], third
-    assert all(p.startswith("Assets/FmlImport/retry_3/") for p in third["copiedAssetRelativePaths"]), third
+    assert all(p.startswith("Assets/FmlImport/retry_2/") for p in third["copiedAssetRelativePaths"]), third
     for path, data in originals.items(): assert (project_root / path).read_bytes() == data
     client.state("history"); assert not client.state()["elements"] and not client.state()["isDirty"]
+    preview = client.state("inspect_unreferenced_assets")
+    offered = {p["path"] for p in preview["candidates"]}
+    assert not offered.intersection(third["copiedAssetRelativePaths"]), "Redo references must survive cleanup"
+    client.state("history", redo=True)
+    unrelated = project_root / "Assets/FmlImport/unrelated/keep.png"
+    unrelated.parent.mkdir(parents=True); unrelated.write_bytes(b"user kept this orphan")
+    request(client, "project"); assert response(client, "discard")["result"]
+    assert all(not (project_root / p).exists() for p in third["copiedAssetRelativePaths"])
+    for path, data in originals.items(): assert (project_root / path).read_bytes() == data
+    assert unrelated.exists(), "Discard must not clean unrelated, previously unchecked files"
+    client.state("open_project", path=project)
+    preview = client.state("inspect_unreferenced_assets")
+    assert "Assets/FmlImport/unrelated/keep.png" in {p["path"] for p in preview["candidates"]}
+    result = client.state("delete_unreferenced_assets", scanId=preview["scanId"], paths=["Assets/FmlImport/unrelated/keep.png"])
+    assert not result["failures"] and not unrelated.exists(), result
+    client.state("create_panel2d", name="Smoke layouts")
 
 
 def main():

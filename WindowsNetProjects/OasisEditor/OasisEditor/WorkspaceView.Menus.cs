@@ -69,6 +69,7 @@ public sealed partial class WorkspaceView
             Take(registrations, "Save All", "Save _All", enabled: Project),
             Take(registrations, "Close asset", enabled: () => ActiveDocumentPath is not null),
             Take(registrations, "Close project", "_Close Project", MainProject),
+            Action("Delete unreferenced assets…", async () => await ShowUnreferencedAssetsAsync(), MainProject),
             new Separator(), Action("E_xit", async () => await ExitFromMenuAsync()));
         file.Items.OfType<MenuItem>().Single(item=>Equals(item.Header,"Save _All")).InputGesture=KeyGesture.Parse("Ctrl+Shift+S");
         // Asset creation is now reachable through File > Create rather than a mixed File list.
