@@ -40,7 +40,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     public string ActiveTitle => !ReferenceEquals(CommandView,this) ? CommandView.ActiveTitle : _sceneKind == "Reel" ? _reels.Document.DisplayName : _sceneKind == "Cabinet3D" ? Path.GetFileName(Path.GetDirectoryName(_cabinets.FilePath)) ?? "Cabinet" : _sceneKind == "Prefab" ? _prefabs.Document.DisplayName : _machineActive ? _machines.MachineTitle : _faceActive ? _faces.FaceTitle : _session.PanelTitle;
     public event Action? StateChanged;
     private readonly PanelViewport _viewport;
-    private readonly ListBox _hierarchy = new() { SelectionMode = SelectionMode.Multiple | SelectionMode.Toggle };
+    private readonly ListBox _hierarchy = new() { SelectionMode = SelectionMode.Multiple };
     private readonly ListBox _sources = new() { MaxHeight = 125 };
     private readonly ObservableCollection<ElementSnapshot> _rows = [];
     private readonly ListBox _assets = new();
@@ -370,8 +370,13 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
             var elements = _machineActive ? [] : VisibleHierarchyRows();
             if (!_rows.Select(e => e.Id).SequenceEqual(elements.Select(e => e.Id))) { _rows.Clear(); foreach (var e in elements) _rows.Add(e); }
             else for (var i = 0; i < elements.Count; i++) if (_rows[i] != elements[i]) _rows[i] = elements[i];
-            _hierarchy.SelectedItems?.Clear();
-            foreach (var e in _rows.Where(e => SelectedIds.Contains(e.Id))) _hierarchy.SelectedItems?.Add(e);
+            // Keep the ListBox's range anchor and keyboard focus when it originated the selection.
+            var selectedRows = _rows.Where(e => SelectedIds.Contains(e.Id)).ToArray();
+            if (!_hierarchy.SelectedItems!.OfType<ElementSnapshot>().ToHashSet().SetEquals(selectedRows))
+            {
+                _hierarchy.SelectedItems.Clear();
+                foreach (var e in selectedRows) _hierarchy.SelectedItems.Add(e);
+            }
             var shapes = _faceActive ? [] : _session.SourceShapes;
             _sources.ItemsSource = shapes; _sources.SelectedItem = shapes.FirstOrDefault(s => s.Id == _selectedSource);
             RefreshAssets(); _project.Text = _browseLibrary ? "Oasis Library · "+SceneLibraryRoot : _session.ProjectName ?? "Open or create an Oasis project";
