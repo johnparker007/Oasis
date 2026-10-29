@@ -1,0 +1,2 @@
+# Keep pinned upstream bytes and hashes identical across platform checkouts.
+Upstream/** -text

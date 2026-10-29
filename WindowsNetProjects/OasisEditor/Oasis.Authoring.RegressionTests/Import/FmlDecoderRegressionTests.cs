@@ -4,6 +4,7 @@ using MfmeFmlDecoder.src.Decoder.Component.Core;
 using MfmeFmlDecoder.src.Decoder.Component;
 using MfmeFmlDecoder.src.Model;
 using MfmeFmlDecoder.Model;
+using MfmeFmlDecoder.src.Decoder.Component.Profiles;
 using Xunit;
 
 namespace OasisEditor.Tests;
@@ -50,9 +51,9 @@ public sealed class FmlDecoderRegressionTests
         var explicitZero = parser.Parse(tagMap, [0x18, 0x00, 0x00, 0x00, 0x00, 0x00], 0, ExtendedTagParser.Options.Default.WithoutMatchedTagLogging());
 
         Assert.Equal(0u, absent.UInt32sByAttributeName["ButtonNumber"]);
-        Assert.DoesNotContain(0x18u, absent.PresentTagIds);
+        Assert.DoesNotContain(0x18u, absent.ExplicitTags);
         Assert.Equal(0u, explicitZero.UInt32sByAttributeName["ButtonNumber"]);
-        Assert.Contains(0x18u, explicitZero.PresentTagIds);
+        Assert.Contains(0x18u, explicitZero.ExplicitTags);
     }
 
     [Fact]
@@ -68,7 +69,7 @@ public sealed class FmlDecoderRegressionTests
         };
 
         var parsed = new ExtendedTagParser().Parse(
-            BackgroundParser.ComponentTagMap,
+            ComponentProfileCatalog.Resolve(MFMEComponentType.Background, MfmeVersion.V20_1).Tags,
             bytes,
             0,
             ExtendedTagParser.Options.Default.WithoutMatchedTagLogging());
@@ -79,7 +80,7 @@ public sealed class FmlDecoderRegressionTests
 
         var onlyOffsetX = new byte[] { 0x4C, 0x00, 0x00, 0x0A, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00 };
         var parsedWithAbsentY = new ExtendedTagParser().Parse(
-            BackgroundParser.ComponentTagMap,
+            ComponentProfileCatalog.Resolve(MFMEComponentType.Background, MfmeVersion.V20_1).Tags,
             onlyOffsetX,
             0,
             ExtendedTagParser.Options.Default.WithoutMatchedTagLogging());

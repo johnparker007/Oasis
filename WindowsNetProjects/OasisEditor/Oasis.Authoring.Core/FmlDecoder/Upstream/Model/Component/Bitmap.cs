@@ -1,0 +1,16 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MfmeFmlDecoder.src.Model.Component
+{
+    [System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties)]
+    internal class Bitmap : BaseComponent
+    {
+        public bool Transparent { get; set; }
+        public string StretchMode { get; set; }
+    }
+}
+

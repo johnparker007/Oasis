@@ -11,4 +11,11 @@
     <PackageReference Include="SkiaSharp" Version="3.119.4" />
     <ProjectReference Include="../Oasis.Scripting/Oasis.Scripting.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Update="FmlDecoder/Upstream/LICENSE;FmlDecoder/Upstream/upstream.json">
+      <Link>ThirdParty/mfme-fml-decoder/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
 </Project>

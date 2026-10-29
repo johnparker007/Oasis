@@ -1,0 +1,1191 @@
+{
+  "repository": "https://github.com/paul-maidment/mfme-fml-decoder",
+  "revision": "93db44111215d1e71a21b74cc4242bb96f6865f3",
+  "license": "AGPL-3.0-or-later",
+  "files": {
+    "LICENSE": {
+      "upstreamSha256": "e46f1ef18d97b6ca71b9cd0458d89f7de1af0b7bb33b9b75ad212372139ae97f",
+      "integratedSha256": "e46f1ef18d97b6ca71b9cd0458d89f7de1af0b7bb33b9b75ad212372139ae97f"
+    },
+    "Decoder/ComponentWalker.cs": {
+      "upstreamSha256": "c4bf847a8eb28d8eeb66a053976b96532f905d38198027c93a4d6344f61420f9",
+      "integratedSha256": "c4bf847a8eb28d8eeb66a053976b96532f905d38198027c93a4d6344f61420f9"
+    },
+    "Decoder/FileWalker.cs": {
+      "upstreamSha256": "5ef4ac69500a0f3b356f55bc4c7e6ab60567b43909980e8eeb54574f494c0391",
+      "integratedSha256": "5ef4ac69500a0f3b356f55bc4c7e6ab60567b43909980e8eeb54574f494c0391"
+    },
+    "Decoder/LengthPrefixedStringTableScanner.cs": {
+      "upstreamSha256": "e572bcd3c16423b02063285e311414846890683315b3b6e04a36bf32a5ae883f",
+      "integratedSha256": "e572bcd3c16423b02063285e311414846890683315b3b6e04a36bf32a5ae883f"
+    },
+    "Decoder/MfmeVersion.cs": {
+      "upstreamSha256": "adfe20a0d5d6a42a6d5162795a928ee18e11a7259a0ed7fddd9d5427f698e3c5",
+      "integratedSha256": "adfe20a0d5d6a42a6d5162795a928ee18e11a7259a0ed7fddd9d5427f698e3c5"
+    },
+    "Decoder/MfmeVersionReader.cs": {
+      "upstreamSha256": "7711a27df52450eb29955d8df61e0d47b4e19b327151bc3b5d9fce4b74fecac1",
+      "integratedSha256": "7711a27df52450eb29955d8df61e0d47b4e19b327151bc3b5d9fce4b74fecac1"
+    },
+    "Decoder/ParsingContext.cs": {
+      "upstreamSha256": "11b2e5af5add553aa6773cc82c409ecf84a01df3d1675849b9501ada78b97b71",
+      "integratedSha256": "11b2e5af5add553aa6773cc82c409ecf84a01df3d1675849b9501ada78b97b71"
+    },
+    "Decoder/Component/AceMatrixParser.cs": {
+      "upstreamSha256": "f33b5240109e5f1adb738cb6452208673845121fd7b2120b1932a5510c505cf4",
+      "integratedSha256": "f33b5240109e5f1adb738cb6452208673845121fd7b2120b1932a5510c505cf4"
+    },
+    "Decoder/Component/AceVideoParser.cs": {
+      "upstreamSha256": "212e2e86c66a5ed63be2cad5ea349f7b22e0664b98b1a12d3e8b7e374bb30ad0",
+      "integratedSha256": "212e2e86c66a5ed63be2cad5ea349f7b22e0664b98b1a12d3e8b7e374bb30ad0"
+    },
+    "Decoder/Component/AlphaNewParser.cs": {
+      "upstreamSha256": "2cc7d0e3ebfac9a32f3e956f13f86f8a44589bf8150539e7c892b095b7ada9a0",
+      "integratedSha256": "2cc7d0e3ebfac9a32f3e956f13f86f8a44589bf8150539e7c892b095b7ada9a0"
+    },
+    "Decoder/Component/AlphaParser.cs": {
+      "upstreamSha256": "3e71c63bd2ec2cd5a55792ec66b0da40ad4061514b43ba860fa84cc89463f41c",
+      "integratedSha256": "3e71c63bd2ec2cd5a55792ec66b0da40ad4061514b43ba860fa84cc89463f41c"
+    },
+    "Decoder/Component/AstraMatrixParser.cs": {
+      "upstreamSha256": "396be557c611a600907cbf184627195879f016b24e790c3958fad85ab323cd78",
+      "integratedSha256": "396be557c611a600907cbf184627195879f016b24e790c3958fad85ab323cd78"
+    },
+    "Decoder/Component/BackgroundParser.cs": {
+      "upstreamSha256": "7d6b741c3f29b5be9d1c1ebfbe2762fc5f7e88fd2c2f92ecb959d79a75f0216e",
+      "integratedSha256": "7d6b741c3f29b5be9d1c1ebfbe2762fc5f7e88fd2c2f92ecb959d79a75f0216e"
+    },
+    "Decoder/Component/BandReelParser.cs": {
+      "upstreamSha256": "67bc555d7990f4b1c716201122c10003ea7d3d6b063d0bb2942a8ad9c385dd5b",
+      "integratedSha256": "67bc555d7990f4b1c716201122c10003ea7d3d6b063d0bb2942a8ad9c385dd5b"
+    },
+    "Decoder/Component/BarcrestBWBVideoParser.cs": {
+      "upstreamSha256": "94b89f8f03bd6232d644d5dc774261805645465d084e948319b0ce6a6178bd4c",
+      "integratedSha256": "94b89f8f03bd6232d644d5dc774261805645465d084e948319b0ce6a6178bd4c"
+    },
+    "Decoder/Component/BFMAlphaParser.cs": {
+      "upstreamSha256": "594abde2c41beae5b16a7c601b2ce2a04a314f98d601bdabba605b16f0ff72e5",
+      "integratedSha256": "594abde2c41beae5b16a7c601b2ce2a04a314f98d601bdabba605b16f0ff72e5"
+    },
+    "Decoder/Component/BFMColourLedParser.cs": {
+      "upstreamSha256": "87b5ec3a5b04b8fb90b7fd048236ea0ddc5829aadde9ff52d5ef018dd4ef016d",
+      "integratedSha256": "87b5ec3a5b04b8fb90b7fd048236ea0ddc5829aadde9ff52d5ef018dd4ef016d"
+    },
+    "Decoder/Component/BFMLEDParser.cs": {
+      "upstreamSha256": "94d1a0b36c02cc8ab44440315b75dc2797d57ed0fde334a101e54d267c23de3c",
+      "integratedSha256": "94d1a0b36c02cc8ab44440315b75dc2797d57ed0fde334a101e54d267c23de3c"
+    },
+    "Decoder/Component/BFMVideoParser.cs": {
+      "upstreamSha256": "aff06b3d6324abd1d1f23392851651256d66ff075f4683111eaf40c685efa4cf",
+      "integratedSha256": "aff06b3d6324abd1d1f23392851651256d66ff075f4683111eaf40c685efa4cf"
+    },
+    "Decoder/Component/BitmapParser.cs": {
+      "upstreamSha256": "fa41f3c393643b2054c14285e49cd64eb2008190e4e32724c5c42c1ea59ca098",
+      "integratedSha256": "fa41f3c393643b2054c14285e49cd64eb2008190e4e32724c5c42c1ea59ca098"
+    },
+    "Decoder/Component/BorderParser.cs": {
+      "upstreamSha256": "2673c70d45ec8505faba959e491c9f436eef06b0409a900b68b15299917548c4",
+      "integratedSha256": "2673c70d45ec8505faba959e491c9f436eef06b0409a900b68b15299917548c4"
+    },
+    "Decoder/Component/ButtonParser.cs": {
+      "upstreamSha256": "62f25737d6489d05adcd1e02064d4a44d31d93e0593fd5abc33ecf910e2af35d",
+      "integratedSha256": "62f25737d6489d05adcd1e02064d4a44d31d93e0593fd5abc33ecf910e2af35d"
+    },
+    "Decoder/Component/CheckboxParser.cs": {
+      "upstreamSha256": "5a3e449213c05e8778c702e00d836bff626354ccb7cfb0ebdc96bc830c790c38",
+      "integratedSha256": "5a3e449213c05e8778c702e00d836bff626354ccb7cfb0ebdc96bc830c790c38"
+    },
+    "Decoder/Component/CoinmasterVideoParser.cs": {
+      "upstreamSha256": "aa120aadb54c6ecc251af3de524e84e59cf88dd3b08cf9d26534ec71af7aace2",
+      "integratedSha256": "aa120aadb54c6ecc251af3de524e84e59cf88dd3b08cf9d26534ec71af7aace2"
+    },
+    "Decoder/Component/DiscReelParser.cs": {
+      "upstreamSha256": "eefdf5f95d35d9f0b2f8d4e97ffdcc31bc712c0f6dd998863c637b2a1371ecdd",
+      "integratedSha256": "eefdf5f95d35d9f0b2f8d4e97ffdcc31bc712c0f6dd998863c637b2a1371ecdd"
+    },
+    "Decoder/Component/DotAlphaParser.cs": {
+      "upstreamSha256": "d98dbae6177ef694334f363f32664d1bb33b53653808b36407b96d894121e141",
+      "integratedSha256": "d98dbae6177ef694334f363f32664d1bb33b53653808b36407b96d894121e141"
+    },
+    "Decoder/Component/DotMatrixParser.cs": {
+      "upstreamSha256": "5eb589cab1ca9f18396ba7e1895b831b7ae0a04ad59943f9507489236474d9a2",
+      "integratedSha256": "5eb589cab1ca9f18396ba7e1895b831b7ae0a04ad59943f9507489236474d9a2"
+    },
+    "Decoder/Component/EpochDotAlphaParser.cs": {
+      "upstreamSha256": "0cfb912bcc59ec44e04553575dfc41b7d7a1e11d8c5ce000dd723dcd6476a426",
+      "integratedSha256": "0cfb912bcc59ec44e04553575dfc41b7d7a1e11d8c5ce000dd723dcd6476a426"
+    },
+    "Decoder/Component/EpochMatrixParser.cs": {
+      "upstreamSha256": "3392611b5db20dc2c0ef51c75db1a65a2a61f13afc66fd130a3786073df3a526",
+      "integratedSha256": "3392611b5db20dc2c0ef51c75db1a65a2a61f13afc66fd130a3786073df3a526"
+    },
+    "Decoder/Component/FlipReelParser.cs": {
+      "upstreamSha256": "95a8d0e9d0564a633eb80474ca21d7ef4efd6b10810b1ac18e4dac0e88c883d3",
+      "integratedSha256": "95a8d0e9d0564a633eb80474ca21d7ef4efd6b10810b1ac18e4dac0e88c883d3"
+    },
+    "Decoder/Component/FrameParser.cs": {
+      "upstreamSha256": "35874f7f7628b1b62692ba813c8c4e15dd721b0250968c561d53f4b8581126e2",
+      "integratedSha256": "35874f7f7628b1b62692ba813c8c4e15dd721b0250968c561d53f4b8581126e2"
+    },
+    "Decoder/Component/IGTVfdParser.cs": {
+      "upstreamSha256": "436c2c4ed7d1713c5b3e50db394fe9edd8f99cbfa6b39ffb8c80e01dd129ca81",
+      "integratedSha256": "436c2c4ed7d1713c5b3e50db394fe9edd8f99cbfa6b39ffb8c80e01dd129ca81"
+    },
+    "Decoder/Component/LabelParser.cs": {
+      "upstreamSha256": "83808346d8d647c7f9b95177bd62e526e1ecfa46b81b99e058e6a046e5896337",
+      "integratedSha256": "83808346d8d647c7f9b95177bd62e526e1ecfa46b81b99e058e6a046e5896337"
+    },
+    "Decoder/Component/LampParser.cs": {
+      "upstreamSha256": "a00d02e3f24272ff43838b3da7a6b06b772046ded2a63fa185e2cdcb642317f7",
+      "integratedSha256": "a00d02e3f24272ff43838b3da7a6b06b772046ded2a63fa185e2cdcb642317f7"
+    },
+    "Decoder/Component/LedParser.cs": {
+      "upstreamSha256": "34161ac78cf106f285121175b78f09e783bc0f38797e2b113573ead433af4244",
+      "integratedSha256": "34161ac78cf106f285121175b78f09e783bc0f38797e2b113573ead433af4244"
+    },
+    "Decoder/Component/MatrixAlphaParser.cs": {
+      "upstreamSha256": "2b8b037db9c3422fc99678378e561c267533ad86da0e43cf7973d7596f7fba9a",
+      "integratedSha256": "2b8b037db9c3422fc99678378e561c267533ad86da0e43cf7973d7596f7fba9a"
+    },
+    "Decoder/Component/MaygayMatrixParser.cs": {
+      "upstreamSha256": "1577e1c761d117c6fd9793eb4ae2a9b81e9e52c48c9467655ca505345f629dbf",
+      "integratedSha256": "1577e1c761d117c6fd9793eb4ae2a9b81e9e52c48c9467655ca505345f629dbf"
+    },
+    "Decoder/Component/MaygayVideoParser.cs": {
+      "upstreamSha256": "fe10a0ac294bf638852773d7104727ac9c7db346a5dc8d39a24cbe312c6ef13a",
+      "integratedSha256": "fe10a0ac294bf638852773d7104727ac9c7db346a5dc8d39a24cbe312c6ef13a"
+    },
+    "Decoder/Component/PlasmaDisplayParser.cs": {
+      "upstreamSha256": "70d82834852ea68f8041fa1429220aa0b07d5a7b2d72ffb75fb45b3809030d7c",
+      "integratedSha256": "70d82834852ea68f8041fa1429220aa0b07d5a7b2d72ffb75fb45b3809030d7c"
+    },
+    "Decoder/Component/PrismLampParser.cs": {
+      "upstreamSha256": "ec10ad64b451a80f35f4b0c5d0b7dadc0e871f6614fb0a65228a9b9543e08854",
+      "integratedSha256": "ec10ad64b451a80f35f4b0c5d0b7dadc0e871f6614fb0a65228a9b9543e08854"
+    },
+    "Decoder/Component/ProconnMatrixParser.cs": {
+      "upstreamSha256": "eef8e72c41034109a42e403313b9b32d6e6690c892c0c6152ada19b09a535a7a",
+      "integratedSha256": "eef8e72c41034109a42e403313b9b32d6e6690c892c0c6152ada19b09a535a7a"
+    },
+    "Decoder/Component/ReelBonusReelParser.cs": {
+      "upstreamSha256": "c3182c2c8f64e3f7a24a4a31dbaeb5fda2e309552e42ddfbeb4682832bf399ed",
+      "integratedSha256": "c3182c2c8f64e3f7a24a4a31dbaeb5fda2e309552e42ddfbeb4682832bf399ed"
+    },
+    "Decoder/Component/ReelParser.cs": {
+      "upstreamSha256": "0a24e7328244bebc605b5eec69be1e2e7491a00a2c03036992ac83971aba14e1",
+      "integratedSha256": "0a24e7328244bebc605b5eec69be1e2e7491a00a2c03036992ac83971aba14e1"
+    },
+    "Decoder/Component/RGBLedParser.cs": {
+      "upstreamSha256": "d5423ae785a731d58023927d2d81d3c5774792db342251c821e119484f3d1202",
+      "integratedSha256": "d5423ae785a731d58023927d2d81d3c5774792db342251c821e119484f3d1202"
+    },
+    "Decoder/Component/SevenSegBlockParser.cs": {
+      "upstreamSha256": "ae0acfc96eb7f4d269c55f9e6b3abd8fdfbe0da479f94687ec646f54c34acc73",
+      "integratedSha256": "ae0acfc96eb7f4d269c55f9e6b3abd8fdfbe0da479f94687ec646f54c34acc73"
+    },
+    "Decoder/Component/SevenSegParser.cs": {
+      "upstreamSha256": "e79601e888032e4fa68e4846a3ff12e7a104aae8fe3b620893e7231f75501ffd",
+      "integratedSha256": "e79601e888032e4fa68e4846a3ff12e7a104aae8fe3b620893e7231f75501ffd"
+    },
+    "Decoder/Component/Behaviours/LegacyBorderOrderBehaviour.cs": {
+      "upstreamSha256": "2033486d657e3e4977562e148259adb495889fb45b16c4e609db64f9030dec3c",
+      "integratedSha256": "2033486d657e3e4977562e148259adb495889fb45b16c4e609db64f9030dec3c"
+    },
+    "Decoder/Component/Core/BaseSectionTagMapBuilder.cs": {
+      "upstreamSha256": "6eaefdda16f0375bf2c9b2db40f7ff4a8228cfa9faf257448b9968d4dfd75cc4",
+      "integratedSha256": "6eaefdda16f0375bf2c9b2db40f7ff4a8228cfa9faf257448b9968d4dfd75cc4"
+    },
+    "Decoder/Component/Core/ComponentParser.cs": {
+      "upstreamSha256": "f664738425a056df49dd7e0fa8650a94d040503e1fd1c98429cef39b45562dfc",
+      "integratedSha256": "f664738425a056df49dd7e0fa8650a94d040503e1fd1c98429cef39b45562dfc"
+    },
+    "Decoder/Component/Core/ComponentParserBase.cs": {
+      "upstreamSha256": "572b2d3d3796288d2908e483bda33712ccca3b821f095daf35349a1593281330",
+      "integratedSha256": "6b9eec747442e87f5b7914d6538d65269c5b85f50e98162bb00e3b545db0a41c"
+    },
+    "Decoder/Component/Core/ExtendedTagParser.cs": {
+      "upstreamSha256": "e1adb521c667da3ac3990a2e295ffb74ae547f8bfc2fe0de0a21954e5c4ee489",
+      "integratedSha256": "e1adb521c667da3ac3990a2e295ffb74ae547f8bfc2fe0de0a21954e5c4ee489"
+    },
+    "Decoder/Component/Core/FontTagParser.cs": {
+      "upstreamSha256": "852582b43aee9b06f05d2c212020e704cc9055ede448eb697694ee54a759ea26",
+      "integratedSha256": "852582b43aee9b06f05d2c212020e704cc9055ede448eb697694ee54a759ea26"
+    },
+    "Decoder/Component/Core/GeometryParser.cs": {
+      "upstreamSha256": "73bdaa3a088130efd27a2efedaedf5adeb8748bbbb26d68581694cb70e49f72a",
+      "integratedSha256": "73bdaa3a088130efd27a2efedaedf5adeb8748bbbb26d68581694cb70e49f72a"
+    },
+    "Decoder/Component/Helper/BorderOwnershipAssigner.cs": {
+      "upstreamSha256": "2546076c623bd475ca149fa173a9d71715ebfe122c88276893bd83722b53cd6c",
+      "integratedSha256": "2546076c623bd475ca149fa173a9d71715ebfe122c88276893bd83722b53cd6c"
+    },
+    "Decoder/Component/Helper/CoinNoteHierarchy.cs": {
+      "upstreamSha256": "591db522afa6b54d83748245ebaa75c3f189111b1d512989d783480c759a8ca4",
+      "integratedSha256": "591db522afa6b54d83748245ebaa75c3f189111b1d512989d783480c759a8ca4"
+    },
+    "Decoder/Component/Helper/LegacyCoinNoteResolver.cs": {
+      "upstreamSha256": "54d93414cfe088da3ec1366a40b9f3b675b551ef1310eefe91e5cdb3647e185c",
+      "integratedSha256": "54d93414cfe088da3ec1366a40b9f3b675b551ef1310eefe91e5cdb3647e185c"
+    },
+    "Decoder/Component/Profiles/ComponentProfile.cs": {
+      "upstreamSha256": "1b47e7b4f5f43a78f2ea120092ed9c7651c156e98cf92250316715fbc4485c99",
+      "integratedSha256": "1b47e7b4f5f43a78f2ea120092ed9c7651c156e98cf92250316715fbc4485c99"
+    },
+    "Decoder/Component/Profiles/ComponentProfileCatalog.cs": {
+      "upstreamSha256": "de1094c4e0ec293cf891ff94c36a0c716b2e90b3c2dede6a6c5f2b20d19a672e",
+      "integratedSha256": "de1094c4e0ec293cf891ff94c36a0c716b2e90b3c2dede6a6c5f2b20d19a672e"
+    },
+    "Decoder/Component/Profiles/ComponentProfileFactory.cs": {
+      "upstreamSha256": "c71a66c27a02ea3923ea0dc4fe66fd34ef9c043a259fca1822083bf0a5586a48",
+      "integratedSha256": "c71a66c27a02ea3923ea0dc4fe66fd34ef9c043a259fca1822083bf0a5586a48"
+    },
+    "Decoder/Component/Profiles/UnsupportedComponentProfileException.cs": {
+      "upstreamSha256": "b8e98adf88a96ede07441ef3985ad9d68087f6a96e4cd0c5ce9bc018108b0700",
+      "integratedSha256": "b8e98adf88a96ede07441ef3985ad9d68087f6a96e4cd0c5ce9bc018108b0700"
+    },
+    "Decoder/Component/Profiles/Common/AngleProfile.cs": {
+      "upstreamSha256": "cfc5bffa5781c5e9855c4ad8a9d714a2cf56bfb165321ca5f4379f6700848303",
+      "integratedSha256": "cfc5bffa5781c5e9855c4ad8a9d714a2cf56bfb165321ca5f4379f6700848303"
+    },
+    "Decoder/Component/Profiles/Common/BaseSectionProfile.cs": {
+      "upstreamSha256": "7bcb8c6c2789a0f76763a9e245d558b055c008b53c69b63ed4173baddcabba03",
+      "integratedSha256": "7bcb8c6c2789a0f76763a9e245d558b055c008b53c69b63ed4173baddcabba03"
+    },
+    "Decoder/Component/Profiles/Common/CommonBaseTags.cs": {
+      "upstreamSha256": "e032b562040ef18bec2691de5b989c624eeaee8aa0931ccbdbbf73ba4cf99bdf",
+      "integratedSha256": "e032b562040ef18bec2691de5b989c624eeaee8aa0931ccbdbbf73ba4cf99bdf"
+    },
+    "Decoder/Component/Profiles/Common/ComponentValueOrder.cs": {
+      "upstreamSha256": "722e194cb114660dacb47bcda13ab140bbc7189ed838c2f6018262adf446f483",
+      "integratedSha256": "722e194cb114660dacb47bcda13ab140bbc7189ed838c2f6018262adf446f483"
+    },
+    "Decoder/Component/Profiles/Common/DefaultsProfile.cs": {
+      "upstreamSha256": "7324e9edc1ab2cbdd2c9ecd6b21a61082321e05cc2d3e106b2a9c3a6d5655cdc",
+      "integratedSha256": "7324e9edc1ab2cbdd2c9ecd6b21a61082321e05cc2d3e106b2a9c3a6d5655cdc"
+    },
+    "Decoder/Component/Profiles/Common/TagMapOverrides.cs": {
+      "upstreamSha256": "ed5695f15543a6a88e1502cec23d00bc52606cbc958460ec02085c5002b67046",
+      "integratedSha256": "ed5695f15543a6a88e1502cec23d00bc52606cbc958460ec02085c5002b67046"
+    },
+    "Decoder/Component/Profiles/MFME/MFMEProfiles.cs": {
+      "upstreamSha256": "1c4a7d00ca91f521471b042cad4ed36d8b959c81eb018ddee1eda4f4f8fcafa0",
+      "integratedSha256": "1c4a7d00ca91f521471b042cad4ed36d8b959c81eb018ddee1eda4f4f8fcafa0"
+    },
+    "Decoder/Component/Profiles/V18_0/V18_0Profiles.cs": {
+      "upstreamSha256": "005d5dd1090aca5cb7cdf7c8def0ab938fe0066e085284a4196d4c94507940e0",
+      "integratedSha256": "005d5dd1090aca5cb7cdf7c8def0ab938fe0066e085284a4196d4c94507940e0"
+    },
+    "Decoder/Component/Profiles/V19_0/LampProfileV19_0.cs": {
+      "upstreamSha256": "5683e39dd0eb4b21fc9ae82e3caba905325a1a6b5f365ee8722dcca8db79835a",
+      "integratedSha256": "5683e39dd0eb4b21fc9ae82e3caba905325a1a6b5f365ee8722dcca8db79835a"
+    },
+    "Decoder/Component/Profiles/V19_0/V19_0Profiles.cs": {
+      "upstreamSha256": "39db98b1cfbcd3cae2f0a87e98761b94fcd83661b86b9e7f56871c7cecbaaa87",
+      "integratedSha256": "39db98b1cfbcd3cae2f0a87e98761b94fcd83661b86b9e7f56871c7cecbaaa87"
+    },
+    "Decoder/Component/Profiles/V19_1/V19_1Profiles.cs": {
+      "upstreamSha256": "6e3ee3b289136630dc4ca34054c80ea11a31e1ae633d2eca503d5c72491c9df1",
+      "integratedSha256": "6e3ee3b289136630dc4ca34054c80ea11a31e1ae633d2eca503d5c72491c9df1"
+    },
+    "Decoder/Component/Profiles/V19_2/V19_2Profiles.cs": {
+      "upstreamSha256": "9f5da160a8a7550064239ba89c85d9a8cf5ebdb876234caf36ed2458a5eae8f4",
+      "integratedSha256": "9f5da160a8a7550064239ba89c85d9a8cf5ebdb876234caf36ed2458a5eae8f4"
+    },
+    "Decoder/Component/Profiles/V19_3/V19_3Profiles.cs": {
+      "upstreamSha256": "03d62a1140d684eb614ab953b9ee546b740061f93ec0fa98185cc816d8ac6adb",
+      "integratedSha256": "03d62a1140d684eb614ab953b9ee546b740061f93ec0fa98185cc816d8ac6adb"
+    },
+    "Decoder/Component/Profiles/V19_4/V19_4Profiles.cs": {
+      "upstreamSha256": "e98b316c10df074102dda4d5141f98b4ea627db5f906f7cd952df36a6ac21d04",
+      "integratedSha256": "e98b316c10df074102dda4d5141f98b4ea627db5f906f7cd952df36a6ac21d04"
+    },
+    "Decoder/Component/Profiles/V19_5/ButtonProfileV19_5.cs": {
+      "upstreamSha256": "2fad297d7ab0afb9142e97ac2d1e1ef28c3bbda6f4eb0a3f903bb056ac634d41",
+      "integratedSha256": "2fad297d7ab0afb9142e97ac2d1e1ef28c3bbda6f4eb0a3f903bb056ac634d41"
+    },
+    "Decoder/Component/Profiles/V19_5/V19_5Profiles.cs": {
+      "upstreamSha256": "687c9674c0f7fa59ffb2af3e186e74aaf9fb91824cee9cd4d918af437007834d",
+      "integratedSha256": "687c9674c0f7fa59ffb2af3e186e74aaf9fb91824cee9cd4d918af437007834d"
+    },
+    "Decoder/Component/Profiles/V19_6/V19_6Profiles.cs": {
+      "upstreamSha256": "12d34e77293ae7d89086f97e911c3ecb0d264d5e8a8a8f5be8ea5f94aab6a406",
+      "integratedSha256": "12d34e77293ae7d89086f97e911c3ecb0d264d5e8a8a8f5be8ea5f94aab6a406"
+    },
+    "Decoder/Component/Profiles/V19_8/AceMatrixProfileV19_8.cs": {
+      "upstreamSha256": "1d094c424442d1fde06fdc852f60684881e1e2427bdc5203bb922d49ec172587",
+      "integratedSha256": "1d094c424442d1fde06fdc852f60684881e1e2427bdc5203bb922d49ec172587"
+    },
+    "Decoder/Component/Profiles/V19_8/AceVideoProfileV19_8.cs": {
+      "upstreamSha256": "29a913ad2973ba49fad25813f3fe9f9b5eb102c53e5242cdb394fef3909a0bd3",
+      "integratedSha256": "29a913ad2973ba49fad25813f3fe9f9b5eb102c53e5242cdb394fef3909a0bd3"
+    },
+    "Decoder/Component/Profiles/V19_8/AlphaNewProfileV19_8.cs": {
+      "upstreamSha256": "f187f5470017b646e70e8141c71b18db24749c0e1e88e4d06138439616f16c33",
+      "integratedSha256": "f187f5470017b646e70e8141c71b18db24749c0e1e88e4d06138439616f16c33"
+    },
+    "Decoder/Component/Profiles/V19_8/AlphaProfileV19_8.cs": {
+      "upstreamSha256": "5d29cb4b1ef6b4e6cdf57142192f85855a35e5af2467c946b509ea9a598a9af4",
+      "integratedSha256": "5d29cb4b1ef6b4e6cdf57142192f85855a35e5af2467c946b509ea9a598a9af4"
+    },
+    "Decoder/Component/Profiles/V19_8/AstraMatrixProfileV19_8.cs": {
+      "upstreamSha256": "94eb39d4ad1f99816ca27f0af357dd59783f98357bd3238a19a28559b653834f",
+      "integratedSha256": "94eb39d4ad1f99816ca27f0af357dd59783f98357bd3238a19a28559b653834f"
+    },
+    "Decoder/Component/Profiles/V19_8/BackgroundProfileV19_8.cs": {
+      "upstreamSha256": "4b6a0a2b7fcee975eebb0127b88bb7c1382ab29fd54904d67d6ebb1f7cfa0d0b",
+      "integratedSha256": "4b6a0a2b7fcee975eebb0127b88bb7c1382ab29fd54904d67d6ebb1f7cfa0d0b"
+    },
+    "Decoder/Component/Profiles/V19_8/BandReelProfileV19_8.cs": {
+      "upstreamSha256": "ee79a8dcc35821e79f60889192255e6777c1ac885ab960df57a3c60f0b001a2f",
+      "integratedSha256": "ee79a8dcc35821e79f60889192255e6777c1ac885ab960df57a3c60f0b001a2f"
+    },
+    "Decoder/Component/Profiles/V19_8/BarcrestBWBVideoProfileV19_8.cs": {
+      "upstreamSha256": "1eb8d08f5b97ba6f1545638e78e78993d1dd9077ed4e687d9bb975d83cf6f876",
+      "integratedSha256": "1eb8d08f5b97ba6f1545638e78e78993d1dd9077ed4e687d9bb975d83cf6f876"
+    },
+    "Decoder/Component/Profiles/V19_8/BFMAlphaProfileV19_8.cs": {
+      "upstreamSha256": "33e7d3459fe93f3baf46281799dec192cb20870394e146a0eddaef9a4b6df605",
+      "integratedSha256": "33e7d3459fe93f3baf46281799dec192cb20870394e146a0eddaef9a4b6df605"
+    },
+    "Decoder/Component/Profiles/V19_8/BFMColourLedProfileV19_8.cs": {
+      "upstreamSha256": "717632b6c66cc5057a019f8e7c9447f14cddf862aed997381f3d02269a4b65c3",
+      "integratedSha256": "717632b6c66cc5057a019f8e7c9447f14cddf862aed997381f3d02269a4b65c3"
+    },
+    "Decoder/Component/Profiles/V19_8/BFMLEDProfileV19_8.cs": {
+      "upstreamSha256": "35fbfb5da457cc75412e4473a0580a2f5f8b05c14b7f7be53f8e8547aa7fc37b",
+      "integratedSha256": "35fbfb5da457cc75412e4473a0580a2f5f8b05c14b7f7be53f8e8547aa7fc37b"
+    },
+    "Decoder/Component/Profiles/V19_8/BFMVideoProfileV19_8.cs": {
+      "upstreamSha256": "169e7b7946830b5ed82d6a8f47cbd17b5e85692373b6716200a6d68e8b6623c7",
+      "integratedSha256": "169e7b7946830b5ed82d6a8f47cbd17b5e85692373b6716200a6d68e8b6623c7"
+    },
+    "Decoder/Component/Profiles/V19_8/BitmapProfileV19_8.cs": {
+      "upstreamSha256": "83f255b6a02263ba3b10d41bac54a3963cac1a6816c741b08aac8d133ef226cd",
+      "integratedSha256": "83f255b6a02263ba3b10d41bac54a3963cac1a6816c741b08aac8d133ef226cd"
+    },
+    "Decoder/Component/Profiles/V19_8/BorderProfileV19_8.cs": {
+      "upstreamSha256": "6dad412601a8380ace661ab5ce835e9e561dc4787a474cc528ac9b1a0b5cca88",
+      "integratedSha256": "6dad412601a8380ace661ab5ce835e9e561dc4787a474cc528ac9b1a0b5cca88"
+    },
+    "Decoder/Component/Profiles/V19_8/ButtonProfileV19_8.cs": {
+      "upstreamSha256": "4d346b9c21f6a8b2523e0d870558d5acce5493a92cc9a4ade78e39d8b54a717d",
+      "integratedSha256": "4d346b9c21f6a8b2523e0d870558d5acce5493a92cc9a4ade78e39d8b54a717d"
+    },
+    "Decoder/Component/Profiles/V19_8/CheckboxProfileV19_8.cs": {
+      "upstreamSha256": "a7169defe79baf4ae9c54ff90cf485bc95e2302e6f47452177e3ee5575a2018e",
+      "integratedSha256": "a7169defe79baf4ae9c54ff90cf485bc95e2302e6f47452177e3ee5575a2018e"
+    },
+    "Decoder/Component/Profiles/V19_8/CoinmasterVideoProfileV19_8.cs": {
+      "upstreamSha256": "0c2d2e51e7b255e8b0a696ec33b0efb2ad397f2e692f734592a2047e6eeadfe8",
+      "integratedSha256": "0c2d2e51e7b255e8b0a696ec33b0efb2ad397f2e692f734592a2047e6eeadfe8"
+    },
+    "Decoder/Component/Profiles/V19_8/DiscReelProfileV19_8.cs": {
+      "upstreamSha256": "d79bb5451d4edc098c36a6b2fe2581ef832b18dc84a4ced73feb583855b2eaef",
+      "integratedSha256": "d79bb5451d4edc098c36a6b2fe2581ef832b18dc84a4ced73feb583855b2eaef"
+    },
+    "Decoder/Component/Profiles/V19_8/DotAlphaProfileV19_8.cs": {
+      "upstreamSha256": "f0dcde666f24dc49fceff06d2516ff0b6470d7456173a948ec05a329e2d0c124",
+      "integratedSha256": "f0dcde666f24dc49fceff06d2516ff0b6470d7456173a948ec05a329e2d0c124"
+    },
+    "Decoder/Component/Profiles/V19_8/DotMatrixProfileV19_8.cs": {
+      "upstreamSha256": "2636485c13ad22a303861d4da6d611a8cce73ab90dc9695caa25b63cc1732c7f",
+      "integratedSha256": "2636485c13ad22a303861d4da6d611a8cce73ab90dc9695caa25b63cc1732c7f"
+    },
+    "Decoder/Component/Profiles/V19_8/EpochDotAlphaProfileV19_8.cs": {
+      "upstreamSha256": "8953e46e276017ab57c0a1e0172468c2f14a0f886f2071d74044aea361483668",
+      "integratedSha256": "8953e46e276017ab57c0a1e0172468c2f14a0f886f2071d74044aea361483668"
+    },
+    "Decoder/Component/Profiles/V19_8/EpochMatrixProfileV19_8.cs": {
+      "upstreamSha256": "3435973f3c140fedcdcbc93b66b754fdaec2f654f59410fe0033048637565400",
+      "integratedSha256": "3435973f3c140fedcdcbc93b66b754fdaec2f654f59410fe0033048637565400"
+    },
+    "Decoder/Component/Profiles/V19_8/FlipReelProfileV19_8.cs": {
+      "upstreamSha256": "0c8043c7fc8c5d9d809f6d99b53c1cf9c669a31786d8b06ca8b3f7c7d38136f4",
+      "integratedSha256": "0c8043c7fc8c5d9d809f6d99b53c1cf9c669a31786d8b06ca8b3f7c7d38136f4"
+    },
+    "Decoder/Component/Profiles/V19_8/FrameProfileV19_8.cs": {
+      "upstreamSha256": "190b82890b365b6975e212694c2fc5f7524cf770483fbb8f41087c3e9b175a7f",
+      "integratedSha256": "190b82890b365b6975e212694c2fc5f7524cf770483fbb8f41087c3e9b175a7f"
+    },
+    "Decoder/Component/Profiles/V19_8/IGTVfdProfileV19_8.cs": {
+      "upstreamSha256": "44d820d707c8146a4c71d8d183a4d464bb0a85c45328dd53a60cc02fd20965c3",
+      "integratedSha256": "44d820d707c8146a4c71d8d183a4d464bb0a85c45328dd53a60cc02fd20965c3"
+    },
+    "Decoder/Component/Profiles/V19_8/LabelProfileV19_8.cs": {
+      "upstreamSha256": "6005a997b2829dfb83cc3d411167bf59ff372ad4cf5b9b19c6bc499c5cf72eb6",
+      "integratedSha256": "6005a997b2829dfb83cc3d411167bf59ff372ad4cf5b9b19c6bc499c5cf72eb6"
+    },
+    "Decoder/Component/Profiles/V19_8/LampProfileV19_8.cs": {
+      "upstreamSha256": "33402dbb61b140761e64210c4a958655516bdeb24fab396b35e683385f16e0b8",
+      "integratedSha256": "33402dbb61b140761e64210c4a958655516bdeb24fab396b35e683385f16e0b8"
+    },
+    "Decoder/Component/Profiles/V19_8/LedProfileV19_8.cs": {
+      "upstreamSha256": "d9b8c44fb1c85d264f0a9bb95ca62a668f07cba496c9ddae3de03ad42f754f20",
+      "integratedSha256": "d9b8c44fb1c85d264f0a9bb95ca62a668f07cba496c9ddae3de03ad42f754f20"
+    },
+    "Decoder/Component/Profiles/V19_8/MatrixAlphaProfileV19_8.cs": {
+      "upstreamSha256": "5e4d63aa69ebf6afaea006e4c948a3034c0d85d17577d09864660c61cb03d5f6",
+      "integratedSha256": "5e4d63aa69ebf6afaea006e4c948a3034c0d85d17577d09864660c61cb03d5f6"
+    },
+    "Decoder/Component/Profiles/V19_8/MaygayMatrixProfileV19_8.cs": {
+      "upstreamSha256": "d19ab5dba0f1f3ac28009574baa920508361ec4223938067554eb4d3f1854b90",
+      "integratedSha256": "d19ab5dba0f1f3ac28009574baa920508361ec4223938067554eb4d3f1854b90"
+    },
+    "Decoder/Component/Profiles/V19_8/MaygayVideoProfileV19_8.cs": {
+      "upstreamSha256": "3b224cbb7e52230f72290294e3114d8ab2eda99111c793336ec4892a6a2c27a8",
+      "integratedSha256": "3b224cbb7e52230f72290294e3114d8ab2eda99111c793336ec4892a6a2c27a8"
+    },
+    "Decoder/Component/Profiles/V19_8/PlasmaDisplayProfileV19_8.cs": {
+      "upstreamSha256": "1bdfc66cc33c748bd4084c6c697dcab9ac829d9b12c58f33a1b89079bb1cfe37",
+      "integratedSha256": "1bdfc66cc33c748bd4084c6c697dcab9ac829d9b12c58f33a1b89079bb1cfe37"
+    },
+    "Decoder/Component/Profiles/V19_8/PrismLampProfileV19_8.cs": {
+      "upstreamSha256": "b860fdd6632ffb9b67cee18492ec1f2f3fd1e35dfa5c1b9e892706e73cc383e0",
+      "integratedSha256": "b860fdd6632ffb9b67cee18492ec1f2f3fd1e35dfa5c1b9e892706e73cc383e0"
+    },
+    "Decoder/Component/Profiles/V19_8/ProconnMatrixProfileV19_8.cs": {
+      "upstreamSha256": "56b2c516b299c8243cc6c5e8f5f917034dfc614bfeb9417fd08ac27f8d323c68",
+      "integratedSha256": "56b2c516b299c8243cc6c5e8f5f917034dfc614bfeb9417fd08ac27f8d323c68"
+    },
+    "Decoder/Component/Profiles/V19_8/ReelBonusReelProfileV19_8.cs": {
+      "upstreamSha256": "f85033ce4b669a5708445b2284def5b23d1d96fbc6c357c732db89b9df5c41bc",
+      "integratedSha256": "f85033ce4b669a5708445b2284def5b23d1d96fbc6c357c732db89b9df5c41bc"
+    },
+    "Decoder/Component/Profiles/V19_8/ReelProfileV19_8.cs": {
+      "upstreamSha256": "86a834b45ce30e18f27b7e27ec946070212d28c0ab890aac9ff1c81d80b39d84",
+      "integratedSha256": "86a834b45ce30e18f27b7e27ec946070212d28c0ab890aac9ff1c81d80b39d84"
+    },
+    "Decoder/Component/Profiles/V19_8/RGBLedProfileV19_8.cs": {
+      "upstreamSha256": "2e3c260694f35d3fa8e619e4387bf97a3a86da1eaf4d5a15dc0c859a650b664e",
+      "integratedSha256": "2e3c260694f35d3fa8e619e4387bf97a3a86da1eaf4d5a15dc0c859a650b664e"
+    },
+    "Decoder/Component/Profiles/V19_8/SevenSegBlockProfileV19_8.cs": {
+      "upstreamSha256": "0d7b54f5dbc005dad068c2433efe60e125f42fb6308ece589b8641f9ebefed08",
+      "integratedSha256": "0d7b54f5dbc005dad068c2433efe60e125f42fb6308ece589b8641f9ebefed08"
+    },
+    "Decoder/Component/Profiles/V19_8/SevenSegProfileV19_8.cs": {
+      "upstreamSha256": "7bf8b965b8881fe60f6827040b0980dff76b4433229973d6e0922fbf7c9cf1f5",
+      "integratedSha256": "7bf8b965b8881fe60f6827040b0980dff76b4433229973d6e0922fbf7c9cf1f5"
+    },
+    "Decoder/Component/Profiles/V20_0/ReelProfileV20_0.cs": {
+      "upstreamSha256": "6beb3dff2c19b0a144521da9d2ce943e83d8e2a621309014d0c7fae1d0d16d45",
+      "integratedSha256": "6beb3dff2c19b0a144521da9d2ce943e83d8e2a621309014d0c7fae1d0d16d45"
+    },
+    "Decoder/Component/Profiles/V20_0/V20_0Profiles.cs": {
+      "upstreamSha256": "d7f561e8eba4ae80542d72cbd8a4b00738d1ddf352fc2c983b9851c09794c53f",
+      "integratedSha256": "d7f561e8eba4ae80542d72cbd8a4b00738d1ddf352fc2c983b9851c09794c53f"
+    },
+    "Decoder/Component/Profiles/V20_1/AceMatrixProfileV20_1.cs": {
+      "upstreamSha256": "e80af0cd2b9427de8d1045b1c82bc6da26f3bdc0046b1248741d8d53b1d3139a",
+      "integratedSha256": "e80af0cd2b9427de8d1045b1c82bc6da26f3bdc0046b1248741d8d53b1d3139a"
+    },
+    "Decoder/Component/Profiles/V20_1/AceVideoProfileV20_1.cs": {
+      "upstreamSha256": "b8fc752c1e8d6631edd20eb1fb8bff4286c80a5e93af623c62c035d8693563ff",
+      "integratedSha256": "b8fc752c1e8d6631edd20eb1fb8bff4286c80a5e93af623c62c035d8693563ff"
+    },
+    "Decoder/Component/Profiles/V20_1/AlphaNewProfileV20_1.cs": {
+      "upstreamSha256": "ad67a17ce9adbafed1236d3b2c9b2d2bc5e7e0759751974daaa307a4c45fe2c5",
+      "integratedSha256": "ad67a17ce9adbafed1236d3b2c9b2d2bc5e7e0759751974daaa307a4c45fe2c5"
+    },
+    "Decoder/Component/Profiles/V20_1/AlphaProfileV20_1.cs": {
+      "upstreamSha256": "ba779e0ae6814d6cdeb324183c637971a31a8cac743ed69bd249c641798f3eb2",
+      "integratedSha256": "ba779e0ae6814d6cdeb324183c637971a31a8cac743ed69bd249c641798f3eb2"
+    },
+    "Decoder/Component/Profiles/V20_1/AstraMatrixProfileV20_1.cs": {
+      "upstreamSha256": "8f97e6e476c1f8460231aa44e202529d2fb16ed0e2a9617eb635ed8868c251b5",
+      "integratedSha256": "8f97e6e476c1f8460231aa44e202529d2fb16ed0e2a9617eb635ed8868c251b5"
+    },
+    "Decoder/Component/Profiles/V20_1/BackgroundProfileV20_1.cs": {
+      "upstreamSha256": "deb51ee1aa42299c3566ee99c565ee8c10be7d614e18131bc2cd8f2476dddb81",
+      "integratedSha256": "deb51ee1aa42299c3566ee99c565ee8c10be7d614e18131bc2cd8f2476dddb81"
+    },
+    "Decoder/Component/Profiles/V20_1/BandReelProfileV20_1.cs": {
+      "upstreamSha256": "18ffe4f3423cbd4fe2583b2570c39b9a0501d13e6f058735b421527f9d75a091",
+      "integratedSha256": "18ffe4f3423cbd4fe2583b2570c39b9a0501d13e6f058735b421527f9d75a091"
+    },
+    "Decoder/Component/Profiles/V20_1/BarcrestBWBVideoProfileV20_1.cs": {
+      "upstreamSha256": "960b2ba6bfc4474aa66a98d1d0dd383a19e59fc49f8d7e637a39ec15c30fe4b6",
+      "integratedSha256": "960b2ba6bfc4474aa66a98d1d0dd383a19e59fc49f8d7e637a39ec15c30fe4b6"
+    },
+    "Decoder/Component/Profiles/V20_1/BFMAlphaProfileV20_1.cs": {
+      "upstreamSha256": "49fbb7aaf54349effd5d05445a9fec68bf08e317aa04d3d96a7c6a43ce36d1cb",
+      "integratedSha256": "49fbb7aaf54349effd5d05445a9fec68bf08e317aa04d3d96a7c6a43ce36d1cb"
+    },
+    "Decoder/Component/Profiles/V20_1/BFMColourLedProfileV20_1.cs": {
+      "upstreamSha256": "e992020316d5a6d57136240eda8f3cdc0466f406bab49cbe8c47347720bad730",
+      "integratedSha256": "e992020316d5a6d57136240eda8f3cdc0466f406bab49cbe8c47347720bad730"
+    },
+    "Decoder/Component/Profiles/V20_1/BFMLEDProfileV20_1.cs": {
+      "upstreamSha256": "06c56bb854558438259bdcfca214ecb161242670426deb94c3ce92ee66c70850",
+      "integratedSha256": "06c56bb854558438259bdcfca214ecb161242670426deb94c3ce92ee66c70850"
+    },
+    "Decoder/Component/Profiles/V20_1/BFMVideoProfileV20_1.cs": {
+      "upstreamSha256": "1b3c11912edc31d4eeab37cdf8cc74f6061f6f7dc8cd6529962906830e955a15",
+      "integratedSha256": "1b3c11912edc31d4eeab37cdf8cc74f6061f6f7dc8cd6529962906830e955a15"
+    },
+    "Decoder/Component/Profiles/V20_1/BitmapProfileV20_1.cs": {
+      "upstreamSha256": "d4b0a35ec1a029aeca0e26783a705e2e7a70c97b3ee422683a1373976ba41df5",
+      "integratedSha256": "d4b0a35ec1a029aeca0e26783a705e2e7a70c97b3ee422683a1373976ba41df5"
+    },
+    "Decoder/Component/Profiles/V20_1/BorderProfileV20_1.cs": {
+      "upstreamSha256": "6f6b7aa076e39c10f0c3920672449dc403ccc01e8f6c11d32d4e239653c01f6c",
+      "integratedSha256": "6f6b7aa076e39c10f0c3920672449dc403ccc01e8f6c11d32d4e239653c01f6c"
+    },
+    "Decoder/Component/Profiles/V20_1/ButtonProfileV20_1.cs": {
+      "upstreamSha256": "bbccc41796200455c59226bda76e36f953aa35293c3f46d0737ddccc768019eb",
+      "integratedSha256": "bbccc41796200455c59226bda76e36f953aa35293c3f46d0737ddccc768019eb"
+    },
+    "Decoder/Component/Profiles/V20_1/CheckboxProfileV20_1.cs": {
+      "upstreamSha256": "c8c6de79c62de16d378efd2264c0c483d9d5067709cc195d1441a7c98c50dd01",
+      "integratedSha256": "c8c6de79c62de16d378efd2264c0c483d9d5067709cc195d1441a7c98c50dd01"
+    },
+    "Decoder/Component/Profiles/V20_1/CoinmasterVideoProfileV20_1.cs": {
+      "upstreamSha256": "623a39565685d3cdfc528b864bb379442ea0181dde897a94268b198d0ad280d8",
+      "integratedSha256": "623a39565685d3cdfc528b864bb379442ea0181dde897a94268b198d0ad280d8"
+    },
+    "Decoder/Component/Profiles/V20_1/DiscReelProfileV20_1.cs": {
+      "upstreamSha256": "feae782b77ebbfd03a49494fbd2d98f20847ec2cce044e9e51c781e30fd92255",
+      "integratedSha256": "feae782b77ebbfd03a49494fbd2d98f20847ec2cce044e9e51c781e30fd92255"
+    },
+    "Decoder/Component/Profiles/V20_1/DotAlphaProfileV20_1.cs": {
+      "upstreamSha256": "e96411566ca1c83e4b74ad192bc3c09ffee174172ca9143ac675a1daeebd0fcf",
+      "integratedSha256": "e96411566ca1c83e4b74ad192bc3c09ffee174172ca9143ac675a1daeebd0fcf"
+    },
+    "Decoder/Component/Profiles/V20_1/DotMatrixProfileV20_1.cs": {
+      "upstreamSha256": "bc3783299aaaf13946311a5b92505fbe3710aa8246db2259b0207b97dc3e528d",
+      "integratedSha256": "bc3783299aaaf13946311a5b92505fbe3710aa8246db2259b0207b97dc3e528d"
+    },
+    "Decoder/Component/Profiles/V20_1/EpochDotAlphaProfileV20_1.cs": {
+      "upstreamSha256": "b48a843480a51c3112cd6c10eb7aaa1f9ccd6acf037645521125282d7302f5f8",
+      "integratedSha256": "b48a843480a51c3112cd6c10eb7aaa1f9ccd6acf037645521125282d7302f5f8"
+    },
+    "Decoder/Component/Profiles/V20_1/EpochMatrixProfileV20_1.cs": {
+      "upstreamSha256": "c74d1558bc934347055fededb3aa90c562a6fe8b262217dc87461a691f05d948",
+      "integratedSha256": "c74d1558bc934347055fededb3aa90c562a6fe8b262217dc87461a691f05d948"
+    },
+    "Decoder/Component/Profiles/V20_1/FlipReelProfileV20_1.cs": {
+      "upstreamSha256": "89045ad6770d93d01c59d164f52ab8d4e9fd19af1e1007b22dc15197d2f87a7f",
+      "integratedSha256": "89045ad6770d93d01c59d164f52ab8d4e9fd19af1e1007b22dc15197d2f87a7f"
+    },
+    "Decoder/Component/Profiles/V20_1/FrameProfileV20_1.cs": {
+      "upstreamSha256": "e8e0a3c31250981e360a4a701e91cc8b6b4e501d53b0c54e2cc355260ecfe219",
+      "integratedSha256": "e8e0a3c31250981e360a4a701e91cc8b6b4e501d53b0c54e2cc355260ecfe219"
+    },
+    "Decoder/Component/Profiles/V20_1/IGTVfdProfileV20_1.cs": {
+      "upstreamSha256": "6f314d4b080c57fe092de18bcfd4800f72b5bf21844ab55cc363df180959f961",
+      "integratedSha256": "6f314d4b080c57fe092de18bcfd4800f72b5bf21844ab55cc363df180959f961"
+    },
+    "Decoder/Component/Profiles/V20_1/LabelProfileV20_1.cs": {
+      "upstreamSha256": "ea4ee5f4047e5c831b010ade166827ef79f6ca8a367cc4318b189764346dd6aa",
+      "integratedSha256": "ea4ee5f4047e5c831b010ade166827ef79f6ca8a367cc4318b189764346dd6aa"
+    },
+    "Decoder/Component/Profiles/V20_1/LampProfileV20_1.cs": {
+      "upstreamSha256": "b39e5b95fdb0d2350036deabc444bfa447455b3ee5ec23b7df506cb5fd861bcd",
+      "integratedSha256": "b39e5b95fdb0d2350036deabc444bfa447455b3ee5ec23b7df506cb5fd861bcd"
+    },
+    "Decoder/Component/Profiles/V20_1/LedProfileV20_1.cs": {
+      "upstreamSha256": "6374ba400f95b3abaff423e046bf96904f2a8d69bafe0bc8fa10bf1694985b10",
+      "integratedSha256": "6374ba400f95b3abaff423e046bf96904f2a8d69bafe0bc8fa10bf1694985b10"
+    },
+    "Decoder/Component/Profiles/V20_1/MatrixAlphaProfileV20_1.cs": {
+      "upstreamSha256": "4086f95176db2ce3d7f5794236637aeb757bb2cbf58b49296433b22c8694e5a0",
+      "integratedSha256": "4086f95176db2ce3d7f5794236637aeb757bb2cbf58b49296433b22c8694e5a0"
+    },
+    "Decoder/Component/Profiles/V20_1/MaygayMatrixProfileV20_1.cs": {
+      "upstreamSha256": "a486088d37ccddf735465cfcb40a40ac3ffe991c4a731b03c8243000e6b4f310",
+      "integratedSha256": "a486088d37ccddf735465cfcb40a40ac3ffe991c4a731b03c8243000e6b4f310"
+    },
+    "Decoder/Component/Profiles/V20_1/MaygayVideoProfileV20_1.cs": {
+      "upstreamSha256": "ba992deb9677e30324b86f69863619cc1066197e69e0d4af8e5b336de25e56da",
+      "integratedSha256": "ba992deb9677e30324b86f69863619cc1066197e69e0d4af8e5b336de25e56da"
+    },
+    "Decoder/Component/Profiles/V20_1/PlasmaDisplayProfileV20_1.cs": {
+      "upstreamSha256": "eac5f4af6d5ecf1f78d1573e13b02b42c91f75dd19f2296fa0ddfca1d85b488d",
+      "integratedSha256": "eac5f4af6d5ecf1f78d1573e13b02b42c91f75dd19f2296fa0ddfca1d85b488d"
+    },
+    "Decoder/Component/Profiles/V20_1/PrismLampProfileV20_1.cs": {
+      "upstreamSha256": "3890a0f14713c7b609143622d5110781fe6735f13c8659571fa5c7544fa5d4f3",
+      "integratedSha256": "3890a0f14713c7b609143622d5110781fe6735f13c8659571fa5c7544fa5d4f3"
+    },
+    "Decoder/Component/Profiles/V20_1/ProconnMatrixProfileV20_1.cs": {
+      "upstreamSha256": "ed62b677a3335d2dad547c52c9446cbbfda7a2ed749ee171fd820e9c14452595",
+      "integratedSha256": "ed62b677a3335d2dad547c52c9446cbbfda7a2ed749ee171fd820e9c14452595"
+    },
+    "Decoder/Component/Profiles/V20_1/ReelBonusReelProfileV20_1.cs": {
+      "upstreamSha256": "76d41bcaa15e70e6abb35220b06433cb355d74405c622199cfe6950eb82f7a94",
+      "integratedSha256": "76d41bcaa15e70e6abb35220b06433cb355d74405c622199cfe6950eb82f7a94"
+    },
+    "Decoder/Component/Profiles/V20_1/ReelProfileV20_1.cs": {
+      "upstreamSha256": "1bd4aead0daf569a13909786c012cb5ba11ec18c06071e829e1a3bba8ac27a5b",
+      "integratedSha256": "1bd4aead0daf569a13909786c012cb5ba11ec18c06071e829e1a3bba8ac27a5b"
+    },
+    "Decoder/Component/Profiles/V20_1/RGBLedProfileV20_1.cs": {
+      "upstreamSha256": "edfbbde360658675311342f5bc40d4ba366751390e9b07ca79c74046335cf278",
+      "integratedSha256": "edfbbde360658675311342f5bc40d4ba366751390e9b07ca79c74046335cf278"
+    },
+    "Decoder/Component/Profiles/V20_1/SevenSegBlockProfileV20_1.cs": {
+      "upstreamSha256": "8029995e4789c0a23834f0fc963ad8bfaca11954327f09732744e4f8a4d1e20d",
+      "integratedSha256": "8029995e4789c0a23834f0fc963ad8bfaca11954327f09732744e4f8a4d1e20d"
+    },
+    "Decoder/Component/Profiles/V20_1/SevenSegProfileV20_1.cs": {
+      "upstreamSha256": "045c955e00ceb85acd0d0a54dbf188747a3bb474be6e4b6e6e6e5e0cd8d02b6a",
+      "integratedSha256": "045c955e00ceb85acd0d0a54dbf188747a3bb474be6e4b6e6e6e5e0cd8d02b6a"
+    },
+    "Decoder/Component/Profiles/V5/BandReelProfileV5.cs": {
+      "upstreamSha256": "454c6b09bf6b5d5f6a99a58b909972cb5e7d494b7626b46118ef25b7b2a07874",
+      "integratedSha256": "454c6b09bf6b5d5f6a99a58b909972cb5e7d494b7626b46118ef25b7b2a07874"
+    },
+    "Decoder/Component/Profiles/V5/BFMLEDProfileV5.cs": {
+      "upstreamSha256": "e253ff7e8d2faa46e327531a70e472ddc587f2b53a8630279755bc6e4c9427b0",
+      "integratedSha256": "e253ff7e8d2faa46e327531a70e472ddc587f2b53a8630279755bc6e4c9427b0"
+    },
+    "Decoder/Component/Profiles/V5/ButtonProfileV5.cs": {
+      "upstreamSha256": "e89f9283f9ecf6f9426bae036e10f5628654e67848810d4c9ae3a299d43ba2cc",
+      "integratedSha256": "e89f9283f9ecf6f9426bae036e10f5628654e67848810d4c9ae3a299d43ba2cc"
+    },
+    "Decoder/Component/Profiles/V5/CheckboxProfileV5.cs": {
+      "upstreamSha256": "f59d38c68a41fd1119930d3b341f8afd06509f51e726a86ad78c4a80278347d4",
+      "integratedSha256": "f59d38c68a41fd1119930d3b341f8afd06509f51e726a86ad78c4a80278347d4"
+    },
+    "Decoder/Component/Profiles/V5/LabelProfileV5.cs": {
+      "upstreamSha256": "fb19ded3b0f149c2ebfa89e62ab1ed5526df43711211bf3ba87f06b507118e9b",
+      "integratedSha256": "fb19ded3b0f149c2ebfa89e62ab1ed5526df43711211bf3ba87f06b507118e9b"
+    },
+    "Decoder/Component/Profiles/V5/LampProfileV5.cs": {
+      "upstreamSha256": "f4d7b606b2451ed8d9fb0d21737ec27de71a7caa6d9f7353f961c9ec61ed0a42",
+      "integratedSha256": "f4d7b606b2451ed8d9fb0d21737ec27de71a7caa6d9f7353f961c9ec61ed0a42"
+    },
+    "Decoder/Component/Profiles/V5/V5Profiles.cs": {
+      "upstreamSha256": "8740018e30abe76cf7b55ad06da5c8b9d5069e997f7ffa79cc1fc44754c1c9c3",
+      "integratedSha256": "8740018e30abe76cf7b55ad06da5c8b9d5069e997f7ffa79cc1fc44754c1c9c3"
+    },
+    "Decoder/Component/Profiles/V5_2/V5_2Profiles.cs": {
+      "upstreamSha256": "bd0d16b72fdb8ad7d1c480debce38c6668ea9a8415928e86a98b635cdf8f4802",
+      "integratedSha256": "bd0d16b72fdb8ad7d1c480debce38c6668ea9a8415928e86a98b635cdf8f4802"
+    },
+    "Decoder/Component/Profiles/V6_0/V6_0Profiles.cs": {
+      "upstreamSha256": "6186521fd73849ad0dbcfdfc96a9dab2e4a078773534eafa90ed5acf001b85b2",
+      "integratedSha256": "6186521fd73849ad0dbcfdfc96a9dab2e4a078773534eafa90ed5acf001b85b2"
+    },
+    "Decoder/Component/Profiles/V6_1/AlphaNewProfileV6_1.cs": {
+      "upstreamSha256": "e2bf3e7d4294cad7ae7daf633da6d7543d04b8e1e1f4caa0777b217c12c1648b",
+      "integratedSha256": "e2bf3e7d4294cad7ae7daf633da6d7543d04b8e1e1f4caa0777b217c12c1648b"
+    },
+    "Decoder/Component/Profiles/V6_1/AlphaProfileV6_1.cs": {
+      "upstreamSha256": "d472b25b59636284a44bd1f352a957da828e1d9b01182e104756d638fff95451",
+      "integratedSha256": "d472b25b59636284a44bd1f352a957da828e1d9b01182e104756d638fff95451"
+    },
+    "Decoder/Component/Profiles/V6_1/BandReelProfileV6_1.cs": {
+      "upstreamSha256": "ef199be4cb7204361d341c8d31379de150a2700606540b416bb90cab57724c40",
+      "integratedSha256": "ef199be4cb7204361d341c8d31379de150a2700606540b416bb90cab57724c40"
+    },
+    "Decoder/Component/Profiles/V6_1/BarcrestBWBVideoProfileV6_1.cs": {
+      "upstreamSha256": "ebe4f059e9c764035d1acbf2bb1b118926364daf4a4114538f670e35c92a216b",
+      "integratedSha256": "ebe4f059e9c764035d1acbf2bb1b118926364daf4a4114538f670e35c92a216b"
+    },
+    "Decoder/Component/Profiles/V6_1/BFMAlphaProfileV6_1.cs": {
+      "upstreamSha256": "ab545728517d44b277685a09de8e1ceadd35b695d0f83aa8c07631d8d69197f9",
+      "integratedSha256": "ab545728517d44b277685a09de8e1ceadd35b695d0f83aa8c07631d8d69197f9"
+    },
+    "Decoder/Component/Profiles/V6_1/BFMVideoProfileV6_1.cs": {
+      "upstreamSha256": "898f811cbf6de109ab7c89cd5c966bbc90fb956db4f69921b8ca0e77a0462e18",
+      "integratedSha256": "898f811cbf6de109ab7c89cd5c966bbc90fb956db4f69921b8ca0e77a0462e18"
+    },
+    "Decoder/Component/Profiles/V6_1/ButtonProfileV6_1.cs": {
+      "upstreamSha256": "8b338c2aabc1175ac2a7892503c68f02e667cce67e1bc12cc74e7e6f4a9b043e",
+      "integratedSha256": "8b338c2aabc1175ac2a7892503c68f02e667cce67e1bc12cc74e7e6f4a9b043e"
+    },
+    "Decoder/Component/Profiles/V6_1/DiscReelProfileV6_1.cs": {
+      "upstreamSha256": "abda666173802c05e7579d604586283f0e1143b762928987095edfa2d8632b5a",
+      "integratedSha256": "abda666173802c05e7579d604586283f0e1143b762928987095edfa2d8632b5a"
+    },
+    "Decoder/Component/Profiles/V6_1/DotAlphaProfileV6_1.cs": {
+      "upstreamSha256": "098ae02c34e0fcdd6c8d7d9e47527d683f5a7a168d2a74af60b7fff5ef628379",
+      "integratedSha256": "098ae02c34e0fcdd6c8d7d9e47527d683f5a7a168d2a74af60b7fff5ef628379"
+    },
+    "Decoder/Component/Profiles/V6_1/DotMatrixProfileV6_1.cs": {
+      "upstreamSha256": "c9b081cf0f76b452813591ffadad16072d2ec17993767a545e256025a74a4558",
+      "integratedSha256": "c9b081cf0f76b452813591ffadad16072d2ec17993767a545e256025a74a4558"
+    },
+    "Decoder/Component/Profiles/V6_1/LampProfileV6_1.cs": {
+      "upstreamSha256": "b54fa277b36809bd58f08cce775d8b9e40016da53cf73862048f432939f2651e",
+      "integratedSha256": "b54fa277b36809bd58f08cce775d8b9e40016da53cf73862048f432939f2651e"
+    },
+    "Decoder/Component/Profiles/V6_1/MaygayVideoProfileV6_1.cs": {
+      "upstreamSha256": "1a1348370dd7e0bc8180b72aef2acbcd926d9b156e93e5b0d1ffc7fdab8c8536",
+      "integratedSha256": "1a1348370dd7e0bc8180b72aef2acbcd926d9b156e93e5b0d1ffc7fdab8c8536"
+    },
+    "Decoder/Component/Profiles/V6_1/PlasmaDisplayProfileV6_1.cs": {
+      "upstreamSha256": "a832da40bc1d310b42f854aaf2fcfc32ecd2abadee8800bc156806107e49eaee",
+      "integratedSha256": "a832da40bc1d310b42f854aaf2fcfc32ecd2abadee8800bc156806107e49eaee"
+    },
+    "Decoder/Component/Profiles/V6_1/PrismLampProfileV6_1.cs": {
+      "upstreamSha256": "ce85ba0582e808b2327f581b3e9674d0dc534a59267e5abafd59c9092fd2bbb4",
+      "integratedSha256": "ce85ba0582e808b2327f581b3e9674d0dc534a59267e5abafd59c9092fd2bbb4"
+    },
+    "Decoder/Component/Profiles/V6_1/ReelBonusReelProfileV6_1.cs": {
+      "upstreamSha256": "50cf4d83c9e4a45be3b3ec40b5eed653bde33e48a2c898efe4e74f446c253410",
+      "integratedSha256": "50cf4d83c9e4a45be3b3ec40b5eed653bde33e48a2c898efe4e74f446c253410"
+    },
+    "Decoder/Component/Profiles/V6_1/ReelProfileV6_1.cs": {
+      "upstreamSha256": "199d20b1e972cc7ce54ae847dd3750b0232d78ecc36b92b63566b01722205a88",
+      "integratedSha256": "199d20b1e972cc7ce54ae847dd3750b0232d78ecc36b92b63566b01722205a88"
+    },
+    "Decoder/Component/Profiles/V6_1/RGBLedProfileV6_1.cs": {
+      "upstreamSha256": "3e4c9bb277c692a85a6078e23fa9bf9ab23c1a0016e4b9538794a4624df4cb1d",
+      "integratedSha256": "3e4c9bb277c692a85a6078e23fa9bf9ab23c1a0016e4b9538794a4624df4cb1d"
+    },
+    "Decoder/Component/Profiles/V6_1/SevenSegBlockProfileV6_1.cs": {
+      "upstreamSha256": "e2fcc57616f6b0a8955183bb8cadeb4ff766d6ada12ebb68d5c51b31a442633d",
+      "integratedSha256": "e2fcc57616f6b0a8955183bb8cadeb4ff766d6ada12ebb68d5c51b31a442633d"
+    },
+    "Decoder/Component/Profiles/V6_1/V6_1Profiles.cs": {
+      "upstreamSha256": "5ee63868d1cb47d45f93e4a4c0181030b779989f0d5132c0269bbf32f543207b",
+      "integratedSha256": "5ee63868d1cb47d45f93e4a4c0181030b779989f0d5132c0269bbf32f543207b"
+    },
+    "Decryption/FmlDecryptor.cs": {
+      "upstreamSha256": "e323480648bf350549a4de8d67ab5925be426771fbcb7e9c94b5b926e5cce3f0",
+      "integratedSha256": "e323480648bf350549a4de8d67ab5925be426771fbcb7e9c94b5b926e5cce3f0"
+    },
+    "Decryption/Ripemd128.cs": {
+      "upstreamSha256": "f1b0f4f2a5e856e3856f2db057e0ead31e9fde0b895cbdf67c53b6342ec0e001",
+      "integratedSha256": "f1b0f4f2a5e856e3856f2db057e0ead31e9fde0b895cbdf67c53b6342ec0e001"
+    },
+    "Model/AlphaNewCharset.cs": {
+      "upstreamSha256": "6638718c56badc0f2a913e0644b0a3014f5cf791cac00c7ac6b758bbf4b93e2a",
+      "integratedSha256": "6638718c56badc0f2a913e0644b0a3014f5cf791cac00c7ac6b758bbf4b93e2a"
+    },
+    "Model/BitmapEntry.cs": {
+      "upstreamSha256": "eada1b2ef55f8ac502d5f950c9180b6c37ae859a40b8a2e3022c633a2c14eb98",
+      "integratedSha256": "eada1b2ef55f8ac502d5f950c9180b6c37ae859a40b8a2e3022c633a2c14eb98"
+    },
+    "Model/ComponentRegistry.cs": {
+      "upstreamSha256": "ff600026cda67695dd5b3f63b64eb34d970fed5181745ec1bf22e160c6c5eae3",
+      "integratedSha256": "ff600026cda67695dd5b3f63b64eb34d970fed5181745ec1bf22e160c6c5eae3"
+    },
+    "Model/ComponentTagMap.cs": {
+      "upstreamSha256": "72575d2226c1129ea116e88c3741842f418bd0d4712b561bdcd703e68d6f07b5",
+      "integratedSha256": "72575d2226c1129ea116e88c3741842f418bd0d4712b561bdcd703e68d6f07b5"
+    },
+    "Model/ComponentTagParseException.cs": {
+      "upstreamSha256": "832288072f1a98fd751b11bd63bf6d8ff92d26b5f6f60bcb920ceec7039c519a",
+      "integratedSha256": "832288072f1a98fd751b11bd63bf6d8ff92d26b5f6f60bcb920ceec7039c519a"
+    },
+    "Model/Layout.cs": {
+      "upstreamSha256": "ed173cffec3a6c84c8ee2122a6fad9f026d1835d6cfba8d9d449c8a299b31375",
+      "integratedSha256": "ed173cffec3a6c84c8ee2122a6fad9f026d1835d6cfba8d9d449c8a299b31375"
+    },
+    "Model/LayoutFileHeader.cs": {
+      "upstreamSha256": "6b603234472f13185ccae1cde01aa72f98e88203d4c174a5ef070be95319216b",
+      "integratedSha256": "6b603234472f13185ccae1cde01aa72f98e88203d4c174a5ef070be95319216b"
+    },
+    "Model/MFMEComponentType.cs": {
+      "upstreamSha256": "a7110c9168738356d1341ef83f28ee5dbf404e3dd81d11260e54c5243a167b8c",
+      "integratedSha256": "a7110c9168738356d1341ef83f28ee5dbf404e3dd81d11260e54c5243a167b8c"
+    },
+    "Model/TagInfo.cs": {
+      "upstreamSha256": "0770f7be513ea10a60822570f29af7f21f111470306399509880d7cb16892ff0",
+      "integratedSha256": "0770f7be513ea10a60822570f29af7f21f111470306399509880d7cb16892ff0"
+    },
+    "Model/TagType.cs": {
+      "upstreamSha256": "25f820dedf23068537eaded542469b7971caea030ce6150f3368b8e8bfac03df",
+      "integratedSha256": "25f820dedf23068537eaded542469b7971caea030ce6150f3368b8e8bfac03df"
+    },
+    "Model/UnknownComponentTypeException.cs": {
+      "upstreamSha256": "7e0b2734a21c29a7237f9b6bd035fbf1df15241b32cc9b73ecf1b635a0e5c3ad",
+      "integratedSha256": "7e0b2734a21c29a7237f9b6bd035fbf1df15241b32cc9b73ecf1b635a0e5c3ad"
+    },
+    "Model/ValueRole.cs": {
+      "upstreamSha256": "c1e22770eab93d4d4cf3303f8c15a10eba3d6de2a3d2266d26602d411eaf2b8c",
+      "integratedSha256": "c1e22770eab93d4d4cf3303f8c15a10eba3d6de2a3d2266d26602d411eaf2b8c"
+    },
+    "Model/Component/AceMatrix.cs": {
+      "upstreamSha256": "c741dfb39eec7f93b30f4c7ecccb244e66d57144d1add257d799a982a041a6bd",
+      "integratedSha256": "c741dfb39eec7f93b30f4c7ecccb244e66d57144d1add257d799a982a041a6bd"
+    },
+    "Model/Component/AceVideo.cs": {
+      "upstreamSha256": "fe6d3ceb56db948b17fdacfceddf8fde1ce5a9c4cf92b7c49125fab779ad6899",
+      "integratedSha256": "fe6d3ceb56db948b17fdacfceddf8fde1ce5a9c4cf92b7c49125fab779ad6899"
+    },
+    "Model/Component/Alpha.cs": {
+      "upstreamSha256": "dbfa41fd1dc4d7615b3b98d0bed2cb6c64d4bac302fee085b1063d949e4b043b",
+      "integratedSha256": "dbfa41fd1dc4d7615b3b98d0bed2cb6c64d4bac302fee085b1063d949e4b043b"
+    },
+    "Model/Component/AlphaNew.cs": {
+      "upstreamSha256": "a5d0a4b419727c8591e06cb09be808a0dee5c9e2b1af854a1f7fad19d07e4551",
+      "integratedSha256": "a5d0a4b419727c8591e06cb09be808a0dee5c9e2b1af854a1f7fad19d07e4551"
+    },
+    "Model/Component/AstraMatrix.cs": {
+      "upstreamSha256": "8069c809f8bd71dc909cdd07450880e541e6fe8ecd5c56b3abc931c8c80f61cf",
+      "integratedSha256": "8069c809f8bd71dc909cdd07450880e541e6fe8ecd5c56b3abc931c8c80f61cf"
+    },
+    "Model/Component/Background.cs": {
+      "upstreamSha256": "bf24706ec3943fde6256f8f2086fc5e6a4fee5d0d90e8643b4021335d8f2a459",
+      "integratedSha256": "bf24706ec3943fde6256f8f2086fc5e6a4fee5d0d90e8643b4021335d8f2a459"
+    },
+    "Model/Component/BandReel.cs": {
+      "upstreamSha256": "3e8d90f34502c88d7365a86f692c390a5b352c216a2135601d9d1508ec021295",
+      "integratedSha256": "3e8d90f34502c88d7365a86f692c390a5b352c216a2135601d9d1508ec021295"
+    },
+    "Model/Component/BarcrestBWBVideo.cs": {
+      "upstreamSha256": "8691c756069d11d3b524bdfb838cee24fb55dbd8ec3d8216c1ee4d092a1ffe08",
+      "integratedSha256": "8691c756069d11d3b524bdfb838cee24fb55dbd8ec3d8216c1ee4d092a1ffe08"
+    },
+    "Model/Component/BaseComponent.cs": {
+      "upstreamSha256": "2364e3011212ecaecc667262d30b6f414a3ee2f99036d90672d3ac98813c7d16",
+      "integratedSha256": "d11e5f941bfe41bc24b8bd69c657efffa99b77b315523ef92b898385829a9053"
+    },
+    "Model/Component/BFMAlpha.cs": {
+      "upstreamSha256": "fcbda6fabbde13fef4e53719a5abe778df414989a8f42d0b8f0ff44bd1d62622",
+      "integratedSha256": "fcbda6fabbde13fef4e53719a5abe778df414989a8f42d0b8f0ff44bd1d62622"
+    },
+    "Model/Component/BFMColourLed.cs": {
+      "upstreamSha256": "59e696a1ba8290d52b931063dd3e8ef6c0d767497d7bd01197de58c91462c70e",
+      "integratedSha256": "59e696a1ba8290d52b931063dd3e8ef6c0d767497d7bd01197de58c91462c70e"
+    },
+    "Model/Component/BFMLED.cs": {
+      "upstreamSha256": "a1d8bdffab865c7ed0c82d01f58a9c1aeae8f59a9621746d9d3adb7200c0ca2e",
+      "integratedSha256": "a1d8bdffab865c7ed0c82d01f58a9c1aeae8f59a9621746d9d3adb7200c0ca2e"
+    },
+    "Model/Component/BFMVideo.cs": {
+      "upstreamSha256": "ef966401ba073ff826fa1ffac6673ea26be20d83b56caf11e1c8ef679b917409",
+      "integratedSha256": "ef966401ba073ff826fa1ffac6673ea26be20d83b56caf11e1c8ef679b917409"
+    },
+    "Model/Component/Bitmap.cs": {
+      "upstreamSha256": "e1d9aa3907ff8ca5040db2e2dda198ecdf6d811ba3073ec8daf697e71540197c",
+      "integratedSha256": "e1d9aa3907ff8ca5040db2e2dda198ecdf6d811ba3073ec8daf697e71540197c"
+    },
+    "Model/Component/Border.cs": {
+      "upstreamSha256": "cd38041b7f3d6463ccf56dc4f0e0b5521ed18c6208346a625085fba043a392b5",
+      "integratedSha256": "cd38041b7f3d6463ccf56dc4f0e0b5521ed18c6208346a625085fba043a392b5"
+    },
+    "Model/Component/Button.cs": {
+      "upstreamSha256": "e199b28f34acfe9827996eb6c35ee5b6bbaf1224c560ed9ddf58864e79f54b25",
+      "integratedSha256": "e199b28f34acfe9827996eb6c35ee5b6bbaf1224c560ed9ddf58864e79f54b25"
+    },
+    "Model/Component/Checkbox.cs": {
+      "upstreamSha256": "c92f120a86bb848c062aa7ecff9eccdad9c7229dd1e06ae7fc4a17755ce592f4",
+      "integratedSha256": "c92f120a86bb848c062aa7ecff9eccdad9c7229dd1e06ae7fc4a17755ce592f4"
+    },
+    "Model/Component/CoinmasterVideo.cs": {
+      "upstreamSha256": "79945e807585c9d405df470f96f20502f067bd9327f0b5d433843b340e7402f8",
+      "integratedSha256": "79945e807585c9d405df470f96f20502f067bd9327f0b5d433843b340e7402f8"
+    },
+    "Model/Component/ComponentJsonContext.cs": {
+      "upstreamSha256": "003c07beab3c405e5499ed560e4b50a6a357a594a619dc883385f0bcbb0028dd",
+      "integratedSha256": "003c07beab3c405e5499ed560e4b50a6a357a594a619dc883385f0bcbb0028dd"
+    },
+    "Model/Component/DiscReel.cs": {
+      "upstreamSha256": "a778f6802f668ff611b47eb41598837cc6ced65b4fc0ffd9eeebc862b9b7e925",
+      "integratedSha256": "a778f6802f668ff611b47eb41598837cc6ced65b4fc0ffd9eeebc862b9b7e925"
+    },
+    "Model/Component/DotAlpha.cs": {
+      "upstreamSha256": "93c39a28b6d9c00aa30ecf7d282c0c69fb4b318e2a9d8efd6e9f74f0bbb344b2",
+      "integratedSha256": "93c39a28b6d9c00aa30ecf7d282c0c69fb4b318e2a9d8efd6e9f74f0bbb344b2"
+    },
+    "Model/Component/DotMatrix.cs": {
+      "upstreamSha256": "32427cb8fe24bcfa48b4baeff5142fc73b448afb23ab6b7150f50a7b87d48651",
+      "integratedSha256": "32427cb8fe24bcfa48b4baeff5142fc73b448afb23ab6b7150f50a7b87d48651"
+    },
+    "Model/Component/EpochDotAlpha.cs": {
+      "upstreamSha256": "4e3027d1598a8f11cfa6a41a4575604c2b51868570171d6ae1a7af78743080d1",
+      "integratedSha256": "4e3027d1598a8f11cfa6a41a4575604c2b51868570171d6ae1a7af78743080d1"
+    },
+    "Model/Component/EpochMatrix.cs": {
+      "upstreamSha256": "eb45b89d3d58289a9bd2d62f841b54e92bef68e47d03db844b12fff842bce58c",
+      "integratedSha256": "eb45b89d3d58289a9bd2d62f841b54e92bef68e47d03db844b12fff842bce58c"
+    },
+    "Model/Component/FlipReel.cs": {
+      "upstreamSha256": "477e6be3887558fe70d6100fd72196f8d746e50d52490454dc61c000128fd6f9",
+      "integratedSha256": "477e6be3887558fe70d6100fd72196f8d746e50d52490454dc61c000128fd6f9"
+    },
+    "Model/Component/FontTagEntry.cs": {
+      "upstreamSha256": "d6dfb47fc4ed53d4c08fe8413b24149837caf13da13d808d3b5e383fd87dd054",
+      "integratedSha256": "d6dfb47fc4ed53d4c08fe8413b24149837caf13da13d808d3b5e383fd87dd054"
+    },
+    "Model/Component/Frame.cs": {
+      "upstreamSha256": "21e4a84990c8a9ff678951f26be8bd181071562ffc8c63d6241bea72e852892a",
+      "integratedSha256": "21e4a84990c8a9ff678951f26be8bd181071562ffc8c63d6241bea72e852892a"
+    },
+    "Model/Component/IGTVfd.cs": {
+      "upstreamSha256": "cf37c1047ab663d80a3a97931e347b7765a30c411623d0a7390472b0d29ac85b",
+      "integratedSha256": "cf37c1047ab663d80a3a97931e347b7765a30c411623d0a7390472b0d29ac85b"
+    },
+    "Model/Component/Label.cs": {
+      "upstreamSha256": "dd4c7b9a0add54a250f03c70a5f761e6fe98312a32e615dacddf9c67a12214d7",
+      "integratedSha256": "dd4c7b9a0add54a250f03c70a5f761e6fe98312a32e615dacddf9c67a12214d7"
+    },
+    "Model/Component/Lamp.cs": {
+      "upstreamSha256": "406bd9acf3816f2ffa71886cfe99958fd7b6b09aacb2bd50a547ee4cc967ae07",
+      "integratedSha256": "406bd9acf3816f2ffa71886cfe99958fd7b6b09aacb2bd50a547ee4cc967ae07"
+    },
+    "Model/Component/LampSublampTableEntry.cs": {
+      "upstreamSha256": "7a39ef296dc9cae6e11065f31b456c5510e0330c3e2aea19d67d5280993b7181",
+      "integratedSha256": "7a39ef296dc9cae6e11065f31b456c5510e0330c3e2aea19d67d5280993b7181"
+    },
+    "Model/Component/Led.cs": {
+      "upstreamSha256": "861e30a3fc4e44e8d0ecb6f2df9ceb32d74b60a864443dc4d13d383fde98e869",
+      "integratedSha256": "861e30a3fc4e44e8d0ecb6f2df9ceb32d74b60a864443dc4d13d383fde98e869"
+    },
+    "Model/Component/MatrixAlpha.cs": {
+      "upstreamSha256": "78dd31a4c930318e3d50858e00623b862f8544ddf970db7ce7acf010a4a8ec80",
+      "integratedSha256": "78dd31a4c930318e3d50858e00623b862f8544ddf970db7ce7acf010a4a8ec80"
+    },
+    "Model/Component/MaygayMatrix.cs": {
+      "upstreamSha256": "2c8ce1a81ece3f0a369332161b05d66dd51113ad67e4ebee7004d12dd325c489",
+      "integratedSha256": "2c8ce1a81ece3f0a369332161b05d66dd51113ad67e4ebee7004d12dd325c489"
+    },
+    "Model/Component/MaygayVideo.cs": {
+      "upstreamSha256": "8b3a973e9d03f21476d8a74b5208427de6d90033b2b5f93b467eb91e298977ec",
+      "integratedSha256": "8b3a973e9d03f21476d8a74b5208427de6d90033b2b5f93b467eb91e298977ec"
+    },
+    "Model/Component/PlasmaDisplay.cs": {
+      "upstreamSha256": "4ac895b9a8e3d9f717b038f4b135f95d1862cbe824113febe974edf266fda39a",
+      "integratedSha256": "4ac895b9a8e3d9f717b038f4b135f95d1862cbe824113febe974edf266fda39a"
+    },
+    "Model/Component/PrismLamp.cs": {
+      "upstreamSha256": "5f7b52ed2f3eb3d6b0ff3080f7daab3410e08311eacf05883115169c10cbda5e",
+      "integratedSha256": "5f7b52ed2f3eb3d6b0ff3080f7daab3410e08311eacf05883115169c10cbda5e"
+    },
+    "Model/Component/ProconnMatrix.cs": {
+      "upstreamSha256": "bc0cda5dc52dd498cd36acf18d0fd9615f1dac02731a1fe6f954c3dda32baa72",
+      "integratedSha256": "bc0cda5dc52dd498cd36acf18d0fd9615f1dac02731a1fe6f954c3dda32baa72"
+    },
+    "Model/Component/Reel.cs": {
+      "upstreamSha256": "ac1c83fe38ae7059a3924b12d058479d7f653da379e9363c42a206811b37b8ea",
+      "integratedSha256": "ac1c83fe38ae7059a3924b12d058479d7f653da379e9363c42a206811b37b8ea"
+    },
+    "Model/Component/ReelBonusReel.cs": {
+      "upstreamSha256": "1a27ab59f30d4e23a54b867e48cefbc8d29393943db944471654af6fdce48454",
+      "integratedSha256": "1a27ab59f30d4e23a54b867e48cefbc8d29393943db944471654af6fdce48454"
+    },
+    "Model/Component/RGBLed.cs": {
+      "upstreamSha256": "f3e5aeded500b701309f044748727ce9a34e6b4bd56b10f4751ed9de73f5ed61",
+      "integratedSha256": "f3e5aeded500b701309f044748727ce9a34e6b4bd56b10f4751ed9de73f5ed61"
+    },
+    "Model/Component/SevenSeg.cs": {
+      "upstreamSha256": "087cf1c9c7ee9161f64f4703dd4cb9d4a8dd280ea82e5212056aac9cca45efd2",
+      "integratedSha256": "087cf1c9c7ee9161f64f4703dd4cb9d4a8dd280ea82e5212056aac9cca45efd2"
+    },
+    "Model/Component/SevenSegBlock.cs": {
+      "upstreamSha256": "bbd273972db0ea2fb6c9fb55a2e8705755e214a2aec2de78695717a8c327cf0b",
+      "integratedSha256": "bbd273972db0ea2fb6c9fb55a2e8705755e214a2aec2de78695717a8c327cf0b"
+    },
+    "Model/Component/SubLampNumberTablePayload.cs": {
+      "upstreamSha256": "c71db297f1da2841f82f59a99d70d682159c7d5a0d8978c230b67a3cf6ff86ee",
+      "integratedSha256": "c71db297f1da2841f82f59a99d70d682159c7d5a0d8978c230b67a3cf6ff86ee"
+    },
+    "Model/Component/SublampTableJsonConverter.cs": {
+      "upstreamSha256": "e9fd549f19dd9ddb3f269695303b792e48c8d6aa6c9041f4c7c7710c122c7e99",
+      "integratedSha256": "e9fd549f19dd9ddb3f269695303b792e48c8d6aa6c9041f4c7c7710c122c7e99"
+    },
+    "Utilities/BitmapEntryUtility.cs": {
+      "upstreamSha256": "d3f0590ab5457fc04ec7068bc72dd3f111ec2a432be3a022aa201914ce63712d",
+      "integratedSha256": "d3f0590ab5457fc04ec7068bc72dd3f111ec2a432be3a022aa201914ce63712d"
+    },
+    "Utilities/BmpUtility.cs": {
+      "upstreamSha256": "c7e147b55a1dc728d3ce61d2221a1b281a2c8247b5cc796275daefb6df7f9ef0",
+      "integratedSha256": "c7e147b55a1dc728d3ce61d2221a1b281a2c8247b5cc796275daefb6df7f9ef0"
+    },
+    "Utilities/FixedPointUtility.cs": {
+      "upstreamSha256": "c4ebaba7fa85877e970de864aa1b3882debc2ae9e126de6b55ab8569650bf963",
+      "integratedSha256": "c4ebaba7fa85877e970de864aa1b3882debc2ae9e126de6b55ab8569650bf963"
+    },
+    "Utilities/HexDiffUtility.cs": {
+      "upstreamSha256": "e54c45674993802cfce640453f20a9042377bb0dc18c7416ebcc804d73e39ea4",
+      "integratedSha256": "e54c45674993802cfce640453f20a9042377bb0dc18c7416ebcc804d73e39ea4"
+    },
+    "Utilities/HexDumpUtility.cs": {
+      "upstreamSha256": "dc6d14b2dd6c791b786dc417f1ccbeb509e5c875e25e8d25493974daca93ecd3",
+      "integratedSha256": "dc6d14b2dd6c791b786dc417f1ccbeb509e5c875e25e8d25493974daca93ecd3"
+    },
+    "Utilities/LayoutExporter.cs": {
+      "upstreamSha256": "7d21d0ad74be609d087d04b7b1fc7f780991a9b7ac0c1f26bec61838c8948cde",
+      "integratedSha256": "7d21d0ad74be609d087d04b7b1fc7f780991a9b7ac0c1f26bec61838c8948cde"
+    },
+    "Utilities/RunLog.cs": {
+      "upstreamSha256": "bd8fb9ff0e5761665b0a3234bfa90bcd05bc1b1e8b7d06d766d53dc6cd11481d",
+      "integratedSha256": "bd8fb9ff0e5761665b0a3234bfa90bcd05bc1b1e8b7d06d766d53dc6cd11481d"
+    },
+    "GameConfig/BlacklistUnbanner.cs": {
+      "upstreamSha256": "199f412908d20f8395336d91a097f4094da17d739c31bafc2e08e684a235a4a5",
+      "integratedSha256": "199f412908d20f8395336d91a097f4094da17d739c31bafc2e08e684a235a4a5"
+    },
+    "GameConfig/FileLevelTagBag.cs": {
+      "upstreamSha256": "cdd6c736cc82e21cdf57c09dfe2128ac98d0d759e2ae5ecf3875786b9d8e3113",
+      "integratedSha256": "cdd6c736cc82e21cdf57c09dfe2128ac98d0d759e2ae5ecf3875786b9d8e3113"
+    },
+    "GameConfig/GameConfigDecoder.cs": {
+      "upstreamSha256": "0a43b92bebef4933f9ab750b641d30aded9e48e9d59f6bc225e92e595647d6fb",
+      "integratedSha256": "0a43b92bebef4933f9ab750b641d30aded9e48e9d59f6bc225e92e595647d6fb"
+    },
+    "GameConfig/GameConfigMapLoader.cs": {
+      "upstreamSha256": "1ead8e12cbb8cefe7e521e07c331d60e55a3aa1be8c21195a1246da85447de9e",
+      "integratedSha256": "1ead8e12cbb8cefe7e521e07c331d60e55a3aa1be8c21195a1246da85447de9e"
+    },
+    "GameConfig/GameConfigMapRegistry.cs": {
+      "upstreamSha256": "8ea3b31579dd0c1db8ddccfd31b48533294fd556fd775a392da5d61964928256",
+      "integratedSha256": "8ea3b31579dd0c1db8ddccfd31b48533294fd556fd775a392da5d61964928256"
+    },
+    "GameConfig/GamFile.cs": {
+      "upstreamSha256": "dfde4aea2593da6803b13543273b7e057dd85b741eb58f1f3363c28271a7c7b1",
+      "integratedSha256": "dfde4aea2593da6803b13543273b7e057dd85b741eb58f1f3363c28271a7c7b1"
+    },
+    "GameConfig/SiblingGamResolver.cs": {
+      "upstreamSha256": "d59940dcd6d3fca961fe3a40d75af7744d9dae0ef9c45a066271aa5e686dea69",
+      "integratedSha256": "d59940dcd6d3fca961fe3a40d75af7744d9dae0ef9c45a066271aa5e686dea69"
+    },
+    "GameConfig/Maps/ACEVIDEOGameConfigMap.cs": {
+      "upstreamSha256": "641319448e1cb78c1ab2c5c518dbd9e8cbb908531389fbce26fa0e178c5d279c",
+      "integratedSha256": "641319448e1cb78c1ab2c5c518dbd9e8cbb908531389fbce26fa0e178c5d279c"
+    },
+    "GameConfig/Maps/ADDER5GameConfigMap.cs": {
+      "upstreamSha256": "25da6a03e7f9de3465de268a00ff99ba1ba5e1f9d806b5816f3140e65b39337e",
+      "integratedSha256": "25da6a03e7f9de3465de268a00ff99ba1ba5e1f9d806b5816f3140e65b39337e"
+    },
+    "GameConfig/Maps/ASTRASYSA1GameConfigMap.cs": {
+      "upstreamSha256": "abc4aea243a13d25a85dae7c61444fd31f47b6f47f3e85f4721b0d8563af6c01",
+      "integratedSha256": "abc4aea243a13d25a85dae7c61444fd31f47b6f47f3e85f4721b0d8563af6c01"
+    },
+    "GameConfig/Maps/BLACKBOXGameConfigMap.cs": {
+      "upstreamSha256": "052acf1ff0fbad627089d0eceb585568f330dd9ebfb968ab548c738f054d9bb3",
+      "integratedSha256": "052acf1ff0fbad627089d0eceb585568f330dd9ebfb968ab548c738f054d9bb3"
+    },
+    "GameConfig/Maps/ELECTROCOINGameConfigMap.cs": {
+      "upstreamSha256": "cc563e15cf321fafd0d527453cf8b7100baea5e85fc11f69fbab15b1d0f8b36a",
+      "integratedSha256": "cc563e15cf321fafd0d527453cf8b7100baea5e85fc11f69fbab15b1d0f8b36a"
+    },
+    "GameConfig/Maps/EPOCHGameConfigMap.cs": {
+      "upstreamSha256": "bb091a4f4dc80a8276bc1a315e9c8de570ecaa237795c2f431da1e789d9099f4",
+      "integratedSha256": "bb091a4f4dc80a8276bc1a315e9c8de570ecaa237795c2f431da1e789d9099f4"
+    },
+    "GameConfig/Maps/GameConfigMapRegistration.cs": {
+      "upstreamSha256": "8edda2bbba14a3ee144a50e72fd84f800dd9f75a9d078d8946e998dcd3265fb8",
+      "integratedSha256": "8edda2bbba14a3ee144a50e72fd84f800dd9f75a9d078d8946e998dcd3265fb8"
+    },
+    "GameConfig/Maps/IGTSPlusGameConfigMap.cs": {
+      "upstreamSha256": "587d7c5483186739ae984015869815b593aaa5ecbf2cfe586bef86d4cdd0db52",
+      "integratedSha256": "587d7c5483186739ae984015869815b593aaa5ecbf2cfe586bef86d4cdd0db52"
+    },
+    "GameConfig/Maps/IMPACTGameConfigMap.cs": {
+      "upstreamSha256": "b95b415b812236bfb3396aa0567589d22e7b8d28a3e4771b58bf79e05ae57f6d",
+      "integratedSha256": "b95b415b812236bfb3396aa0567589d22e7b8d28a3e4771b58bf79e05ae57f6d"
+    },
+    "GameConfig/Maps/M1ABGameConfigMap.cs": {
+      "upstreamSha256": "5c66da0bd227c3ecad467cdd0389a9a37cfd36e47451ca9494679c01c928c446",
+      "integratedSha256": "5c66da0bd227c3ecad467cdd0389a9a37cfd36e47451ca9494679c01c928c446"
+    },
+    "GameConfig/Maps/M1VIDEOGameConfigMap.cs": {
+      "upstreamSha256": "e98ef8cf8af8e890d8a5ebf6c8e270c2983286205b715140a9d4bdf244e3460c",
+      "integratedSha256": "e98ef8cf8af8e890d8a5ebf6c8e270c2983286205b715140a9d4bdf244e3460c"
+    },
+    "GameConfig/Maps/MACH2000AGameConfigMap.cs": {
+      "upstreamSha256": "15c7d24a577150646d97c43bd1cfa069401d759c7b6b57c0feb1ae7a371c69e0",
+      "integratedSha256": "15c7d24a577150646d97c43bd1cfa069401d759c7b6b57c0feb1ae7a371c69e0"
+    },
+    "GameConfig/Maps/MACH2000EGameConfigMap.cs": {
+      "upstreamSha256": "0365b62c109573d2f515728a7b96fae4a708d233c3250d45b62d789d828343e0",
+      "integratedSha256": "0365b62c109573d2f515728a7b96fae4a708d233c3250d45b62d789d828343e0"
+    },
+    "GameConfig/Maps/MMMGameConfigMap.cs": {
+      "upstreamSha256": "c38b20cf73a455bf69032a6a4295420121f1e81968a19d52d85cdd8c8d6f7846",
+      "integratedSha256": "c38b20cf73a455bf69032a6a4295420121f1e81968a19d52d85cdd8c8d6f7846"
+    },
+    "GameConfig/Maps/MPS2GameConfigMap.cs": {
+      "upstreamSha256": "fb3af581feeed921496dcd2bd552df887530440f95eb53df30bbd6cff0d3f11f",
+      "integratedSha256": "fb3af581feeed921496dcd2bd552df887530440f95eb53df30bbd6cff0d3f11f"
+    },
+    "GameConfig/Maps/MPU2GameConfigMap.cs": {
+      "upstreamSha256": "83de584180d3518b1849e23ff0187974ac0c770f3af052289c236054668ab181",
+      "integratedSha256": "83de584180d3518b1849e23ff0187974ac0c770f3af052289c236054668ab181"
+    },
+    "GameConfig/Maps/MPU3GameConfigMap.cs": {
+      "upstreamSha256": "73fa6b24c6be27a89385b509832aa93b0655047e17d66e304bd19f86ca29a810",
+      "integratedSha256": "73fa6b24c6be27a89385b509832aa93b0655047e17d66e304bd19f86ca29a810"
+    },
+    "GameConfig/Maps/MPU4GameConfigMap.cs": {
+      "upstreamSha256": "bf4dffeef97d8e198c0ae4b93504a5e410790db683047489fe8684aa521d45a8",
+      "integratedSha256": "bf4dffeef97d8e198c0ae4b93504a5e410790db683047489fe8684aa521d45a8"
+    },
+    "GameConfig/Maps/MPU4PLASMAGameConfigMap.cs": {
+      "upstreamSha256": "e3ad13a0e42205158a9c6189f4782010c9037ca95c160966b7a6512dab4c5bfc",
+      "integratedSha256": "e3ad13a0e42205158a9c6189f4782010c9037ca95c160966b7a6512dab4c5bfc"
+    },
+    "GameConfig/Maps/MPU4VIDEOGameConfigMap.cs": {
+      "upstreamSha256": "9e6112c4a9ad20d604712b988f07ad0a5ac504812cfd0bc292958f5d24db6dca",
+      "integratedSha256": "9e6112c4a9ad20d604712b988f07ad0a5ac504812cfd0bc292958f5d24db6dca"
+    },
+    "GameConfig/Maps/MPU5GameConfigMap.cs": {
+      "upstreamSha256": "55cf549d968c248d25c6e5041a22ebfc3e328f393a1f1890602b3d1a0d5b8f8f",
+      "integratedSha256": "55cf549d968c248d25c6e5041a22ebfc3e328f393a1f1890602b3d1a0d5b8f8f"
+    },
+    "GameConfig/Maps/PHOENIX2GameConfigMap.cs": {
+      "upstreamSha256": "18d3bbeda04b7db2c1db4e4cdb77d0a049c16c2930dab7b0533b66c56ebf1c69",
+      "integratedSha256": "18d3bbeda04b7db2c1db4e4cdb77d0a049c16c2930dab7b0533b66c56ebf1c69"
+    },
+    "GameConfig/Maps/PHOENIXGameConfigMap.cs": {
+      "upstreamSha256": "33fd0781851a390b4f9df6a647a2413006be1ca1d4ca1d1dbad995475b316632",
+      "integratedSha256": "33fd0781851a390b4f9df6a647a2413006be1ca1d4ca1d1dbad995475b316632"
+    },
+    "GameConfig/Maps/PLUTO5GameConfigMap.cs": {
+      "upstreamSha256": "bd35d48d0fd16972a4256e9cfa412602461fcc583241f977f55be6ac97fe2ab5",
+      "integratedSha256": "bd35d48d0fd16972a4256e9cfa412602461fcc583241f977f55be6ac97fe2ab5"
+    },
+    "GameConfig/Maps/PROCONNGameConfigMap.cs": {
+      "upstreamSha256": "a7f7214656d4c6aaa5e9b6611daf50c89384ab4d9aec00d9329c0fbaa264030d",
+      "integratedSha256": "a7f7214656d4c6aaa5e9b6611daf50c89384ab4d9aec00d9329c0fbaa264030d"
+    },
+    "GameConfig/Maps/SCORPION1GameConfigMap.cs": {
+      "upstreamSha256": "04228e62dc3d338a5285205bb369c98a17c3524177d9713081c5ec181092a51c",
+      "integratedSha256": "04228e62dc3d338a5285205bb369c98a17c3524177d9713081c5ec181092a51c"
+    },
+    "GameConfig/Maps/SCORPION2GameConfigMap.cs": {
+      "upstreamSha256": "ac797d806eb0e1ef6a27595f528f35d9aa6414725f0e595b7c91763b9807add2",
+      "integratedSha256": "ac797d806eb0e1ef6a27595f528f35d9aa6414725f0e595b7c91763b9807add2"
+    },
+    "GameConfig/Maps/SCORPION4GameConfigMap.cs": {
+      "upstreamSha256": "fd2c2a98ff76639d9c827fa86c8f49e5b01fb359c29bddc5d19597f9795fa988",
+      "integratedSha256": "fd2c2a98ff76639d9c827fa86c8f49e5b01fb359c29bddc5d19597f9795fa988"
+    },
+    "GameConfig/Maps/SCORPION5GameConfigMap.cs": {
+      "upstreamSha256": "a9291358eaf077d7367dd9c526de41e49d170c38361e52b58071e33ae377571e",
+      "integratedSha256": "a9291358eaf077d7367dd9c526de41e49d170c38361e52b58071e33ae377571e"
+    },
+    "GameConfig/Maps/SpACEGameConfigMap.cs": {
+      "upstreamSha256": "73715b9e8a1bfc5e91dbeab1928aaca030375936cb4bd25552685bb4c39ef5a9",
+      "integratedSha256": "73715b9e8a1bfc5e91dbeab1928aaca030375936cb4bd25552685bb4c39ef5a9"
+    },
+    "GameConfig/Maps/SRUGameConfigMap.cs": {
+      "upstreamSha256": "56d2efa6b61f44b035c33be60ac923635d1badebd7a8ace435b2658512ab1b2e",
+      "integratedSha256": "56d2efa6b61f44b035c33be60ac923635d1badebd7a8ace435b2658512ab1b2e"
+    },
+    "GameConfig/Maps/SYS1GameConfigMap.cs": {
+      "upstreamSha256": "01ecd54ea68b8a04a3a77a77cdbc433e778c3d2ec1ead69d4572ae7169f5aa25",
+      "integratedSha256": "01ecd54ea68b8a04a3a77a77cdbc433e778c3d2ec1ead69d4572ae7169f5aa25"
+    },
+    "GameConfig/Maps/SYS5GameConfigMap.cs": {
+      "upstreamSha256": "34e4bfae309380c0b30a9d920d16e3650d2dc95140bbd8863bec2269d2ff1857",
+      "integratedSha256": "34e4bfae309380c0b30a9d920d16e3650d2dc95140bbd8863bec2269d2ff1857"
+    },
+    "GameConfig/Maps/SYS83GameConfigMap.cs": {
+      "upstreamSha256": "28aae2ad6320ae7b7b294dad463887b971072cd03945ef07e97cd8638ebf0e20",
+      "integratedSha256": "28aae2ad6320ae7b7b294dad463887b971072cd03945ef07e97cd8638ebf0e20"
+    },
+    "GameConfig/Maps/SYS85GameConfigMap.cs": {
+      "upstreamSha256": "22cf21fef6d537144b4a70e67826e9c20f8bbe19ca5f40f501ff204bb4b154f1",
+      "integratedSha256": "22cf21fef6d537144b4a70e67826e9c20f8bbe19ca5f40f501ff204bb4b154f1"
+    },
+    "GameConfig/Maps/SYSTEM80GameConfigMap.cs": {
+      "upstreamSha256": "0673a4f850fbc9f54c6c7763f96c72453553e99aa3bbb4f3f54b874e5a17cd75",
+      "integratedSha256": "0673a4f850fbc9f54c6c7763f96c72453553e99aa3bbb4f3f54b874e5a17cd75"
+    },
+    "GameConfig/Structures/ReelJumpersV1b.cs": {
+      "upstreamSha256": "f2fc747eca51addd94c32750eaad06dc0b0f4d799f28daa853ba9277255b45ed",
+      "integratedSha256": "f2fc747eca51addd94c32750eaad06dc0b0f4d799f28daa853ba9277255b45ed"
+    },
+    "Diagnostics/LegacyPairVerifier.cs": {
+      "upstreamSha256": "537a398aec313aaff95b7342108a54bb32bc6f114d993a25a695c17e03bf4d30",
+      "integratedSha256": "537a398aec313aaff95b7342108a54bb32bc6f114d993a25a695c17e03bf4d30"
+    }
+  }
+}

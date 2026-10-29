@@ -1,0 +1,196 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using MfmeFmlDecoder.Model;
+using MfmeFmlDecoder.src.Model;
+using MfmeFmlDecoder.Utilities;
+using MfmeFmlDecoder.src.Decoder.Component.Profiles;
+
+namespace MfmeFmlDecoder.Decoder
+{
+    internal sealed class FileWalker
+    {
+        private const uint TlvTerminationTag = 0xFFFFFFFF;
+        private MfmeVersion _version = MfmeVersion.V20_1;
+
+        private ComponentWalker _componentWalker;
+
+        public LayoutFileHeader Header { get; } = new LayoutFileHeader();
+
+        public FileWalker(ComponentWalker componentWalker)
+        {
+            _componentWalker = componentWalker;
+        }
+
+        public void WalkTlv(string fileName, uint offset)
+        {
+            using FileStream fileStream = new FileStream(
+                fileName,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize: 1024 * 1024,
+                options: FileOptions.SequentialScan);
+            WalkTlv(fileStream, offset);
+        }
+
+        public void WalkTlv(byte[] data, uint offset)
+        {
+            using MemoryStream fileStream = new MemoryStream(data, writable: false);
+            WalkTlv(fileStream, offset);
+        }
+
+        private void WalkTlv(Stream fileStream, uint offset)
+        {
+            using BinaryReader reader = new BinaryReader(fileStream, System.Text.Encoding.UTF8, leaveOpen: true);
+            if (offset > fileStream.Length)
+            {
+                throw new InvalidOperationException(
+                    $"Offset 0x{offset:X} is beyond file length 0x{fileStream.Length:X}.");
+            }
+
+            if (offset > 0)
+            {
+                fileStream.Seek(offset, SeekOrigin.Begin);
+            }
+
+            while (fileStream.Position < fileStream.Length)
+            {
+                long recordStartOffset = fileStream.Position;
+
+                uint tag = reader.ReadUInt32();
+                uint length = reader.ReadUInt32();
+                byte[] values = reader.ReadBytes(checked((int)length));
+                if (values.Length != length)
+                {
+                    throw new EndOfStreamException(
+                        $"Unexpected EOF reading tag 0x{tag:X2} at offset 0x{recordStartOffset:X8}. " +
+                        $"Expected {length} bytes but only {values.Length} bytes were read.");
+                }
+
+                OnRecordRead(recordStartOffset, tag, length, values);
+                InterpretFileLevelTag(tag, values);
+
+                if (tag == MfmeVersionReader.MfmeVersionTag)
+                {
+                    ReadMfmeVersion(values);
+                }
+
+                if (LengthPrefixedStringTableScanner.IsFileLevelTag(tag))
+                {
+                    LengthPrefixedStringTableScanner.SkipContinuation(
+                        reader,
+                        hostTagKeyByte: (byte)tag,
+                        scanEndExclusive: fileStream.Length);
+                }
+
+                if (tag == TlvTerminationTag)
+                {
+                    long currentOffset = fileStream.Position;
+
+                    RunLog.WriteLine();
+                    RunLog.WriteLine($"TLV Termination tag 0xFFFFFFFF found at offset 0x{recordStartOffset:X8}");
+                    RunLog.WriteLine($"Current offset: 0x{currentOffset:X8}");
+
+                    var context = new ParsingContext(
+                        _version,
+                        null,
+                        ComponentProfileCatalog.GetComponentOrdering(_version));
+                    _componentWalker.WalkComponents(fileStream, reader, currentOffset, context);
+                    break;
+                }
+            }
+        }
+
+        private void OnRecordRead(long offset, uint tag, uint length, byte[] values)
+        {
+            RunLog.WriteLine($"Offset: 0x{offset:X8}, Tag: 0x{tag:X2}, Length: 0x{length:X2}");
+            HexDumpUtility.PrintHexDump((uint)(offset + 8), values, maxBytes: 0xFF);
+        }
+
+        private void InterpretFileLevelTag(uint tag, byte[] values)
+        {
+            switch (tag)
+            {
+                case LayoutFileHeader.LayoutDescriptionTag:
+                    // 101-byte buffer may hold multiple null-terminated lines (line1\0line2\0…).
+                    Header.Description = DecodeNullSeparatedAscii(values);
+                    break;
+                case LayoutFileHeader.TextNotesTag:
+                    Header.TextNotes = DecodeNullTerminatedAscii(values);
+                    break;
+                case LayoutFileHeader.SplashBitmapTag:
+                    Header.SplashBitmap = TryBuildSplashBitmap(values);
+                    break;
+            }
+        }
+
+        private static BitmapEntry TryBuildSplashBitmap(byte[] values)
+        {
+            if (values is null || values.Length == 0)
+            {
+                return null;
+            }
+
+            var info = BmpUtility.ReadInfo(values);
+            return new BitmapEntry(info.Width, info.Height, info.BitsPerPixel, values)
+            {
+                Purpose = LayoutFileHeader.SplashBitmapImageKey
+            };
+        }
+
+        private static string DecodeNullTerminatedAscii(byte[] values)
+        {
+            if (values is null || values.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            int end = Array.IndexOf(values, (byte)0);
+            if (end < 0)
+            {
+                end = values.Length;
+            }
+
+            return Encoding.ASCII.GetString(values, 0, end);
+        }
+
+        /// <summary>
+        /// Decode one or more C-strings packed into a fixed buffer (e.g. layout
+        /// description tag 0x0C: line1\0line2\0padding). Joins non-empty parts with newlines.
+        /// </summary>
+        private static string DecodeNullSeparatedAscii(byte[] values)
+        {
+            if (values is null || values.Length == 0)
+                return string.Empty;
+
+            var parts = new List<string>();
+            int i = 0;
+            while (i < values.Length)
+            {
+                int end = Array.IndexOf(values, (byte)0, i);
+                if (end < 0) end = values.Length;
+                if (end > i)
+                    parts.Add(Encoding.ASCII.GetString(values, i, end - i));
+                if (end >= values.Length) break;
+                i = end + 1;
+                // Trailing padding is all zeros — stop once we hit an empty segment
+                // after at least one part (avoid inventing blank lines from padding).
+                if (i < values.Length && values[i] == 0 && parts.Count > 0)
+                    break;
+            }
+
+            return string.Join("\n", parts);
+        }
+
+        private void ReadMfmeVersion(byte[] values)
+        {
+            string versionText = MfmeVersionReader.FormatVersion(values);
+            if (MfmeVersion.TryParse(versionText, out MfmeVersion version))
+            {
+                _version = version;
+            }
+        }
+    }
+}
