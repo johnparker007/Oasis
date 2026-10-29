@@ -34,6 +34,7 @@ public sealed class ToolChromeIcons : AvaloniaObject
         private Panel? _panel;
         private EditorIcon? _icon;
         private Thickness _originalMargin;
+        private global::Avalonia.Layout.VerticalAlignment _originalVerticalAlignment;
         public void Enable()
         {
             if (_enabled) return;
@@ -45,7 +46,11 @@ public sealed class ToolChromeIcons : AvaloniaObject
         }
         private void Clear()
         {
-            if (_title is not null) { _title.PropertyChanged -= Changed; _title.Margin = _originalMargin; }
+            if (_title is not null)
+            {
+                _title.PropertyChanged -= Changed; _title.Margin = _originalMargin;
+                _title.VerticalAlignment = _originalVerticalAlignment;
+            }
             if (_icon is not null) _panel?.Children.Remove(_icon);
             _title = null; _panel = null; _icon = null;
         }
@@ -57,6 +62,10 @@ public sealed class ToolChromeIcons : AvaloniaObject
             _title = grip?.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(t => t.Parent is Panel);
             if (_title?.Parent is not Panel panel) return;
             _panel = panel; _originalMargin = _title.Margin;
+            _originalVerticalAlignment = _title.VerticalAlignment;
+            // A stretched TextBlock draws its line at the top of the spare
+            // title area, while the 16-DIP icon is centred in that same area.
+            _title.VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center;
             _title.PropertyChanged += Changed;
             _icon = new EditorIcon { HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Left };
             _icon.Bind(TemplatedControl.ForegroundProperty, new Binding(nameof(TextBlock.Foreground)) { Source = _title });
