@@ -82,13 +82,16 @@ public sealed class EditorIconTests
                 Assert.Contains(capture.View.GetVisualDescendants().OfType<EditorIcon>(), i => i.Kind == EditorIconKind.Hierarchy);
                 Assert.Contains(capture.View.GetVisualDescendants().OfType<EditorIcon>(), i => i.Kind == EditorIconKind.Inspector);
                 Assert.Contains(capture.View.GetVisualDescendants().OfType<EditorIcon>(), i => i.Kind == EditorIconKind.Project);
+                AssertHeaderAlignment(capture.View);
                 capture.View.MoveWorkspacePane("Output", "float"); capture.Capture();
                 var floating = Assert.Single(capture.View.FloatingWorkspaceWindows);
+                AssertHeaderAlignment(floating);
                 Assert.Contains(floating.GetVisualDescendants().OfType<EditorIcon>(), i => i.Kind == EditorIconKind.Console);
                 capture.View.ToggleTabMaximised("Output"); capture.Capture();
                 Assert.Contains(floating.GetVisualDescendants().OfType<EditorIcon>(), i => i.Kind == EditorIconKind.Console);
                 capture.View.ToggleTabMaximised("Output"); capture.Capture();
                 Assert.Contains(floating.GetVisualDescendants().OfType<EditorIcon>(), i => i.Kind == EditorIconKind.Console);
+                AssertHeaderAlignment(floating);
                 var path = Environment.GetEnvironmentVariable("OASIS_ICON_VERIFICATION_OUTPUT");
                 if (!string.IsNullOrWhiteSpace(path))
                 { Directory.CreateDirectory(path); File.WriteAllBytes(Path.Combine(path, "workspace.png"), capture.Capture()); }
@@ -96,4 +99,19 @@ public sealed class EditorIconTests
             finally { Directory.Delete(root, true); }
         });
     }
+    private static void AssertHeaderAlignment(Control host)
+    {
+        var icons = host.GetVisualDescendants().OfType<EditorIcon>()
+            .Where(i => i.IsVisible && i.Parent is Panel && i.GetVisualAncestors().Any(c => c is Dock.Avalonia.Controls.ToolChromeControl)).ToArray();
+        Assert.NotEmpty(icons);
+        foreach (var icon in icons)
+        {
+            var parent = (Panel)icon.Parent!;
+            var title = Assert.Single(parent.Children.OfType<TextBlock>());
+            var lineCentre = title.Bounds.Y + title.TextLayout.Height / 2;
+            Assert.True(Math.Abs(lineCentre - icon.Bounds.Center.Y) <= .75,
+                $"{title.Text}: text line centre {lineCentre}, icon centre {icon.Bounds.Center.Y}");
+        }
+    }
+
 }
