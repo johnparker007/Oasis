@@ -5,7 +5,7 @@ namespace OasisEditor;
 
 internal static class Panel2DDocumentStorage
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
     public const int LegacySchemaVersion = 1;
 
     internal static PanelElementKind ParseElementKind(string? kind)
@@ -157,7 +157,7 @@ internal static class Panel2DDocumentStorage
 
     public static bool TryMigrateToCurrentSchema(Panel2DDocumentFile source, out Panel2DDocumentFile migrated, out string errorMessage)
     {
-        if (source.SchemaVersion == CurrentSchemaVersion || source.SchemaVersion == 3)
+        if (source.SchemaVersion == CurrentSchemaVersion || source.SchemaVersion is 3 or 4)
         {
             migrated = source with { SchemaVersion = CurrentSchemaVersion };
             errorMessage = string.Empty;

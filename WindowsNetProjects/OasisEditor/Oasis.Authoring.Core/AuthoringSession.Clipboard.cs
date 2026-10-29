@@ -77,11 +77,11 @@ public sealed partial class AuthoringSession
         var elements=_panelClipboard.Select(e=>
         {
             ValidateClipboardAssetReferences(projectRoot,e);
-            var copy=CloneElement(e) with {ObjectId=ids[e.ObjectId],ParentId=e.ParentId is null?null:ids[e.ParentId]};
+            var copy=CloneElement(e) with {ObjectId=ids[e.ObjectId],SharedSourceSetId=e.SharedSourceSetId is {} shared&&ids.TryGetValue(shared,out var mapped)?mapped:e.SharedSourceSetId,ParentId=e.ParentId is null?null:ids[e.ParentId]};
             if(e.ParentId is null)copy=TranslateLocal(copy,offsetX,offsetY);
             return copy;
         }).ToArray();
-        var groups=_panelClipboardState.Groups.Select(g=>g with {Id=ids[g.Id],ParentId=g.ParentId is null?null:ids[g.ParentId],Transform=g.ParentId is null?g.Transform with {X=g.Transform.X+offsetX,Y=g.Transform.Y+offsetY}:g.Transform}).ToArray();
+        var groups=_panelClipboardState.Groups.Select(g=>g with {Id=ids[g.Id],Control=g.Control?.Input is {} binding?g.Control with {Input=binding with {Id=Guid.NewGuid().ToString("N")}}:g.Control,ParentId=g.ParentId is null?null:ids[g.ParentId],Transform=g.ParentId is null?g.Transform with {X=g.Transform.X+offsetX,Y=g.Transform.Y+offsetY}:g.Transform}).ToArray();
         Commit(document with {Elements=[..document.Elements,..elements],Groups=[..document.Groups,..groups],HierarchyOrder=[..OrderedIds(document),.._panelClipboardState.Order.Select(id=>ids[id])]},notify:false);
         _selectedIds=_panelClipboardState.Roots.Select(id=>ids[id]).ToList();_selectedId=_selectedIds.FirstOrDefault();StorePanelState();Changed?.Invoke();return _selectedIds.ToArray();
     }

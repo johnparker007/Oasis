@@ -145,7 +145,7 @@ public sealed partial class WorkspaceView
             inputs.Add(new InputDefinitionModel { Id = "input-" + Guid.NewGuid().ToString("N"), Name = "New input", Kind = InputDefinitionKind.Button });
             Machines.SetInputs(inputs);
         })));
-        var recovered = _session.ImportedInputDefinitions;
+        var recovered = RecoverablePanelInputs;
         if (recovered.Count > 0)
             _inspector.Children.Add(ActionButton($"Apply {recovered.Count} recovered FML inputs", () => Try(() => Machines.ApplyRecoveredInputs(recovered))));
 

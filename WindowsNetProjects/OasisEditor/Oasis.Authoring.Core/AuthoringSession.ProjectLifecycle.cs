@@ -8,7 +8,7 @@ public sealed partial class AuthoringSession
         _document = null; _panelPath = null; _projectFilePath = null; _projectDirectory = null;
         ProjectName = null; _diskHash = null; _savedContent = string.Empty;
         _selectedId = null; _selectedIds = [];
-        _panelStates.Clear(); _importedInputDefinitions.Clear(); _createdFmlImports.Clear(); ClearHistory();
+        _panelStates.Clear(); _createdFmlImports.Clear(); ClearHistory();
         Changed?.Invoke();
     }
 }

@@ -39,7 +39,7 @@ public sealed partial class EditorTools(AuthoringSession rootSession, WorkspaceC
     [McpServerTool(Name = "open_panel2d"), Description("Open or activate an Assets/Panel2D/<name>/asset.panel2d tab using shared storage validation. Retains other tabs and their unsaved edits.")]
     public Task<object> OpenPanel(string path, CancellationToken cancellationToken) => ui.InvokeAsync<object>(async () => { await capture.View.OpenNativeAssetAsync("Panel2D", path); return Snapshot(); }, cancellationToken);
 
-    [McpServerTool(Name = "create_panel2d"), Description("Create and save a fresh schema-4 Panel2D package. Refuses existing packages.")]
+    [McpServerTool(Name = "create_panel2d"), Description("Create and save a fresh schema-5 Panel2D package. Refuses existing packages.")]
     public Task<object> CreatePanel(string name, CancellationToken cancellationToken) => ui.InvokeAsync<object>(async () => { var path = session.CreatePanel(name); await capture.View.OpenNativeAssetAsync("Panel2D", path); return Snapshot(); }, cancellationToken);
 
     [McpServerTool(Name = "add_rectangle"), Description("Add a real Panel2D rectangle through document history and select it. Does not save.")]

@@ -9,6 +9,7 @@ public sealed class Panel2DDocumentModel
     public string Summary { get; init; } = string.Empty;
     public IReadOnlyList<PanelElementModel> Elements { get; init; } = [];
     public IReadOnlyList<PanelGroup> Groups { get; init; } = [];
+    public IReadOnlyList<PanelControlInstance> Controls { get; init; } = [];
     public IReadOnlyList<PanelFaceSourceShapeModel> FaceSourceShapes { get; init; } = [];
 }
 

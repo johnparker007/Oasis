@@ -96,9 +96,9 @@ public sealed partial class EditorTools
     public Task<object> SetMachineInputs(InputDefinitionModel[] inputs, CancellationToken cancellationToken)
         => ui.Invoke(() => ActMachine(() => Machines.SetInputs(inputs)), cancellationToken);
 
-    [McpServerTool(Name = "apply_recovered_fml_inputs"), Description("Intentionally copy the last decoded FML input definitions into the active Machine through one undoable command. FML imports alone never alter Machine documents.")]
+    [McpServerTool(Name = "apply_recovered_fml_inputs"), Description("Intentionally copy the persisted/recovered FML inputs from open project Panel2D documents into the active Machine through one undoable command. FML imports alone never alter Machine documents.")]
     public Task<object> ApplyRecoveredFmlInputs(CancellationToken cancellationToken)
-        => ui.Invoke(() => ActMachine(() => Machines.ApplyRecoveredInputs(session.ImportedInputDefinitions)), cancellationToken);
+        => ui.Invoke(() => ActMachine(() => Machines.ApplyRecoveredInputs(capture.View.RecoverablePanelInputs)), cancellationToken);
 
     [McpServerTool(Name = "machine_history"), Description("Undo one Machine settings command; set redo=true to redo. Does not save.")]
     public Task<object> MachineHistory(CancellationToken cancellationToken, bool redo = false)

@@ -37,6 +37,18 @@ public sealed partial class AuthoringSession
             if(group is null || string.IsNullOrWhiteSpace(group.Id) || !ids.Add(group.Id) || string.IsNullOrWhiteSpace(group.Name)
                 || !PanelHierarchy.Icons.Contains(group.Icon) || group.Transform is null)
                 throw new ArgumentException("Groups require unique IDs, names, valid transforms and a built-in icon.");
+        var inputIds=new HashSet<string>(StringComparer.Ordinal);
+        foreach(var group in d.Groups.Where(g=>g.Control is not null))
+        {
+            var control=group.Control!;
+            if(control.Kind!="lamp"||string.IsNullOrWhiteSpace(control.SourceFormat)||control.SourceComponentIndex is <0
+                ||!double.IsFinite(control.Width)||!double.IsFinite(control.Height)||control.Width<=0||control.Height<=0)
+                throw new ArgumentException("Control dimensions and source metadata are invalid.");
+            if(d.Groups.Any(g=>g.ParentId==group.Id)||d.Elements.Any(e=>e.ParentId==group.Id&&e.ElementKind!=PanelElementKind.Lamp))
+                throw new ArgumentException("Lamp controls own lamp channels. Put mixed objects in an organisational group.");
+            if(control.Input is {} input && (string.IsNullOrWhiteSpace(input.Id)||!inputIds.Add(input.Id)||!Enum.IsDefined(input.Kind)||input.CoinChannel is <0||input.CoinValue is <0))
+                throw new ArgumentException("Control inputs require unique IDs and valid channel settings.");
+        }
         var tree = new PanelHierarchy(d.Groups);
         foreach(var e in d.Elements) { tree.Resolve(e.ParentId); e.Transform?.Validate(); }
         if(d.HierarchyOrder.Any(id => !ids.Contains(id)) || d.HierarchyOrder.Distinct().Count()!=d.HierarchyOrder.Length)
@@ -61,12 +73,12 @@ public sealed partial class AuthoringSession
         get
         {
             if(_document is not {} d) return [];
-            var groups=d.Groups.ToDictionary(g=>g.Id); var elements=Elements.ToDictionary(e=>e.Id);
+            var groups=d.Groups.ToDictionary(g=>g.Id); var elements=Elements.ToDictionary(e=>e.Id);var labels=LabelMap;var tree=new PanelHierarchy(d.Groups);
             return OrderedIds(NormalizeHierarchy(d)).Select(id=>
             {
                 var depth=0; for(var p=Parent(d,id);p is not null;p=Parent(d,p)) depth++;
-                return groups.TryGetValue(id,out var g) ? new ElementSnapshot(g.Id,"group",g.Name,g.Transform.X,g.Transform.Y,0,0,null,null,null,null,null,null,null,g.Visible,g.Locked,g.ParentId,g.Icon,depth)
-                    : elements[id] with { Depth=depth };
+                return groups.TryGetValue(id,out var g) ? new ElementSnapshot(g.Id,"group",labels[g.Id].DisplayName,g.Transform.X,g.Transform.Y,0,0,null,null,null,null,null,null,null,g.Visible,g.Locked,g.ParentId,labels[g.Id].Icon,depth,g.Control?.Input is {Enabled:true} binding?$"{binding.Name} ({binding.ButtonNumber})":null,tree.Resolve(g.ParentId).Visible,tree.Resolve(g.ParentId).Locked)
+                    : elements[id] with { Depth=depth,AncestorsVisible=tree.Resolve(elements[id].ParentId).Visible,AncestorsLocked=tree.Resolve(elements[id].ParentId).Locked };
             }).ToArray();
         }
     }
@@ -87,6 +99,11 @@ public sealed partial class AuthoringSession
             {
                 var ids=Descendants(RequireDocument(),[g.Id]);var children=result.Where(e=>ids.Contains(e.Id)&&e.Kind!="group").ToArray();
                 var state=Tree.Resolve(g.Id);var origin=state.Transform.Map(0,0);
+                if(g.Control is {} control)
+                {
+                    var bounds=PanelHierarchy.Bounds(new PanelElementModel {Width=control.Width,Height=control.Height,Transform=state.Transform});
+                    children=[..children,new ElementSnapshot("control-bounds","bounds","",bounds.X,bounds.Y,bounds.Width,bounds.Height,null,null,null,null,null,null,null,true,false)];
+                }
                 var x=children.Length==0?origin.X:children.Min(e=>e.X);var y=children.Length==0?origin.Y:children.Min(e=>e.Y);
                 result.Add(new(g.Id,"group",g.Name,x,y,children.Length==0?1:children.Max(e=>e.X+e.Width)-x,children.Length==0?1:children.Max(e=>e.Y+e.Height)-y,null,null,null,null,null,null,null,state.Visible,state.Locked,g.ParentId,g.Icon));
             }
@@ -105,31 +122,56 @@ public sealed partial class AuthoringSession
         return null;
     }
     public bool SelectionContainsDescendant(string id) => _document is {} d && Descendants(d,_selectedIds).Contains(id);
+    public string? HitTestInput(double x,double y,IReadOnlyList<InputDefinitionModel> inputs)
+    {
+        var d=RequireDocument();
+        var model=RenderDocument!;var controls=model.Controls.ToDictionary(c=>c.Id);var elements=model.Elements.ToDictionary(e=>e.ObjectId);
+        // The input belongs to the control's own bounds, independently of which
+        // lamp channels happen to be visible or have been moved/removed.
+        foreach(var node in OrderedIds(d).Reverse())
+        {
+            if(controls.TryGetValue(node,out var control))
+            {
+                if(!control.Visible||control.Control.Input is not {Enabled:true})continue;
+                var p=control.Transform.Inverse().Map(x,y);
+                if(p.X<0||p.Y<0||p.X>control.Control.Width||p.Y>control.Control.Height)continue;
+                var input=inputs.FirstOrDefault(i=>i.Id==control.Control.Input.Id||Guid.TryParse(node,out var id)&&i.LinkedVisualElementId==id);
+                if(input is not null)return input.Id;
+            }
+            else if(elements.TryGetValue(node,out var element)&&element.IsVisible)
+            {
+                var p=(element.Transform??PanelTransform.Identity).Inverse().Map(x,y);
+                if(p.X<element.X||p.Y<element.Y||p.X>element.X+element.Width||p.Y>element.Y+element.Height)continue;
+                if(Guid.TryParse(node,out var id)&&inputs.FirstOrDefault(i=>i.LinkedVisualElementId==id) is {} input)return input.Id;
+            }
+        }
+        return null;
+    }
     public void ResizeElementInWorld(string id,double dx,double dy)
     {
         var e=RequireDocument().Elements.Single(e=>e.ObjectId==id);
         var inverse=(e.Transform??PanelTransform.Identity).Then(Tree.Resolve(e.ParentId).Transform).Inverse();
         UpdateElement(id,width:Math.Max(1,e.Width+inverse.A*dx+inverse.C*dy),height:Math.Max(1,e.Height+inverse.B*dx+inverse.D*dy));
     }
-    public string CreateGroup(string name="Group",string? parentId=null,bool groupSelection=true,string icon="Hierarchy")
+    public string CreateGroup(string name="Group",string? parentId=null,bool groupSelection=true,string icon="Hierarchy",bool? automaticName=null,bool? automaticIcon=null)
     {
         var d=RequireDocument();var selection=groupSelection?SelectionRoots(d,_selectedIds):[];
         if(selection.Length>0 && parentId is null && selection.Select(id=>Parent(d,id)).Distinct().Count()==1) parentId=Parent(d,selection[0]);
         var parent=Tree.Resolve(parentId); if(parent.Locked) throw new InvalidOperationException("The parent group is locked.");
-        var id=Guid.NewGuid().ToString("N"); var group=new PanelGroup {Id=id,Name=name.Trim(),ParentId=parentId,Icon=icon};
+        var id=Guid.NewGuid().ToString("N"); var group=new PanelGroup {Id=id,Name=name.Trim(),ParentId=parentId,Icon=icon,AutomaticName=automaticName??name=="Group",AutomaticIcon=automaticIcon??icon=="Hierarchy"};
         var order=OrderedIds(d).ToList(); var index=selection.Length==0?order.Count:order.IndexOf(selection[0]);order.Insert(index,id);
         d=d with {Groups=[..d.Groups,group],HierarchyOrder=order.ToArray()};
         if(selection.Length>0) d=ReparentCore(d,selection,id,append:false);
         Commit(d,notify:false);_selectedIds=[id];_selectedId=id;StorePanelState();Changed?.Invoke();return id;
     }
-    public bool UpdateGroup(string id,string? name=null,double? x=null,double? y=null,double? rotation=null,double? scaleX=null,double? scaleY=null,string? icon=null,bool? visible=null,bool? locked=null)
+    public bool UpdateGroup(string id,string? name=null,double? x=null,double? y=null,double? rotation=null,double? scaleX=null,double? scaleY=null,string? icon=null,bool? visible=null,bool? locked=null,bool? automaticName=null,bool? automaticIcon=null)
     {
         var d=RequireDocument();var g=d.Groups.FirstOrDefault(g=>g.Id==id)??throw new KeyNotFoundException("Group not found.");
         var parts=g.Transform.Decompose();var t=x.HasValue||y.HasValue||rotation.HasValue||scaleX.HasValue||scaleY.HasValue
             ? PanelTransform.Compose(x??g.Transform.X,y??g.Transform.Y,rotation??parts.Rotation,scaleX??parts.ScaleX,scaleY??parts.ScaleY,parts.Shear):g.Transform;
         if(t.NearlyEquals(g.Transform))t=g.Transform;
         if(t!=g.Transform && Tree.Resolve(id).Locked) throw new InvalidOperationException("The group has locked geometry.");
-        var next=g with {Name=name?.Trim()??g.Name,Transform=t,Icon=icon??g.Icon,Visible=visible??g.Visible,Locked=locked??g.Locked};
+        var next=g with {Name=name?.Trim()??g.Name,AutomaticName=automaticName??(name is null?g.AutomaticName:false),AutomaticIcon=automaticIcon??(icon is null?g.AutomaticIcon:false),Transform=t,Icon=icon??g.Icon,Visible=visible??g.Visible,Locked=locked??g.Locked};
         if(next==g)return false;Commit(d with {Groups=d.Groups.Select(v=>v.Id==id?next:v).ToArray()});return true;
     }
     private static Panel2DDocumentFile ReparentCore(Panel2DDocumentFile d,string[] ids,string? parentId,bool append=true)
@@ -163,6 +205,7 @@ public sealed partial class AuthoringSession
         foreach(var id in selected)
         {
             var g=d.Groups.FirstOrDefault(g=>g.Id==id);if(g is null)continue;
+            if(g.Control is not null)throw new InvalidOperationException("A control owns its channels and input. Move or delete the control as a unit; it cannot be ungrouped.");
             var direct=OrderedIds(d).Where(child=>Parent(d,child)==id).ToArray();
             // Dissolving a group retains its inherited visibility/lock state.
             d=ReparentCore(d,direct,g.ParentId,append:false);

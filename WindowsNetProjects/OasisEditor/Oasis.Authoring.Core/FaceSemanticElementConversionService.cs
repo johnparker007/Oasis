@@ -25,9 +25,10 @@ internal sealed class FaceSemanticElementConversionService
         ArgumentNullException.ThrowIfNull(sourcePanel);
         ArgumentNullException.ThrowIfNull(sourceShape);
 
+        sourcePanel=PanelHierarchy.ResolveDocument(sourcePanel);
         var buttonsByVisualId = CreateButtonsByVisualId(inputDefinitions);
         var converted = new List<FaceElementModel>();
-        foreach (var sourceElement in PanelHierarchy.ResolveDocument(sourcePanel).Elements)
+        foreach (var sourceElement in sourcePanel.Elements)
         {
             var element = ConvertSupportedElement(sourceElement, sourceShape, faceWidth, faceHeight, projectDirectory, buttonsByVisualId);
             if (element is not null)
@@ -36,6 +37,18 @@ internal sealed class FaceSemanticElementConversionService
             }
         }
 
+        foreach(var control in sourcePanel.Controls.Where(c=>c.Control.Input is {Enabled:true}))
+        {
+            var source=new PanelElementModel {ObjectId=control.Id,Name=control.Name,Kind=PanelElementKind.Rectangle,
+                Width=control.Control.Width,Height=control.Control.Height,Transform=control.Transform,
+                IsVisible=control.Visible,IsTransformLocked=control.Locked};
+            if(!IsCenterInsideSourceShape(source,sourceShape))continue;
+            var bounds=TryTransformBounds(source,sourceShape,faceWidth,faceHeight);
+            if(bounds is not {IsValid:true})throw new InvalidOperationException("Could not convert control input bounds.");
+            var input=inputDefinitions?.FirstOrDefault(i=>i.Id==control.Control.Input!.Id)??control.Control.Input!.ToDefinition(control.Id);
+            var button=CreateButtonIfLinked(source,bounds,new Dictionary<string,InputDefinitionModel>(StringComparer.Ordinal) {[control.Id]=input});
+            if(button is not null)converted.Add(button);
+        }
         return converted;
     }
 
