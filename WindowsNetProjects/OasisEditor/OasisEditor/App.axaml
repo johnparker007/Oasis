@@ -2,10 +2,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:dock="using:Dock.Avalonia.Themes.Fluent"
              xmlns:dockControls="using:Dock.Avalonia.Controls"
+             xmlns:local="using:OasisEditor.Avalonia"
              x:Class="OasisEditor.Avalonia.EditorApplication"
              RequestedThemeVariant="Dark">
   <Application.Resources>
     <ResourceDictionary>
+      <local:WorkspacePaneHeaderTemplate x:Key="WorkspacePaneHeader" />
       <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Dark">
           <SolidColorBrush x:Key="WorkspaceBrush">#282828</SolidColorBrush>
@@ -45,6 +47,18 @@
   <Application.Styles>
     <FluentTheme />
     <dock:DockFluentTheme />
+    <Style Selector="dockControls|ToolChromeControl">
+      <Setter Property="local:ToolChromeIcons.ShowIcon" Value="True" />
+    </Style>
+    <Style Selector="dockControls|ToolTabStrip">
+      <Setter Property="HeaderTemplate" Value="{StaticResource WorkspacePaneHeader}" />
+    </Style>
+    <!-- Inherit the same semantic foreground as the adjacent label, including
+         selected tabs/rows. MutedBrush supplies the disabled theme colour. -->
+    <Style Selector="local|EditorIcon:disabled">
+      <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
     <!-- Dock repeats a tool group's minimum on its nested chrome and content.
          Keep the minimum on ToolDockControl only, so the title and bottom tabs
          fit inside that allocation rather than pushing the tabs underneath status. -->
