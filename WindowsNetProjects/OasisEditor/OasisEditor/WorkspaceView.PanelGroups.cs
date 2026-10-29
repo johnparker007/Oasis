@@ -40,19 +40,21 @@ public sealed partial class WorkspaceView
             toggle.Click+=(_,_)=>SetPanelGroupExpanded(e.Id,!_expandedPanelGroups.Contains(e.Id));row.Children.Add(toggle);
         }
         else row.Children.Add(new Border {Width=16});
-        row.Children.Add(EditorIcons.Label(kind,label));
+        row.Children.Add(new ContentControl {Name="HierarchyLabel",Content=EditorIcons.Label(kind,label)});
         if(group && e.InputLabel is {} inputLabel)
         {
             var badge=new EditorIcon {Kind=EditorIconKind.Button,Margin=new Thickness(5,0,0,0)};
             ToolTip.SetTip(badge,"Input: "+inputLabel);row.Children.Add(badge);
         }
         row.Opacity=e.Visible&&e.AncestorsVisible?1:.45;
-        if(_faceActive)return row;
         var menu=new ContextMenu();row.ContextMenu=menu;
         void PopulateMenu()
         {
             menu.Items.Clear();
             void Item(string text,Action action,bool enabled=true){var item=new MenuItem {Header=text,IsEnabled=enabled};item.Click+=(_,_)=>Try(action);menu.Items.Add(item);}
+            Item("Rename",()=>BeginHierarchyRename(e.Id));
+            ((MenuItem)menu.Items[0]!).InputGesture = new KeyGesture(Key.F2);
+            if(_faceActive)return;
             Item("Create Group",()=>CreatePanelGroupFromUi(false,group?e.Id:e.ParentId),!_session.Groups.Any(g=>g.Id==e.Id&&g.Control is not null));
             Item("Group Selection",()=>CreatePanelGroupFromUi());Item("Ungroup",_session.UngroupSelection,group&&!_session.Groups.Any(g=>g.Id==e.Id&&g.Control is not null));
             var move=new MenuItem {Header="Move to Group"};
@@ -64,9 +66,10 @@ public sealed partial class WorkspaceView
             Item("Duplicate",()=>_session.DuplicateSelected());Item("Delete",()=>_session.DeleteSelected());
         }
         PopulateMenu();
-        menu.Opening+=(_,_)=>{if(!SelectedIds.Contains(e.Id))_session.Select(e.Id);PopulateMenu();};
+        menu.Opening+=(_,_)=>{if(!SelectedIds.Contains(e.Id))SelectActive([e.Id]);PopulateMenu();};
+        if(_faceActive)return row;
         Point? pressed=null;PointerPressedEventArgs? pressArgs=null;
-        row.PointerPressed+=(_,args)=>{if(args.GetCurrentPoint(row).Properties.IsLeftButtonPressed&&args.Source is not Button&&(!group||args.GetPosition(row).X>18)){pressed=args.GetPosition(row);pressArgs=args;}};
+        row.PointerPressed+=(_,args)=>{if(_hierarchyRename is null&&args.GetCurrentPoint(row).Properties.IsLeftButtonPressed&&args.Source is not Button&&(!group||args.GetPosition(row).X>18)){pressed=args.GetPosition(row);pressArgs=args;}};
         row.PointerReleased+=(_,_)=>pressed=null;
         row.PointerMoved+=async(_,args)=>
         {

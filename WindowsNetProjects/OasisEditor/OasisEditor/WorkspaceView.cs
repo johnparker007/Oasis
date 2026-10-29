@@ -74,6 +74,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         _viewport.SelectedSourceRegion=()=>_selectedSource;
         _viewport.SourceRegionSelected+=id=>{_selectedSource=id;_session.Select(null);Refresh();};
         _hierarchy.ItemsSource = _rows;
+        InitializeHierarchyBackground();
         _hierarchy.PointerPressed += (_, args) =>
         {
             if (!args.GetCurrentPoint(_hierarchy).Properties.IsLeftButtonPressed || args.Source is not Visual source) return;
@@ -93,6 +94,9 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         };
         _hierarchy.KeyDown+=(_,args)=>
         {
+            if(args.Source is TextBox)return;
+            if(args.Key==Key.F2 && _hierarchy.SelectedItem is ElementSnapshot rename)
+            {BeginHierarchyRename(rename.Id);args.Handled=true;return;}
             if(_faceActive||_hierarchy.SelectedItem is not ElementSnapshot item)return;
             if(args.Key==Key.Right&&item.Kind=="group"){SetPanelGroupExpanded(item.Id,true);args.Handled=true;}
             else if(args.Key==Key.Left)
