@@ -514,8 +514,13 @@ in the isolated MCP host, without native windows or desktop capture.
 
 ## Project launcher and input diagnostics
 
-Desktop startup offers New/Open and a recent-project launcher when no project is
-restored or supplied with `--project`. Recents are confined to the selected workspace;
+Normal desktop startup always shows the Project Launcher with New/Open and recent
+projects; it never reopens the saved workspace's project or documents automatically.
+The Editor chrome is hidden until a project is opened/created, and Close Project
+returns to the Launcher after resolving unsaved edits. Quitting the Launcher keeps
+the previous workspace snapshot intact. The saved theme is retained; workspace
+restoration remains an explicit Editor action. `--project` explicitly opens the
+requested project. Recents are confined to the selected workspace;
 missing/outside entries retain an explanation rather than being opened silently.
 Headless sessions never read personal recents. `configure_recent_projects` requires
 an explicit workspace-local file and enables reproducible welcome captures.

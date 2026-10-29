@@ -6,6 +6,33 @@ namespace OasisEditor.Avalonia;
 
 public sealed partial class WorkspaceView
 {
+    /// <summary>Desktop startup never implicitly reopens the saved workspace's project.</summary>
+    public void ConfigureProjectLauncher(string workspaceSettings, RecentProjectService recentProjects)
+    {
+        Try(() =>
+        {
+            ConfigureWorkspacePersistence(workspaceSettings, restore: false);
+            // Retain the chosen theme without restoring any project, document,
+            // floating window or preview from the previous editing session.
+            if (File.Exists(workspaceSettings))
+            {
+                try
+                {
+                    var saved = WorkspaceLayoutState.Deserialize(File.ReadAllText(workspaceSettings));
+                    Application.Current!.RequestedThemeVariant = saved.Theme switch
+                    {
+                        "Dark" => global::Avalonia.Styling.ThemeVariant.Dark,
+                        "Light" => global::Avalonia.Styling.ThemeVariant.Light,
+                        "System" => global::Avalonia.Styling.ThemeVariant.Default,
+                        _ => throw new InvalidDataException("Unsupported workspace theme.")
+                    };
+                }
+                catch { CanAutoSaveWorkspace = false; throw; }
+            }
+        });
+        ConfigureWelcomePage(recentProjects);
+    }
+
     /// <summary>
     /// Creates the empty-workspace landing page using the existing project dialogs and an explicitly configured
     /// recents service; this method never discovers or reads a personal settings location itself.
@@ -13,7 +40,13 @@ public sealed partial class WorkspaceView
     public void ConfigureWelcomePage(RecentProjectService recentProjects)
     {
         if (_isAssetWindow) return;
-        if (Content is Grid root) { if (_welcomePage is not null) root.Children.Remove(_welcomePage); var page = CreateWelcomePage(recentProjects); Grid.SetRow(page, 1); Grid.SetRowSpan(page, 2); root.Children.Add(page); RecordCurrentProject(); }
+        if (Content is Grid root)
+        {
+            if (_welcomePage is not null) root.Children.Remove(_welcomePage);
+            var page = CreateWelcomePage(recentProjects);
+            Grid.SetRow(page, 0); Grid.SetRowSpan(page, root.RowDefinitions.Count);
+            root.Children.Add(page); RefreshWelcomePage(); RecordCurrentProject();
+        }
     }
 
     public Control CreateWelcomePage(RecentProjectService recentProjects)
@@ -22,7 +55,8 @@ public sealed partial class WorkspaceView
         _recentProjectService = recentProjects;
 
         var snapshot = recentProjects.Load(_session.WorkspacePath);
-        var page = new Grid { Background = this.Background, RowDefinitions = new RowDefinitions("*,Auto,*") };
+        var page = new Grid { Name = "ProjectLauncher", Background = this.Background, RowDefinitions = new RowDefinitions("*,Auto,*") };
+        global::Avalonia.Automation.AutomationProperties.SetName(page, "Oasis Project Launcher");
         page.Bind(Panel.BackgroundProperty, page.GetResourceObservable("WorkspaceBrush"));
         var content = new StackPanel { Width = 620, Spacing = 16, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         content.Children.Add(new TextBlock { Text = "OASIS EDITOR", FontSize = 13, FontWeight = global::Avalonia.Media.FontWeight.SemiBold, Opacity = .7 });
@@ -87,11 +121,27 @@ public sealed partial class WorkspaceView
     }
 
     private Control? _welcomePage;
+    private readonly Dictionary<Control, bool> _launcherHiddenControls = [];
+    public bool IsProjectLauncherVisible { get; private set; }
 
     /// <summary>Updates welcome visibility after project open/close operations; call from the workspace refresh hook.</summary>
     public void RefreshWelcomePage()
     {
-        if (_welcomePage is not null) _welcomePage.IsVisible = _session.ProjectFilePath is null;
+        if (_welcomePage is null) return;
+        var show = _session.ProjectFilePath is null;
+        _welcomePage.IsVisible = show;
+        if (_welcomePage.Parent is not Grid root || IsProjectLauncherVisible == show) return;
+        IsProjectLauncherVisible = show;
+        if (show)
+        {
+            foreach (var control in root.Children.Where(c => !ReferenceEquals(c, _welcomePage)))
+            { _launcherHiddenControls[control] = control.IsVisible; control.IsVisible = false; }
+        }
+        else
+        {
+            foreach (var pair in _launcherHiddenControls) pair.Key.IsVisible = pair.Value;
+            _launcherHiddenControls.Clear();
+        }
     }
 
     private void RecordCurrentProject()

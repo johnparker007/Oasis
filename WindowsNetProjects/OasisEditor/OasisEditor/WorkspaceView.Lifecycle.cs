@@ -35,6 +35,7 @@ public sealed partial class WorkspaceView
         if(_isAssetWindow)throw new InvalidOperationException("Close the project from the main workspace.");
         foreach(var d in _nativeDocuments.Values)if(d.Editor.Preview.Backend is not null)await d.Editor.Preview.ControlAsync("stop");
         ValidateProjectCloseDecision(discardApproved);
+        if (_welcomePage is not null && _session.ProjectFilePath is not null && CanAutoSaveWorkspace) Try(SaveWorkspace);
         DisposeNativeDocuments();
         _faces.CloseAllDocuments();
         _session.CloseProject();
@@ -47,6 +48,7 @@ public sealed partial class WorkspaceView
         _browseLibrary = false;
         Refresh();
         SetStatus("Project closed.");
+        if (_recentProjectService is { } recents) ConfigureWelcomePage(recents);
     }
 
     public IReadOnlyList<FaceValidationDiagnostic> ValidateActiveFace()
