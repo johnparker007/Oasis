@@ -91,12 +91,14 @@ public sealed class PanelGroupTests : IDisposable
         var bounds=session.ViewportElements.Single(e=>e.Id==lamp);Assert.Null(session.HitTestPanel(bounds.X+1,bounds.Y+1));
         session.UpdateGroup(g,visible:false);Assert.Null(session.HitTestPanel(inside.X,inside.Y));
     }
-    [Fact]
-    public void LegacySchemaThreeLoadsWithoutDirtyingAndGroupedSaveUsesNewSchema()
+    [Theory]
+    [InlineData(3)]
+    [InlineData(4)]
+    public void LegacySchemaPanelsLoadWithoutDirtyingAndGroupedSaveUsesNewSchema(int version)
     {
-        var path=session.PanelPath!;var content=File.ReadAllText(path).Replace("\"SchemaVersion\": 4","\"SchemaVersion\": 3");File.WriteAllText(path,content);
+        var path=session.PanelPath!;var content=File.ReadAllText(path).Replace($"\"SchemaVersion\": {Panel2DDocumentStorage.CurrentSchemaVersion}",$"\"SchemaVersion\": {version}");File.WriteAllText(path,content);
         var reopened=new AuthoringSession(root);reopened.OpenProject(session.ProjectFilePath!);reopened.OpenPanel(path);Assert.False(reopened.IsDirty);
-        reopened.CreateGroup();reopened.Save();Assert.Contains("\"SchemaVersion\": 4",File.ReadAllText(path));
+        reopened.CreateGroup();reopened.Save();Assert.Contains($"\"SchemaVersion\": {Panel2DDocumentStorage.CurrentSchemaVersion}",File.ReadAllText(path));
         reopened.Undo();Assert.Empty(reopened.Groups);
     }
     [Fact]

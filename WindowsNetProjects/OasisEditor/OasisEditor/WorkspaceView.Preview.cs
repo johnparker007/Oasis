@@ -168,8 +168,7 @@ public sealed partial class WorkspaceView
         }
         else
         {
-            var hit = editor._session.Elements.LastOrDefault(e => e.Visible && new Rect(e.X, e.Y, e.Width, e.Height).Contains(point));
-            if (hit is not null && Guid.TryParse(hit.Id, out var id)) return inputs.FirstOrDefault(i => i.LinkedVisualElementId == id)?.Id;
+            if(editor._session.PanelPath is not null)return editor._session.HitTestInput(point.X,point.Y,inputs);
         }
         return null;
     }

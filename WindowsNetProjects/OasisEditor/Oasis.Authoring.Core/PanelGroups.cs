@@ -41,6 +41,9 @@ public sealed record PanelGroup
     public bool Visible { get; init; } = true;
     public bool Locked { get; init; }
     public string Icon { get; init; } = "Hierarchy";
+    public bool AutomaticName { get; init; }
+    public bool AutomaticIcon { get; init; }
+    public PanelControl? Control { get; init; }
 }
 
 /// <summary>Resolves inherited transforms and state; the storage list follows hierarchy drawing order.</summary>
@@ -72,6 +75,7 @@ public sealed class PanelHierarchy
         if(document.Groups.Count==0 && document.Elements.All(e=>e.ParentId is null))return document;
         var tree = new PanelHierarchy(document.Groups);
         return new() { Title = document.Title, Summary = document.Summary, FaceSourceShapes = document.FaceSourceShapes,
+            Controls = document.Controls.Concat(document.Groups.Where(g=>g.Control is not null).Select(g=>{var state=tree.Resolve(g.Id);return new PanelControlInstance(g.Id,g.AutomaticName?"Lamp":g.Name,g.Control!,state.Transform,state.Visible,state.Locked);})).ToArray(),
             Elements = document.Elements.Select(e => PanelElementModelCloner.Clone(e,
                 isVisible: e.IsVisible && tree.Resolve(e.ParentId).Visible,
                 isTransformLocked: e.IsTransformLocked || tree.Resolve(e.ParentId).Locked,

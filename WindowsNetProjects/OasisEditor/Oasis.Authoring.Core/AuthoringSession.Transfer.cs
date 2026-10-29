@@ -18,7 +18,6 @@ public sealed partial class AuthoringSession
             throw new InvalidOperationException("The destination session already owns this document.");
         if (!_panelStates.ContainsKey(documentPath) && !_panelStates.Comparer.Equals(_panelPath, documentPath))
             throw new KeyNotFoundException("Panel2D document is not open in this session.");
-        var hasImportedInputs = _importedInputDefinitions.TryGetValue(documentPath, out var importedInputs);
         var hasFmlImports = _createdFmlImports.TryGetValue(documentPath, out var fmlImports);
 
         StorePanelState();
@@ -27,11 +26,6 @@ public sealed partial class AuthoringSession
 
         _panelStates.Remove(documentPath);
         destination._panelStates.Add(documentPath, state);
-        if (hasImportedInputs)
-        {
-            _importedInputDefinitions.Remove(documentPath);
-            destination._importedInputDefinitions[documentPath] = importedInputs!;
-        }
         if (hasFmlImports)
         { _createdFmlImports.Remove(documentPath); destination._createdFmlImports[documentPath] = fmlImports!; }
         destination._panelClipboardState = _panelClipboardState;

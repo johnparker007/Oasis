@@ -7,7 +7,7 @@ namespace OasisEditor;
 public sealed record ElementSnapshot(
     string Id, string Kind, string Name, double X, double Y, double Width, double Height,
     string? AssetPath, string? SecondaryAssetPath, string? OnColorHex, string? OffColorHex,
-    string? TextColorHex, string? DisplayColorHex, string? DisplayText, bool Visible, bool Locked, string? ParentId = null, string? Icon = null, int Depth = 0);
+    string? TextColorHex, string? DisplayColorHex, string? DisplayText, bool Visible, bool Locked, string? ParentId = null, string? Icon = null, int Depth = 0, string? InputLabel = null, bool AncestorsVisible = true, bool AncestorsLocked = false);
 
 /// <summary>Portable, single-document authoring session shared by desktop UI and MCP.</summary>
 public sealed partial class AuthoringSession
@@ -343,7 +343,7 @@ public sealed partial class AuthoringSession
         {
             throw new InvalidDataException("The Panel2D manifest is malformed or contains fields unsupported by this schema.", exception);
         }
-        if (source.SchemaVersion == 3) source = source with { SchemaVersion = Panel2DDocumentStorage.CurrentSchemaVersion };
+        if (source.SchemaVersion is 3 or 4) source = source with { SchemaVersion = Panel2DDocumentStorage.CurrentSchemaVersion };
         if (source.SchemaVersion != Panel2DDocumentStorage.CurrentSchemaVersion)
             throw new InvalidDataException($"Panel2D schema {source.SchemaVersion} is unsupported; schema {Panel2DDocumentStorage.CurrentSchemaVersion} is required.");
         if (source.Elements is null || source.FaceSourceShapes is null)

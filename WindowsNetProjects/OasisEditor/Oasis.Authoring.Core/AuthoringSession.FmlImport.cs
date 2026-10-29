@@ -16,15 +16,14 @@ public sealed record FmlImportSummary(
 
 public sealed partial class AuthoringSession
 {
-    private readonly Dictionary<string, InputDefinitionModel[]> _importedInputDefinitions = new(
-        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
     private readonly Dictionary<string, HashSet<string>> _createdFmlImports = new(
         OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
     public IReadOnlyList<string> CaptureCreatedFmlImportDirectories() => _createdFmlImports.Values.SelectMany(v => v).Distinct().ToArray();
 
-    /// <summary>Input bindings recovered from the most recent successful FML import.</summary>
-    public IReadOnlyList<InputDefinitionModel> ImportedInputDefinitions => _panelPath is not null
-        && _importedInputDefinitions.TryGetValue(_panelPath, out var definitions) ? definitions : [];
+    /// <summary>Persisted input bindings owned by the current Panel2D controls.</summary>
+    public IReadOnlyList<InputDefinitionModel> ImportedInputDefinitions => _document is null ? [] :
+        _document.Groups.Where(g=>g.Control?.Input is {Enabled:true}).Select(g=>g.Control!.Input!.ToDefinition(g.Id))
+        .DistinctBy(i=>i.Id).ToArray();
 
     /// <summary>Imports an FML layout and merges all mapped elements into one undoable change.</summary>
     public FmlImportSummary ImportFml(string fmlPath, bool copyAssets = true)
@@ -73,36 +72,13 @@ public sealed partial class AuthoringSession
                 return summary;
             }
 
-            if (_panelPath is not null)
-            {
-                _importedInputDefinitions[_panelPath] = result.InputDefinitions.ToArray();
-            }
             if (result.ImportedElements.Count > 0)
             {
-                var additions = result.ImportedElements
-                    .Select(element => PanelElementModelCloner.Clone(element, objectId: Guid.NewGuid().ToString("N")))
-                    .Select(Panel2DDocumentStorage.ToStorageElement).ToArray();
-                var groups = new List<PanelGroup>(); var order = OrderedIds(document).ToList(); string? previous = null; PanelGroup? group = null;
-                for(var i=0;i<additions.Length;i++)
-                {
-                    var element=additions[i];var button=result.InputDefinitions.Any(input=>Guid.TryParse(result.ImportedElements[i].ObjectId,out var visualId)&&input.LinkedVisualElementId==visualId);
-                    var category=button?"Buttons":element.ElementKind switch
-                    {
-                        PanelElementKind.Lamp=>"Lamps",PanelElementKind.Reel=>"Reels",PanelElementKind.SevenSegment=>"7-segment displays",
-                        PanelElementKind.Alpha=>"Alpha displays",PanelElementKind.Background=>"Backgrounds",PanelElementKind.Label=>"Labels",_=>"Other components"
-                    };
-                    if(category!=previous)
-                    {
-                        var existing=document.Groups.Concat(groups).Count(g=>g.Name==category||g.Name.StartsWith(category+" (",StringComparison.Ordinal));
-                        group=new PanelGroup {Id=Guid.NewGuid().ToString("N"),Name=existing==0?category:$"{category} ({existing+1})",
-                            Icon=button?"Button":element.ElementKind switch {PanelElementKind.Lamp=>"Lamp",PanelElementKind.Reel=>"Reel",PanelElementKind.SevenSegment=>"SevenSegment",_=>"Hierarchy"}};
-                        groups.Add(group);order.Add(group.Id);previous=category;
-                    }
-                    foreach(var input in result.InputDefinitions)
-                        if(Guid.TryParse(result.ImportedElements[i].ObjectId,out var sourceId)&&input.LinkedVisualElementId==sourceId)input.LinkedVisualElementId=Guid.Parse(element.ObjectId);
-                    additions[i]=element with {ParentId=group!.Id};order.Add(element.ObjectId);
-                }
-                Commit(document with { Elements = [.. document.Elements, .. additions], Groups=[..document.Groups,..groups],HierarchyOrder=order.ToArray() }, notify: false);
+                var updated=AttachFmlControls(document,result.ImportedElements,result.InputDefinitions);
+                Commit(updated,notify:false);
+                var added=updated.Groups.Where(g=>!document.Groups.Any(old=>old.Id==g.Id)&&g.Control?.Input is {Enabled:true})
+                    .Select(g=>g.Control!.Input!.ToDefinition(g.Id)).ToArray();
+                summary=summary with {InputDefinitions=added};
             }
             if (_panelPath is not null)
             {

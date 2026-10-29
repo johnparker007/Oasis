@@ -39,10 +39,12 @@ public sealed partial class WorkspaceView
         var machine = Machines.Document;
         if (machine is null) return [];
         var ids = new HashSet<Guid>();
-        AddIds(_session.Elements.Select(element => element.Id), ids);
+        AddIds(_session.HierarchyElements.Select(element => element.Id), ids);
+        var panels=DocumentHost._nativeDocuments.Values.Where(d=>d.Asset.Kind=="Panel2D").ToArray();
+        foreach(var panel in panels)AddIds(panel.Asset.Sessions.Project.HierarchyElements.Select(e=>e.Id),ids);
         AddIds(_session.SourceShapes.Select(shape => shape.Id), ids);
         AddIds(Faces.Elements.Select(element => element.Id), ids);
-        var hasVisualContext = _session.PanelPath is not null || Faces.FacePath is not null;
+        var hasVisualContext = _session.PanelPath is not null || Faces.FacePath is not null || panels.Length>0;
         return MachineInputDiagnosticsAnalyzer.Analyze(machine.InputDefinitions, ids, hasVisualContext);
     }
 

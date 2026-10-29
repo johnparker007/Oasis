@@ -29,9 +29,8 @@ public sealed partial class WorkspaceView
     private Control PanelHierarchyRow(ElementSnapshot? e)
     {
         if(e is null)return new TextBlock();
-        var inherited=_faceActive?(PanelTransform.Identity,true,false):new PanelHierarchy(_session.Groups).Resolve(e.ParentId);
         var group=e.Kind=="group";var kind=group&&Enum.TryParse<EditorIconKind>(e.Icon,out var icon)?icon:EditorIcons.ForComponent(e.Kind);
-        var label=e.Locked||inherited.Item3?$"▣  {e.Name}":kind==EditorIconKind.None?$"◇  {e.Name}":e.Name;
+        var label=e.Locked||e.AncestorsLocked?$"▣  {e.Name}":kind==EditorIconKind.None?$"◇  {e.Name}":e.Name;
         var row=new StackPanel {Tag=e.Id,Orientation=Orientation.Horizontal,Spacing=2,Margin=new Thickness(e.Depth*16,0,0,0),Background=Brushes.Transparent};
         if(group)
         {
@@ -41,19 +40,25 @@ public sealed partial class WorkspaceView
             toggle.Click+=(_,_)=>SetPanelGroupExpanded(e.Id,!_expandedPanelGroups.Contains(e.Id));row.Children.Add(toggle);
         }
         else row.Children.Add(new Border {Width=16});
-        row.Children.Add(EditorIcons.Label(kind,label));row.Opacity=e.Visible&&inherited.Item2?1:.45;
+        row.Children.Add(EditorIcons.Label(kind,label));
+        if(group && e.InputLabel is {} inputLabel)
+        {
+            var badge=new EditorIcon {Kind=EditorIconKind.Button,Margin=new Thickness(5,0,0,0)};
+            ToolTip.SetTip(badge,"Input: "+inputLabel);row.Children.Add(badge);
+        }
+        row.Opacity=e.Visible&&e.AncestorsVisible?1:.45;
         if(_faceActive)return row;
         var menu=new ContextMenu();row.ContextMenu=menu;
         void PopulateMenu()
         {
             menu.Items.Clear();
             void Item(string text,Action action,bool enabled=true){var item=new MenuItem {Header=text,IsEnabled=enabled};item.Click+=(_,_)=>Try(action);menu.Items.Add(item);}
-            Item("Create Group",()=>CreatePanelGroupFromUi(false,group?e.Id:e.ParentId));
-            Item("Group Selection",()=>CreatePanelGroupFromUi());Item("Ungroup",_session.UngroupSelection,group);
+            Item("Create Group",()=>CreatePanelGroupFromUi(false,group?e.Id:e.ParentId),!_session.Groups.Any(g=>g.Id==e.Id&&g.Control is not null));
+            Item("Group Selection",()=>CreatePanelGroupFromUi());Item("Ungroup",_session.UngroupSelection,group&&!_session.Groups.Any(g=>g.Id==e.Id&&g.Control is not null));
             var move=new MenuItem {Header="Move to Group"};
             var root=new MenuItem {Header="Panel root"};root.Click+=(_,_)=>Try(()=>_session.ReparentSelection(null));move.Items.Add(root);
             foreach(var g in _session.Groups)
-            {var target=new MenuItem {Header=g.Name,IsEnabled=!_session.SelectionContainsDescendant(g.Id)};target.Click+=(_,_)=>Try(()=>_session.ReparentSelection(g.Id));move.Items.Add(target);}
+            {var target=new MenuItem {Header=_session.GroupLabel(g.Id).DisplayName,IsEnabled=!_session.SelectionContainsDescendant(g.Id)};target.Click+=(_,_)=>Try(()=>_session.ReparentSelection(g.Id));move.Items.Add(target);}
             menu.Items.Add(move);menu.Items.Add(new Separator());
             Item("Move Earlier",()=>_session.MoveSelectionInOrder(false));Item("Move Later",()=>_session.MoveSelectionInOrder(true));
             Item("Duplicate",()=>_session.DuplicateSelected());Item("Delete",()=>_session.DeleteSelected());
@@ -83,15 +88,18 @@ public sealed partial class WorkspaceView
     }
     private void AppendGroupInspector(string id)
     {
-        var g=_session.Groups.Single(g=>g.Id==id);var parts=g.Transform.Decompose();Heading("GROUP");
+        var g=_session.Groups.Single(g=>g.Id==id);var parts=g.Transform.Decompose();var presentation=_session.GroupLabel(id);Heading(g.Control is null?"GROUP":"LAMP CONTROL");
         string Display(double value)=>value.ToString("G12",System.Globalization.CultureInfo.InvariantCulture);
-        Field("Name",g.Name);Field("X",Display(g.Transform.X));Field("Y",Display(g.Transform.Y));Field("Rotation",Display(parts.Rotation));Field("Scale X",Display(parts.ScaleX));Field("Scale Y",Display(parts.ScaleY));
-        var icons=new ComboBox {Name="PanelGroupIcon",ItemsSource=PanelHierarchy.Icons,SelectedItem=g.Icon,
-            ItemTemplate=new global::Avalonia.Controls.Templates.FuncDataTemplate<string>((value,_)=>EditorIcons.Label(Enum.Parse<EditorIconKind>(value!),value))};
+        Field("Name",g.AutomaticName?"":g.Name);_fields["Name"].PlaceholderText=presentation.Type;
+        ToolTip.SetTip(_fields["Name"],"Leave blank for a live automatic name. Type a name to override it.");
+        _inspector.Children.Add(ActionButton("Reset to Automatic",()=>Try(()=>_session.UpdateGroup(id,automaticName:true))));Field("X",Display(g.Transform.X));Field("Y",Display(g.Transform.Y));Field("Rotation",Display(parts.Rotation));Field("Scale X",Display(parts.ScaleX));Field("Scale Y",Display(parts.ScaleY));
+        var icons=new ComboBox {Name="PanelGroupIcon",ItemsSource=new[]{"Automatic"}.Concat(PanelHierarchy.Icons).ToArray(),SelectedItem=g.AutomaticIcon?"Automatic":g.Icon,
+            ItemTemplate=new global::Avalonia.Controls.Templates.FuncDataTemplate<string>((value,_)=>EditorIcons.Label(value=="Automatic"?EditorIconKind.Hierarchy:Enum.Parse<EditorIconKind>(value!),value))};
         _inspector.Children.Add(new TextBlock {Text="Icon"});_inspector.Children.Add(icons);
         var visible=new CheckBox {Content="Visible",IsChecked=g.Visible};var locked=new CheckBox {Content="Lock transform",IsChecked=g.Locked};
         _inspector.Children.Add(visible);_inspector.Children.Add(locked);
-        _inspector.Children.Add(ActionButton("Apply",()=>Try(()=>_session.UpdateGroup(id,_fields["Name"].Text,Number("X"),Number("Y"),Number("Rotation"),Number("Scale X"),Number("Scale Y"),icons.SelectedItem as string,visible.IsChecked==true,locked.IsChecked==true))));
-        _inspector.Children.Add(ActionButton("Ungroup",()=>Try(_session.UngroupSelection)));
+        _inspector.Children.Add(ActionButton("Apply",()=>Try(()=>_session.UpdateGroup(id,string.IsNullOrWhiteSpace(_fields["Name"].Text)?null:_fields["Name"].Text,Number("X"),Number("Y"),Number("Rotation"),Number("Scale X"),Number("Scale Y"),icons.SelectedItem as string=="Automatic"?null:icons.SelectedItem as string,visible.IsChecked==true,locked.IsChecked==true,automaticName:string.IsNullOrWhiteSpace(_fields["Name"].Text),automaticIcon:Equals(icons.SelectedItem,"Automatic")))));
+        if(g.Control is null)_inspector.Children.Add(ActionButton("Ungroup",()=>Try(_session.UngroupSelection)));
+        else AppendControlInspector(g);
     }
 }
