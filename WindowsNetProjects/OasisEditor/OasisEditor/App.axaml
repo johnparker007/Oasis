@@ -92,6 +92,15 @@
       <Setter Property="Width" Value="10" />
       <Setter Property="Height" Value="10" />
     </Style>
+    <!-- Tool chrome uses the same compact Dock glyph buttons. General button
+         padding otherwise consumes their content area and hides the vectors. -->
+    <Style Selector="dockControls|ToolChromeControl /template/ Button">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="Padding" Value="3" />
+    </Style>
     <Style Selector="TextBox">
       <Setter Property="MinHeight" Value="26" />
       <Setter Property="Padding" Value="6,3" />
