@@ -5,7 +5,7 @@ namespace OasisEditor.Avalonia.Mcp;
 
 public sealed partial class EditorTools
 {
-    [McpServerTool(Name = "import_fml"), Description("Import a workspace FML through the shared real decoder, mapper and artwork/mask processors. Refuses existing import packages; commits panel elements as one undoable command. Recovered input definitions are returned for Machine setup, not persisted in Panel2D.")]
+    [McpServerTool(Name = "import_fml"), Description("Import a workspace FML through the shared real decoder, mapper and artwork/mask processors. Uses a separate numbered package if the source name was imported before; commits panel elements as one undoable command. Recovered input definitions are returned for Machine setup, not persisted in Panel2D.")]
     public Task<object> ImportFml(string path, CancellationToken cancellationToken)
         => ui.Invoke<object>(() => { var result = session.ImportFml(path); capture.View.CommandView.ShowPanel(); return new { result, workspace = Snapshot() }; }, cancellationToken);
     [McpServerTool(Name = "select_elements"), Description("Replace Panel2D multi-selection by stable IDs. Validates every ID first; does not dirty the document.")]

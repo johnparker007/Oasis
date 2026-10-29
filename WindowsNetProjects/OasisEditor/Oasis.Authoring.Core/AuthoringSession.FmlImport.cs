@@ -39,14 +39,14 @@ public sealed partial class AuthoringSession
 
         var assetsRoot = WorkspacePathPolicy.ResolveConfined(projectRoot, "Assets", requireExists: true);
         var layoutName = Path.GetFileNameWithoutExtension(secureSource);
-        var destinationRoot = LayoutImportAssetCopier.GetDestinationRoot(assetsRoot, layoutName);
-        var destinationRelativePath = Path.GetRelativePath(projectRoot, destinationRoot);
+        string? destinationRelativePath = null;
         var ownsDestination = false;
         try
         {
-            ReserveImportFolder(projectRoot, destinationRelativePath);
+            destinationRelativePath = ReserveUniqueImportFolder(projectRoot, assetsRoot, layoutName);
             ownsDestination = true;
-            var result = new FmlImportService().ImportFromFml(secureSource, projectRoot, assetsRoot, copyAssets: true);
+            var result = new FmlImportService().ImportFromFml(secureSource, projectRoot, assetsRoot, copyAssets: true,
+                packageName: Path.GetFileName(destinationRelativePath));
             var summary = new FmlImportSummary(result.ImportedElements.Count, result.CopiedAssetRelativePaths,
                 result.InputDefinitions, result.UnsupportedComponentTypes, result.Warnings, result.Errors);
             if (!result.Succeeded)
@@ -70,14 +70,27 @@ public sealed partial class AuthoringSession
         }
         catch
         {
-            if (ownsDestination) DeleteOwnedImportFolder(projectRoot, destinationRelativePath);
+            if (ownsDestination && destinationRelativePath is not null) DeleteOwnedImportFolder(projectRoot, destinationRelativePath);
             throw;
         }
     }
 
-    private static void ReserveImportFolder(string projectRoot, string destinationRelativePath)
+    private static string ReserveUniqueImportFolder(string projectRoot, string assetsRoot, string layoutName)
+    {
+        var basePath = LayoutImportAssetCopier.GetDestinationRoot(assetsRoot, layoutName);
+        for (var suffix = 1; suffix <= 10000; suffix++)
+        {
+            var path = suffix == 1 ? basePath : basePath + "_" + suffix;
+            var relative = Path.GetRelativePath(projectRoot, path);
+            if (TryReserveImportFolder(projectRoot, relative)) return relative;
+        }
+        throw new IOException("Unable to reserve a unique FML import directory.");
+    }
+
+    private static bool TryReserveImportFolder(string projectRoot, string destinationRelativePath)
     {
         var destinationPath = WorkspacePathPolicy.ResolveConfined(projectRoot, destinationRelativePath);
+        if (Directory.Exists(destinationPath) || File.Exists(destinationPath)) return false;
         var fmlRootRelative = Path.GetRelativePath(projectRoot, Path.Combine(Path.GetDirectoryName(destinationPath)!, "."));
         var fmlRoot = WorkspacePathPolicy.ResolveConfined(projectRoot, fmlRootRelative);
         Directory.CreateDirectory(fmlRoot);
@@ -112,12 +125,16 @@ public sealed partial class AuthoringSession
                 }
                 catch (IOException) when (Directory.Exists(destinationPath) || File.Exists(destinationPath))
                 {
-                    throw new InvalidOperationException("An FML import package with this source name already exists in the project.");
+                    // Another importer won this destination. Keep its files and
+                    // retry with a suffix, cleaning only our reservation folder.
+                    DeleteOwnedImportFolder(projectRoot, reservationRelativePath);
+                    reservationOwned = false;
+                    return false;
                 }
                 var destinationMarkerRelative = Path.Combine(destinationRelativePath, ".oasis-owned");
                 var destinationMarker = WorkspacePathPolicy.ResolveConfined(projectRoot, destinationMarkerRelative, requireExists: true);
                 File.Delete(destinationMarker);
-                return;
+                return true;
             }
             catch
             {
