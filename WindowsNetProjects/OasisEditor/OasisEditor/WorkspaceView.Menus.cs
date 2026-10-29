@@ -113,6 +113,10 @@ public sealed partial class WorkspaceView
             Action("_Hide", () => Try(() => SetSelectionObjectState(visible: false)), () => !Is3DActive && SelectedIds.Count > 0),
             Action("_Show", () => Try(() => SetSelectionObjectState(visible: true)), () => !Is3DActive && SelectedIds.Count > 0)));
         edit.Items.Add(new Separator());
+        edit.Items.Add(Action("Create Group",()=>Try(()=>CreatePanelGroupFromUi(false)),Panel));
+        edit.Items.Add(Action("Group Selection",()=>Try(()=>CreatePanelGroupFromUi()),()=>HasPanelSelection));
+        edit.Items.Add(Action("Ungroup",()=>Try(_session.UngroupSelection),()=>Panel()&&_session.Groups.Any(g=>SelectedIds.Contains(g.Id))));
+        edit.Items.Add(new Separator());
         edit.Items.Add(Take(registrations, "Preferences…", "_Preferences"));
         edit.Items.Add(Action("_Project Settings", async () => await ShowProjectSettingsFromMenuAsync(), MainProject));
 

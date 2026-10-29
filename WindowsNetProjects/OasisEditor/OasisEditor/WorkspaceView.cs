@@ -80,12 +80,18 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
             _selectedSource = null;
             Try(() => SelectActive(_hierarchy.SelectedItems?.OfType<ElementSnapshot>().Select(e => e.Id).ToArray() ?? []));
         };
-        _hierarchy.ItemTemplate = new FuncDataTemplate<ElementSnapshot>((e, _) =>
+        _hierarchy.KeyDown+=(_,args)=>
         {
-            var kind = EditorIcons.ForComponent(e?.Kind);
-            var label = e is null ? "" : e.Locked ? $"▣  {e.Name}" : kind == EditorIconKind.None ? $"◇  {e.Name}" : e.Name;
-            var row = EditorIcons.Label(kind, label); row.Opacity = e?.Visible == false ? .45 : 1; return row;
-        });
+            if(_faceActive||_hierarchy.SelectedItem is not ElementSnapshot item)return;
+            if(args.Key==Key.Right&&item.Kind=="group"){SetPanelGroupExpanded(item.Id,true);args.Handled=true;}
+            else if(args.Key==Key.Left)
+            {
+                if(item.Kind=="group"&&_expandedPanelGroups.Contains(item.Id))SetPanelGroupExpanded(item.Id,false);
+                else if(item.ParentId is not null)_session.Select(item.ParentId);
+                args.Handled=true;
+            }
+        };
+        _hierarchy.ItemTemplate = new FuncDataTemplate<ElementSnapshot>((e, _) => PanelHierarchyRow(e));
         _sources.ItemTemplate = new FuncDataTemplate<FaceSourceShapeSnapshot>((s, _) => new TextBlock { Text = "▱  " + s?.Name });
         _sources.SelectionChanged += (_, _) =>
         {
@@ -214,7 +220,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         session.Changed += Refresh; _faces.Changed += Refresh; _machines.Changed += Refresh; Refresh();
     }
 
-    internal IReadOnlyList<ElementSnapshot> ActiveElements => _faceActive ? _faces.Elements.Select(ToViewportElement).ToArray() : _session.Elements;
+    internal IReadOnlyList<ElementSnapshot> ActiveElements => _faceActive ? _faces.Elements.Select(ToViewportElement).ToArray() : _session.HierarchyElements;
     internal static ElementSnapshot ToViewportElement(FaceElementSnapshot e) => new(e.Id, e.Kind, e.Name, e.X, e.Y, e.Width, e.Height,
         e.AssetPath, null, e.OnColorHex, e.OffColorHex, null, null, null, e.Visible, e.Locked);
     private IReadOnlyList<string> SelectedIds => _faceActive ? _faces.SelectedId is { } id ? [id] : [] : _session.SelectedIds;
@@ -361,7 +367,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
             RefreshDocumentTabs();
             UpdateSceneModeUI();
             if (Is3DActive) { Refresh3DWorkspaceChrome(); return; }
-            var elements = _machineActive ? [] : ActiveElements;
+            var elements = _machineActive ? [] : VisibleHierarchyRows();
             if (!_rows.Select(e => e.Id).SequenceEqual(elements.Select(e => e.Id))) { _rows.Clear(); foreach (var e in elements) _rows.Add(e); }
             else for (var i = 0; i < elements.Count; i++) if (_rows[i] != elements[i]) _rows[i] = elements[i];
             _hierarchy.SelectedItems?.Clear();
@@ -390,7 +396,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
         var shape = !_faceActive ? _session.SourceShapes.FirstOrDefault(s => s.Id == _selectedSource) : null;
         var selected = ActiveElements.FirstOrDefault(e => SelectedIds.Contains(e.Id));
         object key = shape is not null ? (object)shape : SelectedIds.Count > 1 ? string.Join("|", SelectedIds)
-            : _faceActive ? (_faces.Elements.FirstOrDefault(e => e.Id == selected?.Id),_faces.RenderRevision) : (object?)selected ?? "none";
+            : _faceActive ? (_faces.Elements.FirstOrDefault(e => e.Id == selected?.Id),_faces.RenderRevision) : selected?.Kind=="group" ? (_session.Groups.First(g=>g.Id==selected.Id),_session.RenderRevision) : (object?)selected ?? "none";
         if (Equals(_inspected, key)) return;
         _inspected = key; _inspector.Children.Clear(); _fields.Clear();
         if (shape is not null)
@@ -408,6 +414,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
             return;
         }
         if (selected is null) { if (_faceActive && _faces.FacePath is not null) { AppendFaceBuildInspector(); return; } Heading("Select an element"); _inspector.Children.Add(new TextBlock { Text = "Choose an item in the Hierarchy or viewport, or a Face source region.", TextWrapping = TextWrapping.Wrap }); return; }
+        if(!_faceActive&&selected.Kind=="group"){AppendGroupInspector(selected.Id);return;}
         Heading(selected.Kind.ToUpperInvariant());
         Field("Name", selected.Name); Field("X", selected.X); Field("Y", selected.Y); Field("Width", selected.Width); Field("Height", selected.Height);
         var lampIndex = _faceActive ? _faces.Elements.FirstOrDefault(e => e.Id == selected.Id)?.LampId : null;

@@ -3,7 +3,7 @@ namespace OasisEditor.Avalonia;
 
 public sealed record FloatingAssetState(string Kind,string Path,string? LibraryRoot,WorkspaceWindowState Bounds,
     WorkspaceViewportState? Viewport=null,string? SourceSelection=null,string[]? PanelSelection=null,string? FaceSelection=null,
-    WorkspaceSceneState? Scene=null,bool MachineGraph=false,WorkspaceDockNode? Layout=null);
+    WorkspaceSceneState? Scene=null,bool MachineGraph=false,WorkspaceDockNode? Layout=null,string[]? ExpandedGroups=null);
 
 public sealed partial class WorkspaceView
 {
@@ -69,6 +69,8 @@ public sealed partial class WorkspaceView
         }
         else _sceneView.SuspendRendering();
         _machineGraphActive=kind=="Machine"&&state.MachineGraph;
+        _expandedPanelGroups.Clear();
+        _expandedPanelGroups.UnionWith((state.ExpandedGroups??[]).Where(id=>_session.Groups.Any(g=>g.Id==id)));
         _selectedSource=state.SourceSelection;
         if(ActiveDocumentPath is {} activePath)
             _documentViews[ActiveDocumentKind+":"+activePath]=new(state.Viewport??_viewport.CaptureViewState(),state.SourceSelection,
@@ -112,7 +114,7 @@ public sealed partial class WorkspaceView
             current?_selectedSource:retained?.Source,null,null,
             tab.Kind is "Panel2D" or "Face"?null:new(tab.Kind,tab.Kind=="Cabinet3D"?relative:null,tab.Kind=="Prefab"?relative:null,node,camera,
                 _sceneView.ShowVisuals,_sceneView.ShowColliders,_sceneView.ShowTriggers,tab.Kind=="Reel"?relative:null,tab.Scope),
-            tab.Kind=="Machine"&&_machineGraphActive);
+            tab.Kind=="Machine"&&_machineGraphActive,ExpandedGroups:ExpandedPanelGroups.ToArray());
     }
 
     public IReadOnlyList<FloatingAssetState> InspectFloatingDocuments()

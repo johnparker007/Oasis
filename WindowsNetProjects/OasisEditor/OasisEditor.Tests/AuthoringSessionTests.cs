@@ -208,7 +208,7 @@ public sealed class AuthoringSessionTests
         session.Save();
 
         var saved = ReadManifest(project.PanelPath);
-        Assert.Equal(3, saved.SchemaVersion);
+        Assert.Equal(Panel2DDocumentStorage.CurrentSchemaVersion, saved.SchemaVersion);
         Assert.Equal("Main panel", saved.Title);
         Assert.Equal("Preserve this package metadata", saved.Summary);
         var reel = Assert.Single(saved.Elements);

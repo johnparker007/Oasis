@@ -21,13 +21,14 @@ internal static class PanelElementModelCloner
         bool? isTransformLocked = null,
         bool? isVisible = null,
         int? sourceImageOffsetX = null,
-        int? sourceImageOffsetY = null)
+        int? sourceImageOffsetY = null, PanelTransform? transform = null, string? parentId = null, bool overrideParent = false)
     {
         ArgumentNullException.ThrowIfNull(source);
 
         return new PanelElementModel
         {
             ObjectId = objectId ?? source.ObjectId,
+            ParentId = overrideParent ? parentId : source.ParentId, Transform = transform ?? source.Transform,
             Name = name ?? source.Name,
             Kind = source.Kind,
             X = x ?? source.X,
@@ -47,6 +48,7 @@ internal static class PanelElementModelCloner
             OnColorHex = source.OnColorHex,
             OffColorHex = source.OffColorHex,
             TextColorHex = source.TextColorHex,
+            DisplayColorHex = source.DisplayColorHex,
             DisplayText = source.DisplayText,
             TextBoxFontName = source.TextBoxFontName,
             TextBoxFontStyle = source.TextBoxFontStyle,

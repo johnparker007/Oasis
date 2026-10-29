@@ -32,7 +32,7 @@ public sealed partial class WorkspaceView
                 _ => null
             };
             return new AssetDocumentViewState(entry.Asset.Kind, relativePath, entry.Asset.LibraryRoot, entry.Asset.Id,
-                captured.Viewport, selection, captured.SourceSelection, captured.Scene, captured.MachineGraph);
+                captured.Viewport, selection, captured.SourceSelection, captured.Scene, captured.MachineGraph, entry.Editor.ExpandedPanelGroups.ToArray());
         }).ToArray();
         var layout = CapturePresentedLayout();
         var projectRelative = projectFile is null ? null : Path.GetRelativePath(_session.WorkspacePath, projectFile).Replace('\\', '/');
@@ -126,7 +126,7 @@ public sealed partial class WorkspaceView
             {
                 if (activeKind == "Panel2D")
                 {
-                    var available = active.Editor._session.Elements.Select(element => element.Id).ToHashSet(StringComparer.Ordinal);
+                    var available = active.Editor._session.HierarchyElements.Select(element => element.Id).ToHashSet(StringComparer.Ordinal);
                     active.Editor._session.SelectElements((legacy.PanelSelection ?? []).Where(available.Contains).ToArray());
                 }
                 else if (activeKind == "Face")
@@ -152,7 +152,7 @@ public sealed partial class WorkspaceView
             await entry.Editor.DisplayTransferredAssetAsync(saved.Kind, saved);
             if (saved.Kind == "Panel2D")
             {
-                var available = entry.Editor._session.Elements.Select(element => element.Id).ToHashSet(StringComparer.Ordinal);
+                var available = entry.Editor._session.HierarchyElements.Select(element => element.Id).ToHashSet(StringComparer.Ordinal);
                 entry.Editor._session.SelectElements((saved.PanelSelection ?? []).Where(available.Contains).ToArray());
             }
             else if (saved.Kind == "Face")
@@ -261,11 +261,11 @@ public sealed partial class WorkspaceView
                     new WorkspaceWindowState(80, 80, 1200, 800), saved.Viewport, saved.SourceSelection,
                     saved.Kind == "Panel2D" ? saved.Selection : null,
                     saved.Kind == "Face" ? saved.Selection?.FirstOrDefault() : null,
-                    saved.Scene, saved.MachineGraph);
+                    saved.Scene, saved.MachineGraph, ExpandedGroups:saved.ExpandedGroups);
                 var entry = await AddNativeEditorAsync(asset, viewState);
                 if (saved.Kind == "Panel2D")
                 {
-                    var available = entry.Editor._session.Elements.Select(element => element.Id).ToHashSet(StringComparer.Ordinal);
+                    var available = entry.Editor._session.HierarchyElements.Select(element => element.Id).ToHashSet(StringComparer.Ordinal);
                     entry.Editor._session.SelectElements((saved.Selection ?? []).Where(available.Contains).ToArray());
                 }
                 else if (saved.Kind == "Face")

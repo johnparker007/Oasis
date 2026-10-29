@@ -7,7 +7,7 @@ namespace OasisEditor;
 public sealed record ElementSnapshot(
     string Id, string Kind, string Name, double X, double Y, double Width, double Height,
     string? AssetPath, string? SecondaryAssetPath, string? OnColorHex, string? OffColorHex,
-    string? TextColorHex, string? DisplayColorHex, string? DisplayText, bool Visible, bool Locked);
+    string? TextColorHex, string? DisplayColorHex, string? DisplayText, bool Visible, bool Locked, string? ParentId = null, string? Icon = null, int Depth = 0);
 
 /// <summary>Portable, single-document authoring session shared by desktop UI and MCP.</summary>
 public sealed partial class AuthoringSession
@@ -61,7 +61,7 @@ public sealed partial class AuthoringSession
     }
 
     internal Panel2DDocumentModel RequirePanelDocument()
-        => _document is null ? throw new InvalidOperationException("Open a Panel2D document first.") : Panel2DDocumentStorage.ToModel(_document);
+        => _document is null ? throw new InvalidOperationException("Open a Panel2D document first.") : PanelHierarchy.ResolveDocument(Panel2DDocumentStorage.ToModel(_document));
 
     internal void EnsurePanelMatchesSavedFile()
     {
@@ -185,7 +185,7 @@ public sealed partial class AuthoringSession
 
     public void Select(string? id)
     {
-        if (id is not null && !(_document?.Elements ?? []).Any(element => element.ObjectId == id))
+        if (id is not null && (_document is null || !NodeIds(_document).Contains(id)))
             throw new KeyNotFoundException($"Panel element '{id}' was not found.");
         if (_selectedIds.Count == (id is null ? 0 : 1) && (id is null || _selectedIds[0] == id)) return;
         _selectedId = id;
@@ -198,6 +198,7 @@ public sealed partial class AuthoringSession
         double? width = null, double? height = null, bool? visible = null, bool? locked = null)
     {
         var document = RequireDocument();
+        if (document.Groups.Any(g => g.Id == id)) return UpdateGroup(id,name,x,y,visible:visible,locked:locked);
         var index = Array.FindIndex(document.Elements, element => element.ObjectId == id);
         if (index < 0) throw new KeyNotFoundException($"Panel element '{id}' was not found.");
         if (name is not null && string.IsNullOrWhiteSpace(name))
@@ -211,10 +212,12 @@ public sealed partial class AuthoringSession
             IsVisible = visible ?? current.IsVisible,
             LockTransform = locked ?? current.LockTransform
         };
+        if(current.Transform is not null&&(updated.X!=current.X||updated.Y!=current.Y))
+            updated=TranslateLocal(current,updated.X-current.X,updated.Y-current.Y) with {Name=updated.Name,Width=updated.Width,Height=updated.Height,IsVisible=updated.IsVisible,LockTransform=updated.LockTransform};
         if (updated == current) return false;
         var geometryChanged = updated.X != current.X || updated.Y != current.Y
             || updated.Width != current.Width || updated.Height != current.Height;
-        if (geometryChanged && current.LockTransform) throw new InvalidOperationException("This element has locked geometry.");
+        if (geometryChanged && (current.LockTransform || Tree.Resolve(current.ParentId).Locked)) throw new InvalidOperationException("This element has locked geometry.");
         var elements = (PanelElementFile[])document.Elements.Clone();
         elements[index] = updated;
         Commit(document with { Elements = elements });
@@ -286,6 +289,7 @@ public sealed partial class AuthoringSession
 
     private void Commit(Panel2DDocumentFile updated, bool notify = true)
     {
+        updated = NormalizeHierarchy(updated);
         if (Payload(updated) == Payload(RequireDocument())) return;
         _document = updated;
         if (_historyIndex + 1 < _history.Count) _history.RemoveRange(_historyIndex + 1, _history.Count - _historyIndex - 1);
@@ -339,6 +343,7 @@ public sealed partial class AuthoringSession
         {
             throw new InvalidDataException("The Panel2D manifest is malformed or contains fields unsupported by this schema.", exception);
         }
+        if (source.SchemaVersion == 3) source = source with { SchemaVersion = Panel2DDocumentStorage.CurrentSchemaVersion };
         if (source.SchemaVersion != Panel2DDocumentStorage.CurrentSchemaVersion)
             throw new InvalidDataException($"Panel2D schema {source.SchemaVersion} is unsupported; schema {Panel2DDocumentStorage.CurrentSchemaVersion} is required.");
         if (source.Elements is null || source.FaceSourceShapes is null)
@@ -402,7 +407,7 @@ public sealed partial class AuthoringSession
         element.X, element.Y, element.Width, element.Height, element.AssetPath, element.SecondaryAssetPath,
         element.OnColorHex ?? element.Native?.OnColorHex, element.OffColorHex ?? element.Native?.OffColorHex,
         element.TextColorHex ?? element.Native?.TextColorHex, element.Native?.DisplayColorHex,
-        element.DisplayText ?? element.Native?.Text, element.IsVisible ?? true, element.LockTransform);
+        element.DisplayText ?? element.Native?.Text, element.IsVisible ?? true, element.LockTransform, element.ParentId);
 
     private static string FindProjectFile(string directory)
     {
@@ -493,7 +498,7 @@ public sealed partial class AuthoringSession
     private sealed record PanelState(Panel2DDocumentFile[] History, int HistoryIndex, string SavedContent, string? DiskHash, string? SelectedId, string[] SelectedIds);
     private void KeepSelection()
     {
-        var existing = (_document?.Elements ?? []).Select(element => element.ObjectId).ToHashSet(StringComparer.Ordinal);
+        var existing = _document is null ? [] : NodeIds(_document).ToHashSet(StringComparer.Ordinal);
         _selectedIds = _selectedIds.Where(existing.Contains).Distinct(StringComparer.Ordinal).ToList();
         _selectedId = _selectedIds.FirstOrDefault();
     }

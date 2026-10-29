@@ -182,7 +182,7 @@ public sealed class Panel2DRoundTripTests
     {
         const string sourceJson = """
         {
-          "SchemaVersion": 4,
+          "SchemaVersion": 999,
           "Title": "Future Panel",
           "Summary": "Future",
           "Elements": []
@@ -192,7 +192,7 @@ public sealed class Panel2DRoundTripTests
         var success = Panel2DDocumentStorage.TryReadValidated(sourceJson, out _, out var errorMessage);
 
         Assert.False(success);
-        Assert.Contains("Unsupported schema version '4'", errorMessage);
+        Assert.Contains("Unsupported schema version '999'", errorMessage);
     }
 
     [Fact]

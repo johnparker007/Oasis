@@ -81,9 +81,15 @@ def main():
                 count = imported["importedElementCount"]
                 if count:
                     # One import is one real history command; redo restores it.
+                    hierarchy = client.state("inspect_panel_hierarchy")
+                    assert hierarchy["groups"] and not hierarchy["expanded"], hierarchy
+                    assert len(hierarchy["visibleRows"]) == len(hierarchy["groups"]), hierarchy
+                    assert all(item["kind"] == "group" for item in hierarchy["visibleRows"]), hierarchy
+                    leaves = [item["id"] for item in hierarchy["hierarchy"] if item["kind"] != "group"]
+                    assert leaves == [item["id"] for item in client.state()["elements"]], "Hierarchy must be painter order"
                     before = client.state()
                     client.state("history")
-                    assert not client.state()["elements"], row
+                    assert not client.state()["elements"] and not client.state()["groups"], row
                     client.state("history", redo=True)
                     assert len(client.state()["elements"]) == len(before["elements"]), row
                     if "Button/WithoutAngle" in row["sample"] or "Lamp/WithoutAngle" in row["sample"]:
