@@ -1,2 +1,2 @@
 # Keep pinned upstream bytes and hashes identical across platform checkouts.
-Upstream/** -text
+Upstream/** -text whitespace=cr-at-eol,-blank-at-eof
