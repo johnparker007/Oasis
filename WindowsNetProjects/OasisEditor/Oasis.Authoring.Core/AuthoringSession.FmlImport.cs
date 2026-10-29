@@ -18,6 +18,9 @@ public sealed partial class AuthoringSession
 {
     private readonly Dictionary<string, InputDefinitionModel[]> _importedInputDefinitions = new(
         OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+    private readonly Dictionary<string, HashSet<string>> _createdFmlImports = new(
+        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+    public IReadOnlyList<string> CaptureCreatedFmlImportDirectories() => _createdFmlImports.Values.SelectMany(v => v).Distinct().ToArray();
 
     /// <summary>Input bindings recovered from the most recent successful FML import.</summary>
     public IReadOnlyList<InputDefinitionModel> ImportedInputDefinitions => _panelPath is not null
@@ -41,22 +44,39 @@ public sealed partial class AuthoringSession
         var layoutName = Path.GetFileNameWithoutExtension(secureSource);
         string? destinationRelativePath = null;
         var ownsDestination = false;
+        FileStream? importLease = null;
+        string? importLockRelative = null;
+        void ReleaseImportLease()
+        {
+            importLease?.Dispose(); importLease = null;
+            var relative = importLockRelative; importLockRelative = null;
+            if (relative is null) return;
+            try { File.Delete(WorkspacePathPolicy.ResolveConfined(projectRoot, relative)); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
         try
         {
             destinationRelativePath = ReserveUniqueImportFolder(projectRoot, assetsRoot, layoutName);
             ownsDestination = true;
+            var pendingLock = Path.Combine(destinationRelativePath, ".oasis-importing.lock");
+            importLease = new FileStream(WorkspacePathPolicy.ResolveConfined(projectRoot, pendingLock), FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
+            importLockRelative = pendingLock;
             var result = new FmlImportService().ImportFromFml(secureSource, projectRoot, assetsRoot, copyAssets: true,
                 packageName: Path.GetFileName(destinationRelativePath));
             var summary = new FmlImportSummary(result.ImportedElements.Count, result.CopiedAssetRelativePaths,
                 result.InputDefinitions, result.UnsupportedComponentTypes, result.Warnings, result.Errors);
             if (!result.Succeeded)
             {
+                ReleaseImportLease();
                 DeleteOwnedImportFolder(projectRoot, destinationRelativePath);
                 ownsDestination = false;
                 return summary;
             }
 
-            if (_panelPath is not null) _importedInputDefinitions[_panelPath] = result.InputDefinitions.ToArray();
+            if (_panelPath is not null)
+            {
+                _importedInputDefinitions[_panelPath] = result.InputDefinitions.ToArray();
+            }
             if (result.ImportedElements.Count > 0)
             {
                 var additions = result.ImportedElements
@@ -64,15 +84,22 @@ public sealed partial class AuthoringSession
                     .Select(Panel2DDocumentStorage.ToStorageElement).ToArray();
                 Commit(document with { Elements = [.. document.Elements, .. additions] }, notify: false);
             }
+            if (_panelPath is not null)
+            {
+                if (!_createdFmlImports.TryGetValue(_panelPath, out var imports)) _createdFmlImports[_panelPath] = imports = [];
+                imports.Add(Path.GetFullPath(destinationRelativePath, projectRoot));
+            }
             ownsDestination = false;
             Changed?.Invoke();
             return summary;
         }
         catch
         {
+            ReleaseImportLease();
             if (ownsDestination && destinationRelativePath is not null) DeleteOwnedImportFolder(projectRoot, destinationRelativePath);
             throw;
         }
+        finally { ReleaseImportLease(); }
     }
 
     private static string ReserveUniqueImportFolder(string projectRoot, string assetsRoot, string layoutName)

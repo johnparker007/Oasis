@@ -49,7 +49,7 @@ public sealed partial class WorkspaceView
         finally { PendingUnsavedChanges = null; UnsavedChangesWindow = null; }
     }
 
-    private async Task ShowCloseErrorAsync(Exception error)
+    private async Task ShowCloseErrorAsync(Exception error, bool mentionUnsavedDocuments = true)
     {
         CloseWorkflowError = error.Message;
         SetStatus(error.Message);
@@ -57,7 +57,7 @@ public sealed partial class WorkspaceView
         var dialog = new Window { Name = "UnsavedChangesError", Title = "Could not complete the operation",
             Width = 520, SizeToContent = SizeToContent.Height, WindowStartupLocation = WindowStartupLocation.CenterOwner };
         var content = new StackPanel { Margin = new Thickness(20), Spacing = 16 };
-        content.Children.Add(new TextBlock { Text = error.Message + "\n\nYour remaining unsaved documents are still open.", TextWrapping = global::Avalonia.Media.TextWrapping.Wrap });
+        content.Children.Add(new TextBlock { Text = error.Message + (mentionUnsavedDocuments ? "\n\nYour remaining unsaved documents are still open." : ""), TextWrapping = global::Avalonia.Media.TextWrapping.Wrap });
         var ok = new Button { Name = "UnsavedChangesErrorOK", Content = "OK", IsDefault = true, IsCancel = true };
         ok.Click += (_, _) => dialog.Close(); content.Children.Add(ok); dialog.Content = content;
         UnsavedChangesWindow = dialog;
@@ -90,7 +90,13 @@ public sealed partial class WorkspaceView
                 throw new InvalidOperationException("The modified assets changed while confirming. Please try again.");
             _approvedDiscardAssets = choice == UnsavedChangesChoice.Discard ? approvedIds : null;
             _approvedDiscardRevisions = choice == UnsavedChangesChoice.Discard ? revisions : null;
+            var cleanupProject = _session.ProjectFilePath; var cleanupLease = _cleanupLease; var cleanupLibraries = CleanupProtectedRoots();
+            var releasedImports = choice == UnsavedChangesChoice.Discard
+                ? _nativeDocuments.Values.Where(d => approvedIds.Contains(d.Asset.Id))
+                    .SelectMany(d => d.Asset.Sessions.Project.CaptureCreatedFmlImportDirectories()).Distinct().ToArray() : [];
             await commit(choice);
+            if (choice == UnsavedChangesChoice.Discard && cleanupProject is not null)
+                CleanupFmlAfterDiscard(cleanupProject, cleanupLease, cleanupLibraries, releasedImports);
             return true;
         }
         catch (OperationCanceledException) { return false; }

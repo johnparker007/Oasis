@@ -91,6 +91,7 @@ public static class Program
 /// <summary>Renders the real workspace with the Skia backend on a headless window; never accesses the desktop.</summary>
 public sealed class WorkspaceCapture : IDisposable
 {
+    public AssetCleanupPlan? AssetCleanupPreview { get; set; }
     private readonly Window _window;
     public WorkspaceView View { get; }
     // MCP tool instances are transient; workflow progress belongs to this session.

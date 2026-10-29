@@ -351,6 +351,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     private void Refresh()
     {
         if(_movingDocument || _disposed)return;
+        UpdateCleanupLease();
         RefreshWelcomePage();
         if (_refreshing) return;
         _refreshing = true;
@@ -445,6 +446,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     public void Dispose()
     {
         if(_disposed)return;_disposed=true;
+        _cleanupLease?.Dispose(); _cleanupLease = null;
         DisposeTabPresentation();
         DisposeNativeDocuments();
         DisposeLibrary();

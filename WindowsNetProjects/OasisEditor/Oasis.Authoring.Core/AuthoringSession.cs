@@ -103,7 +103,7 @@ public sealed partial class AuthoringSession
         _document = null;
         _selectedId = null;
         _selectedIds.Clear();
-        _panelStates.Clear();
+        _panelStates.Clear(); _createdFmlImports.Clear();
         _diskHash = null;
         _savedContent = string.Empty;
         ClearHistory();

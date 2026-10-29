@@ -15,7 +15,7 @@ public sealed partial class AuthoringSession
     public void CloseActiveDocument()
     {
         if (IsDirty) throw new InvalidOperationException("Save or undo Panel edits before closing.");
-        if (_panelPath is { } path) _panelStates.Remove(path);
+        if (_panelPath is { } path) { _panelStates.Remove(path); _createdFmlImports.Remove(path); }
         _document = null; _panelPath = null; _diskHash = null; _savedContent = string.Empty;
         _selectedId = null; _selectedIds = []; ClearHistory(); Changed?.Invoke();
     }
@@ -24,7 +24,7 @@ public sealed partial class AuthoringSession
         if (_panelStates.Comparer.Equals(path,_panelPath)) { CloseActiveDocument();return; }
         if (!_panelStates.TryGetValue(path,out var s))throw new KeyNotFoundException("Panel is not open.");
         if(Payload(s.History[s.HistoryIndex])!=s.SavedContent)throw new InvalidOperationException("Save or undo Panel edits before closing.");
-        _panelStates.Remove(path);Changed?.Invoke();
+        _panelStates.Remove(path);_createdFmlImports.Remove(path);Changed?.Invoke();
     }
 }
 
