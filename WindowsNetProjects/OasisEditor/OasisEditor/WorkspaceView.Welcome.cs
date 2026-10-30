@@ -7,8 +7,9 @@ namespace OasisEditor.Avalonia;
 public sealed partial class WorkspaceView
 {
     /// <summary>Desktop startup never implicitly reopens the saved workspace's project.</summary>
-    public void ConfigureProjectLauncher(string workspaceSettings, RecentProjectService recentProjects)
+    public void ConfigureProjectLauncher(string workspaceSettings, RecentProjectService recentProjects, Window? window = null)
     {
+        WorkspaceWindowState? legacyEditor = null;
         Try(() =>
         {
             ConfigureWorkspacePersistence(workspaceSettings, restore: false);
@@ -19,6 +20,7 @@ public sealed partial class WorkspaceView
                 try
                 {
                     var saved = WorkspaceLayoutState.Deserialize(File.ReadAllText(workspaceSettings));
+                    legacyEditor = saved.MainWindow;
                     Application.Current!.RequestedThemeVariant = saved.Theme switch
                     {
                         "Dark" => global::Avalonia.Styling.ThemeVariant.Dark,
@@ -31,6 +33,7 @@ public sealed partial class WorkspaceView
             }
         });
         ConfigureWelcomePage(recentProjects);
+        ConfigureWindowPlacement(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(workspaceSettings))!, "window-placement.json"), window, legacyEditor);
     }
 
     /// <summary>
@@ -132,6 +135,7 @@ public sealed partial class WorkspaceView
         _welcomePage.IsVisible = show;
         if (_welcomePage.Parent is not Grid root || IsProjectLauncherVisible == show) return;
         IsProjectLauncherVisible = show;
+        _windowPlacement?.Switch(show);
         if (show)
         {
             foreach (var control in root.Children.Where(c => !ReferenceEquals(c, _welcomePage)))
@@ -153,4 +157,19 @@ public sealed partial class WorkspaceView
     }
 
     private RecentProjectService? _recentProjectService;
+    private WindowPlacementPersistence? _windowPlacement;
+    private string? _placementPath;
+    private WorkspaceWindowState? _legacyEditorPlacement;
+    private void ConfigureWindowPlacement(string path, Window? window, WorkspaceWindowState? legacyEditor)
+    {
+        _windowPlacement?.Dispose(); _windowPlacement = null;
+        _placementPath = path; _legacyEditorPlacement = legacyEditor;
+        AttachedToVisualTree -= PlacementAttached; AttachedToVisualTree += PlacementAttached;
+        if (window is not null) AttachWindowPlacement(window);
+        else if (TopLevel.GetTopLevel(this) is Window host) AttachWindowPlacement(host);
+    }
+    private void PlacementAttached(object? sender, VisualTreeAttachmentEventArgs args)
+    { if (_windowPlacement is null && TopLevel.GetTopLevel(this) is Window host) AttachWindowPlacement(host); }
+    private void AttachWindowPlacement(Window window)
+    { if (_placementPath is not null) _windowPlacement = new(window, _placementPath, IsProjectLauncherVisible, SetStatus, _legacyEditorPlacement); }
 }

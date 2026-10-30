@@ -45,7 +45,7 @@ public sealed class EditorApplication : Application
             if (!Program.IsHeadless)
             {
                 var settings = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Oasis", "AvaloniaEditor");
-                view.ConfigureProjectLauncher(Path.Combine(settings, "workspace.json"), new RecentProjectService(Path.Combine(settings, "recent-projects.json")));
+                view.ConfigureProjectLauncher(Path.Combine(settings, "workspace.json"), new RecentProjectService(Path.Combine(settings, "recent-projects.json")), window);
             }
             if (Program.Project is not null && !string.Equals(session.ProjectFilePath, Program.Project, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
                 view.Try(() => view.OpenProject(Program.Project));
