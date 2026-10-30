@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
@@ -43,7 +42,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     private readonly PanelViewport _viewport;
     private readonly ListBox _hierarchy = new() { SelectionMode = SelectionMode.Multiple };
     private readonly ListBox _sources = new() { MaxHeight = 125 };
-    private readonly ObservableCollection<ElementSnapshot> _rows = [];
+    private readonly global::Avalonia.Collections.AvaloniaList<ElementSnapshot> _rows = [];
     private readonly ListBox _assets = new();
     private readonly TextBox _assetSearch = new() { PlaceholderText = "Search assets", Margin = new Thickness(8, 4) };
     private readonly StackPanel _inspector = new() { Margin = new Thickness(12), Spacing = 9 };
@@ -382,16 +381,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
             RefreshDocumentTabs();
             UpdateSceneModeUI();
             if (Is3DActive) { Refresh3DWorkspaceChrome(); return; }
-            var elements = _machineActive ? [] : VisibleHierarchyRows();
-            if (!_rows.Select(e => e.Id).SequenceEqual(elements.Select(e => e.Id))) { _rows.Clear(); foreach (var e in elements) _rows.Add(e); }
-            else for (var i = 0; i < elements.Count; i++) if (_rows[i] != elements[i]) _rows[i] = elements[i];
-            // Keep the ListBox's range anchor and keyboard focus when it originated the selection.
-            var selectedRows = _rows.Where(e => SelectedIds.Contains(e.Id)).ToArray();
-            if (!_hierarchy.SelectedItems!.OfType<ElementSnapshot>().ToHashSet().SetEquals(selectedRows))
-            {
-                _hierarchy.SelectedItems.Clear();
-                foreach (var e in selectedRows) _hierarchy.SelectedItems.Add(e);
-            }
+            RefreshHierarchyRows();
             var shapes = _faceActive ? [] : _session.SourceShapes;
             _sources.ItemsSource = shapes; _sources.SelectedItem = shapes.FirstOrDefault(s => s.Id == _selectedSource);
             RefreshAssets(); _project.Text = _browseLibrary ? "Oasis Library · "+SceneLibraryRoot : _session.ProjectName ?? "Open or create an Oasis project";
