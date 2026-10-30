@@ -33,25 +33,35 @@ public sealed class EditorIconTests
                 row.Children.Add(new EditorIcon { Kind = kind, IsEnabled = false });
                 sheet.Children.Add(row);
             }
-            var selected = new ListBoxItem { Content = EditorIcons.Label(EditorIconKind.Inspector, "Selected Inspector") };
+            var selected = new ListBoxItem { Content = new StackPanel { Children =
+            {
+                EditorIcons.Label(EditorIconKind.Inspector, "Selected Inspector"),
+                EditorIcons.Label(EditorIconKind.SegmentedAlpha, "Selected segmented alpha"),
+                EditorIcons.Label(EditorIconKind.DotMatrixAlpha, "Selected dot-matrix alpha")
+            } } };
             sheet.Children.Add(new ListBox { ItemsSource = new[] { selected }, SelectedIndex = 0 });
-            var window = new Window { Width = 380, Height = 290, Content = sheet };
+            var window = new Window { Width = 380, Height = 350, Content = sheet };
             window.Show(); window.UpdateLayout(); Dispatcher.UIThread.RunJobs();
             try
             {
-                var icon = selected.GetVisualDescendants().OfType<EditorIcon>().Single();
-                var label = selected.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == "Selected Inspector");
-                Assert.Equal(label.Foreground?.ToString(), icon.Foreground?.ToString());
-                Assert.NotNull(icon.Foreground);
+                foreach (var icon in selected.GetVisualDescendants().OfType<EditorIcon>())
+                {
+                    var label = ((Grid)icon.Parent!).Children.OfType<TextBlock>().Single();
+                    Assert.Equal(label.Foreground?.ToString(), icon.Foreground?.ToString());
+                    Assert.NotNull(icon.Foreground);
+                }
                 var normal = sheet.GetVisualDescendants().OfType<EditorIcon>().First(i => i.IsEnabled);
                 var disabled = sheet.GetVisualDescendants().OfType<EditorIcon>().First(i => !i.IsEnabled);
                 Assert.NotEqual(normal.Foreground?.ToString(), disabled.Foreground?.ToString());
+                foreach (var kind in new[] { EditorIconKind.SegmentedAlpha, EditorIconKind.DotMatrixAlpha })
+                    Assert.NotEqual(sheet.GetVisualDescendants().OfType<EditorIcon>().First(i => i.Kind == kind && i.IsEnabled).Foreground?.ToString(),
+                        sheet.GetVisualDescendants().OfType<EditorIcon>().Single(i => i.Kind == kind && !i.IsEnabled).Foreground?.ToString());
                 var path = Environment.GetEnvironmentVariable("OASIS_ICON_VERIFICATION_OUTPUT");
                 if (!string.IsNullOrWhiteSpace(path))
                 {
                     Directory.CreateDirectory(path);
                     AvaloniaHeadlessPlatform.ForceRenderTimerTick(2);
-                    using var bitmap = new RenderTargetBitmap(new PixelSize(380, 290)); bitmap.Render(window);
+                    using var bitmap = new RenderTargetBitmap(new PixelSize(380, 350)); bitmap.Render(window);
                     bitmap.Save(Path.Combine(path, $"icons-{theme.ToLowerInvariant()}.png"));
                 }
             }
@@ -73,11 +83,12 @@ public sealed class EditorIconTests
                 faces.AddLamp("Lamp", 20, 20, 30, 30);
                 faces.AddButton("Button", 70, 20);
                 faces.AddSevenSegmentDisplay("7-segment display", 180, 20);
+                faces.AddAlphaDisplay("Alpha display", 180, 100);
                 faces.AddReelMount("Reel", 300, 20, 60, 100, 0); faces.Save();
                 using var capture = new WorkspaceCapture(session, faces);
                 await capture.View.OpenNativeAssetAsync("Face", face);
                 capture.Capture();
-                foreach (var kind in new[] { EditorIconKind.Lamp, EditorIconKind.Button, EditorIconKind.SevenSegment, EditorIconKind.Reel })
+                foreach (var kind in new[] { EditorIconKind.Lamp, EditorIconKind.Button, EditorIconKind.SevenSegment, EditorIconKind.Reel, EditorIconKind.SegmentedAlpha })
                     Assert.Contains(capture.View.GetVisualDescendants().OfType<EditorIcon>(), i => i.Kind == kind);
                 Assert.Contains(capture.View.GetVisualDescendants().OfType<EditorIcon>(), i => i.Kind == EditorIconKind.Hierarchy);
                 Assert.Contains(capture.View.GetVisualDescendants().OfType<EditorIcon>(), i => i.Kind == EditorIconKind.Inspector);
