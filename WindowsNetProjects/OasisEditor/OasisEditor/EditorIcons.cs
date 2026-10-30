@@ -10,7 +10,7 @@ using Dock.Model.Core;
 
 namespace OasisEditor.Avalonia;
 
-public enum EditorIconKind { None, Hierarchy, Inspector, Project, Console, Lamp, SevenSegment, Reel, Button }
+public enum EditorIconKind { None, Hierarchy, Inspector, Project, Console, Lamp, SevenSegment, Reel, Button, SegmentedAlpha, DotMatrixAlpha }
 
 /// <summary>
 /// Approved oasis-icon-study.html designs (2026-10-29), in the original 16-unit
@@ -18,9 +18,12 @@ public enum EditorIconKind { None, Hierarchy, Inspector, Project, Console, Lamp,
 /// </summary>
 public static class EditorIcons
 {
-    private sealed record Shape(Geometry Geometry, bool Filled = false);
-    private static Shape Line(string path) => new(Geometry.Parse(path));
+    private sealed record Shape(Geometry Geometry, bool Filled = false, double StrokeWidth = 1.25, PenLineCap Cap = PenLineCap.Round);
+    private static Shape Line(string path, double width = 1.25, PenLineCap cap = PenLineCap.Round) => new(Geometry.Parse(path), StrokeWidth: width, Cap: cap);
     private static Shape Fill(string path) => new(Geometry.Parse(path), true);
+    // Approved oasis-alpha-icon-study.html artwork (2026-10-29). Both designs
+    // share the exact SVG rect; N1 overrides only the character stroke/caps.
+    private static readonly Shape AlphaFrame = new(new RectangleGeometry(new Rect(1, 3, 14, 10), 1.25, 1.25));
     private static readonly IReadOnlyDictionary<EditorIconKind, Shape[]> Shapes = new Dictionary<EditorIconKind, Shape[]>
     {
         [EditorIconKind.Hierarchy] = [Line("M6.6 2H9.4A.6 .6 0 0 1 10 2.6V4.4A.6 .6 0 0 1 9.4 5H6.6A.6 .6 0 0 1 6 4.4V2.6A.6 .6 0 0 1 6.6 2Z M2.6 11H5.4A.6 .6 0 0 1 6 11.6V13.4A.6 .6 0 0 1 5.4 14H2.6A.6 .6 0 0 1 2 13.4V11.6A.6 .6 0 0 1 2.6 11Z M10.6 11H13.4A.6 .6 0 0 1 14 11.6V13.4A.6 .6 0 0 1 13.4 14H10.6A.6 .6 0 0 1 10 13.4V11.6A.6 .6 0 0 1 10.6 11Z M8 5v3M4 11V8h8v3")],
@@ -31,14 +34,34 @@ public static class EditorIcons
         [EditorIconKind.Lamp] = [Line("M5.5 10.5c0-1.8-2-2.2-2-4.5a4.5 4.5 0 0 1 9 0c0 2.3-2 2.7-2 4.5Z M5.5 12.5h5M7 14h2")],
         [EditorIconKind.SevenSegment] = [Fill("M5 2 6 1h4l1 1-1 1H6Z M4 2.5l1 1v3l-1 1-1-1v-3Z M12 2.5l1 1v3l-1 1-1-1v-3Z M5 8l1-1h4l1 1-1 1H6Z M4 8.5l1 1v3l-1 1-1-1v-3Z M12 8.5l1 1v3l-1 1-1-1v-3Z M5 14l1-1h4l1 1-1 1H6Z")],
         [EditorIconKind.Reel] = [Line("M5 1.5H11A2 2 0 0 1 13 3.5V12.5A2 2 0 0 1 11 14.5H5A2 2 0 0 1 3 12.5V3.5A2 2 0 0 1 5 1.5Z M3 5h10M3 11h10"), Fill("m8 6.5 1.5 1.5L8 9.5 6.5 8Z")],
-        [EditorIconKind.Button] = [Line("M2 6v4a6 3 0 0 0 12 0V6 M14 6A6 3 0 1 0 2 6A6 3 0 1 0 14 6Z M5 5.5c1-.6 3-.8 4.5-.4")]
+        [EditorIconKind.Button] = [Line("M2 6v4a6 3 0 0 0 12 0V6 M14 6A6 3 0 1 0 2 6A6 3 0 1 0 14 6Z M5 5.5c1-.6 3-.8 4.5-.4")],
+        [EditorIconKind.SegmentedAlpha] = [AlphaFrame, Line("M3.5 5.3v2.3m0 .8v2.3M7.5 5.3v2.3m0 .8v2.3M4 5.5l1.25 2m.5 1 1.25 2M11.5 5.3v2.3m0 .8v2.3M9.5 6.5l1.25-1", 1, PenLineCap.Flat)],
+        [EditorIconKind.DotMatrixAlpha] = DotMatrixAlpha()
     };
+
+    private static Shape[] DotMatrixAlpha()
+    {
+        var shapes = new List<Shape> { AlphaFrame };
+        string[] letters = ["010101111101101", "010110010010111"];
+        for (var character = 0; character < letters.Length; character++)
+            for (var i = 0; i < letters[character].Length; i++)
+                if (letters[character][i] == '1')
+                {
+                    var x = Math.Round(3.8 + character * 5.6 + i % 3 * 1.4, 2);
+                    var y = Math.Round(5.2 + i / 3 * 1.4, 2);
+                    shapes.Add(new Shape(new EllipseGeometry(new Rect(x - .48, y - .48, .96, .96)), Filled: true));
+                }
+        return shapes.ToArray();
+    }
 
     internal static void Draw(DrawingContext context, EditorIconKind kind, IBrush? brush)
     {
         if (!Shapes.TryGetValue(kind, out var shapes) || brush is null) return;
-        var pen = new Pen(brush, 1.25, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
-        foreach (var shape in shapes) context.DrawGeometry(shape.Filled ? brush : null, shape.Filled ? null : pen, shape.Geometry);
+        foreach (var shape in shapes)
+        {
+            var pen = shape.Filled ? null : new Pen(brush, shape.StrokeWidth, lineCap: shape.Cap, lineJoin: PenLineJoin.Round);
+            context.DrawGeometry(shape.Filled ? brush : null, pen, shape.Geometry);
+        }
     }
 
     public static EditorIconKind ForPane(string? id) => id switch
@@ -47,6 +70,8 @@ public static class EditorIcons
 
     public static EditorIconKind ForComponent(string? kind) => kind?.ToLowerInvariant() switch
     { "lamp" or "lampwindow" => EditorIconKind.Lamp, "sevensegment" or "sevensegmentdisplay" => EditorIconKind.SevenSegment,
+      "alpha" or "alphadisplay" => EditorIconKind.SegmentedAlpha,
+      "vfddotmatrix" => EditorIconKind.DotMatrixAlpha,
       "reel" or "reelmount" => EditorIconKind.Reel, "button" => EditorIconKind.Button, _ => EditorIconKind.None };
 
     internal static Control Label(EditorIconKind kind, string? label, double indent = 0)
