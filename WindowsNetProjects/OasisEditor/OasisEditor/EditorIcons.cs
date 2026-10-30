@@ -10,7 +10,7 @@ using Dock.Model.Core;
 
 namespace OasisEditor.Avalonia;
 
-public enum EditorIconKind { None, Hierarchy, Inspector, Project, Console, Lamp, SevenSegment, Reel, Button, SegmentedAlpha, DotMatrixAlpha, Background, Lock }
+public enum EditorIconKind { None, Hierarchy, Inspector, Project, Console, Lamp, SevenSegment, Reel, Button, SegmentedAlpha, DotMatrixAlpha, Background, Lock, Hidden }
 
 /// <summary>
 /// Approved oasis-icon-study.html designs (2026-10-29), in the original 16-unit
@@ -41,7 +41,10 @@ public static class EditorIcons
         [EditorIconKind.Background] = [Line("M2 2H14V14H2Z"), Fill("M5 5H11V11H5Z")],
         // Approved oasis-lock.svg: original strokes, rounded body and keyhole.
         [EditorIconKind.Lock] = [Line("M5 7V5a3 3 0 0 1 6 0v2"),
-            new Shape(new RectangleGeometry(new Rect(3, 7, 10, 7), 1.25, 1.25)), Line("M8 10v1.5")]
+            new Shape(new RectangleGeometry(new Rect(3, 7, 10, 7), 1.25, 1.25)), Line("M8 10v1.5")],
+        // Approved oasis-hidden.svg, including genuinely interrupted eye strokes.
+        [EditorIconKind.Hidden] = [Line("M6.25 4.25C6.8 4.08 7.38 4 8 4c4 0 6.5 4 6.5 4s-.68 1.09-1.9 2.14M10.45 11.47A7.1 7.1 0 0 1 8 12C4 12 1.5 8 1.5 8s.74-1.18 2.05-2.27"),
+            Line("M7.5 6.06A2 2 0 0 1 9.94 8.5M8.5 9.94A2 2 0 0 1 6.06 7.5"), Line("m2 2 12 12")]
     };
 
     private static Shape[] DotMatrixAlpha()

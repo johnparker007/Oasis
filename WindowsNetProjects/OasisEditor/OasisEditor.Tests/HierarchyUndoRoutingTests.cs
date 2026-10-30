@@ -32,7 +32,8 @@ public sealed class HierarchyUndoRoutingTests
                 if (floating) { capture.View.MoveWorkspacePane("Hierarchy", "float"); capture.Capture(); capture.CaptureFloatingWindows(); }
                 var host = floating ? Assert.Single(capture.View.FloatingWorkspaceWindows) : (Window)TopLevel.GetTopLevel(capture.View)!;
                 var row = host.GetVisualDescendants().OfType<StackPanel>().Single(p => Equals(p.Tag, lamp));
-                var point = row.TranslatePoint(new Point(35, row.Bounds.Height / 2), host)!.Value;
+                var label = row.Children.OfType<ContentControl>().Single(c => c.Name == "HierarchyLabel");
+                var point = label.TranslatePoint(new Point(20, label.Bounds.Height / 2), host)!.Value;
                 host.MouseDown(point, MouseButton.Left); host.MouseUp(point, MouseButton.Left);
                 void Press(Key key, RawInputModifiers modifiers = RawInputModifiers.None)
                 {

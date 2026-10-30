@@ -112,5 +112,24 @@
       <Setter Property="Padding" Value="7,3" />
       <Setter Property="FontSize" Value="12" />
     </Style>
+    <Style Selector="Button.HierarchyState">
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="2" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.HierarchyState.inactive local|EditorIcon">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="ListBoxItem:pointerover Button.HierarchyState.inactive local|EditorIcon">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
+    <Style Selector="Button.HierarchyState.inherited local|EditorIcon">
+      <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+      <Setter Property="Opacity" Value="0.55" />
+    </Style>
   </Application.Styles>
 </Application>

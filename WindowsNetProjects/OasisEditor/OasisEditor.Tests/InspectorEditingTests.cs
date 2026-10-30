@@ -58,7 +58,8 @@ public sealed class InspectorEditingTests
 
                 name = Field(window, "Name"); name.Focus(); name.Text = "Committed before selection";
                 var row = window.GetVisualDescendants().OfType<StackPanel>().Single(p => Equals(p.Tag, other));
-                var point = row.TranslatePoint(new Point(35, row.Bounds.Height / 2), window)!.Value;
+                var label = row.Children.OfType<ContentControl>().Single(c => c.Name == "HierarchyLabel");
+                var point = label.TranslatePoint(new Point(20, label.Bounds.Height / 2), window)!.Value;
                 window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left);
                 Assert.Equal(other, session.SelectedId); Assert.Equal("Committed before selection", session.Elements.Single(e => e.Id == lamp).Name);
                 // Removed fields cannot commit into a different object.

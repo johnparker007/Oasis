@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 
 namespace OasisEditor.Avalonia;
 
@@ -31,7 +32,10 @@ public sealed partial class WorkspaceView
         if(e is null)return new TextBlock();
         var group=e.Kind=="group";var kind=group&&Enum.TryParse<EditorIconKind>(e.Icon,out var icon)?icon:EditorIcons.ForComponent(e.Kind);
         var label=kind==EditorIconKind.None?$"◇  {e.Name}":e.Name;
-        var row=new StackPanel {Tag=e.Id,Orientation=Orientation.Horizontal,Spacing=2,Margin=new Thickness(e.Depth*16,0,0,0),Background=Brushes.Transparent};
+        var row=new StackPanel {Tag=e.Id,Orientation=Orientation.Horizontal,Spacing=2,Background=Brushes.Transparent};
+        row.Children.Add(HierarchyStateButton(row,e,visibility:true));
+        row.Children.Add(HierarchyStateButton(row,e,visibility:false));
+        row.Children.Add(new Border {Width=e.Depth*16});
         if(e.Locked||e.AncestorsLocked)
         {
             var hint=e.Locked?"Transform locked":"Transform locked by parent group";
@@ -46,15 +50,12 @@ public sealed partial class WorkspaceView
             toggle.Click+=(_,_)=>SetPanelGroupExpanded(e.Id,!_expandedPanelGroups.Contains(e.Id));row.Children.Add(toggle);
         }
         else row.Children.Add(new Border {Width=16});
-        row.Children.Add(new ContentControl {Name="HierarchyLabel",Content=EditorIcons.Label(kind,label)});
-        if(e.Locked||e.AncestorsLocked)
-            row.Children.Add(new EditorIcon {Kind=EditorIconKind.Lock,Width=12,Height=12,Margin=new Thickness(4,0,0,0)});
+        row.Children.Add(new ContentControl {Name="HierarchyLabel",Content=EditorIcons.Label(kind,label),Opacity=e.Visible&&e.AncestorsVisible?1:.45});
         if(group && e.InputLabel is {} inputLabel)
         {
             var badge=new EditorIcon {Kind=EditorIconKind.Button,Margin=new Thickness(5,0,0,0)};
             ToolTip.SetTip(badge,"Input: "+inputLabel);row.Children.Add(badge);
         }
-        row.Opacity=e.Visible&&e.AncestorsVisible?1:.45;
         var menu=new ContextMenu();row.ContextMenu=menu;
         void PopulateMenu()
         {
@@ -77,7 +78,9 @@ public sealed partial class WorkspaceView
         menu.Opening+=(_,_)=>{if(!SelectedIds.Contains(e.Id))SelectActive([e.Id]);PopulateMenu();};
         if(_faceActive)return row;
         Point? pressed=null;PointerPressedEventArgs? pressArgs=null;
-        row.PointerPressed+=(_,args)=>{if(_hierarchyRename is null&&args.GetCurrentPoint(row).Properties.IsLeftButtonPressed&&args.Source is not Button&&(!group||args.GetPosition(row).X>18)){pressed=args.GetPosition(row);pressArgs=args;}};
+        row.PointerPressed+=(_,args)=>{if(_hierarchyRename is null&&args.GetCurrentPoint(row).Properties.IsLeftButtonPressed&&
+            args.Source is Visual source&&!source.GetVisualAncestors().Prepend(source).Any(v=>v is Button or TextBox))
+            {pressed=args.GetPosition(row);pressArgs=args;}};
         row.PointerReleased+=(_,_)=>pressed=null;
         row.PointerMoved+=async(_,args)=>
         {
