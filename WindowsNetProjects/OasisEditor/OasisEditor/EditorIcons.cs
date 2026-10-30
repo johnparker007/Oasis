@@ -10,7 +10,7 @@ using Dock.Model.Core;
 
 namespace OasisEditor.Avalonia;
 
-public enum EditorIconKind { None, Hierarchy, Inspector, Project, Console, Lamp, SevenSegment, Reel, Button, SegmentedAlpha, DotMatrixAlpha }
+public enum EditorIconKind { None, Hierarchy, Inspector, Project, Console, Lamp, SevenSegment, Reel, Button, SegmentedAlpha, DotMatrixAlpha, Background }
 
 /// <summary>
 /// Approved oasis-icon-study.html designs (2026-10-29), in the original 16-unit
@@ -36,7 +36,9 @@ public static class EditorIcons
         [EditorIconKind.Reel] = [Line("M5 1.5H11A2 2 0 0 1 13 3.5V12.5A2 2 0 0 1 11 14.5H5A2 2 0 0 1 3 12.5V3.5A2 2 0 0 1 5 1.5Z M3 5h10M3 11h10"), Fill("m8 6.5 1.5 1.5L8 9.5 6.5 8Z")],
         [EditorIconKind.Button] = [Line("M2 6v4a6 3 0 0 0 12 0V6 M14 6A6 3 0 1 0 2 6A6 3 0 1 0 14 6Z M5 5.5c1-.6 3-.8 4.5-.4")],
         [EditorIconKind.SegmentedAlpha] = [AlphaFrame, Line("M3.5 5.3v2.3m0 .8v2.3M7.5 5.3v2.3m0 .8v2.3M4 5.5l1.25 2m.5 1 1.25 2M11.5 5.3v2.3m0 .8v2.3M9.5 6.5l1.25-1", 1, PenLineCap.Flat)],
-        [EditorIconKind.DotMatrixAlpha] = DotMatrixAlpha()
+        [EditorIconKind.DotMatrixAlpha] = DotMatrixAlpha(),
+        // Shared background swatch for component rows and their automatic groups.
+        [EditorIconKind.Background] = [Line("M2 2H14V14H2Z"), Fill("M5 5H11V11H5Z")]
     };
 
     private static Shape[] DotMatrixAlpha()
@@ -72,6 +74,7 @@ public static class EditorIcons
     { "lamp" or "lampwindow" => EditorIconKind.Lamp, "sevensegment" or "sevensegmentdisplay" => EditorIconKind.SevenSegment,
       "alpha" or "alphadisplay" => EditorIconKind.SegmentedAlpha,
       "vfddotmatrix" => EditorIconKind.DotMatrixAlpha,
+      "background" => EditorIconKind.Background,
       "reel" or "reelmount" => EditorIconKind.Reel, "button" => EditorIconKind.Button, _ => EditorIconKind.None };
 
     internal static Control Label(EditorIconKind kind, string? label, double indent = 0)

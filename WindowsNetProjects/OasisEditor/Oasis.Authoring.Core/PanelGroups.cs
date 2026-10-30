@@ -49,7 +49,7 @@ public sealed record PanelGroup
 /// <summary>Resolves inherited transforms and state; the storage list follows hierarchy drawing order.</summary>
 public sealed class PanelHierarchy
 {
-    public static IReadOnlyList<string> Icons { get; } = Array.AsReadOnly(new[] { "Hierarchy", "Inspector", "Project", "Console", "Lamp", "SevenSegment", "Reel", "Button" });
+    public static IReadOnlyList<string> Icons { get; } = Array.AsReadOnly(new[] { "Hierarchy", "Inspector", "Project", "Console", "Lamp", "SevenSegment", "Reel", "Button", "SegmentedAlpha", "DotMatrixAlpha", "Background" });
     private readonly Dictionary<string, PanelGroup> groups;
     private readonly Dictionary<string, (PanelTransform Transform, bool Visible, bool Locked)> resolved = new(StringComparer.Ordinal);
     public PanelHierarchy(IEnumerable<PanelGroup> source) { groups = source.ToDictionary(g => g.Id, StringComparer.Ordinal); foreach (var id in groups.Keys) Resolve(id); }
