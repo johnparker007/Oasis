@@ -472,6 +472,7 @@ public sealed partial class WorkspaceView : UserControl, IDisposable
     public void Dispose()
     {
         if(_disposed)return;_disposed=true;
+        _windowPlacement?.Dispose(); AttachedToVisualTree -= PlacementAttached;
         _cleanupLease?.Dispose(); _cleanupLease = null;
         DisposeTabPresentation();
         DisposeNativeDocuments();
