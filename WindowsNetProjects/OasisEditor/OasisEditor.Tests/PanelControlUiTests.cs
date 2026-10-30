@@ -19,6 +19,8 @@ public sealed class PanelControlUiTests
             try
             {
                 var author=new AuthoringSession(root);author.CreateProject("Controls");author.CreatePanel("Panel");PanelControlTests.InstallControl(author,12);
+                // Explicitly authored one-item groups remain valid; only import wrappers are elided.
+                author.Select(author.Groups.Single(g=>g.Control is not null).Id);author.CreateGroup();author.Save();
                 using var capture=new WorkspaceCapture(author);await capture.View.SynchronizeAssetDocumentsAsync();capture.Capture(theme:theme);
                 var editor=capture.View.CommandView;var session=editor.CommandSession;var control=session.Groups.Single(g=>g.Control is not null);var section=control.ParentId!;
                 Assert.Single(editor.InspectPanelHierarchyRows());Assert.Equal("Lamp (1)",editor.InspectPanelHierarchyRows().Single().Name);

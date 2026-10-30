@@ -19,7 +19,7 @@ public sealed class AutomaticGroupIconTests
             try
             {
                 var author = new AuthoringSession(root); author.CreateProject("Icons"); var path = author.CreatePanel("Imported");
-                var sources = new[] { PanelElementKind.Alpha, PanelElementKind.Alpha, PanelElementKind.Background, PanelElementKind.VfdDotMatrix }
+                var sources = new[] { PanelElementKind.Alpha, PanelElementKind.Alpha, PanelElementKind.Background, PanelElementKind.Background, PanelElementKind.VfdDotMatrix, PanelElementKind.VfdDotMatrix }
                     .Select((kind, i) => new PanelElementModel { ObjectId = Guid.NewGuid().ToString("N"), Kind = kind, Name = kind.ToString(),
                         Width = 100, Height = 40, X = 20, Y = 20 + i * 50, SourceComponentIndex = i, IsTransformLocked = kind == PanelElementKind.Background,
                         SegmentDisplayType = i == 0 ? "led14seg" : "led16seg" }).ToArray();
