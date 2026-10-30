@@ -30,8 +30,14 @@ public sealed partial class WorkspaceView
     {
         if(e is null)return new TextBlock();
         var group=e.Kind=="group";var kind=group&&Enum.TryParse<EditorIconKind>(e.Icon,out var icon)?icon:EditorIcons.ForComponent(e.Kind);
-        var label=e.Locked||e.AncestorsLocked?$"▣  {e.Name}":kind==EditorIconKind.None?$"◇  {e.Name}":e.Name;
+        var label=kind==EditorIconKind.None?$"◇  {e.Name}":e.Name;
         var row=new StackPanel {Tag=e.Id,Orientation=Orientation.Horizontal,Spacing=2,Margin=new Thickness(e.Depth*16,0,0,0),Background=Brushes.Transparent};
+        if(e.Locked||e.AncestorsLocked)
+        {
+            var hint=e.Locked?"Transform locked":"Transform locked by parent group";
+            ToolTip.SetTip(row,hint);
+            global::Avalonia.Automation.AutomationProperties.SetHelpText(row,hint);
+        }
         if(group)
         {
             var toggle=new Button {Name="TogglePanelGroup",Width=16,Height=20,MinHeight=0,MinWidth=0,Padding=new Thickness(2),Focusable=false,
@@ -41,6 +47,8 @@ public sealed partial class WorkspaceView
         }
         else row.Children.Add(new Border {Width=16});
         row.Children.Add(new ContentControl {Name="HierarchyLabel",Content=EditorIcons.Label(kind,label)});
+        if(e.Locked||e.AncestorsLocked)
+            row.Children.Add(new EditorIcon {Kind=EditorIconKind.Lock,Width=12,Height=12,Margin=new Thickness(4,0,0,0)});
         if(group && e.InputLabel is {} inputLabel)
         {
             var badge=new EditorIcon {Kind=EditorIconKind.Button,Margin=new Thickness(5,0,0,0)};

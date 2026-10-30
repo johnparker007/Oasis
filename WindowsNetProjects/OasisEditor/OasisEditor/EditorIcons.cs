@@ -10,7 +10,7 @@ using Dock.Model.Core;
 
 namespace OasisEditor.Avalonia;
 
-public enum EditorIconKind { None, Hierarchy, Inspector, Project, Console, Lamp, SevenSegment, Reel, Button, SegmentedAlpha, DotMatrixAlpha, Background }
+public enum EditorIconKind { None, Hierarchy, Inspector, Project, Console, Lamp, SevenSegment, Reel, Button, SegmentedAlpha, DotMatrixAlpha, Background, Lock }
 
 /// <summary>
 /// Approved oasis-icon-study.html designs (2026-10-29), in the original 16-unit
@@ -38,7 +38,10 @@ public static class EditorIcons
         [EditorIconKind.SegmentedAlpha] = [AlphaFrame, Line("M3.5 5.3v2.3m0 .8v2.3M7.5 5.3v2.3m0 .8v2.3M4 5.5l1.25 2m.5 1 1.25 2M11.5 5.3v2.3m0 .8v2.3M9.5 6.5l1.25-1", 1, PenLineCap.Flat)],
         [EditorIconKind.DotMatrixAlpha] = DotMatrixAlpha(),
         // Shared background swatch for component rows and their automatic groups.
-        [EditorIconKind.Background] = [Line("M2 2H14V14H2Z"), Fill("M5 5H11V11H5Z")]
+        [EditorIconKind.Background] = [Line("M2 2H14V14H2Z"), Fill("M5 5H11V11H5Z")],
+        // Approved oasis-lock.svg: original strokes, rounded body and keyhole.
+        [EditorIconKind.Lock] = [Line("M5 7V5a3 3 0 0 1 6 0v2"),
+            new Shape(new RectangleGeometry(new Rect(3, 7, 10, 7), 1.25, 1.25)), Line("M8 10v1.5")]
     };
 
     private static Shape[] DotMatrixAlpha()
