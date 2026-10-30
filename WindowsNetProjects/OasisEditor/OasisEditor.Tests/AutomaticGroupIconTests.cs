@@ -42,9 +42,9 @@ public sealed class AutomaticGroupIconTests
                     foreach (var id in session.Elements.Where(e => e.ParentId == groups[type].Id).Select(e => e.Id).Prepend(groups[type].Id))
                     {
                         var row = capture.View.GetVisualDescendants().OfType<StackPanel>().Single(p => Equals(p.Tag, id));
-                        Assert.Equal(kind, Assert.Single(row.GetVisualDescendants().OfType<EditorIcon>().Where(i => i.Kind != EditorIconKind.Lock)).Kind);
+                        Assert.Equal(kind, Assert.Single(row.GetVisualDescendants().OfType<EditorIcon>().Where(i => i.Kind is not EditorIconKind.Lock and not EditorIconKind.Hidden)).Kind);
                         Assert.Equal(id != groups[type].Id && type == "Background" ? 1 : 0,
-                            row.GetVisualDescendants().OfType<EditorIcon>().Count(i => i.Kind == EditorIconKind.Lock));
+                            row.Children.OfType<Button>().Count(b => b.Name == "HierarchyLock" && !b.Classes.Contains("inactive")));
                         Assert.DoesNotContain(row.GetVisualDescendants().OfType<TextBlock>(), t => t.Text?.Contains('▣') == true);
                         if (id != groups[type].Id && type == "Background")
                         {

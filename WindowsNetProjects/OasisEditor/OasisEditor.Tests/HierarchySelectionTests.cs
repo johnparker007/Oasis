@@ -56,7 +56,8 @@ public sealed class HierarchySelectionTests
                 {
                     window.UpdateLayout();
                     var row = window.GetVisualDescendants().OfType<StackPanel>().Single(p => Equals(p.Tag, ids[index]));
-                    var point = row.TranslatePoint(new Point(35, row.Bounds.Height / 2), window)!.Value;
+                    var label = row.Children.OfType<ContentControl>().Single(c => c.Name == "HierarchyLabel");
+                    var point = label.TranslatePoint(new Point(20, label.Bounds.Height / 2), window)!.Value;
                     window.MouseDown(point, MouseButton.Left, modifiers);
                     window.MouseUp(point, MouseButton.Left, modifiers);
                 }

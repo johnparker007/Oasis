@@ -116,7 +116,7 @@ public sealed class UnsavedChangesEntryPointTests
                 await OpenBothAndEdit(view, project, "Shortcut saved");
                 await view.ActivateDocumentAsync("Panel2D", project.PanelA);
                 capture.Capture();
-                Assert.True(view.GetVisualDescendants().OfType<Button>().First(v=>v.IsEffectivelyVisible).Focus());
+                Assert.True(view.GetVisualDescendants().OfType<Button>().First(v=>v.IsEffectivelyVisible && v.Focusable).Focus());
                 var window = Assert.IsAssignableFrom<TopLevel>(TopLevel.GetTopLevel(view));
                 Press(window, Key.S, RawInputModifiers.Control | RawInputModifiers.Shift);
                 await WaitUntil(() => !view.HasUnsavedChanges);

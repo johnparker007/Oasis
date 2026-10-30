@@ -72,7 +72,7 @@ public sealed class AlphaIconTests
                 foreach (var (id, kind) in new[] { (alpha, EditorIconKind.SegmentedAlpha), (matrix, EditorIconKind.DotMatrixAlpha), (numeric, EditorIconKind.SevenSegment) })
                 {
                     var row = capture.View.GetVisualDescendants().OfType<StackPanel>().Single(p => Equals(p.Tag, id));
-                    Assert.Equal(kind, Assert.Single(row.GetVisualDescendants().OfType<EditorIcon>()).Kind);
+                    Assert.Equal(kind, Assert.Single(row.GetVisualDescendants().OfType<EditorIcon>().Where(i => i.Kind is not EditorIconKind.Lock and not EditorIconKind.Hidden)).Kind);
                 }
                 Assert.Equal(EditorIconKind.SegmentedAlpha, EditorIcons.ForComponent("alphaDisplay"));
                 Assert.Equal(EditorIconKind.SevenSegment, EditorIcons.ForComponent("sevenSegmentDisplay"));
