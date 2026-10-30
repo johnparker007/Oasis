@@ -18,7 +18,21 @@ public sealed partial class WorkspaceView
     public void SetPanelGroupExpanded(string id,bool expanded)
     {
         if(!_session.Groups.Any(g=>g.Id==id))throw new KeyNotFoundException("Group not found.");
-        if(expanded)_expandedPanelGroups.Add(id);else _expandedPanelGroups.Remove(id);Refresh();
+        if(!(expanded?_expandedPanelGroups.Add(id):_expandedPanelGroups.Remove(id)))return;
+        // Disclosure changes only view state, not the document or other panes.
+        var refreshing=_refreshing;_refreshing=true;
+        try
+        {
+            RefreshHierarchyRows();
+            foreach(var row in _hierarchy.GetVisualDescendants().OfType<StackPanel>().Where(r=>Equals(r.Tag,id)))
+                if(row.Children.OfType<Button>().FirstOrDefault(b=>b.Name=="TogglePanelGroup") is {} toggle)
+                {
+                    ((PathIcon)toggle.Content!).Data=Geometry.Parse(expanded?"M0 1 L8 1 L4 6 Z":"M1 0 L6 4 L1 8 Z");
+                    global::Avalonia.Automation.AutomationProperties.SetName(toggle,(expanded?"Collapse ":"Expand ")+_rows.First(e=>e.Id==id).Name);
+                }
+        }
+        finally {_refreshing=refreshing;}
+        StateChanged?.Invoke();
     }
     private IReadOnlyList<ElementSnapshot> VisibleHierarchyRows()
     {
@@ -74,8 +88,10 @@ public sealed partial class WorkspaceView
             Item("Move Earlier",()=>_session.MoveSelectionInOrder(false));Item("Move Later",()=>_session.MoveSelectionInOrder(true));
             Item("Duplicate",()=>_session.DuplicateSelected());Item("Delete",()=>_session.DeleteSelected());
         }
-        PopulateMenu();
-        menu.Opening+=(_,_)=>{if(!SelectedIds.Contains(e.Id))SelectActive([e.Id]);PopulateMenu();};
+        // Seed the menu so it can open, then populate on Opened. Unlike Opening,
+        // Opened also runs for programmatic/MCP opens of the context menu.
+        menu.Items.Add(new MenuItem {Header="Rename"});
+        menu.Opened+=(_,_)=>{if(!SelectedIds.Contains(e.Id))SelectActive([e.Id]);PopulateMenu();};
         if(_faceActive)return row;
         Point? pressed=null;PointerPressedEventArgs? pressArgs=null;
         row.PointerPressed+=(_,args)=>{if(_hierarchyRename is null&&args.GetCurrentPoint(row).Properties.IsLeftButtonPressed&&
