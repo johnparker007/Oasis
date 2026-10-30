@@ -75,7 +75,8 @@ public sealed partial class AuthoringSession
             if(g.Control is {} own)kind=own.Kind;
             var type=kind switch {"lamp"=>"Lamp","reel"=>"Reel","sevensegment"=>"7-segment display","alpha"=>"Alpha display","background"=>"Background","image"=>"Image","label"=>"Label","rectangle"=>"Rectangle","vfddotmatrix"=>"VFD display","mixed"=>"Mixed",_=>"Group"};
             var name=g.AutomaticName?type:g.Name;
-            var icon=g.AutomaticIcon?kind switch {"lamp"=>"Lamp","reel"=>"Reel","sevensegment"=>"SevenSegment",_=>"Hierarchy"}:g.Icon;
+            var icon=g.AutomaticIcon?kind switch {"lamp"=>"Lamp","reel"=>"Reel","sevensegment"=>"SevenSegment",
+                "alpha"=>"SegmentedAlpha","vfddotmatrix"=>"DotMatrixAlpha","background"=>"Background",_=>"Hierarchy"}:g.Icon;
             var count=g.Control is null?kinds.Count:1;
             return new PanelGroupLabel(g.Id,name,g.Control is null?$"{name} ({count})":name,type,count,icon,g.AutomaticName);
         });
