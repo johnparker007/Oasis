@@ -40,7 +40,7 @@ public sealed class EditorIconTests
                 EditorIcons.Label(EditorIconKind.DotMatrixAlpha, "Selected dot-matrix alpha")
             } } };
             sheet.Children.Add(new ListBox { ItemsSource = new[] { selected }, SelectedIndex = 0 });
-            var window = new Window { Width = 380, Height = 380, Content = sheet };
+            var window = new Window { Width = 380, Height = 420, Content = sheet };
             window.Show(); window.UpdateLayout(); Dispatcher.UIThread.RunJobs();
             try
             {
@@ -61,7 +61,7 @@ public sealed class EditorIconTests
                 {
                     Directory.CreateDirectory(path);
                     AvaloniaHeadlessPlatform.ForceRenderTimerTick(2);
-                    using var bitmap = new RenderTargetBitmap(new PixelSize(380, 380)); bitmap.Render(window);
+                    using var bitmap = new RenderTargetBitmap(new PixelSize(380, 420)); bitmap.Render(window);
                     bitmap.Save(Path.Combine(path, $"icons-{theme.ToLowerInvariant()}.png"));
                 }
             }

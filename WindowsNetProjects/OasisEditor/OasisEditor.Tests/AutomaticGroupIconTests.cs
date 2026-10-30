@@ -21,7 +21,8 @@ public sealed class AutomaticGroupIconTests
                 var author = new AuthoringSession(root); author.CreateProject("Icons"); var path = author.CreatePanel("Imported");
                 var sources = new[] { PanelElementKind.Alpha, PanelElementKind.Alpha, PanelElementKind.Background, PanelElementKind.VfdDotMatrix }
                     .Select((kind, i) => new PanelElementModel { ObjectId = Guid.NewGuid().ToString("N"), Kind = kind, Name = kind.ToString(),
-                        Width = 100, Height = 40, X = 20, Y = 20 + i * 50, SourceComponentIndex = i, SegmentDisplayType = i == 0 ? "led14seg" : "led16seg" }).ToArray();
+                        Width = 100, Height = 40, X = 20, Y = 20 + i * 50, SourceComponentIndex = i, IsTransformLocked = kind == PanelElementKind.Background,
+                        SegmentDisplayType = i == 0 ? "led14seg" : "led16seg" }).ToArray();
                 var file = JsonSerializer.Deserialize<Panel2DDocumentFile>(File.ReadAllText(path))!;
                 File.WriteAllText(path, JsonSerializer.Serialize(AuthoringSession.AttachFmlControls(file, sources, [])));
                 var baseline = File.ReadAllText(path);
@@ -41,13 +42,28 @@ public sealed class AutomaticGroupIconTests
                     foreach (var id in session.Elements.Where(e => e.ParentId == groups[type].Id).Select(e => e.Id).Prepend(groups[type].Id))
                     {
                         var row = capture.View.GetVisualDescendants().OfType<StackPanel>().Single(p => Equals(p.Tag, id));
-                        Assert.Equal(kind, Assert.Single(row.GetVisualDescendants().OfType<EditorIcon>()).Kind);
+                        Assert.Equal(kind, Assert.Single(row.GetVisualDescendants().OfType<EditorIcon>().Where(i => i.Kind != EditorIconKind.Lock)).Kind);
+                        Assert.Equal(id != groups[type].Id && type == "Background" ? 1 : 0,
+                            row.GetVisualDescendants().OfType<EditorIcon>().Count(i => i.Kind == EditorIconKind.Lock));
+                        Assert.DoesNotContain(row.GetVisualDescendants().OfType<TextBlock>(), t => t.Text?.Contains('▣') == true);
+                        if (id != groups[type].Id && type == "Background")
+                        {
+                            Assert.True(session.Elements.Single(e => e.Id == id).Locked);
+                            Assert.Equal("Transform locked", ToolTip.GetTip(row));
+                            Assert.Equal("Transform locked", global::Avalonia.Automation.AutomationProperties.GetHelpText(row));
+                        }
                     }
                 Assert.False(session.IsDirty); Assert.Equal(baseline, File.ReadAllText(path));
                 var output = Environment.GetEnvironmentVariable("OASIS_GROUP_ICON_OUTPUT");
                 if (output is not null) { Directory.CreateDirectory(output); File.WriteAllBytes(Path.Combine(output, $"group-icons-{theme}.png"), capture.Capture(theme: theme)); }
 
                 var alpha = groups["Alpha display"].Id; var background = groups["Background"].Id;
+                session.UpdateGroup(alpha, locked: true); capture.Capture(theme: theme);
+                var child = session.Elements.First(e => e.ParentId == alpha).Id;
+                var childRow = capture.View.GetVisualDescendants().OfType<StackPanel>().Single(p => Equals(p.Tag, child));
+                Assert.Equal("Transform locked by parent group", ToolTip.GetTip(childRow));
+                Assert.Single(childRow.GetVisualDescendants().OfType<EditorIcon>().Where(i => i.Kind == EditorIconKind.Lock));
+                session.Undo(); Assert.False(session.IsDirty);
                 session.UpdateGroup(alpha, icon: "Hierarchy", automaticIcon: false);
                 Assert.Equal("Hierarchy", session.GroupLabel(alpha).Icon); // Explicit generic override remains generic.
                 session.Undo(); Assert.Equal("SegmentedAlpha", session.GroupLabel(alpha).Icon);
