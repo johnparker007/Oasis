@@ -46,6 +46,14 @@ public sealed partial class AuthoringSession
             }
             index=end;
         }
+        // Sections organise consecutive logical controls, not individual lamp
+        // channels. A section containing one object adds no useful hierarchy.
+        var childCounts=groups.Select(g=>g.ParentId).Concat(elements.Select(e=>e.ParentId))
+            .Where(id=>id is not null).GroupBy(id=>id!).ToDictionary(g=>g.Key,g=>g.Count());
+        var singletons=groups.Where(g=>g.Control is null&&childCounts.GetValueOrDefault(g.Id)==1).Select(g=>g.Id).ToHashSet();
+        groups=groups.Where(g=>!singletons.Contains(g.Id)).Select(g=>singletons.Contains(g.ParentId??"")?g with{ParentId=null}:g).ToList();
+        elements=elements.Select(e=>singletons.Contains(e.ParentId??"")?e with{ParentId=null}:e).ToList();
+        order.RemoveAll(singletons.Contains);
         return document with {Groups=[..document.Groups,..groups],Elements=[..document.Elements,..elements],HierarchyOrder=order.ToArray()};
     }
 }

@@ -33,8 +33,8 @@ public sealed class PanelControlTests : IDisposable
         var original=InstallControl(session,12);
         Assert.Equal(Render(original),Render(session.RenderDocument!));
         var control=Assert.Single(session.Groups.Where(g=>g.Control is not null));
-        Assert.Equal(12,session.ControlChannels(control.Id).Count);Assert.Equal(1,session.GroupLabel(control.ParentId!).Count);
-        Assert.Equal("Lamp (1)",session.GroupLabel(control.ParentId!).DisplayName);Assert.Equal("Lamp",session.GroupLabel(control.Id).Icon);
+        Assert.Equal(12,session.ControlChannels(control.Id).Count);Assert.Null(control.ParentId);
+        Assert.Equal(1,session.GroupLabel(control.Id).Count);Assert.Equal("Lamp",session.GroupLabel(control.Id).Icon);
         Assert.All(session.Elements,e=>Assert.Equal(control.Id,e.ParentId));
         var input=Assert.Single(session.ImportedInputDefinitions);Assert.Equal("5",input.ButtonNumber);Assert.Equal(Guid.Parse(control.Id),input.LinkedVisualElementId);
         Assert.Equal("2",input.RawMfmeShortcut);input.ButtonNumber="999";Assert.Equal("5",session.ImportedInputDefinitions.Single().ButtonNumber);
@@ -73,8 +73,8 @@ public sealed class PanelControlTests : IDisposable
         var raw=JsonSerializer.Deserialize<Panel2DDocumentFile>(File.ReadAllText(session.PanelPath!))!;
         var imported=AuthoringSession.AttachFmlControls(raw,sources,[Input(sources[1].ObjectId)]);
         Assert.Equal(new[]{"lamp","lamp","reel","lamp"},imported.Elements.Select(e=>e.Kind));
-        Assert.Equal(3,imported.Groups.Count(g=>g.ParentId is null));Assert.Equal(2,imported.Groups.Count(g=>g.Control is not null));
-        Assert.All(imported.Groups.Where(g=>g.ParentId is null),g=>Assert.True(g.AutomaticName));
+        Assert.Equal(2,imported.Groups.Count(g=>g.ParentId is null));Assert.Equal(2,imported.Groups.Count(g=>g.Control is not null));
+        Assert.All(imported.Groups,g=>Assert.NotNull(g.Control));
     }
     internal static Panel2DDocumentModel InstallControl(AuthoringSession session,int count=2)
     {
